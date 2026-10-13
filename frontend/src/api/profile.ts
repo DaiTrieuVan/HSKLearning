@@ -7,6 +7,7 @@ export interface UserProfile {
   avatarUrl?: string
   status: string
   roles: string[]
+  lastMode?: 'STUDENT' | 'TEACHER'
   createdAt: string
 }
 
@@ -92,4 +93,27 @@ export async function changePassword(
     const data = await response.json().catch(() => null)
     throw new ApiError(response.status, data?.code || 'UNKNOWN_ERROR', data?.message || 'Đổi mật khẩu thất bại')
   }
+}
+
+export async function switchModeApi(
+  token: string,
+  mode: 'STUDENT' | 'TEACHER'
+): Promise<UserProfile> {
+  const response = await fetch(`${API_BASE}/mode`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ mode }),
+  })
+
+  const data = await response.json().catch(() => null)
+
+  if (!response.ok) {
+    throw new ApiError(response.status, data?.code || 'UNKNOWN_ERROR', data?.message || 'Không thể chuyển đổi chế độ làm việc')
+  }
+
+  return data as UserProfile
 }

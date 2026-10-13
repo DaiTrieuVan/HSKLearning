@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import type { LoginResponse } from '../types/auth'
 import { logoutUser } from '../api/auth'
+import { switchModeApi } from '../api/profile'
 
 interface AuthContextType {
   user: LoginResponse | null
@@ -42,9 +43,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSession(null)
   }
 
-  const switchMode = (mode: 'STUDENT' | 'TEACHER') => {
-    if (session && session.roles.includes(mode)) {
+  const switchMode = async (mode: 'STUDENT' | 'TEACHER') => {
+    if (session && (session.roles.includes(mode) || session.roles.includes('ADMIN' as any))) {
       setSession({ ...session, activeMode: mode })
+      try {
+        await switchModeApi(session.token, mode)
+      } catch (err) {
+        console.warn('Could not persist mode to backend:', err)
+      }
     }
   }
 

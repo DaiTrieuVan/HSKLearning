@@ -1,6 +1,7 @@
 package com.hsk.account.web;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -54,7 +55,9 @@ public class AuthController {
 							content = @Content(schema = @Schema(implementation = com.hsk.common.api.ErrorResponse.class))),
 					@ApiResponse(responseCode = "500", description = "INTERNAL_ERROR",
 							content = @Content(schema = @Schema(implementation = com.hsk.common.api.ErrorResponse.class))) })
-	@PostMapping("/register")
+	// produces is declared so the generated contract says "application/json" instead of "*/*":
+	// client code generators key the response model off that media type.
+	@PostMapping(path = "/register", produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<AccountResponse> registerStudent(@Valid @RequestBody RegisterStudentRequest request) {
 		AccountResponse account = registrationService.registerStudent(request);
 		return ResponseEntity.status(HttpStatus.CREATED).body(account);

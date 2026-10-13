@@ -34,9 +34,15 @@ public class AuthController {
 
 	private final LoginService loginService;
 
-	public AuthController(RegistrationService registrationService, LoginService loginService) {
+	private final com.hsk.account.service.PasswordResetService passwordResetService;
+
+	public AuthController(
+			RegistrationService registrationService,
+			LoginService loginService,
+			com.hsk.account.service.PasswordResetService passwordResetService) {
 		this.registrationService = registrationService;
 		this.loginService = loginService;
+		this.passwordResetService = passwordResetService;
 	}
 
 	/** HTT-01-CN-001-CV-04. */
@@ -90,6 +96,36 @@ public class AuthController {
 			description = "Kết thúc phiên đăng nhập.")
 	@PostMapping(path = "/logout")
 	public ResponseEntity<Void> logout() {
+		return ResponseEntity.ok().build();
+	}
+
+	/** HTT-01-CN-005-TC-01..TC-03. */
+	@Operation(summary = "HTT-01-CN-005 — Yêu cầu đặt lại mật khẩu",
+			description = "Gửi email chứa liên kết đặt lại mật khẩu có hiệu lực 30 phút. Không tiết lộ email có tồn tại hay không.")
+	@PostMapping(path = "/forgot-password", produces = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<com.hsk.account.dto.ForgotPasswordResponse> forgotPassword(
+			@Valid @RequestBody com.hsk.account.dto.ForgotPasswordRequest request) {
+		com.hsk.account.dto.ForgotPasswordResponse response = passwordResetService.requestReset(request);
+		return ResponseEntity.ok(response);
+	}
+
+	/** HTT-01-CN-005-TC-04 & TC-05. */
+	@Operation(summary = "HTT-01-CN-005 — Kiểm tra mã đặt lại mật khẩu",
+			description = "Xác nhận token còn hiệu lực (<30 phút) và chưa được sử dụng trước đó.")
+	@org.springframework.web.bind.annotation.GetMapping(path = "/reset-password/validate")
+	public ResponseEntity<Void> validateResetToken(
+			@org.springframework.web.bind.annotation.RequestParam("token") String token) {
+		passwordResetService.validateToken(token);
+		return ResponseEntity.ok().build();
+	}
+
+	/** HTT-01-CN-005-TC-02 & TC-06. */
+	@Operation(summary = "HTT-01-CN-005 — Xác nhận đổi mật khẩu mới",
+			description = "Đổi mật khẩu tài khoản bằng token hợp lệ và vô hiệu hóa token sau khi sử dụng.")
+	@PostMapping(path = "/reset-password", produces = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<Void> resetPassword(
+			@Valid @RequestBody com.hsk.account.dto.ResetPasswordRequest request) {
+		passwordResetService.resetPassword(request);
 		return ResponseEntity.ok().build();
 	}
 }

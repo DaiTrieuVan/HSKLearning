@@ -31,3 +31,10 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Local secrets — loaded by spring-dotenv at runtime, never commit ###
+.env
+.env.*
+!.env.example
+
+

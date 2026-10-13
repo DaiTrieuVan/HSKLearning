@@ -18,8 +18,8 @@ import java.util.Properties;
  */
 public final class MySqlTestSchema {
 
-	private static final String DEFAULT_URL =
-			"jdbc:mysql://localhost:3306/hsk_learning_test?useSSL=false&serverTimezone=Asia/Ho_Chi_Minh";
+	private static final String DEFAULT_URL = "jdbc:mysql://localhost:3306/hsk_learning_test"
+			+ "?sslMode=DISABLED&allowPublicKeyRetrieval=true&connectionTimeZone=UTC";
 
 	private MySqlTestSchema() {
 	}

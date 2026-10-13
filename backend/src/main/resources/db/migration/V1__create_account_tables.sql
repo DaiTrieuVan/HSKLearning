@@ -29,11 +29,13 @@ CREATE TABLE users (
 	status               VARCHAR(20)   NOT NULL DEFAULT 'ACTIVE',
 	-- QTN-17: temporary lock after repeated failed sign-ins (HTT-01-CN-004).
 	failed_login_count   INT           NOT NULL DEFAULT 0,
-	locked_until         TIMESTAMP     NULL,
+	locked_until         DATETIME(6)   NULL,
 	-- Presentation hint only: which workspace to open. Never an authority.
 	last_mode            VARCHAR(20)   NULL,
-	created_at           TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	updated_at           TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	-- DATETIME(6), not TIMESTAMP: Hibernate maps java.time.Instant to datetime(6), the schema is
+	-- checked with ddl-auto=validate, and TIMESTAMP would cap every deadline at the year 2038.
+	created_at           DATETIME(6)   NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+	updated_at           DATETIME(6)   NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
 	CONSTRAINT pk_users PRIMARY KEY (id),
 	-- Precondition of HTT-01-CN-001: "Email chưa được dùng cho tài khoản khác".
 	-- 190 chars stays under InnoDB's unique index key length limit.
@@ -53,7 +55,7 @@ CREATE TABLE user_roles (
 	-- NULL when the platform granted the role automatically, e.g. STUDENT on
 	-- self registration; set to the admin's id when an administrator grants it.
 	granted_by  BIGINT     NULL,
-	granted_at  TIMESTAMP  NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	granted_at  DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
 	CONSTRAINT pk_user_roles PRIMARY KEY (user_id, role_id),
 	CONSTRAINT fk_user_roles_user     FOREIGN KEY (user_id) REFERENCES users (id)  ON DELETE CASCADE,
 	CONSTRAINT fk_user_roles_role     FOREIGN KEY (role_id) REFERENCES roles (id),

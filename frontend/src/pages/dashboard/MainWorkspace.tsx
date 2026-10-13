@@ -24,6 +24,7 @@ import { UserProfileModal } from '../../components/profile/UserProfileModal'
 import { CreateClassModal } from '../../components/classroom/CreateClassModal'
 import { JoinClassModal } from '../../components/classroom/JoinClassModal'
 import { ClassDetailModal } from '../../components/classroom/ClassDetailModal'
+import { HskCurriculumModal } from '../../components/content/HskCurriculumModal'
 import { getMyTeacherRequest, type TeacherRequestItem } from '../../api/teacherRequest'
 import { getTeachingClasses, getEnrolledClasses, type ClassItem } from '../../api/classroom'
 
@@ -41,6 +42,9 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
   const [myTeacherRequest, setMyTeacherRequest] = useState<TeacherRequestItem | null>(null)
   const [actionAlert, setActionAlert] = useState<string | null>(null)
   const [activeAdminTab, setActiveAdminTab] = useState<'OVERVIEW' | 'TEACHER_REQUESTS' | 'USER_MANAGEMENT'>('OVERVIEW')
+
+  // Content States (HTT-03)
+  const [hskCurriculumModalOpen, setHskCurriculumModalOpen] = useState(false)
 
   // Classroom States (HTT-02)
   const [createClassModalOpen, setCreateClassModalOpen] = useState(false)
@@ -605,6 +609,7 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
 
                 <button
                   type="button"
+                  onClick={() => setHskCurriculumModalOpen(true)}
                   className="btn-gamified btn-primary"
                   style={{ width: '100%', fontSize: '0.92rem', padding: '10px' }}
                 >
@@ -1032,6 +1037,14 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
           loadClasses()
           setSelectedClassroom(null)
         }}
+      />
+
+      {/* HSK Curriculum & Learning Modal (HTT-03) */}
+      <HskCurriculumModal
+        isOpen={hskCurriculumModalOpen}
+        onClose={() => setHskCurriculumModalOpen(false)}
+        token={user.token}
+        isTeacher={isTeacher}
       />
     </div>
   )

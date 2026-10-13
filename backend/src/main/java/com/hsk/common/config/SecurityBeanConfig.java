@@ -54,6 +54,8 @@ public class SecurityBeanConfig {
 						}))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/api/v1/auth/**").permitAll()
+						.requestMatchers("/api/v1/content/levels/**").permitAll()
+						.requestMatchers("/uploads/**").permitAll()
 						.requestMatchers("/v3/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
 						.anyRequest().authenticated())
 				.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);

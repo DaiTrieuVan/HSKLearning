@@ -92,6 +92,27 @@ public enum ApiErrorCode {
 	/** HTT-02-CN-006 / 007 / 008: Student is not in class. */
 	NOT_CLASS_MEMBER(HttpStatus.BAD_REQUEST, "Học sinh không thuộc lớp học này"),
 
+	/** HTT-03-CN-001: HSK level not found. */
+	HSK_LEVEL_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy cấp độ HSK"),
+
+	/** HTT-03-CN-002: Lesson not found. */
+	LESSON_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy bài học"),
+
+	/** HTT-03-CN-004: Vocabulary not found. */
+	VOCABULARY_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy từ vựng"),
+
+	/** HTT-03-CN-004 / 011: Vocabulary pair (hanzi, pinyin) already exists in scope (QTN-07). */
+	VOCABULARY_ALREADY_EXISTS(HttpStatus.CONFLICT, "Từ vựng với cặp chữ Hán và Pinyin này đã tồn tại trong kho"),
+
+	/** HTT-03-CN-005: Vocabulary is used in lessons or sets (QTN-14). */
+	VOCABULARY_IN_USE(HttpStatus.BAD_REQUEST, "Từ vựng đang được sử dụng, không thể xóa (hệ thống sẽ ẩn đi)"),
+
+	/** HTT-03-CN-008: Grammar point not found. */
+	GRAMMAR_POINT_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy điểm ngữ pháp"),
+
+	/** HTT-03-CN-009: Vocabulary set not found. */
+	VOCAB_SET_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy bộ từ vựng"),
+
 	/** Unexpected server side failure; the client may retry. */
 	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Hệ thống đang gặp sự cố, vui lòng thử lại sau");
 

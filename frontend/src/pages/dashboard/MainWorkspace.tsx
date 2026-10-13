@@ -21,7 +21,11 @@ import { TeacherRequestModal } from '../../components/teacher/TeacherRequestModa
 import { AdminTeacherReviewPanel } from '../../components/teacher/AdminTeacherReviewPanel'
 import { AdminUserManagementPanel } from '../../components/admin/AdminUserManagementPanel'
 import { UserProfileModal } from '../../components/profile/UserProfileModal'
+import { CreateClassModal } from '../../components/classroom/CreateClassModal'
+import { JoinClassModal } from '../../components/classroom/JoinClassModal'
+import { ClassDetailModal } from '../../components/classroom/ClassDetailModal'
 import { getMyTeacherRequest, type TeacherRequestItem } from '../../api/teacherRequest'
+import { getTeachingClasses, getEnrolledClasses, type ClassItem } from '../../api/classroom'
 
 interface MainWorkspaceProps {
   onJoinClassClick?: () => void
@@ -38,6 +42,35 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
   const [actionAlert, setActionAlert] = useState<string | null>(null)
   const [activeAdminTab, setActiveAdminTab] = useState<'OVERVIEW' | 'TEACHER_REQUESTS' | 'USER_MANAGEMENT'>('OVERVIEW')
 
+  // Classroom States (HTT-02)
+  const [createClassModalOpen, setCreateClassModalOpen] = useState(false)
+  const [joinClassModalOpen, setJoinClassModalOpen] = useState(false)
+  const [selectedClassroom, setSelectedClassroom] = useState<ClassItem | null>(null)
+  const [classesList, setClassesList] = useState<ClassItem[]>([])
+  const [loadingClasses, setLoadingClasses] = useState(false)
+
+  const isTeacher = user?.activeMode === 'TEACHER'
+  const isAdmin = user?.roles.includes('ADMIN')
+  const hasMultipleRoles = user ? user.roles.includes('TEACHER') && user.roles.includes('STUDENT') : false
+
+  const loadClasses = () => {
+    if (!user) return
+    setLoadingClasses(true)
+    if (user.activeMode === 'TEACHER') {
+      getTeachingClasses(user.token)
+        .then((res: ClassItem[]) => setClassesList(res))
+        .catch(() => {})
+        .finally(() => setLoadingClasses(false))
+    } else if (!user.roles.includes('ADMIN')) {
+      getEnrolledClasses(user.token)
+        .then((res: ClassItem[]) => setClassesList(res))
+        .catch(() => {})
+        .finally(() => setLoadingClasses(false))
+    } else {
+      setLoadingClasses(false)
+    }
+  }
+
   useEffect(() => {
     if (user) {
       setCurrentUserName(user.fullName)
@@ -46,19 +79,15 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
           .then((res) => setMyTeacherRequest(res))
           .catch(() => {})
       }
+      loadClasses()
     }
-  }, [user])
+  }, [user, user?.activeMode])
 
   if (!user) return null
 
-  const isTeacher = user.activeMode === 'TEACHER'
-  const isAdmin = user.roles.includes('ADMIN')
-  const hasMultipleRoles = user.roles.includes('TEACHER') && user.roles.includes('STUDENT')
-
   const handleCreateClassClick = () => {
     if (isTeacher) {
-      setActionAlert('Chức năng Quản lý lớp học (HTT-02) sẵn sàng!')
-      setTimeout(() => setActionAlert(null), 3000)
+      setCreateClassModalOpen(true)
       return
     }
 
@@ -72,6 +101,10 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
 
     // Nếu chưa có quyền giáo viên và chưa gửi yêu cầu
     setTeacherModalOpen(true)
+  }
+
+  const handleJoinClassClick = () => {
+    setJoinClassModalOpen(true)
   }
 
   return (
@@ -617,15 +650,27 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
                   </p>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={handleCreateClassClick}
-                  className="btn-gamified btn-gold"
-                  style={{ width: '100%', fontSize: '0.92rem', padding: '10px' }}
-                >
-                  <PlusCircle size={18} />
-                  <span>{isTeacher ? 'Tạo lớp mới' : 'Tạo hoặc tham gia lớp'}</span>
-                </button>
+                {isTeacher ? (
+                  <button
+                    type="button"
+                    onClick={handleCreateClassClick}
+                    className="btn-gamified btn-gold"
+                    style={{ width: '100%', fontSize: '0.92rem', padding: '10px' }}
+                  >
+                    <PlusCircle size={18} />
+                    <span>Tạo lớp học mới</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleJoinClassClick}
+                    className="btn-gamified btn-gold"
+                    style={{ width: '100%', fontSize: '0.92rem', padding: '10px' }}
+                  >
+                    <PlusCircle size={18} />
+                    <span>Tham gia lớp bằng mã</span>
+                  </button>
+                )}
               </div>
 
               {/* Card 3: Teacher Upgrade or Streak */}
@@ -749,6 +794,193 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
                 </div>
               )}
             </div>
+
+            {/* Classroom Section (HTT-02) */}
+            <div style={{ marginTop: '36px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: '18px',
+                }}
+              >
+                <div>
+                  <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
+                    {isTeacher ? 'Danh sách Lớp học đang phụ trách' : 'Lớp học của bạn'}
+                  </h2>
+                  <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    {isTeacher
+                      ? 'Quản lý học sinh, mã mời 6 ký tự và trạng thái lớp.'
+                      : 'Các lớp bạn đã tham gia cùng thầy cô và bạn bè.'}
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  {isTeacher ? (
+                    <button
+                      type="button"
+                      onClick={() => setCreateClassModalOpen(true)}
+                      className="btn-gamified btn-primary"
+                      style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+                    >
+                      <PlusCircle size={16} />
+                      <span>Tạo lớp mới</span>
+                    </button>
+                  ) : !isAdmin ? (
+                    <button
+                      type="button"
+                      onClick={() => setJoinClassModalOpen(true)}
+                      className="btn-gamified btn-primary"
+                      style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+                    >
+                      <PlusCircle size={16} />
+                      <span>Tham gia lớp bằng mã</span>
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+
+              {loadingClasses ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontWeight: 600 }}>
+                  Đang tải danh sách lớp học...
+                </div>
+              ) : classesList.length === 0 ? (
+                <div
+                  style={{
+                    backgroundColor: '#ffffff',
+                    border: '2px dashed var(--border-card)',
+                    borderRadius: 'var(--radius-lg)',
+                    padding: '36px 20px',
+                    textAlign: 'center',
+                  }}
+                >
+                  <PandaMascot size={56} />
+                  <h4 style={{ fontSize: '1rem', fontWeight: 800, marginTop: '12px', marginBottom: '6px' }}>
+                    {isTeacher ? 'Chưa có lớp học nào' : 'Bạn chưa tham gia lớp học nào'}
+                  </h4>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '420px', margin: '0 auto 16px' }}>
+                    {isTeacher
+                      ? 'Hãy tạo lớp đầu tiên để nhận mã mời 6 ký tự và bắt đầu thêm học sinh.'
+                      : 'Hãy liên hệ giáo viên để lấy mã lớp (6 ký tự) và tham gia học tập.'}
+                  </p>
+                  {isTeacher ? (
+                    <button
+                      type="button"
+                      onClick={() => setCreateClassModalOpen(true)}
+                      className="btn-gamified btn-primary"
+                      style={{ padding: '8px 20px', fontSize: '0.88rem' }}
+                    >
+                      Tạo lớp đầu tiên
+                    </button>
+                  ) : !isAdmin ? (
+                    <button
+                      type="button"
+                      onClick={() => setJoinClassModalOpen(true)}
+                      className="btn-gamified btn-primary"
+                      style={{ padding: '8px 20px', fontSize: '0.88rem' }}
+                    >
+                      Nhập mã vào lớp
+                    </button>
+                  ) : null}
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
+                  {classesList.map((cls) => (
+                    <div
+                      key={cls.id}
+                      className="game-card"
+                      style={{
+                        padding: '18px 20px',
+                        backgroundColor: '#ffffff',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        borderLeft: cls.status === 'ARCHIVED' ? '4px solid #94a3b8' : '4px solid var(--primary)',
+                      }}
+                    >
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                          <span
+                            style={{
+                              fontSize: '0.72rem',
+                              fontWeight: 800,
+                              padding: '2px 8px',
+                              borderRadius: 'var(--radius-full)',
+                              backgroundColor: cls.status === 'ARCHIVED' ? '#f1f5f9' : 'var(--primary-light)',
+                              color: cls.status === 'ARCHIVED' ? '#64748b' : 'var(--primary)',
+                            }}
+                          >
+                            {cls.status === 'ARCHIVED' ? 'ĐÃ LƯU TRỮ' : 'HOẠT ĐỘNG'}
+                          </span>
+
+                          <div
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '2px 8px',
+                              backgroundColor: '#f8fafc',
+                              border: '1px solid var(--border-card)',
+                              borderRadius: 'var(--radius-sm)',
+                              fontFamily: 'monospace',
+                              fontWeight: 800,
+                              fontSize: '0.82rem',
+                              letterSpacing: '1px',
+                              color: 'var(--text-main)',
+                            }}
+                          >
+                            <span>Mã: {cls.joinCode}</span>
+                          </div>
+                        </div>
+
+                        <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '4px' }}>
+                          {cls.title}
+                        </h3>
+                        <p
+                          style={{
+                            fontSize: '0.82rem',
+                            color: 'var(--text-muted)',
+                            lineHeight: 1.4,
+                            marginBottom: '12px',
+                            minHeight: '2.4em',
+                          }}
+                        >
+                          {cls.description || 'Không có mô tả'}
+                        </p>
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid #f1f5f9' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+                          {cls.memberCount} học viên
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={() => setSelectedClassroom(cls)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '6px 12px',
+                            borderRadius: 'var(--radius-md)',
+                            border: '1px solid var(--border-card)',
+                            backgroundColor: '#ffffff',
+                            color: 'var(--primary)',
+                            fontSize: '0.82rem',
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <span>{isTeacher ? 'Quản lý' : 'Chi tiết'}</span>
+                          <ArrowRight size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </>
         )}
       </main>
@@ -770,6 +1002,35 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
         currentEmail={user.email}
         onProfileUpdated={(updated) => {
           setCurrentUserName(updated.fullName)
+        }}
+      />
+
+      {/* Create Class Modal (HTT-02-CN-001) */}
+      <CreateClassModal
+        isOpen={createClassModalOpen}
+        onClose={() => setCreateClassModalOpen(false)}
+        token={user.token}
+        onClassCreated={() => loadClasses()}
+      />
+
+      {/* Join Class Modal (HTT-02-CN-002) */}
+      <JoinClassModal
+        isOpen={joinClassModalOpen}
+        onClose={() => setJoinClassModalOpen(false)}
+        token={user.token}
+        onClassJoined={() => loadClasses()}
+      />
+
+      {/* Class Detail Modal (HTT-02-CN-003 đến 009) */}
+      <ClassDetailModal
+        isOpen={Boolean(selectedClassroom)}
+        classroom={selectedClassroom}
+        token={user.token}
+        isTeacher={isTeacher}
+        onClose={() => setSelectedClassroom(null)}
+        onClassUpdated={() => {
+          loadClasses()
+          setSelectedClassroom(null)
         }}
       />
     </div>

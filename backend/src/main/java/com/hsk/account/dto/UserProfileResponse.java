@@ -3,6 +3,7 @@ package com.hsk.account.dto;
 import java.time.Instant;
 import java.util.List;
 
+import com.hsk.account.domain.UiMode;
 import com.hsk.account.domain.UserEntity;
 import com.hsk.account.domain.UserStatus;
 
@@ -16,6 +17,7 @@ public record UserProfileResponse(
 	String avatarUrl,
 	UserStatus status,
 	List<String> roles,
+	UiMode lastMode,
 	Instant createdAt
 ) {
 	public static UserProfileResponse from(UserEntity user, List<String> roles) {
@@ -26,6 +28,7 @@ public record UserProfileResponse(
 			user.getAvatarUrl(),
 			user.getStatus(),
 			roles,
+			user.getLastMode(),
 			user.getCreatedAt()
 		);
 	}

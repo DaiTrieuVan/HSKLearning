@@ -69,4 +69,13 @@ public class ProfileController {
 		profileService.changePassword(principal.getName(), command);
 		return ResponseEntity.ok().build();
 	}
+
+	@Operation(summary = "HTT-01-CN-009 — Chuyển đổi chế độ làm việc (STUDENT ⇄ TEACHER)")
+	@PutMapping(path = "/mode", produces = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<UserProfileResponse> switchMode(
+			@Valid @RequestBody com.hsk.account.dto.SwitchModeRequest request,
+			Principal principal) {
+		UserProfileResponse profile = profileService.switchMode(principal.getName(), request.mode());
+		return ResponseEntity.ok(profile);
+	}
 }

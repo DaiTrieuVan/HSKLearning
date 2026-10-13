@@ -181,4 +181,35 @@ public class ProfileService {
 				String.valueOf(user.getId()),
 				"Đổi mật khẩu người dùng thành công");
 	}
+
+	/**
+	 * HTT-01-CN-009: Chuyển đổi chế độ làm việc (STUDENT ⇄ TEACHER).
+	 * QTN-01 & QTN-03: Chỉ cho phép chuyển sang TEACHER nếu tài khoản sở hữu vai trò TEACHER hoặc ADMIN.
+	 */
+	@Transactional
+	public UserProfileResponse switchMode(String email, com.hsk.account.domain.UiMode mode) {
+		UserEntity user = userRepository.findByEmailIgnoreCase(email)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.UNAUTHORIZED));
+
+		List<com.hsk.account.domain.RoleCode> roleCodes = userRoleRepository.findByUser_Id(user.getId()).stream()
+				.map(ur -> ur.getRole().getCode())
+				.toList();
+
+		if (mode == com.hsk.account.domain.UiMode.TEACHER && !roleCodes.contains(com.hsk.account.domain.RoleCode.TEACHER) && !roleCodes.contains(com.hsk.account.domain.RoleCode.ADMIN)) {
+			throw new ApiException(ApiErrorCode.TEACHER_ROLE_NOT_GRANTED);
+		}
+
+		user.recordSuccessfulLogin(mode);
+		userRepository.save(user);
+
+		auditLogService.record(
+				user,
+				"SWITCH_MODE",
+				"USER",
+				String.valueOf(user.getId()),
+				"Chuyển đổi giao diện làm việc sang chế độ: " + mode);
+
+		List<String> roleNames = roleCodes.stream().map(Enum::name).toList();
+		return UserProfileResponse.from(user, roleNames);
+	}
 }

@@ -3,6 +3,7 @@ package com.hsk.account;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.endsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -126,7 +127,9 @@ class RegisterStudentH2Test {
 				.andExpect(jsonPath("$.fullName").value("Nguyễn Văn An"))
 				.andExpect(jsonPath("$.roles", contains("STUDENT")))
 				.andExpect(jsonPath("$.password").doesNotExist())
-				.andExpect(jsonPath("$.passwordHash").doesNotExist());
+				.andExpect(jsonPath("$.passwordHash").doesNotExist())
+				// The docs promise UTC ISO-8601; assert the suffix instead of trusting it.
+				.andExpect(jsonPath("$.createdAt", endsWith("Z")));
 
 		// TC-02 duplicate
 		this.mockMvc.perform(post(URL).contentType("application/json").content("""

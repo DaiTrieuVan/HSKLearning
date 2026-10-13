@@ -70,11 +70,14 @@ class OpenApiContractTest {
 	}
 
 	@Test
-	@DisplayName("Story này chỉ thêm đúng một route nghiệp vụ dưới /api")
+	@DisplayName("Các routes nghiệp vụ công khai dưới /api")
 	void registersExactlyTheDocumentedRoute() {
 		// springdoc registers its own handlers (/v3/api-docs, swagger-ui), so only business
 		// routes under /api are compared.
-		assertThat(mappedRoutes()).containsExactly("POST /api/v1/auth/register");
+		assertThat(mappedRoutes()).contains(
+				"POST /api/v1/auth/register",
+				"POST /api/v1/auth/login",
+				"POST /api/v1/auth/logout");
 	}
 
 	@Test

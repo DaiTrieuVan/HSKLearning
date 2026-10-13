@@ -98,6 +98,12 @@ public class GlobalExceptionHandler {
 
 	private String pathOf(WebRequest request) {
 		String path = request.getDescription(false);
-		return path.startsWith("uri:") ? path.substring(4) : path;
+		if (path.startsWith("uri=")) {
+			return path.substring(4);
+		}
+		if (path.startsWith("uri:")) {
+			return path.substring(4);
+		}
+		return path;
 	}
 }

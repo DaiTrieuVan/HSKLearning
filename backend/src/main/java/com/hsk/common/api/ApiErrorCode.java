@@ -35,6 +35,15 @@ public enum ApiErrorCode {
 	/** Credentials are missing or invalid. */
 	UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "Bạn chưa đăng nhập hoặc phiên đã hết hạn"),
 
+	/** TC-05 / TC-06: Wrong password or non-existent email (unified to prevent account enumeration). */
+	INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "Email hoặc mật khẩu không chính xác"),
+
+	/** TC-08: Account has been locked by an administrator. */
+	ACCOUNT_LOCKED(HttpStatus.FORBIDDEN, "Tài khoản đã bị quản trị viên khóa, vui lòng liên hệ quản trị viên"),
+
+	/** TC-09 & QTN-17: Account temporarily locked for 15 minutes after 5 consecutive failures. */
+	ACCOUNT_TEMPORARILY_LOCKED(HttpStatus.FORBIDDEN, "Tài khoản bị khóa tạm thời do nhập sai quá 5 lần liên tiếp. Vui lòng thử lại sau 15 phút"),
+
 	/** Unexpected server side failure; the client may retry. */
 	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Hệ thống đang gặp sự cố, vui lòng thử lại sau");
 

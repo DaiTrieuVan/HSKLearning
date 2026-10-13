@@ -113,6 +113,39 @@ public class UserEntity {
 	}
 
 	/**
+	 * QTN-17: Increments failed login count. Locks for 15 minutes after 5 consecutive failures.
+	 */
+	public void recordFailedLogin(Instant now) {
+		this.failedLoginCount++;
+		if (this.failedLoginCount >= 5) {
+			this.lockedUntil = now.plus(15, java.time.temporal.ChronoUnit.MINUTES);
+		}
+	}
+
+	/**
+	 * Resets failed login counters and updates last mode preference on successful login.
+	 */
+	public void recordSuccessfulLogin(UiMode mode) {
+		this.failedLoginCount = 0;
+		this.lockedUntil = null;
+		if (mode != null) {
+			this.lastMode = mode;
+		}
+	}
+
+	public boolean isTemporarilyLocked(Instant now) {
+		return this.lockedUntil != null && this.lockedUntil.isAfter(now);
+	}
+
+	public boolean isPermanentlyLocked() {
+		return this.status == UserStatus.LOCKED;
+	}
+
+	public void setStatus(UserStatus status) {
+		this.status = status;
+	}
+
+	/**
 	 * Roles are NOT modelled here: an account can hold several of them, so the truth lives in
 	 * {@link UserRoleEntity}. See ERD page 02.
 	 */

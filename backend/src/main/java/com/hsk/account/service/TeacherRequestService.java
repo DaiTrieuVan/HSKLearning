@@ -37,15 +37,19 @@ public class TeacherRequestService {
 
 	private final RoleRepository roleRepository;
 
+	private final com.hsk.common.audit.AuditLogService auditLogService;
+
 	public TeacherRequestService(
 			TeacherRequestRepository teacherRequestRepository,
 			UserRepository userRepository,
 			UserRoleRepository userRoleRepository,
-			RoleRepository roleRepository) {
+			RoleRepository roleRepository,
+			com.hsk.common.audit.AuditLogService auditLogService) {
 		this.teacherRequestRepository = teacherRequestRepository;
 		this.userRepository = userRepository;
 		this.userRoleRepository = userRoleRepository;
 		this.roleRepository = roleRepository;
+		this.auditLogService = auditLogService;
 	}
 
 	/**
@@ -137,6 +141,14 @@ public class TeacherRequestService {
 			userRoleRepository.save(grant);
 		}
 
+		// HTT-01-CN-003-TC-06 / CV-04: Ghi nhật ký xử lý yêu cầu (audit_logs)
+		auditLogService.record(
+				admin,
+				"TEACHER_REQUEST_APPROVED",
+				"TEACHER_REQUEST",
+				String.valueOf(requestId),
+				"Phê duyệt quyền giáo viên cho tài khoản: " + studentUser.getEmail());
+
 		return TeacherRequestResponse.from(request);
 	}
 
@@ -161,6 +173,15 @@ public class TeacherRequestService {
 		}
 
 		request.reject(admin, reason.trim(), Instant.now());
+
+		// HTT-01-CN-003-TC-06 / CV-04: Ghi nhật ký xử lý yêu cầu (audit_logs)
+		auditLogService.record(
+				admin,
+				"TEACHER_REQUEST_REJECTED",
+				"TEACHER_REQUEST",
+				String.valueOf(requestId),
+				"Từ chối yêu cầu của tài khoản: " + request.getUser().getEmail() + ". Lý do: " + reason.trim());
+
 		return TeacherRequestResponse.from(request);
 	}
 }

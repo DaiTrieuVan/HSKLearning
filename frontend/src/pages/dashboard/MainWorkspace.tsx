@@ -12,11 +12,14 @@ import {
   AlertCircle,
   ShieldCheck,
   CheckCircle2,
+  Users,
+  LayoutDashboard,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { PandaMascot } from '../../components/common/PandaMascot'
 import { TeacherRequestModal } from '../../components/teacher/TeacherRequestModal'
 import { AdminTeacherReviewPanel } from '../../components/teacher/AdminTeacherReviewPanel'
+import { AdminUserManagementPanel } from '../../components/admin/AdminUserManagementPanel'
 import { UserProfileModal } from '../../components/profile/UserProfileModal'
 import { getMyTeacherRequest, type TeacherRequestItem } from '../../api/teacherRequest'
 
@@ -33,7 +36,7 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
   const [currentUserName, setCurrentUserName] = useState(user?.fullName || '')
   const [myTeacherRequest, setMyTeacherRequest] = useState<TeacherRequestItem | null>(null)
   const [actionAlert, setActionAlert] = useState<string | null>(null)
-  const [activeAdminTab, setActiveAdminTab] = useState<'OVERVIEW' | 'TEACHER_REQUESTS'>('OVERVIEW')
+  const [activeAdminTab, setActiveAdminTab] = useState<'OVERVIEW' | 'TEACHER_REQUESTS' | 'USER_MANAGEMENT'>('OVERVIEW')
 
   useEffect(() => {
     if (user) {
@@ -275,9 +278,90 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
 
       {/* Main Content Area */}
       <main style={{ flex: 1, maxWidth: '1100px', width: '100%', margin: '0 auto', padding: '32px 20px' }}>
-        {/* Admin Tab View: Teacher Review Panel (HTT-01-CN-003) */}
+        {/* Admin Navigation Tabs (HTT-01-CN-003 & HTT-01-CN-008) */}
+        {isAdmin && (
+          <div
+            style={{
+              display: 'flex',
+              gap: '10px',
+              marginBottom: '24px',
+              borderBottom: '2px solid var(--border-card)',
+              paddingBottom: '12px',
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setActiveAdminTab('OVERVIEW')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 16px',
+                borderRadius: 'var(--radius-md)',
+                border: 'none',
+                fontWeight: 800,
+                fontSize: '0.88rem',
+                cursor: 'pointer',
+                backgroundColor: activeAdminTab === 'OVERVIEW' ? 'var(--primary)' : '#f1f5f9',
+                color: activeAdminTab === 'OVERVIEW' ? '#ffffff' : 'var(--text-muted)',
+                transition: 'all 0.2s',
+              }}
+            >
+              <LayoutDashboard size={16} />
+              <span>Tổng quan</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveAdminTab('TEACHER_REQUESTS')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 16px',
+                borderRadius: 'var(--radius-md)',
+                border: 'none',
+                fontWeight: 800,
+                fontSize: '0.88rem',
+                cursor: 'pointer',
+                backgroundColor: activeAdminTab === 'TEACHER_REQUESTS' ? 'var(--primary)' : '#f1f5f9',
+                color: activeAdminTab === 'TEACHER_REQUESTS' ? '#ffffff' : 'var(--text-muted)',
+                transition: 'all 0.2s',
+              }}
+            >
+              <GraduationCap size={16} />
+              <span>Duyệt giáo viên</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveAdminTab('USER_MANAGEMENT')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 16px',
+                borderRadius: 'var(--radius-md)',
+                border: 'none',
+                fontWeight: 800,
+                fontSize: '0.88rem',
+                cursor: 'pointer',
+                backgroundColor: activeAdminTab === 'USER_MANAGEMENT' ? 'var(--primary)' : '#f1f5f9',
+                color: activeAdminTab === 'USER_MANAGEMENT' ? '#ffffff' : 'var(--text-muted)',
+                transition: 'all 0.2s',
+              }}
+            >
+              <Users size={16} />
+              <span>Quản lý người dùng</span>
+            </button>
+          </div>
+        )}
+
+        {/* Admin Tab View: Teacher Review Panel (HTT-01-CN-003) & User Management (HTT-01-CN-008) */}
         {isAdmin && activeAdminTab === 'TEACHER_REQUESTS' ? (
           <AdminTeacherReviewPanel token={user.token} />
+        ) : isAdmin && activeAdminTab === 'USER_MANAGEMENT' ? (
+          <AdminUserManagementPanel token={user.token} currentUserId={user.id} />
         ) : (
           <>
             {/* Action Alert Banner */}

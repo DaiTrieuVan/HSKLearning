@@ -44,6 +44,24 @@ public enum ApiErrorCode {
 	/** TC-09 & QTN-17: Account temporarily locked for 15 minutes after 5 consecutive failures. */
 	ACCOUNT_TEMPORARILY_LOCKED(HttpStatus.FORBIDDEN, "Tài khoản bị khóa tạm thời do nhập sai quá 5 lần liên tiếp. Vui lòng thử lại sau 15 phút"),
 
+	/** HTT-01-CN-002: User already has a pending teacher upgrade request. */
+	PENDING_REQUEST_ALREADY_EXISTS(HttpStatus.CONFLICT, "Bạn đã có một yêu cầu đang chờ duyệt"),
+
+	/** HTT-01-CN-002: User already holds the teacher role. */
+	ALREADY_TEACHER(HttpStatus.BAD_REQUEST, "Tài khoản đã có quyền giáo viên"),
+
+	/** HTT-01-CN-003: Request has already been reviewed (approved or rejected). */
+	REQUEST_ALREADY_PROCESSED(HttpStatus.BAD_REQUEST, "Yêu cầu đã được xử lý trước đó"),
+
+	/** HTT-01-CN-007 / HTT-02-CN-001: Attempting teacher actions without teacher role. */
+	TEACHER_ROLE_NOT_GRANTED(HttpStatus.FORBIDDEN, "Bạn chưa có quyền giáo viên để thực hiện thao tác này"),
+
+	/** HTT-01-CN-005: Password reset token has expired (>30 minutes). */
+	TOKEN_EXPIRED(HttpStatus.BAD_REQUEST, "Liên kết đã hết hạn, vui lòng yêu cầu liên kết mới"),
+
+	/** HTT-01-CN-005: Password reset token has already been consumed. */
+	TOKEN_ALREADY_USED(HttpStatus.BAD_REQUEST, "Liên kết đã được sử dụng"),
+
 	/** Unexpected server side failure; the client may retry. */
 	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Hệ thống đang gặp sự cố, vui lòng thử lại sau");
 

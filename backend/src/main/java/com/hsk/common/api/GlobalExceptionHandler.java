@@ -79,6 +79,17 @@ public class GlobalExceptionHandler {
 		return build(ApiErrorCode.RESOURCE_ALREADY_EXISTS, pathOf(request), Map.of());
 	}
 
+	/**
+	 * HTT-01-CN-007: Forbidden access attempt by unprivileged role / unauthorized resource.
+	 */
+	@ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+	public ResponseEntity<ErrorResponse> handleAccessDenied(
+			org.springframework.security.access.AccessDeniedException exception,
+			WebRequest request) {
+		log.warn("Access denied on {}: {}", pathOf(request), exception.getMessage());
+		return build(ApiErrorCode.FORBIDDEN, pathOf(request), Map.of());
+	}
+
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<ErrorResponse> handleUnexpected(Exception exception, WebRequest request) {
 		log.error("Unhandled exception on {}", pathOf(request), exception);

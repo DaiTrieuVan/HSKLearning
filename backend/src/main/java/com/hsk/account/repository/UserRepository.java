@@ -11,5 +11,7 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
 	/** Emails are stored lower case; callers must normalise before querying. */
 	Optional<UserEntity> findByEmail(String email);
 
+	Optional<UserEntity> findByEmailIgnoreCase(String email);
+
 	boolean existsByEmail(String email);
 }

@@ -28,6 +28,16 @@ public class GlobalExceptionHandler {
 
 	private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+	private final org.springframework.beans.factory.ObjectProvider<com.hsk.common.audit.AuditLogService> auditLogServiceProvider;
+	private final org.springframework.beans.factory.ObjectProvider<com.hsk.account.repository.UserRepository> userRepositoryProvider;
+
+	public GlobalExceptionHandler(
+			org.springframework.beans.factory.ObjectProvider<com.hsk.common.audit.AuditLogService> auditLogServiceProvider,
+			org.springframework.beans.factory.ObjectProvider<com.hsk.account.repository.UserRepository> userRepositoryProvider) {
+		this.auditLogServiceProvider = auditLogServiceProvider;
+		this.userRepositoryProvider = userRepositoryProvider;
+	}
+
 	/** HTT-01-CN-001-CV-04: business rules surface as their own error code. */
 	@ExceptionHandler(ApiException.class)
 	public ResponseEntity<ErrorResponse> handleApiException(ApiException exception, WebRequest request) {
@@ -80,13 +90,35 @@ public class GlobalExceptionHandler {
 	}
 
 	/**
-	 * HTT-01-CN-007: Forbidden access attempt by unprivileged role / unauthorized resource.
+	 * HTT-01-CN-007 & HTT-01-CN-007-CV-04 / TC-11: Forbidden access attempt by unprivileged role / unauthorized resource.
+	 * Ghi nhận AuditLog cho sự cố truy cập trái phép.
 	 */
 	@ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
 	public ResponseEntity<ErrorResponse> handleAccessDenied(
 			org.springframework.security.access.AccessDeniedException exception,
 			WebRequest request) {
 		log.warn("Access denied on {}: {}", pathOf(request), exception.getMessage());
+		try {
+			org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+			if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal())) {
+				String email = auth.getName();
+				com.hsk.account.repository.UserRepository userRepo = userRepositoryProvider.getIfAvailable();
+				com.hsk.common.audit.AuditLogService auditService = auditLogServiceProvider.getIfAvailable();
+				if (userRepo != null && auditService != null) {
+					userRepo.findByEmailIgnoreCase(email).ifPresent(user -> {
+						auditService.record(
+								user,
+								"UNAUTHORIZED_ACCESS_ATTEMPT",
+								"SECURITY",
+								pathOf(request),
+								"Truy cập trái phép vào tài nguyên: " + pathOf(request)
+						);
+					});
+				}
+			}
+		} catch (Exception ex) {
+			log.warn("Failed to record audit log for access denial: {}", ex.getMessage());
+		}
 		return build(ApiErrorCode.FORBIDDEN, pathOf(request), Map.of());
 	}
 

@@ -141,6 +141,16 @@ public class UserEntity {
 		return this.status == UserStatus.LOCKED;
 	}
 
+	public void lock() {
+		this.status = UserStatus.LOCKED;
+	}
+
+	public void unlock() {
+		this.status = UserStatus.ACTIVE;
+		this.failedLoginCount = 0;
+		this.lockedUntil = null;
+	}
+
 	public void setStatus(UserStatus status) {
 		this.status = status;
 	}

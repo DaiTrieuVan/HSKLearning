@@ -41,6 +41,17 @@ public class SecurityBeanConfig {
 				.csrf(csrf -> csrf.disable())
 				.cors(cors -> cors.configurationSource(corsConfigurationSource))
 				.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+				.exceptionHandling(ex -> ex
+						.authenticationEntryPoint((request, response, authException) -> {
+							response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED);
+							response.setContentType("application/json;charset=UTF-8");
+							response.getWriter().write("{\"code\":\"UNAUTHORIZED\",\"message\":\"Bạn chưa đăng nhập hoặc phiên đã hết hạn\"}");
+						})
+						.accessDeniedHandler((request, response, accessDeniedException) -> {
+							response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_FORBIDDEN);
+							response.setContentType("application/json;charset=UTF-8");
+							response.getWriter().write("{\"code\":\"FORBIDDEN\",\"message\":\"Bạn không có quyền thực hiện thao tác này\"}");
+						}))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/api/v1/auth/**").permitAll()
 						.requestMatchers("/v3/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()

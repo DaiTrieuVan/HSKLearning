@@ -2,6 +2,7 @@ package com.hsk.common.security;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -10,6 +11,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import com.hsk.account.domain.UserEntity;
+import com.hsk.account.repository.UserRepository;
+
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -17,15 +21,19 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * HTT-01-CN-004: Extracts Bearer JWT from Authorization header and sets the Spring SecurityContext.
+ * HTT-01-CN-004 & HTT-01-CN-007: Trích xuất Bearer JWT và kiểm tra tính hợp lệ của tài khoản.
+ * HTT-01-CN-007-TC-08: Nếu tài khoản bị khóa trong khi phiên còn hiệu lực, từ chối ngay với mã ACCOUNT_LOCKED (403).
  */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
 	private final JwtService jwtService;
 
-	public JwtAuthenticationFilter(JwtService jwtService) {
+	private final UserRepository userRepository;
+
+	public JwtAuthenticationFilter(JwtService jwtService, UserRepository userRepository) {
 		this.jwtService = jwtService;
+		this.userRepository = userRepository;
 	}
 
 	@Override
@@ -39,6 +47,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
 			if (claims != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 				String email = claims.getSubject();
+				Optional<UserEntity> userOpt = userRepository.findByEmailIgnoreCase(email);
+
+				// HTT-01-CN-007-TC-08: Tài khoản bị khóa giữa chừng
+				if (userOpt.isPresent() && userOpt.get().isPermanentlyLocked()) {
+					response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+					response.setContentType("application/json;charset=UTF-8");
+					response.getWriter().write("""
+						{"code":"ACCOUNT_LOCKED","message":"Tài khoản đã bị quản trị viên khóa, vui lòng liên hệ quản trị viên"}
+						""");
+					return;
+				}
+
 				@SuppressWarnings("unchecked")
 				List<String> roles = (List<String>) claims.get("roles");
 

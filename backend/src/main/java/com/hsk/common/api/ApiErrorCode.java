@@ -74,6 +74,24 @@ public enum ApiErrorCode {
 	/** HTT-01-CN-006: Uploaded file is not an allowed image format (.jpg, .jpeg, .png, .webp). */
 	INVALID_FILE_FORMAT(HttpStatus.BAD_REQUEST, "Định dạng tệp không hợp lệ (chỉ chấp nhận ảnh .jpg, .png, .webp)"),
 
+	/** HTT-02: Class not found. */
+	CLASS_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy lớp học"),
+
+	/** HTT-02-CN-002: Class is archived, cannot be modified or joined (QTN-01). */
+	CLASS_ALREADY_ARCHIVED(HttpStatus.BAD_REQUEST, "Lớp học đã được lưu trữ, không thể nhận thêm học sinh hoặc chỉnh sửa"),
+
+	/** HTT-02-CN-003: Rate limited after 10 failed join code attempts in 1 hour (QTN-05). */
+	CLASS_JOIN_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "Bạn đã nhập sai mã lớp quá 10 lần liên tiếp. Vui lòng thử lại sau 1 giờ"),
+
+	/** HTT-02-CN-003: Wrong join code entered. */
+	INVALID_JOIN_CODE(HttpStatus.BAD_REQUEST, "Mã tham gia lớp học không chính xác"),
+
+	/** HTT-02-CN-003: Student is already an active member of this class. */
+	ALREADY_CLASS_MEMBER(HttpStatus.BAD_REQUEST, "Bạn đã tham gia lớp học này rồi"),
+
+	/** HTT-02-CN-006 / 007 / 008: Student is not in class. */
+	NOT_CLASS_MEMBER(HttpStatus.BAD_REQUEST, "Học sinh không thuộc lớp học này"),
+
 	/** Unexpected server side failure; the client may retry. */
 	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Hệ thống đang gặp sự cố, vui lòng thử lại sau");
 

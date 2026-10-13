@@ -39,9 +39,11 @@ spring:
         jdbc.time_zone: Asia/Ho_Chi_Minh
 
   jackson:
+    # Keeps `"fields": null` out of the error envelope.
+    # Note: `serialization.write-dates-as-timestamps` is deliberately absent. Jackson 3 removed
+    # that SerializationFeature; java.time values are ISO-8601 by default in Spring Boot 4,
+    # so Instant renders as "2026-10-13T03:21:44.512Z" without any setting.
     default-property-inclusion: non_null
-    serialization:
-      write-dates-as-timestamps: false
 
 server:
   port: 8080

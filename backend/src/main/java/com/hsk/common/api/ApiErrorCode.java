@@ -62,6 +62,15 @@ public enum ApiErrorCode {
 	/** HTT-01-CN-005: Password reset token has already been consumed. */
 	TOKEN_ALREADY_USED(HttpStatus.BAD_REQUEST, "Liên kết đã được sử dụng"),
 
+	/** HTT-01-CN-006: Current password entered during password change is wrong. */
+	INVALID_CURRENT_PASSWORD(HttpStatus.BAD_REQUEST, "Mật khẩu hiện tại không chính xác"),
+
+	/** HTT-01-CN-006: Uploaded avatar file exceeds 2 MB. */
+	FILE_TOO_LARGE(HttpStatus.BAD_REQUEST, "Kích thước tệp vượt quá dung lượng cho phép (tối đa 2 MB)"),
+
+	/** HTT-01-CN-006: Uploaded file is not an allowed image format (.jpg, .jpeg, .png, .webp). */
+	INVALID_FILE_FORMAT(HttpStatus.BAD_REQUEST, "Định dạng tệp không hợp lệ (chỉ chấp nhận ảnh .jpg, .png, .webp)"),
+
 	/** Unexpected server side failure; the client may retry. */
 	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Hệ thống đang gặp sự cố, vui lòng thử lại sau");
 

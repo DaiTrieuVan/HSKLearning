@@ -1,9 +1,11 @@
 import React, { useState } from 'react'
-import { Mail, Lock, LogIn, AlertCircle, ShieldAlert } from 'lucide-react'
+import { Mail, Lock, LogIn, AlertCircle, ShieldAlert, CheckCircle2 } from 'lucide-react'
 import { Input } from '../../components/common/Input'
 import { loginUser, ApiError } from '../../api/auth'
 import { useAuth } from '../../context/AuthContext'
 import type { LoginResponse } from '../../types/auth'
+import { ForgotPasswordModal } from './ForgotPasswordModal'
+import { ResetPasswordModal } from './ResetPasswordModal'
 
 interface LoginFormProps {
   onSwitchToRegister: () => void
@@ -16,8 +18,14 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onLogi
   const [password, setPassword] = useState('')
   const [rememberMe, setRememberMe] = useState(true)
   const [error, setError] = useState('')
+  const [successMsg, setSuccessMsg] = useState('')
   const [isLocked, setIsLocked] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+
+  // HTT-01-CN-005 Modals
+  const [showForgotModal, setShowForgotModal] = useState(false)
+  const [showResetModal, setShowResetModal] = useState(false)
+  const [resetToken, setResetToken] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -30,88 +38,133 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onLogi
 
     setIsLoading(true)
     setError('')
+    setSuccessMsg('')
     setIsLocked(false)
 
     try {
       const response = await loginUser({
-        email: email.trim().toLowerCase(),
+        email: email.trim(),
         password,
       })
 
       login(response)
       onLoginSuccess(response)
-    } catch (err: unknown) {
+    } catch (err) {
       if (err instanceof ApiError) {
-        if (err.code === 'ACCOUNT_TEMPORARILY_LOCKED') {
+        if (err.code === 'ACCOUNT_TEMPORARILY_LOCKED' || err.code === 'ACCOUNT_LOCKED') {
           setIsLocked(true)
-          setError('Tài khoản bị tạm khóa 15 phút do nhập sai mật khẩu quá 5 lần liên tiếp (QTN-17). Vui lòng thử lại sau.')
-        } else if (err.code === 'ACCOUNT_LOCKED') {
-          setIsLocked(true)
-          setError('Tài khoản này đã bị quản trị viên khóa. Vui lòng liên hệ quản trị viên để được hỗ trợ.')
-        } else if (err.code === 'INVALID_CREDENTIALS') {
-          setError('Email hoặc mật khẩu không chính xác.')
-        } else {
-          setError(err.message || 'Đăng nhập không thành công.')
         }
+        setError(err.message)
       } else {
-        setError('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng!')
+        setError('Đã xảy ra lỗi không mong muốn. Vui lòng thử lại!')
       }
     } finally {
       setIsLoading(false)
     }
   }
 
+  const handleOpenResetWithToken = (token?: string) => {
+    if (token) setResetToken(token)
+    setShowResetModal(true)
+  }
+
   return (
-    <form onSubmit={handleSubmit} noValidate>
-      {error && (
+    <form onSubmit={handleSubmit} className="auth-form" noValidate>
+      {/* HTT-01-CN-004-TC-08 & TC-09: Account Locked Warning */}
+      {isLocked && (
         <div
           style={{
-            padding: '12px 14px',
-            backgroundColor: isLocked ? '#fffbeb' : '#fee2e2',
-            border: isLocked ? '2px solid #f59e0b' : '2px solid #ef4444',
-            borderRadius: 'var(--radius-md)',
-            color: isLocked ? '#92400e' : '#b91c1c',
-            fontSize: '0.88rem',
-            fontWeight: 600,
-            marginBottom: '16px',
             display: 'flex',
             alignItems: 'flex-start',
-            gap: '10px',
-            lineHeight: 1.45,
+            gap: '12px',
+            backgroundColor: '#fff1f2',
+            border: '2px solid #fecdd3',
+            color: '#be123c',
+            padding: '14px',
+            borderRadius: 'var(--radius-md)',
+            marginBottom: '16px',
+            fontSize: '0.9rem',
+            lineHeight: 1.5,
           }}
         >
-          {isLocked ? (
-            <ShieldAlert size={20} style={{ flexShrink: 0, marginTop: '2px', color: '#d97706' }} />
-          ) : (
-            <AlertCircle size={20} style={{ flexShrink: 0, marginTop: '2px', color: '#ef4444' }} />
-          )}
+          <ShieldAlert size={22} style={{ flexShrink: 0, marginTop: '2px' }} />
+          <div>
+            <div style={{ fontWeight: 800 }}>Tài khoản đang bị khóa</div>
+            <div>{error}</div>
+          </div>
+        </div>
+      )}
+
+      {/* Normal Error Alert */}
+      {!isLocked && error && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            backgroundColor: '#fef2f2',
+            border: '1px solid #fee2e2',
+            color: '#b91c1c',
+            padding: '12px 14px',
+            borderRadius: 'var(--radius-md)',
+            marginBottom: '16px',
+            fontSize: '0.88rem',
+          }}
+        >
+          <AlertCircle size={18} style={{ flexShrink: 0 }} />
           <span>{error}</span>
         </div>
       )}
 
+      {/* Password reset success feedback */}
+      {successMsg && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            backgroundColor: 'var(--jade-green-light)',
+            border: '1px solid var(--jade-green)',
+            color: 'var(--jade-green-shadow)',
+            padding: '12px 14px',
+            borderRadius: 'var(--radius-md)',
+            marginBottom: '16px',
+            fontSize: '0.88rem',
+            fontWeight: 700,
+          }}
+        >
+          <CheckCircle2 size={18} style={{ flexShrink: 0 }} />
+          <span>{successMsg}</span>
+        </div>
+      )}
+
       <Input
-        label="Địa chỉ Email"
+        label="Email"
+        id="login-email"
         type="email"
+        name="email"
         placeholder="an.hs@example.com"
         value={email}
         onChange={(e) => {
           setEmail(e.target.value)
-          setError('')
+          if (error) setError('')
         }}
-        icon={<Mail size={18} />}
+        icon={<Mail size={20} />}
         required
       />
 
       <Input
         label="Mật khẩu"
+        id="login-password"
         type="password"
-        placeholder="Nhập mật khẩu"
+        name="password"
+        placeholder="Nhập mật khẩu..."
         value={password}
         onChange={(e) => {
           setPassword(e.target.value)
-          setError('')
+          if (error) setError('')
         }}
-        icon={<Lock size={18} />}
+        icon={<Lock size={20} />}
         required
       />
 
@@ -135,16 +188,23 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onLogi
           <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>Ghi nhớ đăng nhập</span>
         </label>
 
-        <a
-          href="#forgot"
-          onClick={(e) => {
-            e.preventDefault()
-            alert('Chức năng đặt lại mật khẩu thuộc Story HTT-01-CN-005!')
+        {/* HTT-01-CN-005: Quên mật khẩu */}
+        <button
+          type="button"
+          onClick={() => setShowForgotModal(true)}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'var(--primary)',
+            fontWeight: 700,
+            textDecoration: 'none',
+            cursor: 'pointer',
+            padding: 0,
+            fontSize: 'inherit',
           }}
-          style={{ color: 'var(--primary)', fontWeight: 700, textDecoration: 'none' }}
         >
           Quên mật khẩu?
-        </a>
+        </button>
       </div>
 
       <button
@@ -180,6 +240,22 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onLogi
           Đăng ký ngay
         </button>
       </div>
+
+      {/* Modals for HTT-01-CN-005 */}
+      <ForgotPasswordModal
+        isOpen={showForgotModal}
+        onClose={() => setShowForgotModal(false)}
+        onOpenResetPassword={handleOpenResetWithToken}
+      />
+
+      <ResetPasswordModal
+        isOpen={showResetModal}
+        onClose={() => setShowResetModal(false)}
+        initialToken={resetToken}
+        onSuccess={() => {
+          setSuccessMsg('Mật khẩu của bạn đã được thay đổi thành công! Vui lòng đăng nhập bằng mật khẩu mới.')
+        }}
+      />
     </form>
   )
 }

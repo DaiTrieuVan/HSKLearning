@@ -77,6 +77,7 @@ class TeacherRequestH2Test {
 
 	@BeforeEach
 	void setUp() throws Exception {
+		auditLogRepository.deleteAll();
 		teacherRequestRepository.deleteAll();
 		userRoleRepository.deleteAll();
 		userRepository.deleteAll();
@@ -99,6 +100,7 @@ class TeacherRequestH2Test {
 
 	@AfterEach
 	void tearDown() {
+		auditLogRepository.deleteAll();
 		teacherRequestRepository.deleteAll();
 		userRoleRepository.deleteAll();
 		userRepository.deleteAll();
@@ -181,8 +183,11 @@ class TeacherRequestH2Test {
 				.andExpect(jsonPath("$.code", equalTo("ALREADY_TEACHER")));
 	}
 
+	@Autowired
+	private com.hsk.common.audit.AuditLogRepository auditLogRepository;
+
 	@Test
-	@DisplayName("HTT-01-CN-003-TC-01..03: Luồng quản trị viên duyệt và từ chối yêu cầu giáo viên (QTN-03)")
+	@DisplayName("HTT-01-CN-003-TC-01..06: Luồng quản trị viên duyệt yêu cầu giáo viên và ghi audit_logs (QTN-03)")
 	void admin_reviewAndApprove_flow() throws Exception {
 		// Student submits
 		MvcResult submitResult = mockMvc.perform(post(SUBMIT_URL)
@@ -219,10 +224,64 @@ class TeacherRequestH2Test {
 		org.junit.jupiter.api.Assertions.assertTrue(hasTeacher, "User must have TEACHER role");
 		org.junit.jupiter.api.Assertions.assertTrue(hasStudent, "User must maintain STUDENT role");
 
+		// HTT-01-CN-003-TC-06 / CV-04: Kiểm tra ghi nhật ký audit_logs
+		var logs = auditLogRepository.findByActionOrderByCreatedAtDesc("TEACHER_REQUEST_APPROVED");
+		org.junit.jupiter.api.Assertions.assertFalse(logs.isEmpty(), "Audit log must be recorded");
+
 		// Cannot approve again (TC-05)
 		mockMvc.perform(post("/api/v1/admin/teacher-requests/" + requestId + "/approve")
 				.header("Authorization", "Bearer " + adminToken))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code", equalTo("REQUEST_ALREADY_PROCESSED")));
+	}
+
+	@Test
+	@DisplayName("HTT-01-CN-003-TC-02, TC-03, TC-06: Luồng quản trị viên từ chối yêu cầu giáo viên kèm lý do")
+	void admin_rejectRequest_flow() throws Exception {
+		// Student submits
+		MvcResult submitResult = mockMvc.perform(post(SUBMIT_URL)
+				.header("Authorization", "Bearer " + studentToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"teachingInfo\":\"Thông tin chưa kiểm chứng\"}"))
+				.andExpect(status().isCreated())
+				.andReturn();
+
+		Long requestId = objectMapper.readTree(submitResult.getResponse().getContentAsString()).get("id").asLong();
+
+		// TC-03: Từ chối nhưng bỏ trống lý do -> VALIDATION_FAILED
+		mockMvc.perform(post("/api/v1/admin/teacher-requests/" + requestId + "/reject")
+				.header("Authorization", "Bearer " + adminToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"reason\":\"   \"}"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code", equalTo("VALIDATION_FAILED")));
+
+		// TC-02: Từ chối kèm lý do hợp lệ -> REJECTED
+		mockMvc.perform(post("/api/v1/admin/teacher-requests/" + requestId + "/reject")
+				.header("Authorization", "Bearer " + adminToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"reason\":\"Chưa xác minh được thông tin giảng dạy\"}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.status", equalTo("REJECTED")))
+				.andExpect(jsonPath("$.rejectReason", equalTo("Chưa xác minh được thông tin giảng dạy")));
+
+		// Tài khoản vẫn giữ vai trò STUDENT
+		UserEntity student = userRepository.findByEmailIgnoreCase(STUDENT_EMAIL).orElseThrow();
+		boolean hasTeacher = userRoleRepository.existsByUser_IdAndRole_Code(student.getId(), RoleCode.TEACHER);
+		boolean hasStudent = userRoleRepository.existsByUser_IdAndRole_Code(student.getId(), RoleCode.STUDENT);
+		org.junit.jupiter.api.Assertions.assertFalse(hasTeacher, "User must NOT have TEACHER role");
+		org.junit.jupiter.api.Assertions.assertTrue(hasStudent, "User must maintain STUDENT role");
+
+		// TC-06: Kiểm tra ghi nhật ký audit_logs
+		var logs = auditLogRepository.findByActionOrderByCreatedAtDesc("TEACHER_REQUEST_REJECTED");
+		org.junit.jupiter.api.Assertions.assertFalse(logs.isEmpty(), "Audit log for rejection must be recorded");
+
+		// Sau khi bị từ chối, học sinh có thể gửi lại yêu cầu mới
+		mockMvc.perform(post(SUBMIT_URL)
+				.header("Authorization", "Bearer " + studentToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"teachingInfo\":\"Đã bổ sung chứng chỉ HSK 6 và bằng ĐHQG\"}"))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.status", equalTo("PENDING")));
 	}
 }

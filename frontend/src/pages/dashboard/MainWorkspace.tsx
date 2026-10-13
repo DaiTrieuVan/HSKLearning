@@ -17,6 +17,7 @@ import { useAuth } from '../../context/AuthContext'
 import { PandaMascot } from '../../components/common/PandaMascot'
 import { TeacherRequestModal } from '../../components/teacher/TeacherRequestModal'
 import { AdminTeacherReviewPanel } from '../../components/teacher/AdminTeacherReviewPanel'
+import { UserProfileModal } from '../../components/profile/UserProfileModal'
 import { getMyTeacherRequest, type TeacherRequestItem } from '../../api/teacherRequest'
 
 interface MainWorkspaceProps {
@@ -28,15 +29,20 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
 
   // State for teacher upgrade request
   const [teacherModalOpen, setTeacherModalOpen] = useState(false)
+  const [profileModalOpen, setProfileModalOpen] = useState(false)
+  const [currentUserName, setCurrentUserName] = useState(user?.fullName || '')
   const [myTeacherRequest, setMyTeacherRequest] = useState<TeacherRequestItem | null>(null)
   const [actionAlert, setActionAlert] = useState<string | null>(null)
   const [activeAdminTab, setActiveAdminTab] = useState<'OVERVIEW' | 'TEACHER_REQUESTS'>('OVERVIEW')
 
   useEffect(() => {
-    if (user && !user.roles.includes('TEACHER')) {
-      getMyTeacherRequest(user.token)
-        .then((res) => setMyTeacherRequest(res))
-        .catch(() => {})
+    if (user) {
+      setCurrentUserName(user.fullName)
+      if (!user.roles.includes('TEACHER')) {
+        getMyTeacherRequest(user.token)
+          .then((res) => setMyTeacherRequest(res))
+          .catch(() => {})
+      }
     }
   }, [user])
 
@@ -202,8 +208,10 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
             </div>
           )}
 
-          {/* User Profile Badge */}
+          {/* User Profile Badge (HTT-01-CN-006: Click to edit profile / change password) */}
           <div
+            onClick={() => setProfileModalOpen(true)}
+            title="Bấm để xem & chỉnh sửa hồ sơ cá nhân"
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -211,7 +219,9 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
               backgroundColor: '#f8fafc',
               padding: '6px 14px',
               borderRadius: 'var(--radius-full)',
-              border: '1px solid var(--border-card)',
+              border: '1.5px solid var(--border-card)',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
             }}
           >
             <div
@@ -231,7 +241,7 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
             </div>
             <div>
               <div style={{ fontWeight: 800, fontSize: '0.88rem', color: 'var(--text-main)' }}>
-                {user.fullName}
+                {currentUserName}
               </div>
               <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                 {user.roles.join(', ')}
@@ -665,6 +675,18 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
         onClose={() => setTeacherModalOpen(false)}
         token={user.token}
         onSuccess={(req) => setMyTeacherRequest(req)}
+      />
+
+      {/* User Profile Modal (HTT-01-CN-006) */}
+      <UserProfileModal
+        isOpen={profileModalOpen}
+        onClose={() => setProfileModalOpen(false)}
+        token={user.token}
+        currentName={currentUserName}
+        currentEmail={user.email}
+        onProfileUpdated={(updated) => {
+          setCurrentUserName(updated.fullName)
+        }}
       />
     </div>
   )

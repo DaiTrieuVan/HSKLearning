@@ -41,6 +41,9 @@ public enum ApiErrorCode {
 	/** TC-08: Account has been locked by an administrator. */
 	ACCOUNT_LOCKED(HttpStatus.FORBIDDEN, "Tài khoản đã bị quản trị viên khóa, vui lòng liên hệ quản trị viên"),
 
+	/** HTT-01-CN-008-TC-04: Admin attempting to lock own account. */
+	CANNOT_LOCK_SELF(HttpStatus.BAD_REQUEST, "Bạn không thể tự khóa tài khoản của chính mình"),
+
 	/** TC-09 & QTN-17: Account temporarily locked for 15 minutes after 5 consecutive failures. */
 	ACCOUNT_TEMPORARILY_LOCKED(HttpStatus.FORBIDDEN, "Tài khoản bị khóa tạm thời do nhập sai quá 5 lần liên tiếp. Vui lòng thử lại sau 15 phút"),
 

@@ -8,35 +8,62 @@
 		<version>4.1.1</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>com.HocTiengTrung</groupId>
-	<artifactId>HSK</artifactId>
+	<groupId>com.hsk</groupId>
+	<artifactId>hsk-backend</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name/>
-	<description/>
-	<url/>
-	<licenses>
-		<license/>
-	</licenses>
-	<developers>
-		<developer/>
-	</developers>
-	<scm>
-		<connection/>
-		<developerConnection/>
-		<tag/>
-		<url/>
-	</scm>
+	<name>hsk-backend</name>
+	<description>Backend for the HSK Chinese learning platform (teacher assigns work to classes)</description>
+
 	<properties>
 		<java.version>25</java.version>
+		<springdoc.version>3.1.1</springdoc.version>
 	</properties>
+
 	<dependencies>
+		<!-- Web / API -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-webmvc</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-validation</artifactId>
+		</dependency>
+
+		<!-- Persistence: JPA + Flyway owns the schema (MySQL 8 / MySQL 26) -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-webmvc</artifactId>
+			<artifactId>spring-boot-starter-flyway</artifactId>
+		</dependency>
+		<!-- MySQL grammar/dialect support for Flyway, required since Flyway 10+ -->
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-mysql</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.mysql</groupId>
+			<artifactId>mysql-connector-j</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+
+		<!-- spring-security-crypto only for now: BCrypt password hashing.
+		     The full security starter + filter chain arrives with HTT-01-CN-004 (login/JWT),
+		     so that this registration endpoint stays reachable without extra permit-all config. -->
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-crypto</artifactId>
+		</dependency>
+
+		<!-- API contract for the frontend team -->
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+			<version>${springdoc.version}</version>
 		</dependency>
 
 		<dependency>
@@ -44,6 +71,7 @@
 			<artifactId>lombok</artifactId>
 			<optional>true</optional>
 		</dependency>
+
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa-test</artifactId>
@@ -73,6 +101,9 @@
 							<goal>compile</goal>
 						</goals>
 						<configuration>
+							<!-- JDK 23+ no longer runs annotation processors unless asked:
+							     without proc=full, Lombok silently generates nothing. -->
+							<proc>full</proc>
 							<annotationProcessorPaths>
 								<path>
 									<groupId>org.projectlombok</groupId>

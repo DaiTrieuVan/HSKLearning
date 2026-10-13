@@ -15,6 +15,24 @@ export interface UserResponse {
   createdAt: string
 }
 
+export interface LoginRequest {
+  email: string
+  password: string
+  mode?: 'STUDENT' | 'TEACHER'
+}
+
+export interface LoginResponse {
+  token: string
+  id: number
+  email: string
+  fullName: string
+  avatarUrl?: string | null
+  status: 'ACTIVE' | 'PENDING' | 'LOCKED' | 'SUSPENDED'
+  roles: string[]
+  activeMode: 'STUDENT' | 'TEACHER'
+  hasPendingTeacherRequest: boolean
+}
+
 export interface ApiErrorResponse {
   code: string
   message: string

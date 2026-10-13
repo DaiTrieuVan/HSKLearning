@@ -396,8 +396,8 @@ export const AuthPage: React.FC = () => {
             ) : (
               <LoginForm
                 onSwitchToRegister={() => setActiveTab('register')}
-                onLoginSuccess={(email) => {
-                  setLoggedInEmail(email)
+                onLoginSuccess={(user) => {
+                  setLoggedInEmail(user.email)
                 }}
               />
             )}

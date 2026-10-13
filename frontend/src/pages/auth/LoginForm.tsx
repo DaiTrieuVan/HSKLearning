@@ -1,21 +1,28 @@
 import React, { useState } from 'react'
-import { Mail, Lock, LogIn, Info } from 'lucide-react'
+import { Mail, Lock, LogIn, AlertCircle, ShieldAlert } from 'lucide-react'
 import { Input } from '../../components/common/Input'
+import { loginUser, ApiError } from '../../api/auth'
+import { useAuth } from '../../context/AuthContext'
+import type { LoginResponse } from '../../types/auth'
 
 interface LoginFormProps {
   onSwitchToRegister: () => void
-  onLoginSuccess: (email: string) => void
+  onLoginSuccess: (user: LoginResponse) => void
 }
 
 export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onLoginSuccess }) => {
+  const { login } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [rememberMe, setRememberMe] = useState(true)
   const [error, setError] = useState('')
+  const [isLocked, setIsLocked] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // TC-07: Validation check
     if (!email.trim() || !password) {
       setError('Vui lòng nhập đầy đủ email và mật khẩu')
       return
@@ -23,60 +30,69 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onLogi
 
     setIsLoading(true)
     setError('')
+    setIsLocked(false)
 
-    // Simulating login or handling backend integration
-    setTimeout(() => {
+    try {
+      const response = await loginUser({
+        email: email.trim().toLowerCase(),
+        password,
+      })
+
+      login(response)
+      onLoginSuccess(response)
+    } catch (err: unknown) {
+      if (err instanceof ApiError) {
+        if (err.code === 'ACCOUNT_TEMPORARILY_LOCKED') {
+          setIsLocked(true)
+          setError('Tài khoản bị tạm khóa 15 phút do nhập sai mật khẩu quá 5 lần liên tiếp (QTN-17). Vui lòng thử lại sau.')
+        } else if (err.code === 'ACCOUNT_LOCKED') {
+          setIsLocked(true)
+          setError('Tài khoản này đã bị quản trị viên khóa. Vui lòng liên hệ quản trị viên để được hỗ trợ.')
+        } else if (err.code === 'INVALID_CREDENTIALS') {
+          setError('Email hoặc mật khẩu không chính xác.')
+        } else {
+          setError(err.message || 'Đăng nhập không thành công.')
+        }
+      } else {
+        setError('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng!')
+      }
+    } finally {
       setIsLoading(false)
-      onLoginSuccess(email)
-    }, 700)
+    }
   }
 
   return (
     <form onSubmit={handleSubmit} noValidate>
-      {/* Notice about HTT-01-CN-004 */}
-      <div
-        style={{
-          padding: '10px 14px',
-          backgroundColor: 'var(--dragon-blue-light)',
-          border: '1.5px solid #93c5fd',
-          borderRadius: 'var(--radius-md)',
-          color: '#1e40af',
-          fontSize: '0.82rem',
-          marginBottom: '16px',
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: '8px',
-          lineHeight: 1.45,
-        }}
-      >
-        <Info size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
-        <span>
-          <strong>Lưu ý:</strong> API Đăng nhập và JWT token đang thuộc Story{' '}
-          <code>HTT-01-CN-004</code>. Hiện tại bạn có thể trải nghiệm giao diện và luồng đăng nhập mô phỏng!
-        </span>
-      </div>
-
       {error && (
         <div
           style={{
-            padding: '10px 14px',
-            backgroundColor: '#fee2e2',
-            border: '2px solid #ef4444',
+            padding: '12px 14px',
+            backgroundColor: isLocked ? '#fffbeb' : '#fee2e2',
+            border: isLocked ? '2px solid #f59e0b' : '2px solid #ef4444',
             borderRadius: 'var(--radius-md)',
-            color: '#b91c1c',
-            fontSize: '0.85rem',
+            color: isLocked ? '#92400e' : '#b91c1c',
+            fontSize: '0.88rem',
             fontWeight: 600,
-            marginBottom: '14px',
+            marginBottom: '16px',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '10px',
+            lineHeight: 1.45,
           }}
         >
-          {error}
+          {isLocked ? (
+            <ShieldAlert size={20} style={{ flexShrink: 0, marginTop: '2px', color: '#d97706' }} />
+          ) : (
+            <AlertCircle size={20} style={{ flexShrink: 0, marginTop: '2px', color: '#ef4444' }} />
+          )}
+          <span>{error}</span>
         </div>
       )}
 
       <Input
-        label="Email học sinh / giáo viên"
+        label="Địa chỉ Email"
         type="email"
-        placeholder="student@example.com"
+        placeholder="an.hs@example.com"
         value={email}
         onChange={(e) => {
           setEmail(e.target.value)
@@ -89,7 +105,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onLogi
       <Input
         label="Mật khẩu"
         type="password"
-        placeholder="Nhập mật khẩu của bạn"
+        placeholder="Nhập mật khẩu"
         value={password}
         onChange={(e) => {
           setPassword(e.target.value)
@@ -104,7 +120,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onLogi
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          marginTop: '-6px',
+          marginTop: '-4px',
           marginBottom: '20px',
           fontSize: '0.88rem',
         }}
@@ -123,7 +139,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onLogi
           href="#forgot"
           onClick={(e) => {
             e.preventDefault()
-            alert('Chức năng khôi phục mật khẩu sẽ sớm có trong bản cập nhật tiếp theo!')
+            alert('Chức năng đặt lại mật khẩu thuộc Story HTT-01-CN-005!')
           }}
           style={{ color: 'var(--primary)', fontWeight: 700, textDecoration: 'none' }}
         >
@@ -138,7 +154,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onLogi
         disabled={isLoading}
       >
         {isLoading ? (
-          'Đang đăng nhập...'
+          'Đang xác thực...'
         ) : (
           <>
             <LogIn size={20} /> Đăng nhập

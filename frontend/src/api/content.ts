@@ -21,6 +21,18 @@ export interface LessonItem {
   grammarCount: number
 }
 
+export interface LessonStudyData {
+  id: number
+  hskLevelId: number
+  levelTitle?: string
+  title: string
+  description?: string
+  sortOrder: number
+  hidden: boolean
+  vocabularies: VocabularyItem[]
+  grammarPoints: GrammarPointItem[]
+}
+
 export interface VocabularyItem {
   id: number
   hanzi: string
@@ -132,6 +144,22 @@ export async function getLessonGrammar(lessonId: number): Promise<GrammarPointIt
     throw new ApiError(response.status, 'FETCH_GRAMMAR_FAILED', 'Không thể tải điểm ngữ pháp bài học')
   }
   return response.json()
+}
+
+export async function getLessonStudy(lessonId: number, token?: string): Promise<LessonStudyData> {
+  const headers: Record<string, string> = { Accept: 'application/json' }
+  if (token) headers['Authorization'] = `Bearer ${token}`
+
+  const response = await fetch(`${API_BASE}/lessons/${lessonId}/study`, { headers })
+  const data = await response.json().catch(() => null)
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'FETCH_LESSON_STUDY_FAILED',
+      data?.message || 'Không thể tải nội dung bài học'
+    )
+  }
+  return data
 }
 
 export async function createVocabulary(

@@ -5,6 +5,7 @@ import {
   BookOpen,
   Volume2,
   VolumeX,
+  X,
   Sparkles,
   AlertCircle,
   Loader2,
@@ -43,12 +44,29 @@ export const LessonStudyPage: React.FC = () => {
   const [playingAudioId, setPlayingAudioId] = useState<number | null>(null)
   const currentAudioRef = useRef<HTMLAudioElement | null>(null)
 
-  // Cleanup audio playback on unmount
+  // Audio error toast state (TC-03: Báo lỗi khi tệp hỏng/mất, KHÔNG DÙNG MODAL)
+  const [audioErrorMessage, setAudioErrorMessage] = useState<string | null>(null)
+  const toastTimeoutRef = useRef<any>(null)
+
+  const showAudioError = useCallback((message: string) => {
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current)
+    }
+    setAudioErrorMessage(message)
+    toastTimeoutRef.current = setTimeout(() => {
+      setAudioErrorMessage(null)
+    }, 4000)
+  }, [])
+
+  // Cleanup audio playback and toast timer on unmount
   useEffect(() => {
     return () => {
       if (currentAudioRef.current) {
         currentAudioRef.current.pause()
         currentAudioRef.current = null
+      }
+      if (toastTimeoutRef.current) {
+        clearTimeout(toastTimeoutRef.current)
       }
     }
   }, [])
@@ -142,6 +160,7 @@ export const LessonStudyPage: React.FC = () => {
         if (currentAudioRef.current === audio) {
           currentAudioRef.current = null
         }
+        showAudioError(`Không thể phát âm thanh của từ "${vocab.hanzi}". Tệp âm thanh bị lỗi hoặc không tồn tại.`)
       }
 
       audio.play().catch((err) => {
@@ -150,11 +169,13 @@ export const LessonStudyPage: React.FC = () => {
         if (currentAudioRef.current === audio) {
           currentAudioRef.current = null
         }
+        showAudioError(`Không thể phát âm thanh của từ "${vocab.hanzi}". Tệp âm thanh không khả dụng.`)
       })
     } catch {
       setPlayingAudioId(null)
+      showAudioError(`Không thể phát âm thanh của từ "${vocab.hanzi}". Vui lòng thử lại sau.`)
     }
-  }, [playingAudioId])
+  }, [playingAudioId, showAudioError])
 
   // TTS phát âm cho câu ví dụ ngữ pháp
   const speakGrammarExample = (text: string) => {
@@ -653,6 +674,32 @@ export const LessonStudyPage: React.FC = () => {
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
+
+        {/* TC-03: Thông báo lỗi phát audio nhẹ nhàng dạng Toast (KHÔNG DÙNG MODAL) */}
+        {audioErrorMessage && (
+          <div
+            role="alert"
+            aria-live="assertive"
+            className="fixed bottom-6 right-6 z-50 max-w-sm sm:max-w-md bg-white border border-rose-200/80 border-l-4 border-l-rose-500 rounded-2xl shadow-xl shadow-slate-900/10 p-4 flex items-start gap-3 transition-all animate-in fade-in slide-in-from-bottom-5 duration-300"
+          >
+            <div className="p-1.5 rounded-xl bg-rose-50 text-rose-600 shrink-0">
+              <AlertCircle className="w-5 h-5" />
+            </div>
+            <div className="flex-1 min-w-0 text-sm">
+              <p className="font-bold text-gray-900">Không phát được audio</p>
+              <p className="text-gray-600 text-xs mt-0.5 leading-relaxed">{audioErrorMessage}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setAudioErrorMessage(null)}
+              className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-colors shrink-0"
+              title="Đóng thông báo"
+              aria-label="Đóng thông báo"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </main>
     </div>
   )

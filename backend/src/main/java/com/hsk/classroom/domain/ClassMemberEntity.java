@@ -31,8 +31,10 @@ import lombok.NoArgsConstructor;
 @Table(name = "class_members")
 @EntityListeners(AuditingEntityListener.class)
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ClassMemberEntity {
+
+	protected ClassMemberEntity() {
+	}
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)

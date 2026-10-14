@@ -146,6 +146,28 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          {/* Roadmap Link (HTT-04-CN-001) */}
+          <button
+            type="button"
+            onClick={() => navigate('/roadmap')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 14px',
+              borderRadius: 'var(--radius-md)',
+              border: '1.5px solid var(--border-card)',
+              backgroundColor: '#ffffff',
+              color: 'var(--text-main)',
+              fontSize: '0.82rem',
+              fontWeight: 800,
+              cursor: 'pointer',
+            }}
+          >
+            <BookMarked size={16} color="var(--primary)" />
+            <span>Lộ trình HSK</span>
+          </button>
+
           {/* Admin Navigation Tabs */}
           {isAdmin && (
             <div style={{ display: 'flex', gap: '6px' }}>
@@ -560,7 +582,53 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
 
             {/* Quick Action Cards Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
-              {/* Card 1: HSK 1 Learning Path */}
+              {/* Card 1: HSK Roadmap (HTT-04-CN-001) */}
+              <div
+                className="game-card"
+                style={{
+                  padding: '24px',
+                  backgroundColor: '#ffffff',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <div>
+                  <div
+                    style={{
+                      width: '44px',
+                      height: '44px',
+                      borderRadius: 'var(--radius-md)',
+                      backgroundColor: 'var(--jade-green-light)',
+                      color: 'var(--jade-green-shadow)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginBottom: '16px',
+                    }}
+                  >
+                    <BookMarked size={24} />
+                  </div>
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: '6px' }}>
+                    Lộ trình học HSK
+                  </h3>
+                  <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '16px' }}>
+                    Theo dõi tiến độ từ HSK 1 đến các cấp độ nâng cao, kiểm tra danh sách bài học và % hoàn thành bài học.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => navigate('/roadmap')}
+                  className="btn-gamified btn-green"
+                  style={{ width: '100%', fontSize: '0.92rem', padding: '10px' }}
+                >
+                  <span>Xem lộ trình HSK</span>
+                  <ArrowRight size={18} />
+                </button>
+              </div>
+
+              {/* Card 2: HSK Curriculum / Giáo trình */}
               <div
                 className="game-card"
                 style={{
@@ -588,7 +656,7 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
                     <BookOpen size={24} />
                   </div>
                   <h3 style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: '6px' }}>
-                    Lộ trình HSK 1 (Cơ bản)
+                    Kho giáo trình & Từ vựng
                   </h3>
                   <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '16px' }}>
                     Khám phá kho từ vựng 150 từ cơ bản, nghe phát âm chuẩn pinyin và học các điểm ngữ pháp nền tảng.
@@ -601,7 +669,7 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
                   className="btn-gamified btn-primary"
                   style={{ width: '100%', fontSize: '0.92rem', padding: '10px' }}
                 >
-                  <span>Vào học ngay</span>
+                  <span>Vào học giáo trình</span>
                   <ArrowRight size={18} />
                 </button>
               </div>

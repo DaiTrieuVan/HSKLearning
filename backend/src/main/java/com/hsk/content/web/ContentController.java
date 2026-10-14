@@ -16,6 +16,7 @@ import com.hsk.content.dto.LessonStudyResponse;
 import com.hsk.content.dto.UpdateLessonRequest;
 import com.hsk.content.dto.UpdateVocabularyRequest;
 import com.hsk.content.dto.VocabSetResponse;
+import com.hsk.content.dto.VocabularyAudioResponse;
 import com.hsk.content.dto.VocabularyResponse;
 import com.hsk.content.service.ContentService;
 import jakarta.validation.Valid;
@@ -187,6 +188,11 @@ public class ContentController {
 		requireUser(principal);
 		String audioUrl = contentService.uploadAudio(file);
 		return Map.of("audioUrl", audioUrl);
+	}
+
+	@GetMapping("/vocabularies/{id}/audio")
+	public VocabularyAudioResponse getVocabularyAudio(@PathVariable Long id) {
+		return contentService.getVocabularyAudio(id);
 	}
 
 	// ==================== BULK IMPORT ====================

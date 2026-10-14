@@ -27,6 +27,7 @@ import com.hsk.content.dto.LessonStudyResponse;
 import com.hsk.content.dto.UpdateLessonRequest;
 import com.hsk.content.dto.UpdateVocabularyRequest;
 import com.hsk.content.dto.VocabSetResponse;
+import com.hsk.content.dto.VocabularyAudioResponse;
 import com.hsk.content.dto.VocabularyResponse;
 import com.hsk.content.repository.ClassVocabSetRepository;
 import com.hsk.content.repository.GrammarPointRepository;
@@ -408,6 +409,32 @@ public class ContentService {
 			log.error("Failed to store audio file", e);
 			throw new ApiException(ApiErrorCode.INTERNAL_ERROR);
 		}
+	}
+
+	@Transactional(readOnly = true)
+	public VocabularyAudioResponse getVocabularyAudio(Long vocabularyId) {
+		VocabularyEntity vocab = vocabularyRepository.findById(vocabularyId)
+			.orElseThrow(() -> new ApiException(ApiErrorCode.VOCABULARY_NOT_FOUND));
+
+		if (vocab.isHidden()) {
+			throw new ApiException(ApiErrorCode.VOCABULARY_NOT_FOUND);
+		}
+
+		String audioUrl = vocab.getAudioUrl();
+		if (audioUrl == null || audioUrl.trim().isEmpty()) {
+			throw new ApiException(ApiErrorCode.AUDIO_NOT_FOUND);
+		}
+
+		// HTT-04-CN-003-TC-03: Xử lý khi tệp audio không tồn tại
+		if (audioUrl.startsWith("/uploads/") || audioUrl.startsWith("uploads/")) {
+			String relative = audioUrl.startsWith("/") ? audioUrl.substring(1) : audioUrl;
+			Path filePath = Paths.get(relative);
+			if (!Files.exists(filePath)) {
+				throw new ApiException(ApiErrorCode.AUDIO_FILE_NOT_FOUND);
+			}
+		}
+
+		return new VocabularyAudioResponse(vocab.getId(), vocab.getHanzi(), vocab.getPinyin(), audioUrl);
 	}
 
 	// ==================== 5. BULK IMPORT (HTT-03-CN-007 / QTN-07) ====================

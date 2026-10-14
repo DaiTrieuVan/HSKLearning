@@ -12,6 +12,7 @@ import com.hsk.content.domain.GrammarPointEntity;
 import com.hsk.content.domain.HskLevelEntity;
 import com.hsk.content.domain.LessonEntity;
 import com.hsk.content.domain.LessonVocabularyEntity;
+import com.hsk.content.domain.LessonVocabularyId;
 import com.hsk.content.domain.VocabSetEntity;
 import com.hsk.content.domain.VocabSetItemEntity;
 import com.hsk.content.domain.VocabularyEntity;

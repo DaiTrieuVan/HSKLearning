@@ -73,18 +73,22 @@ class VocabularyAudioH2Test {
 	@Test
 	@DisplayName("TC-01: Lấy thông tin audio của từ vựng thành công khi từ có audio và tệp tồn tại")
 	void testGetVocabularyAudio_Success() throws Exception {
-		VocabularyEntity vocab = new VocabularyEntity(
-				"你好",
-				"nǐ hǎo",
-				"Xin chào",
-				"thán từ",
-				"/uploads/audio/test_nihao.mp3",
-				"你好吗？",
-				"Nǐ hǎo ma?",
-				"Bạn khỏe không?",
-				hsk1,
-				null
-		);
+		String ownerKey = VocabularyEntity.buildOwnerKey(null, "你好", "nǐ hǎo");
+		VocabularyEntity vocab = vocabularyRepository.findByOwnerKey(ownerKey).orElseGet(() -> {
+			return new VocabularyEntity(
+					"你好",
+					"nǐ hǎo",
+					"Xin chào",
+					"thán từ",
+					null,
+					"你好吗？",
+					"Nǐ hǎo ma?",
+					"Bạn khỏe không?",
+					hsk1,
+					null
+			);
+		});
+		vocab.setAudioUrl("/uploads/audio/test_nihao.mp3");
 		vocab = vocabularyRepository.save(vocab);
 
 		mockMvc.perform(get("/api/v1/content/vocabularies/" + vocab.getId() + "/audio"))
@@ -98,18 +102,22 @@ class VocabularyAudioH2Test {
 	@Test
 	@DisplayName("TC-02: Báo lỗi AUDIO_NOT_FOUND (404) khi từ vựng chưa có audio")
 	void testGetVocabularyAudio_NoAudio() throws Exception {
-		VocabularyEntity vocab = new VocabularyEntity(
-				"谢谢",
-				"xièxie",
-				"Cảm ơn",
-				"động từ",
-				null,
-				null,
-				null,
-				null,
-				hsk1,
-				null
-		);
+		String ownerKey = VocabularyEntity.buildOwnerKey(null, "谢谢", "xièxie");
+		VocabularyEntity vocab = vocabularyRepository.findByOwnerKey(ownerKey).orElseGet(() -> {
+			return new VocabularyEntity(
+					"谢谢",
+					"xièxie",
+					"Cảm ơn",
+					"động từ",
+					null,
+					null,
+					null,
+					null,
+					hsk1,
+					null
+			);
+		});
+		vocab.setAudioUrl(null);
 		vocab = vocabularyRepository.save(vocab);
 
 		mockMvc.perform(get("/api/v1/content/vocabularies/" + vocab.getId() + "/audio"))
@@ -121,18 +129,22 @@ class VocabularyAudioH2Test {
 	@Test
 	@DisplayName("TC-03: Báo lỗi AUDIO_FILE_NOT_FOUND (404) khi tệp âm thanh không tồn tại trên hệ thống")
 	void testGetVocabularyAudio_FileNotFound() throws Exception {
-		VocabularyEntity vocab = new VocabularyEntity(
-				"再见",
-				"zàijiàn",
-				"Tạm biệt",
-				"động từ",
-				"/uploads/audio/non_existent_audio_file.mp3",
-				null,
-				null,
-				null,
-				hsk1,
-				null
-		);
+		String ownerKey = VocabularyEntity.buildOwnerKey(null, "再见", "zàijiàn");
+		VocabularyEntity vocab = vocabularyRepository.findByOwnerKey(ownerKey).orElseGet(() -> {
+			return new VocabularyEntity(
+					"再见",
+					"zàijiàn",
+					"Tạm biệt",
+					"động từ",
+					null,
+					null,
+					null,
+					null,
+					hsk1,
+					null
+			);
+		});
+		vocab.setAudioUrl("/uploads/audio/non_existent_audio_file.mp3");
 		vocab = vocabularyRepository.save(vocab);
 
 		mockMvc.perform(get("/api/v1/content/vocabularies/" + vocab.getId() + "/audio"))

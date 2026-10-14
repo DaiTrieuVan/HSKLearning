@@ -78,5 +78,26 @@ SELECT u.id, 'Bộ 20 từ vựng HSK 1 thông dụng', 'Tổng hợp các từ 
 FROM users u WHERE u.email = 'teacher1@hsk.com'
 AND NOT EXISTS (SELECT 1 FROM vocab_sets vs WHERE vs.teacher_id = u.id AND vs.title = 'Bộ 20 từ vựng HSK 1 thông dụng');
 
+-- 6. Gán từ vựng mẫu có sẵn vào Bài 1 & Bài 2 của HSK 1
+INSERT IGNORE INTO lesson_vocabularies (lesson_id, vocabulary_id, sort_order)
+SELECT l.id, v.id, 1
+FROM lessons l, vocabularies v
+WHERE l.title LIKE '%Bài 1%' AND v.hanzi = '你';
+
+INSERT IGNORE INTO lesson_vocabularies (lesson_id, vocabulary_id, sort_order)
+SELECT l.id, v.id, 2
+FROM lessons l, vocabularies v
+WHERE l.title LIKE '%Bài 1%' AND v.hanzi = '好';
+
+INSERT IGNORE INTO lesson_vocabularies (lesson_id, vocabulary_id, sort_order)
+SELECT l.id, v.id, 1
+FROM lessons l, vocabularies v
+WHERE l.title LIKE '%Bài 2%' AND v.hanzi = '谢谢';
+
+INSERT IGNORE INTO lesson_vocabularies (lesson_id, vocabulary_id, sort_order)
+SELECT l.id, v.id, 2
+FROM lessons l, vocabularies v
+WHERE l.title LIKE '%Bài 2%' AND v.hanzi = '再见';
+
 SELECT 'Seed completed successfully! Accounts ready:' AS message;
 SELECT id, email, full_name, status, last_mode FROM users WHERE email IN ('admin@hsk.com', 'teacher1@hsk.com', 'teacher2@hsk.com', 'student1@hsk.com', 'student2@hsk.com');

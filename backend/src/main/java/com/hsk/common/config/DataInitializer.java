@@ -23,9 +23,14 @@ import com.hsk.classroom.domain.ClassEntity;
 import com.hsk.classroom.domain.ClassMemberEntity;
 import com.hsk.classroom.repository.ClassMemberRepository;
 import com.hsk.classroom.repository.ClassRepository;
+import com.hsk.content.domain.LessonEntity;
+import com.hsk.content.domain.LessonVocabularyEntity;
+import com.hsk.content.domain.LessonVocabularyId;
 import com.hsk.content.domain.VocabSetEntity;
 import com.hsk.content.domain.VocabSetItemEntity;
 import com.hsk.content.domain.VocabularyEntity;
+import com.hsk.content.repository.LessonRepository;
+import com.hsk.content.repository.LessonVocabularyRepository;
 import com.hsk.content.repository.VocabSetItemRepository;
 import com.hsk.content.repository.VocabSetRepository;
 import com.hsk.content.repository.VocabularyRepository;
@@ -50,6 +55,8 @@ public class DataInitializer implements ApplicationRunner {
 	private final VocabSetRepository vocabSetRepository;
 	private final VocabSetItemRepository vocabSetItemRepository;
 	private final VocabularyRepository vocabularyRepository;
+	private final LessonRepository lessonRepository;
+	private final LessonVocabularyRepository lessonVocabularyRepository;
 
 	public DataInitializer(
 			UserRepository userRepository,
@@ -60,7 +67,9 @@ public class DataInitializer implements ApplicationRunner {
 			ClassMemberRepository classMemberRepository,
 			VocabSetRepository vocabSetRepository,
 			VocabSetItemRepository vocabSetItemRepository,
-			VocabularyRepository vocabularyRepository) {
+			VocabularyRepository vocabularyRepository,
+			LessonRepository lessonRepository,
+			LessonVocabularyRepository lessonVocabularyRepository) {
 		this.userRepository = userRepository;
 		this.roleRepository = roleRepository;
 		this.userRoleRepository = userRoleRepository;
@@ -70,6 +79,8 @@ public class DataInitializer implements ApplicationRunner {
 		this.vocabSetRepository = vocabSetRepository;
 		this.vocabSetItemRepository = vocabSetItemRepository;
 		this.vocabularyRepository = vocabularyRepository;
+		this.lessonRepository = lessonRepository;
+		this.lessonVocabularyRepository = lessonVocabularyRepository;
 	}
 
 	@Override
@@ -102,6 +113,9 @@ public class DataInitializer implements ApplicationRunner {
 			initSampleClassroom(teacher1, student1);
 			initSampleVocabSet(teacher1);
 		}
+
+		// 5. Tự động gán từ vựng mẫu vào Bài 1 & Bài 2 của HSK 1
+		initLessonVocabularies();
 
 		log.info("==> [DataInitializer] Completed. All seed accounts are ready with password '{}'!", DEFAULT_PASSWORD);
 	}
@@ -160,6 +174,45 @@ public class DataInitializer implements ApplicationRunner {
 			for (VocabularyEntity v : vocabs) {
 				if (order > 10) break;
 				vocabSetItemRepository.save(new VocabSetItemEntity(savedSet, v, order++));
+			}
+		}
+	}
+
+	private void initLessonVocabularies() {
+		List<LessonEntity> lessons = lessonRepository.findAll();
+		if (lessons.isEmpty()) return;
+
+		LessonEntity lesson1 = lessons.stream()
+				.filter(l -> l.getTitle() != null && l.getTitle().contains("Bài 1"))
+				.findFirst().orElse(null);
+		LessonEntity lesson2 = lessons.stream()
+				.filter(l -> l.getTitle() != null && l.getTitle().contains("Bài 2"))
+				.findFirst().orElse(null);
+
+		List<VocabularyEntity> vocabs = vocabularyRepository.findAll();
+		if (vocabs.isEmpty()) return;
+
+		if (lesson1 != null) {
+			int order = 1;
+			for (VocabularyEntity v : vocabs) {
+				if ("你".equals(v.getHanzi()) || "好".equals(v.getHanzi())) {
+					LessonVocabularyId id = new LessonVocabularyId(lesson1.getId(), v.getId());
+					if (!lessonVocabularyRepository.existsById(id)) {
+						lessonVocabularyRepository.save(new LessonVocabularyEntity(lesson1, v, order++));
+					}
+				}
+			}
+		}
+
+		if (lesson2 != null) {
+			int order = 1;
+			for (VocabularyEntity v : vocabs) {
+				if ("谢谢".equals(v.getHanzi()) || "再见".equals(v.getHanzi())) {
+					LessonVocabularyId id = new LessonVocabularyId(lesson2.getId(), v.getId());
+					if (!lessonVocabularyRepository.existsById(id)) {
+						lessonVocabularyRepository.save(new LessonVocabularyEntity(lesson2, v, order++));
+					}
+				}
 			}
 		}
 	}

@@ -24,6 +24,7 @@ import com.hsk.content.dto.GrammarPointResponse;
 import com.hsk.content.dto.HskLevelResponse;
 import com.hsk.content.dto.ImportVocabularyResult;
 import com.hsk.content.dto.LessonResponse;
+import com.hsk.content.dto.LessonStudyResponse;
 import com.hsk.content.dto.UpdateLessonRequest;
 import com.hsk.content.dto.UpdateVocabularyRequest;
 import com.hsk.content.dto.VocabSetResponse;
@@ -133,12 +134,46 @@ public class ContentService {
 	}
 
 	@Transactional(readOnly = true)
-	public LessonResponse getLessonById(Long id) {
+	public LessonResponse getLessonById(Long id, boolean isAdmin) {
 		LessonEntity entity = lessonRepository.findById(id)
 			.orElseThrow(() -> new ApiException(ApiErrorCode.LESSON_NOT_FOUND));
+		// QTN-14: Hidden lesson is treated as not found for non-admin
+		if (entity.isHidden() && !isAdmin) {
+			throw new ApiException(ApiErrorCode.LESSON_NOT_FOUND);
+		}
 		int vocabCount = lessonVocabularyRepository.findAllByLessonIdOrderBySortOrderAsc(entity.getId()).size();
 		int grammarCount = grammarPointRepository.findAllByLessonIdOrderBySortOrderAsc(entity.getId()).size();
 		return LessonResponse.fromEntity(entity, vocabCount, grammarCount);
+	}
+
+	@Transactional(readOnly = true)
+	public LessonResponse getLessonById(Long id) {
+		return getLessonById(id, false);
+	}
+
+	@Transactional(readOnly = true)
+	public LessonStudyResponse getLessonStudyContent(Long lessonId, boolean isAdmin) {
+		LessonEntity lesson = lessonRepository.findById(lessonId)
+			.orElseThrow(() -> new ApiException(ApiErrorCode.LESSON_NOT_FOUND));
+
+		// QTN-14: Hidden lesson is treated as not found for non-admin
+		if (lesson.isHidden() && !isAdmin) {
+			throw new ApiException(ApiErrorCode.LESSON_NOT_FOUND);
+		}
+
+		List<LessonVocabularyEntity> relations = lessonVocabularyRepository.findAllByLessonIdOrderBySortOrderAsc(lessonId);
+		List<VocabularyResponse> vocabularies = relations.stream()
+			.map(LessonVocabularyEntity::getVocabulary)
+			.filter(v -> !v.isHidden() || isAdmin)
+			.map(VocabularyResponse::fromEntity)
+			.toList();
+
+		List<GrammarPointResponse> grammarPoints = grammarPointRepository.findAllByLessonIdOrderBySortOrderAsc(lessonId)
+			.stream()
+			.map(GrammarPointResponse::fromEntity)
+			.toList();
+
+		return LessonStudyResponse.from(lesson, vocabularies, grammarPoints);
 	}
 
 	@Transactional
@@ -199,11 +234,24 @@ public class ContentService {
 	}
 
 	@Transactional(readOnly = true)
-	public List<VocabularyResponse> getLessonVocabularies(Long lessonId) {
+	public List<VocabularyResponse> getLessonVocabularies(Long lessonId, boolean isAdmin) {
+		LessonEntity lesson = lessonRepository.findById(lessonId)
+			.orElseThrow(() -> new ApiException(ApiErrorCode.LESSON_NOT_FOUND));
+		// QTN-14: Hidden lesson is treated as not found for non-admin
+		if (lesson.isHidden() && !isAdmin) {
+			throw new ApiException(ApiErrorCode.LESSON_NOT_FOUND);
+		}
 		List<LessonVocabularyEntity> relations = lessonVocabularyRepository.findAllByLessonIdOrderBySortOrderAsc(lessonId);
 		return relations.stream()
-			.map(rel -> VocabularyResponse.fromEntity(rel.getVocabulary()))
+			.map(LessonVocabularyEntity::getVocabulary)
+			.filter(v -> !v.isHidden() || isAdmin)
+			.map(VocabularyResponse::fromEntity)
 			.toList();
+	}
+
+	@Transactional(readOnly = true)
+	public List<VocabularyResponse> getLessonVocabularies(Long lessonId) {
+		return getLessonVocabularies(lessonId, false);
 	}
 
 	@Transactional
@@ -467,9 +515,20 @@ public class ContentService {
 	// ==================== 6. GRAMMAR POINTS ====================
 
 	@Transactional(readOnly = true)
-	public List<GrammarPointResponse> getGrammarPointsByLesson(Long lessonId) {
+	public List<GrammarPointResponse> getGrammarPointsByLesson(Long lessonId, boolean isAdmin) {
+		LessonEntity lesson = lessonRepository.findById(lessonId)
+			.orElseThrow(() -> new ApiException(ApiErrorCode.LESSON_NOT_FOUND));
+		// QTN-14: Hidden lesson is treated as not found for non-admin
+		if (lesson.isHidden() && !isAdmin) {
+			throw new ApiException(ApiErrorCode.LESSON_NOT_FOUND);
+		}
 		return grammarPointRepository.findAllByLessonIdOrderBySortOrderAsc(lessonId)
 			.stream().map(GrammarPointResponse::fromEntity).toList();
+	}
+
+	@Transactional(readOnly = true)
+	public List<GrammarPointResponse> getGrammarPointsByLesson(Long lessonId) {
+		return getGrammarPointsByLesson(lessonId, false);
 	}
 
 	@Transactional

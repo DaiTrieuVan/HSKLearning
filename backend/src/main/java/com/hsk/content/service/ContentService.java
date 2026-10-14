@@ -29,7 +29,6 @@ import com.hsk.content.dto.UpdateVocabularyRequest;
 import com.hsk.content.dto.VocabSetResponse;
 import com.hsk.content.dto.VocabularyResponse;
 import com.hsk.content.repository.ClassVocabSetRepository;
-import com.hsk.content.repository.GrammarExampleRepository;
 import com.hsk.content.repository.GrammarPointRepository;
 import com.hsk.content.repository.HskLevelRepository;
 import com.hsk.content.repository.LessonRepository;

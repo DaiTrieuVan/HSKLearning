@@ -88,9 +88,9 @@ class LessonStudyH2Test {
 		}
 		studentToken = obtainToken(STUDENT_EMAIL, PASSWORD);
 
-		// Tạo HSK 1 level nếu chưa có
-		hsk1 = levelRepository.findByLevelNumber(1).orElseGet(() -> {
-			HskLevelEntity level = new HskLevelEntity("HSK1", "HSK Cấp độ 1", 1, "Cấp độ cơ bản", 150);
+		// Sử dụng HSK 1 level nếu đã có hoặc tạo mới
+		hsk1 = levelRepository.findByCode("HSK_1").orElseGet(() -> {
+			HskLevelEntity level = new HskLevelEntity("HSK_1", "HSK 1 - Nhập môn", 1, "Cấp độ cơ bản", 150);
 			return levelRepository.save(level);
 		});
 	}

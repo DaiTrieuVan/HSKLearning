@@ -51,9 +51,11 @@ import com.hsk.content.dto.CreateLessonRequest;
 import com.hsk.content.dto.CreateVocabSetRequest;
 import com.hsk.content.dto.CreateVocabularyRequest;
 import com.hsk.content.dto.UpdateLessonRequest;
+import com.hsk.content.domain.HskLevelEntity;
 import com.hsk.content.repository.ClassVocabSetRepository;
 import com.hsk.content.repository.GrammarExampleRepository;
 import com.hsk.content.repository.GrammarPointRepository;
+import com.hsk.content.repository.HskLevelRepository;
 import com.hsk.content.repository.LessonRepository;
 import com.hsk.content.repository.LessonVocabularyRepository;
 import com.hsk.content.repository.VocabSetItemRepository;
@@ -132,15 +134,21 @@ class ContentH2Test {
 	@Autowired
 	private ClassVocabSetRepository classVocabSetRepository;
 
+	@Autowired
+	private HskLevelRepository levelRepository;
+
 	private UserEntity teacherUser;
 	private String teacherToken;
 
 	private UserEntity studentUser;
 	private String studentToken;
 
+	private HskLevelEntity hsk1;
+
 	@BeforeEach
 	void setUp() throws Exception {
 		tearDown();
+		seedHskLevelsIfMissing();
 
 		// Teacher registration & role
 		registrationService.registerStudent(
@@ -156,6 +164,21 @@ class ContentH2Test {
 
 		teacherToken = loginAndGetToken(TEACHER_EMAIL, PASSWORD);
 		studentToken = loginAndGetToken(STUDENT_EMAIL, PASSWORD);
+	}
+
+	private void seedHskLevelsIfMissing() {
+		if (levelRepository.count() < 6) {
+			levelRepository.deleteAll();
+			levelRepository.saveAll(List.of(
+				new HskLevelEntity("HSK_1", "HSK 1 - Nhập môn", 1, "Lộ trình cho người bắt đầu làm quen tiếng Trung và ngữ âm", 150),
+				new HskLevelEntity("HSK_2", "HSK 2 - Sơ cấp cơ bản", 2, "Giao tiếp tình huống hàng ngày đơn giản", 300),
+				new HskLevelEntity("HSK_3", "HSK 3 - Sơ trung cấp", 3, "Giao tiếp cơ bản trong công việc, học tập và du lịch", 600),
+				new HskLevelEntity("HSK_4", "HSK 4 - Trung cấp", 4, "Thảo luận lưu loát về nhiều chủ đề đa dạng", 1200),
+				new HskLevelEntity("HSK_5", "HSK 5 - Cao cấp", 5, "Đọc báo, xem phim và thuyết trình chuyên nghiệp", 2500),
+				new HskLevelEntity("HSK_6", "HSK 6 - Tinh thông", 6, "Sử dụng tiếng Trung như người bản xứ", 5000)
+			));
+		}
+		hsk1 = levelRepository.findByCode("HSK_1").orElseThrow();
 	}
 
 	@AfterEach
@@ -204,7 +227,7 @@ class ContentH2Test {
 	void shouldCreateAndUpdateAndSoftHideLesson() throws Exception {
 		// 1. Create Lesson
 		CreateLessonRequest createReq = new CreateLessonRequest(
-			1L,
+			hsk1.getId(),
 			"Bài 3: Bạn là người nước nào?",
 			"Hỏi và trả lời về quốc tịch",
 			3
@@ -258,7 +281,7 @@ class ContentH2Test {
 			"我们要好好学习。",
 			"Wǒmen yào hǎohāo xuéxí.",
 			"Chúng ta phải chăm chỉ học tập.",
-			1L,
+			hsk1.getId(),
 			false
 		);
 
@@ -291,7 +314,7 @@ class ContentH2Test {
 			null,
 			null,
 			null,
-			1L,
+			hsk1.getId(),
 			true // private to teacherUser
 		);
 
@@ -331,7 +354,7 @@ class ContentH2Test {
 
 		mockMvc.perform(multipart("/api/v1/content/vocabularies/import")
 				.file(file)
-				.param("levelId", "1")
+				.param("levelId", String.valueOf(hsk1.getId()))
 				.header("Authorization", "Bearer " + teacherToken))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.successCount", greaterThanOrEqualTo(4)));
@@ -340,7 +363,7 @@ class ContentH2Test {
 	@Test
 	@DisplayName("HTT-03-CN-008: Should create grammar point with examples")
 	void shouldCreateGrammarPointWithExamples() throws Exception {
-		CreateLessonRequest createReq = new CreateLessonRequest(1L, "Bài Ngữ Pháp", "Mô tả", 10);
+		CreateLessonRequest createReq = new CreateLessonRequest(hsk1.getId(), "Bài Ngữ Pháp", "Mô tả", 10);
 		String res = mockMvc.perform(post("/api/v1/content/lessons")
 				.header("Authorization", "Bearer " + teacherToken)
 				.contentType(MediaType.APPLICATION_JSON)

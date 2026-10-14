@@ -1,8 +1,10 @@
 package com.hsk.learning;
 
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -130,11 +132,11 @@ class RoadmapH2Test {
 		studentUser = userRepository.findByEmailIgnoreCase(STUDENT_EMAIL).orElseThrow();
 		studentToken = loginAndGetToken(STUDENT_EMAIL, PASSWORD);
 
-		// Seed standard HSK levels for testing
-		hsk1 = new HskLevelEntity("HSK_1", "HSK 1 - Nhập môn", 1, "Mô tả HSK 1", 150);
-		hsk2 = new HskLevelEntity("HSK_2", "HSK 2 - Sơ cấp", 2, "Mô tả HSK 2", 300);
-		hsk1 = hskLevelRepository.save(hsk1);
-		hsk2 = hskLevelRepository.save(hsk2);
+		// Use existing or seed standard HSK levels for testing
+		hsk1 = hskLevelRepository.findByCode("HSK_1").orElseGet(() ->
+				hskLevelRepository.save(new HskLevelEntity("HSK_1", "HSK 1 - Nhập môn", 1, "Mô tả HSK 1", 150)));
+		hsk2 = hskLevelRepository.findByCode("HSK_2").orElseGet(() ->
+				hskLevelRepository.save(new HskLevelEntity("HSK_2", "HSK 2 - Sơ cấp", 2, "Mô tả HSK 2", 300)));
 	}
 
 	@AfterEach
@@ -145,7 +147,6 @@ class RoadmapH2Test {
 		lessonVocabularyRepository.deleteAll();
 		vocabularyRepository.deleteAll();
 		lessonRepository.deleteAll();
-		hskLevelRepository.deleteAll();
 
 		classJoinAttemptRepository.deleteAll();
 		classMemberEventRepository.deleteAll();
@@ -180,7 +181,7 @@ class RoadmapH2Test {
 		mockMvc.perform(get("/api/v1/roadmap")
 						.header("Authorization", "Bearer " + studentToken))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.levels", hasSize(2)))
+				.andExpect(jsonPath("$.levels", hasSize(greaterThanOrEqualTo(2))))
 				.andExpect(jsonPath("$.levels[0].code", is("HSK_1")))
 				.andExpect(jsonPath("$.levels[0].lessons", hasSize(2)))
 				.andExpect(jsonPath("$.levels[0].lessons[0].id", is(l1.getId().intValue())))
@@ -239,8 +240,9 @@ class RoadmapH2Test {
 		mockMvc.perform(get("/api/v1/roadmap")
 						.header("Authorization", "Bearer " + studentToken))
 				.andExpect(status().isOk())
-				// Only 2 visible levels (HSK_1 and HSK_2)
-				.andExpect(jsonPath("$.levels", hasSize(2)))
+				// Only visible levels (HSK_HIDDEN is excluded)
+				.andExpect(jsonPath("$.levels", hasSize(greaterThanOrEqualTo(2))))
+				.andExpect(jsonPath("$.levels[*].code", not(hasItem("HSK_HIDDEN"))))
 				.andExpect(jsonPath("$.levels[0].totalLessons", is(1)))
 				.andExpect(jsonPath("$.levels[0].lessons", hasSize(1)))
 				.andExpect(jsonPath("$.levels[0].lessons[0].title", is("Bài hiển thị")));

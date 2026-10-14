@@ -4,6 +4,7 @@ import { AuthPage } from './pages/auth/AuthPage'
 import { MainWorkspace } from './pages/dashboard/MainWorkspace'
 import { HskCurriculumPage } from './pages/content/HskCurriculumPage'
 import { HskRoadmapPage } from './pages/content/HskRoadmapPage'
+import { LessonStudyPage } from './pages/content/LessonStudyPage'
 import { TeacherVocabSetsPage } from './pages/teacher/TeacherVocabSetsPage'
 import { CreateClassPage } from './pages/classroom/CreateClassPage'
 import { JoinClassPage } from './pages/classroom/JoinClassPage'
@@ -23,6 +24,7 @@ function AppRoutes() {
       <Route path="/" element={<MainWorkspace />} />
       <Route path="/roadmap" element={<HskRoadmapPage />} />
       <Route path="/curriculum" element={<HskCurriculumPage />} />
+      <Route path="/lessons/:lessonId" element={<LessonStudyPage />} />
       <Route path="/vocab-sets" element={<TeacherVocabSetsPage />} />
       <Route path="/classes/create" element={<CreateClassPage />} />
       <Route path="/classes/join" element={<JoinClassPage />} />

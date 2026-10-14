@@ -31,8 +31,10 @@ import lombok.NoArgsConstructor;
 @IdClass(UserRoleId.class)
 @EntityListeners(AuditingEntityListener.class)
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class UserRoleEntity {
+
+	protected UserRoleEntity() {
+	}
 
 	@Id
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)

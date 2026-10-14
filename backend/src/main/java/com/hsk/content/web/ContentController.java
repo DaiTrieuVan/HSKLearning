@@ -12,6 +12,7 @@ import com.hsk.content.dto.GrammarPointResponse;
 import com.hsk.content.dto.HskLevelResponse;
 import com.hsk.content.dto.ImportVocabularyResult;
 import com.hsk.content.dto.LessonResponse;
+import com.hsk.content.dto.LessonStudyResponse;
 import com.hsk.content.dto.UpdateLessonRequest;
 import com.hsk.content.dto.UpdateVocabularyRequest;
 import com.hsk.content.dto.VocabSetResponse;
@@ -21,8 +22,8 @@ import jakarta.validation.Valid;
 import java.security.Principal;
 import java.util.List;
 import java.util.Map;
+import org.springframework.security.core.Authentication;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -55,6 +56,12 @@ public class ContentController {
 			.orElseThrow(() -> new ApiException(ApiErrorCode.UNAUTHORIZED));
 	}
 
+	private boolean isAdmin(Authentication authentication) {
+		if (authentication == null) return false;
+		return authentication.getAuthorities().stream()
+			.anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()) || "ADMIN".equals(a.getAuthority()));
+	}
+
 	// ==================== LEVELS ====================
 
 	@GetMapping("/levels")
@@ -77,8 +84,13 @@ public class ContentController {
 	}
 
 	@GetMapping("/lessons/{lessonId}")
-	public LessonResponse getLesson(@PathVariable Long lessonId) {
-		return contentService.getLessonById(lessonId);
+	public LessonResponse getLesson(@PathVariable Long lessonId, Authentication authentication) {
+		return contentService.getLessonById(lessonId, isAdmin(authentication));
+	}
+
+	@GetMapping("/lessons/{lessonId}/study")
+	public LessonStudyResponse getLessonStudy(@PathVariable Long lessonId, Authentication authentication) {
+		return contentService.getLessonStudyContent(lessonId, isAdmin(authentication));
 	}
 
 	@PostMapping("/lessons")
@@ -118,8 +130,8 @@ public class ContentController {
 	}
 
 	@GetMapping("/lessons/{lessonId}/vocabularies")
-	public List<VocabularyResponse> getLessonVocabularies(@PathVariable Long lessonId) {
-		return contentService.getLessonVocabularies(lessonId);
+	public List<VocabularyResponse> getLessonVocabularies(@PathVariable Long lessonId, Authentication authentication) {
+		return contentService.getLessonVocabularies(lessonId, isAdmin(authentication));
 	}
 
 	@PostMapping("/vocabularies")
@@ -192,8 +204,8 @@ public class ContentController {
 	// ==================== GRAMMAR ====================
 
 	@GetMapping("/lessons/{lessonId}/grammar")
-	public List<GrammarPointResponse> getGrammarPoints(@PathVariable Long lessonId) {
-		return contentService.getGrammarPointsByLesson(lessonId);
+	public List<GrammarPointResponse> getGrammarPoints(@PathVariable Long lessonId, Authentication authentication) {
+		return contentService.getGrammarPointsByLesson(lessonId, isAdmin(authentication));
 	}
 
 	@PostMapping("/lessons/{lessonId}/grammar")

@@ -28,8 +28,10 @@ import lombok.NoArgsConstructor;
 @Table(name = "class_join_attempts")
 @EntityListeners(AuditingEntityListener.class)
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ClassJoinAttemptEntity {
+
+	protected ClassJoinAttemptEntity() {
+	}
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)

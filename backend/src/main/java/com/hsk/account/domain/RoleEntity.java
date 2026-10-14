@@ -8,9 +8,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import lombok.AccessLevel;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 
 /**
  * A role offered by the platform ({@code roles}, ERD page 02).
@@ -23,7 +21,6 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(name = "roles")
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class RoleEntity {
 
 	@Id
@@ -33,4 +30,7 @@ public class RoleEntity {
 	@Enumerated(EnumType.STRING)
 	@Column(name = "code", nullable = false, unique = true, length = 30)
 	private RoleCode code;
+
+	protected RoleEntity() {
+	}
 }

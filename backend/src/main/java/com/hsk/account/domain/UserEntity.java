@@ -30,8 +30,10 @@ import lombok.NoArgsConstructor;
 @Table(name = "users")
 @EntityListeners(AuditingEntityListener.class)
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class UserEntity {
+
+	protected UserEntity() {
+	}
 
 	/** BCrypt output is 60 characters; the column leaves room for a future algorithm. */
 	private static final int PASSWORD_HASH_MAX_LENGTH = 100;

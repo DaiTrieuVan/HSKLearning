@@ -16,9 +16,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import lombok.AccessLevel;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 
 /**
  * HTT-01-CN-005: Token đặt lại mật khẩu có hiệu lực 30 phút (QTN-17).
@@ -27,7 +25,6 @@ import lombok.NoArgsConstructor;
 @Table(name = "password_reset_tokens")
 @EntityListeners(AuditingEntityListener.class)
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class PasswordResetTokenEntity {
 
 	@Id
@@ -50,6 +47,9 @@ public class PasswordResetTokenEntity {
 	@CreatedDate
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private Instant createdAt;
+
+	protected PasswordResetTokenEntity() {
+	}
 
 	public static PasswordResetTokenEntity create(UserEntity user, String tokenHash, Instant now) {
 		PasswordResetTokenEntity entity = new PasswordResetTokenEntity();

@@ -9,7 +9,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -24,14 +23,8 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.hsk.account.domain.RoleCode;
-import com.hsk.account.domain.RoleEntity;
-import com.hsk.account.domain.UserEntity;
-import com.hsk.account.domain.UserRoleEntity;
 import com.hsk.account.dto.RegisterStudentRequest;
-import com.hsk.account.repository.RoleRepository;
 import com.hsk.account.repository.UserRepository;
-import com.hsk.account.repository.UserRoleRepository;
 import com.hsk.account.service.RegistrationService;
 import com.hsk.content.domain.GrammarExampleEntity;
 import com.hsk.content.domain.GrammarPointEntity;
@@ -63,12 +56,6 @@ class LessonStudyH2Test {
 
 	@Autowired
 	private UserRepository userRepository;
-
-	@Autowired
-	private RoleRepository roleRepository;
-
-	@Autowired
-	private UserRoleRepository userRoleRepository;
 
 	@Autowired
 	private RegistrationService registrationService;

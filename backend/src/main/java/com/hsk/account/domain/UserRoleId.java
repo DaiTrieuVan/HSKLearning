@@ -3,22 +3,40 @@ package com.hsk.account.domain;
 import java.io.Serializable;
 import java.util.Objects;
 
-import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
-
 /**
  * Composite primary key of {@link UserRoleEntity}, as required by HTT-01-CN-001-CV-03
  * ("user_roles có khóa chính kép (user_id, role_id)").
  */
-@NoArgsConstructor
-@AllArgsConstructor
 public class UserRoleId implements Serializable {
 
 	private static final long serialVersionUID = 1L;
 
 	private Long user;
-
 	private Long role;
+
+	public UserRoleId() {
+	}
+
+	public UserRoleId(Long user, Long role) {
+		this.user = user;
+		this.role = role;
+	}
+
+	public Long getUser() {
+		return user;
+	}
+
+	public void setUser(Long user) {
+		this.user = user;
+	}
+
+	public Long getRole() {
+		return role;
+	}
+
+	public void setRole(Long role) {
+		this.role = role;
+	}
 
 	@Override
 	public boolean equals(Object other) {

@@ -1,0 +1,38 @@
+# Default configuration for all tests running in test scope
+spring:
+  config:
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:HSKLearning/backend/.env[.properties]
+      - optional:file:backend/.env[.properties]
+
+  datasource:
+    url: jdbc:h2:mem:hsk;DB_CLOSE_DELAY=-1;MODE=MySQL
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+
+  flyway:
+    enabled: false
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+    defer-datasource-initialization: true
+
+  sql:
+    init:
+      mode: always
+      data-locations: classpath:db/h2/roles.sql
+
+app:
+  cors:
+    allowed-origins: http://localhost:5173
+  jwt:
+    secret: default-secret-key-that-is-at-least-32-bytes-long-for-hsk-dev-2026!
+    expiration-hours: 24
+  upload:
+    dir: target/test-uploads

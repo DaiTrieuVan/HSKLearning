@@ -1,0 +1,181 @@
+openapi: 3.1.0
+info:
+  title: HSK Learning API
+  description: |
+    Backend API của nền tảng học tiếng Trung theo lộ trình HSK.
+
+    **Quy ước chung**
+    - Mọi endpoint nằm dưới `/api/v1`.
+    - Body và response dùng `camelCase`; mọi lỗi đi kèm envelope thống nhất (`code`, `message`, `path`, `timestamp`, `fields`).
+    - `message` là tiếng Việt để hiển thị trực tiếp; `code` là mã ổn định để frontend map logic.
+    - Từ HTT-01-CN-004, các endpoint cần đăng nhập dùng access token qua header `Authorization: Bearer <token>`, refresh token qua cookie httpOnly.
+  license:
+    name: Internal
+  version: v0.1
+servers:
+- url: http://localhost:8080
+  description: Máy chủ dev cục bộ
+tags:
+- name: Xác thực & Tài khoản
+  description: HTT-01 — Quản lý tài khoản và phân quyền
+paths:
+  /api/v1/auth/register:
+    post:
+      tags:
+      - Xác thực & Tài khoản
+      summary: HTT-01-CN-001 — Đăng ký tài khoản học sinh
+      description: |
+        Tạo tài khoản công khai bằng họ tên, email và mật khẩu. Mọi tài khoản đăng ký qua endpoint này đều được gán vai trò STUDENT (CV-01). Mật khẩu được băm bằng BCrypt (QTN-17) và không bao giờ được lưu hay trả về dưới dạng thuần.
+
+        Email được chuẩn hóa về chữ thường trước khi lưu và trước khi kiểm tra trùng.
+      operationId: registerStudent
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterStudentRequest"
+        required: true
+      responses:
+        "201":
+          description: "Tạo tài khoản thành công, vai trò STUDENT"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountResponse"
+        "400":
+          description: "VALIDATION_FAILED (thiếu họ tên/email/mật khẩu, mật khẩu dư\
+            ới 8 ký tự, email sai định dạng) hoặc PASSWORD_CONFIRMATION_MISMATCH.\
+            \ Lỗi theo trường nằm trong `fields`."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: EMAIL_ALREADY_IN_USE — email đã được dùng
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: INTERNAL_ERROR
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+components:
+  schemas:
+    AccountResponse:
+      type: object
+      description: Thông tin tài khoản trả về sau khi đăng ký
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Định danh tài khoản
+          example: 1
+        email:
+          type: string
+          description: Email đã được chuẩn hóa về chữ thường
+          example: an.hs@example.com
+        fullName:
+          type: string
+          description: Họ tên
+          example: Nguyễn Văn An
+        status:
+          type: string
+          description: Trạng thái tài khoản
+          enum:
+          - PENDING
+          - ACTIVE
+          - LOCKED
+          example: ACTIVE
+        roles:
+          type: array
+          description: Các vai trò đang có
+          example:
+          - STUDENT
+          items:
+            type: string
+            enum:
+            - ADMIN
+            - TEACHER
+            - STUDENT
+          uniqueItems: true
+        createdAt:
+          type: string
+          format: date-time
+          description: Thời điểm tạo (UTC)
+    ErrorResponse:
+      type: object
+      description: Envelope lỗi chung của mọi endpoint
+      properties:
+        code:
+          type: string
+          description: "Mã lỗi ổn định để frontend map logic, không đổi theo ngôn\
+            \ ngữ hiển thị"
+          enum:
+          - MALFORMED_REQUEST_BODY
+          - VALIDATION_FAILED
+          - EMAIL_ALREADY_IN_USE
+          - PASSWORD_CONFIRMATION_MISMATCH
+          - RESOURCE_ALREADY_EXISTS
+          - RESOURCE_NOT_FOUND
+          - UNAUTHORIZED
+          - FORBIDDEN
+          - INTERNAL_ERROR
+          example: EMAIL_ALREADY_IN_USE
+        message:
+          type: string
+          description: "Thông điệp tiếng Việt, hiển thị trực tiếp cho người dùng"
+          example: Email đã được sử dụng cho một tài khoản khác
+        path:
+          type: string
+          description: Đường dẫn API đã sinh ra lỗi này
+          example: /api/v1/auth/register
+        timestamp:
+          type: string
+          format: date-time
+          description: Thời điểm xử lý lỗi (UTC)
+          example: 2026-10-13T03:21:44.512Z
+        fields:
+          type: object
+          additionalProperties:
+            type: string
+          description: "Lỗi theo từng trường, key là tên trường trong request body.\
+            \ Vắng mặt khi lỗi không gắn với trường cụ thể nào"
+          example:
+            password: Mật khẩu phải có tối thiểu 8 ký tự (tối đa 72 ký tự)
+    RegisterStudentRequest:
+      type: object
+      description: Thông tin đăng ký tài khoản học sinh
+      properties:
+        fullName:
+          type: string
+          description: Họ tên hiển thị
+          example: Nguyễn Văn An
+          maxLength: 100
+          minLength: 0
+        email:
+          type: string
+          description: "Email đăng nhập, không phân biệt chữ hoa hay chữ thường"
+          example: an.hs@example.com
+          maxLength: 190
+          minLength: 0
+          pattern: "^[^\\s@]+@[^\\s@.]+(\\.[^\\s@.]+)+$"
+        password:
+          type: string
+          description: "Mật khẩu. QTN-17: tối thiểu 8 ký tự. Tối đa 72 ký tự vì BCrypt\
+            \ chỉ dùng 72 ký tự đầu."
+          example: Hoctot2026
+          maxLength: 72
+          minLength: 8
+        confirmPassword:
+          type: string
+          description: Nhập lại mật khẩu để xác nhận
+          example: Hoctot2026
+          minLength: 1
+      required:
+      - confirmPassword
+      - email
+      - fullName
+      - password

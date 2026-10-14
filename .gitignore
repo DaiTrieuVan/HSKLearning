@@ -1,35 +1,17 @@
-HELP.md
-target/
-.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
+### Local secrets — loaded by spring-dotenv at runtime, never commit ###
+.env
+.env.*
+!.env.example
 
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
+### Office temp/lock files (Excel creates '~$...' while a workbook is open) ###
+~$*
 
-### IntelliJ IDEA ###
-.idea
-*.iws
-*.iml
-*.ipr
+### OS ###
+.DS_Store
+Thumbs.db
 
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-### VS Code ###
+### Tooling ###
+.idea/
 .vscode/
 
 ### Local secrets — loaded by spring-dotenv at runtime, never commit ###

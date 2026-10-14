@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   LogOut,
   BookOpen,
@@ -18,15 +19,8 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { PandaMascot } from '../../components/common/PandaMascot'
-import { TeacherRequestModal } from '../../components/teacher/TeacherRequestModal'
-import { TeacherVocabSetsModal } from '../../components/teacher/TeacherVocabSetsModal'
 import { AdminTeacherReviewPanel } from '../../components/teacher/AdminTeacherReviewPanel'
 import { AdminUserManagementPanel } from '../../components/admin/AdminUserManagementPanel'
-import { UserProfileModal } from '../../components/profile/UserProfileModal'
-import { CreateClassModal } from '../../components/classroom/CreateClassModal'
-import { JoinClassModal } from '../../components/classroom/JoinClassModal'
-import { ClassDetailModal } from '../../components/classroom/ClassDetailModal'
-import { HskCurriculumModal } from '../../components/content/HskCurriculumModal'
 import { getMyTeacherRequest, type TeacherRequestItem } from '../../api/teacherRequest'
 import { getTeachingClasses, getEnrolledClasses, type ClassItem } from '../../api/classroom'
 
@@ -36,23 +30,14 @@ interface MainWorkspaceProps {
 
 export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
   const { user, logout, switchMode } = useAuth()
+  const navigate = useNavigate()
 
-  // State for teacher upgrade request
-  const [teacherModalOpen, setTeacherModalOpen] = useState(false)
-  const [profileModalOpen, setProfileModalOpen] = useState(false)
   const [currentUserName, setCurrentUserName] = useState(user?.fullName || '')
   const [myTeacherRequest, setMyTeacherRequest] = useState<TeacherRequestItem | null>(null)
   const [actionAlert, setActionAlert] = useState<string | null>(null)
   const [activeAdminTab, setActiveAdminTab] = useState<'OVERVIEW' | 'TEACHER_REQUESTS' | 'USER_MANAGEMENT'>('OVERVIEW')
 
-  // Content States (HTT-03)
-  const [hskCurriculumModalOpen, setHskCurriculumModalOpen] = useState(false)
-  const [teacherVocabSetsModalOpen, setTeacherVocabSetsModalOpen] = useState(false)
-
-  // Classroom States (HTT-02)
-  const [createClassModalOpen, setCreateClassModalOpen] = useState(false)
-  const [joinClassModalOpen, setJoinClassModalOpen] = useState(false)
-  const [selectedClassroom, setSelectedClassroom] = useState<ClassItem | null>(null)
+  // Classroom States
   const [classesList, setClassesList] = useState<ClassItem[]>([])
   const [loadingClasses, setLoadingClasses] = useState(false)
 
@@ -94,7 +79,7 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
 
   const handleCreateClassClick = () => {
     if (isTeacher) {
-      setCreateClassModalOpen(true)
+      navigate('/classes/create')
       return
     }
 
@@ -107,11 +92,11 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
     }
 
     // Nếu chưa có quyền giáo viên và chưa gửi yêu cầu
-    setTeacherModalOpen(true)
+    navigate('/teacher-request')
   }
 
   const handleJoinClassClick = () => {
-    setJoinClassModalOpen(true)
+    navigate('/classes/join')
   }
 
   return (
@@ -253,7 +238,7 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
 
           {/* User Profile Badge (HTT-01-CN-006: Click to edit profile / change password) */}
           <div
-            onClick={() => setProfileModalOpen(true)}
+            onClick={() => navigate('/profile')}
             title="Bấm để xem & chỉnh sửa hồ sơ cá nhân"
             style={{
               display: 'flex',
@@ -516,7 +501,7 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
 
                 <button
                   type="button"
-                  onClick={() => setTeacherModalOpen(true)}
+                  onClick={() => navigate('/teacher-request')}
                   className="btn-gamified btn-primary"
                   style={{ padding: '8px 16px', fontSize: '0.85rem', flexShrink: 0 }}
                 >
@@ -612,7 +597,7 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
 
                 <button
                   type="button"
-                  onClick={() => setHskCurriculumModalOpen(true)}
+                  onClick={() => navigate('/curriculum')}
                   className="btn-gamified btn-primary"
                   style={{ width: '100%', fontSize: '0.92rem', padding: '10px' }}
                 >
@@ -739,7 +724,7 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
                   ) : (
                     <button
                       type="button"
-                      onClick={() => setTeacherModalOpen(true)}
+                      onClick={() => navigate('/teacher-request')}
                       className="btn-gamified btn-green"
                       style={{ width: '100%', fontSize: '0.92rem', padding: '10px' }}
                     >
@@ -788,7 +773,7 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
 
                   <button
                     type="button"
-                    onClick={() => setTeacherVocabSetsModalOpen(true)}
+                    onClick={() => navigate('/vocab-sets')}
                     className="btn-gamified btn-primary"
                     style={{ width: '100%', fontSize: '0.92rem', padding: '10px' }}
                   >
@@ -876,7 +861,7 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
                   {isTeacher ? (
                     <button
                       type="button"
-                      onClick={() => setCreateClassModalOpen(true)}
+                      onClick={() => navigate('/classes/create')}
                       className="btn-gamified btn-primary"
                       style={{ padding: '8px 16px', fontSize: '0.85rem' }}
                     >
@@ -886,7 +871,7 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
                   ) : !isAdmin ? (
                     <button
                       type="button"
-                      onClick={() => setJoinClassModalOpen(true)}
+                      onClick={() => navigate('/classes/join')}
                       className="btn-gamified btn-primary"
                       style={{ padding: '8px 16px', fontSize: '0.85rem' }}
                     >
@@ -923,7 +908,7 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
                   {isTeacher ? (
                     <button
                       type="button"
-                      onClick={() => setCreateClassModalOpen(true)}
+                      onClick={() => navigate('/classes/create')}
                       className="btn-gamified btn-primary"
                       style={{ padding: '8px 20px', fontSize: '0.88rem' }}
                     >
@@ -932,7 +917,7 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
                   ) : !isAdmin ? (
                     <button
                       type="button"
-                      onClick={() => setJoinClassModalOpen(true)}
+                      onClick={() => navigate('/classes/join')}
                       className="btn-gamified btn-primary"
                       style={{ padding: '8px 20px', fontSize: '0.88rem' }}
                     >
@@ -1013,7 +998,7 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
 
                         <button
                           type="button"
-                          onClick={() => setSelectedClassroom(cls)}
+                          onClick={() => navigate(`/classes/${cls.id}`)}
                           style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -1041,70 +1026,6 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
         )}
       </main>
 
-      {/* Teacher Request Modal (HTT-01-CN-002) */}
-      <TeacherRequestModal
-        isOpen={teacherModalOpen}
-        onClose={() => setTeacherModalOpen(false)}
-        token={user.token}
-        onSuccess={(req) => setMyTeacherRequest(req)}
-      />
-
-      {/* User Profile Modal (HTT-01-CN-006) */}
-      <UserProfileModal
-        isOpen={profileModalOpen}
-        onClose={() => setProfileModalOpen(false)}
-        token={user.token}
-        currentName={currentUserName}
-        currentEmail={user.email}
-        onProfileUpdated={(updated) => {
-          setCurrentUserName(updated.fullName)
-        }}
-      />
-
-      {/* Create Class Modal (HTT-02-CN-001) */}
-      <CreateClassModal
-        isOpen={createClassModalOpen}
-        onClose={() => setCreateClassModalOpen(false)}
-        token={user.token}
-        onClassCreated={() => loadClasses()}
-      />
-
-      {/* Join Class Modal (HTT-02-CN-002) */}
-      <JoinClassModal
-        isOpen={joinClassModalOpen}
-        onClose={() => setJoinClassModalOpen(false)}
-        token={user.token}
-        onClassJoined={() => loadClasses()}
-      />
-
-      {/* Class Detail Modal (HTT-02-CN-003 đến 009) */}
-      <ClassDetailModal
-        isOpen={Boolean(selectedClassroom)}
-        classroom={selectedClassroom}
-        token={user.token}
-        isTeacher={isTeacher}
-        onClose={() => setSelectedClassroom(null)}
-        onClassUpdated={() => {
-          loadClasses()
-          setSelectedClassroom(null)
-        }}
-      />
-
-      {/* HSK Curriculum & Learning Modal (HTT-03) */}
-      <HskCurriculumModal
-        isOpen={hskCurriculumModalOpen}
-        onClose={() => setHskCurriculumModalOpen(false)}
-        token={user.token}
-        isTeacher={isTeacher}
-      />
-
-      {/* Teacher Vocab Sets Modal (HTT-03-CN-009, 011 / QTN-19) */}
-      <TeacherVocabSetsModal
-        isOpen={teacherVocabSetsModalOpen}
-        onClose={() => setTeacherVocabSetsModalOpen(false)}
-        token={user.token}
-        classes={classesList}
-      />
     </div>
   )
 }

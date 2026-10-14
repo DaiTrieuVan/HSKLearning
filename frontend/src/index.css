@@ -1,9 +1,9 @@
 :root {
-  /* Color Palette - Youthful Gamified Chinese Theme */
-  --primary: #e11d48;
-  --primary-hover: #be123c;
-  --primary-light: #ffe4e6;
-  --primary-shadow: #9f1239;
+  /* Color Palette - Fresh Gamified Emerald Green Theme (Mát mắt, giảm áp lực) */
+  --primary: #10b981;
+  --primary-hover: #059669;
+  --primary-light: #ecfdf5;
+  --primary-shadow: #047857;
 
   --accent-gold: #f59e0b;
   --accent-gold-hover: #d97706;
@@ -14,6 +14,11 @@
   --jade-green-light: #d1fae5;
   --jade-green-shadow: #047857;
 
+  --danger: #ef4444;
+  --danger-hover: #dc2626;
+  --danger-light: #fef2f2;
+  --danger-shadow: #991b1b;
+
   --dragon-blue: #3b82f6;
   --dragon-blue-light: #dbeafe;
 
@@ -22,7 +27,7 @@
   --bg-card: #ffffff;
   --bg-input: #f1f5f9;
   --border-card: #e2e8f0;
-  --border-focus: #e11d48;
+  --border-focus: #10b981;
 
   --text-main: #0f172a;
   --text-muted: #64748b;
@@ -41,6 +46,7 @@
   --shadow-btn-primary: 0 4px 0 var(--primary-shadow);
   --shadow-btn-gold: 0 4px 0 var(--accent-gold-shadow);
   --shadow-btn-green: 0 4px 0 var(--jade-green-shadow);
+  --shadow-btn-danger: 0 4px 0 var(--danger-shadow);
   --shadow-btn-neutral: 0 4px 0 #cbd5e1;
 
   /* Typography - Vietnamese optimized & Chinese characters */
@@ -62,7 +68,7 @@ body {
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
   background-image: 
-    radial-gradient(#fecdd3 0.85px, transparent 0.85px),
+    radial-gradient(#a7f3d0 0.85px, transparent 0.85px),
     radial-gradient(#fed7aa 0.85px, #f8fafc 0.85px);
   background-size: 34px 34px;
   background-position: 0 0, 17px 17px;
@@ -117,6 +123,15 @@ body {
   background-color: var(--jade-green);
   color: #ffffff;
   box-shadow: var(--shadow-btn-green);
+}
+
+.btn-danger {
+  background-color: var(--danger);
+  color: #ffffff;
+  box-shadow: var(--shadow-btn-danger);
+}
+.btn-danger:hover:not(:disabled) {
+  filter: brightness(1.08);
 }
 
 .btn-outline {

@@ -2,10 +2,13 @@ import React, { useState } from 'react'
 import { Flame, Award, BookOpen, Volume2, Check } from 'lucide-react'
 import { RegisterForm } from './RegisterForm'
 import { LoginForm } from './LoginForm'
+import { ForgotPasswordView } from './ForgotPasswordView'
+import { ResetPasswordView } from './ResetPasswordView'
 import { PandaMascot } from '../../components/common/PandaMascot'
 
 export const AuthPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'register' | 'login'>('register')
+  const [activeTab, setActiveTab] = useState<'register' | 'login' | 'forgot' | 'reset'>('register')
+  const [resetToken, setResetToken] = useState('')
   const [isPlayingAudio, setIsPlayingAudio] = useState(false)
   const [loggedInEmail, setLoggedInEmail] = useState<string | null>(null)
 
@@ -166,8 +169,8 @@ export const AuthPage: React.FC = () => {
               className="game-card"
               style={{
                 padding: '20px',
-                background: 'linear-gradient(135deg, #ffffff 0%, #fff1f2 100%)',
-                borderColor: '#fecdd3',
+                background: 'linear-gradient(135deg, #ffffff 0%, #ecfdf5 100%)',
+                borderColor: '#a7f3d0',
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
@@ -189,7 +192,7 @@ export const AuthPage: React.FC = () => {
                   onClick={handlePlaySample}
                   style={{
                     background: '#ffffff',
-                    border: '1.5px solid #fecdd3',
+                    border: '1.5px solid #a7f3d0',
                     padding: '6px 12px',
                     borderRadius: 'var(--radius-full)',
                     display: 'flex',
@@ -231,7 +234,7 @@ export const AuthPage: React.FC = () => {
                   display: 'flex',
                   gap: '8px',
                   justifyContent: 'center',
-                  borderTop: '1px dashed #fecdd3',
+                  borderTop: '1px dashed #a7f3d0',
                   paddingTop: '12px',
                 }}
               >
@@ -245,7 +248,7 @@ export const AuthPage: React.FC = () => {
                       borderRadius: 'var(--radius-sm)',
                       backgroundColor: idx === 0 ? 'var(--primary)' : '#ffffff',
                       color: idx === 0 ? '#ffffff' : 'var(--text-muted)',
-                      border: '1px solid #fecdd3',
+                      border: '1px solid #a7f3d0',
                     }}
                   >
                     {lvl}
@@ -322,68 +325,72 @@ export const AuthPage: React.FC = () => {
               backgroundColor: '#ffffff',
             }}
           >
-            {/* Pill Tabs for Register / Login */}
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                backgroundColor: 'var(--bg-input)',
-                padding: '5px',
-                borderRadius: 'var(--radius-md)',
-                marginBottom: '26px',
-                border: '1.5px solid var(--border-card)',
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => setActiveTab('register')}
+            {/* Pill Tabs for Register / Login (hidden if in forgot/reset view) */}
+            {activeTab !== 'forgot' && activeTab !== 'reset' && (
+              <div
                 style={{
-                  padding: '10px',
-                  border: 'none',
-                  borderRadius: 'var(--radius-sm)',
-                  backgroundColor: activeTab === 'register' ? '#ffffff' : 'transparent',
-                  color: activeTab === 'register' ? 'var(--primary)' : 'var(--text-muted)',
-                  fontWeight: 800,
-                  fontSize: '0.95rem',
-                  cursor: 'pointer',
-                  boxShadow: activeTab === 'register' ? '0 2px 4px rgba(0,0,0,0.06)' : 'none',
-                  transition: 'all 0.15s ease',
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  backgroundColor: 'var(--bg-input)',
+                  padding: '5px',
+                  borderRadius: 'var(--radius-md)',
+                  marginBottom: '26px',
+                  border: '1.5px solid var(--border-card)',
                 }}
               >
-                Đăng ký học sinh
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('register')}
+                  style={{
+                    padding: '10px',
+                    border: 'none',
+                    borderRadius: 'var(--radius-sm)',
+                    backgroundColor: activeTab === 'register' ? '#ffffff' : 'transparent',
+                    color: activeTab === 'register' ? 'var(--primary)' : 'var(--text-muted)',
+                    fontWeight: 800,
+                    fontSize: '0.95rem',
+                    cursor: 'pointer',
+                    boxShadow: activeTab === 'register' ? '0 2px 4px rgba(0,0,0,0.06)' : 'none',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  Đăng ký học sinh
+                </button>
 
-              <button
-                type="button"
-                onClick={() => setActiveTab('login')}
-                style={{
-                  padding: '10px',
-                  border: 'none',
-                  borderRadius: 'var(--radius-sm)',
-                  backgroundColor: activeTab === 'login' ? '#ffffff' : 'transparent',
-                  color: activeTab === 'login' ? 'var(--primary)' : 'var(--text-muted)',
-                  fontWeight: 800,
-                  fontSize: '0.95rem',
-                  cursor: 'pointer',
-                  boxShadow: activeTab === 'login' ? '0 2px 4px rgba(0,0,0,0.06)' : 'none',
-                  transition: 'all 0.15s ease',
-                }}
-              >
-                Đăng nhập
-              </button>
-            </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('login')}
+                  style={{
+                    padding: '10px',
+                    border: 'none',
+                    borderRadius: 'var(--radius-sm)',
+                    backgroundColor: activeTab === 'login' ? '#ffffff' : 'transparent',
+                    color: activeTab === 'login' ? 'var(--primary)' : 'var(--text-muted)',
+                    fontWeight: 800,
+                    fontSize: '0.95rem',
+                    cursor: 'pointer',
+                    boxShadow: activeTab === 'login' ? '0 2px 4px rgba(0,0,0,0.06)' : 'none',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  Đăng nhập
+                </button>
+              </div>
+            )}
 
             {/* Header info */}
-            <div style={{ marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-main)' }}>
-                {activeTab === 'register' ? 'Bắt đầu hành trình tiếng Trung' : 'Mừng bạn trở lại lớp học'}
-              </h2>
-              <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                {activeTab === 'register'
-                  ? 'Tạo tài khoản học sinh miễn phí để lưu tiến độ và tham gia lớp.'
-                  : 'Đăng nhập vào tài khoản học sinh hoặc giáo viên của bạn.'}
-              </p>
-            </div>
+            {activeTab !== 'forgot' && activeTab !== 'reset' && (
+              <div style={{ marginBottom: '20px' }}>
+                <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                  {activeTab === 'register' ? 'Bắt đầu hành trình tiếng Trung' : 'Mừng bạn trở lại lớp học'}
+                </h2>
+                <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                  {activeTab === 'register'
+                    ? 'Tạo tài khoản học sinh miễn phí để lưu tiến độ và tham gia lớp.'
+                    : 'Đăng nhập vào tài khoản học sinh hoặc giáo viên của bạn.'}
+                </p>
+              </div>
+            )}
 
             {/* Forms */}
             {activeTab === 'register' ? (
@@ -393,11 +400,28 @@ export const AuthPage: React.FC = () => {
                 }}
                 onSwitchToLogin={() => setActiveTab('login')}
               />
-            ) : (
+            ) : activeTab === 'login' ? (
               <LoginForm
                 onSwitchToRegister={() => setActiveTab('register')}
+                onForgotPassword={() => setActiveTab('forgot')}
                 onLoginSuccess={(user) => {
                   setLoggedInEmail(user.email)
+                }}
+              />
+            ) : activeTab === 'forgot' ? (
+              <ForgotPasswordView
+                onBackToLogin={() => setActiveTab('login')}
+                onOpenResetPassword={(token) => {
+                  if (token) setResetToken(token)
+                  setActiveTab('reset')
+                }}
+              />
+            ) : (
+              <ResetPasswordView
+                initialToken={resetToken}
+                onBackToLogin={() => setActiveTab('login')}
+                onSuccess={() => {
+                  setActiveTab('login')
                 }}
               />
             )}

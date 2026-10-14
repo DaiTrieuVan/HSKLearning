@@ -4,15 +4,18 @@ import { Input } from '../../components/common/Input'
 import { loginUser, ApiError } from '../../api/auth'
 import { useAuth } from '../../context/AuthContext'
 import type { LoginResponse } from '../../types/auth'
-import { ForgotPasswordModal } from './ForgotPasswordModal'
-import { ResetPasswordModal } from './ResetPasswordModal'
 
 interface LoginFormProps {
   onSwitchToRegister: () => void
   onLoginSuccess: (user: LoginResponse) => void
+  onForgotPassword?: () => void
 }
 
-export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onLoginSuccess }) => {
+export const LoginForm: React.FC<LoginFormProps> = ({
+  onSwitchToRegister,
+  onLoginSuccess,
+  onForgotPassword,
+}) => {
   const { login } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -21,11 +24,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onLogi
   const [successMsg, setSuccessMsg] = useState('')
   const [isLocked, setIsLocked] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-
-  // HTT-01-CN-005 Modals
-  const [showForgotModal, setShowForgotModal] = useState(false)
-  const [showResetModal, setShowResetModal] = useState(false)
-  const [resetToken, setResetToken] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -61,11 +59,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onLogi
     } finally {
       setIsLoading(false)
     }
-  }
-
-  const handleOpenResetWithToken = (token?: string) => {
-    if (token) setResetToken(token)
-    setShowResetModal(true)
   }
 
   return (
@@ -123,9 +116,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onLogi
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            backgroundColor: 'var(--jade-green-light)',
-            border: '1px solid var(--jade-green)',
-            color: 'var(--jade-green-shadow)',
+            backgroundColor: 'var(--primary-light)',
+            border: '1px solid var(--primary)',
+            color: 'var(--primary-hover)',
             padding: '12px 14px',
             borderRadius: 'var(--radius-md)',
             marginBottom: '16px',
@@ -191,7 +184,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onLogi
         {/* HTT-01-CN-005: Quên mật khẩu */}
         <button
           type="button"
-          onClick={() => setShowForgotModal(true)}
+          onClick={() => onForgotPassword && onForgotPassword()}
           style={{
             background: 'none',
             border: 'none',
@@ -240,22 +233,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onLogi
           Đăng ký ngay
         </button>
       </div>
-
-      {/* Modals for HTT-01-CN-005 */}
-      <ForgotPasswordModal
-        isOpen={showForgotModal}
-        onClose={() => setShowForgotModal(false)}
-        onOpenResetPassword={handleOpenResetWithToken}
-      />
-
-      <ResetPasswordModal
-        isOpen={showResetModal}
-        onClose={() => setShowResetModal(false)}
-        initialToken={resetToken}
-        onSuccess={() => {
-          setSuccessMsg('Mật khẩu của bạn đã được thay đổi thành công! Vui lòng đăng nhập bằng mật khẩu mới.')
-        }}
-      />
     </form>
   )
 }

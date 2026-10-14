@@ -126,20 +126,22 @@ export async function createLesson(
   return data
 }
 
-export async function getLessonVocabularies(lessonId: number): Promise<VocabularyItem[]> {
-  const response = await fetch(`${API_BASE}/lessons/${lessonId}/vocabularies`, {
-    headers: { Accept: 'application/json' },
-  })
+export async function getLessonVocabularies(lessonId: number, token?: string): Promise<VocabularyItem[]> {
+  const headers: Record<string, string> = { Accept: 'application/json' }
+  if (token) headers['Authorization'] = `Bearer ${token}`
+
+  const response = await fetch(`${API_BASE}/lessons/${lessonId}/vocabularies`, { headers })
   if (!response.ok) {
     throw new ApiError(response.status, 'FETCH_VOCAB_FAILED', 'Không thể tải từ vựng bài học')
   }
   return response.json()
 }
 
-export async function getLessonGrammar(lessonId: number): Promise<GrammarPointItem[]> {
-  const response = await fetch(`${API_BASE}/lessons/${lessonId}/grammar`, {
-    headers: { Accept: 'application/json' },
-  })
+export async function getLessonGrammar(lessonId: number, token?: string): Promise<GrammarPointItem[]> {
+  const headers: Record<string, string> = { Accept: 'application/json' }
+  if (token) headers['Authorization'] = `Bearer ${token}`
+
+  const response = await fetch(`${API_BASE}/lessons/${lessonId}/grammar`, { headers })
   if (!response.ok) {
     throw new ApiError(response.status, 'FETCH_GRAMMAR_FAILED', 'Không thể tải điểm ngữ pháp bài học')
   }
@@ -206,6 +208,50 @@ export async function addVocabularyToLesson(
   if (!response.ok) {
     throw new ApiError(response.status, 'ADD_VOCAB_FAILED', 'Không thể gắn từ vựng vào bài học')
   }
+}
+
+export async function createOrAddVocabularyToLesson(
+  lessonId: number,
+  payload: {
+    hanzi: string
+    pinyin: string
+    meaning: string
+    partOfSpeech?: string
+    audioUrl?: string
+    exampleSentence?: string
+    examplePinyin?: string
+    exampleMeaning?: string
+    hskLevelId?: number
+    isPrivate?: boolean
+  },
+  token: string
+): Promise<VocabularyItem> {
+  const response = await fetch(`${API_BASE}/lessons/${lessonId}/vocabularies/create-or-add`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+  const data = await response.json().catch(() => null)
+  if (!response.ok) {
+    throw new ApiError(response.status, data?.code || 'ERROR', data?.message || 'Không thể thêm từ vựng vào bài học')
+  }
+  return data
+}
+
+export async function getVocabularies(query?: string, token?: string): Promise<VocabularyItem[]> {
+  const headers: Record<string, string> = { Accept: 'application/json' }
+  if (token) headers['Authorization'] = `Bearer ${token}`
+
+  const url = query ? `${API_BASE}/vocabularies?query=${encodeURIComponent(query)}` : `${API_BASE}/vocabularies`
+  const response = await fetch(url, { headers })
+  if (!response.ok) {
+    throw new ApiError(response.status, 'FETCH_VOCAB_FAILED', 'Không thể tải danh sách từ vựng')
+  }
+  return response.json()
 }
 
 export async function uploadAudio(file: File, token: string): Promise<string> {

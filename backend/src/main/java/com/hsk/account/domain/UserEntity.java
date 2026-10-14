@@ -133,6 +133,10 @@ public class UserEntity {
 		}
 	}
 
+	public void switchMode(UiMode mode) {
+		this.lastMode = mode;
+	}
+
 	public boolean isTemporarilyLocked(Instant now) {
 		return this.lockedUntil != null && this.lockedUntil.isAfter(now);
 	}

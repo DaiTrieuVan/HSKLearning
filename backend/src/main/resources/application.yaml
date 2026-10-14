@@ -1,0 +1,100 @@
+# ============================================================================
+# HSK backend — HTT-01-CN-001
+#
+# Secrets never live in this file. They come from the .env file next to the
+# module root, imported below as a properties file (no extra dependency, and
+# .env is git-ignored). See .env.example for the list of expected variables.
+# ============================================================================
+spring:
+  application:
+    name: hsk-backend
+
+  config:
+    import: optional:file:.env[.properties]
+
+  datasource:
+    # Connector/J 9 no longer reads "useSSL". sslMode=DISABLED is local-dev only: without TLS the
+    # caching_sha2_password handshake needs allowPublicKeyRetrieval. connectionTimeZone=UTC keeps
+    # every stored timestamp comparable, since the API documents createdAt in ISO-8601 UTC.
+    url: ${DB_URL:jdbc:mysql://localhost:3306/hsk_learning?sslMode=DISABLED&allowPublicKeyRetrieval=true&connectionTimeZone=UTC&preserveInstants=true&characterEncoding=UTF-8}
+    username: ${DB_USERNAME:hsk_app}
+    password: ${DB_PASSWORD:}
+    hikari:
+      pool-name: hsk-pool
+      maximum-pool-size: 10
+      connection-timeout: 10000
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    # A migration must never run against a schema created by something else.
+    baseline-on-missing: false
+    validate-migration-naming: true
+
+  jpa:
+    hibernate:
+      # Flyway owns the schema; Hibernate only verifies the mapping matches it.
+      ddl-auto: validate
+    # Open-session-in-view is off so a transaction boundary is a deliberate choice.
+    open-in-view: false
+    # No hibernate.jdbc.time_zone hint: every temporal column is a java.time.Instant and the JDBC
+    # url pins the session to UTC, so a hint here would apply the shift twice.
+
+  jackson:
+    # Keeps `"fields": null` out of the error envelope.
+    # Note: `serialization.write-dates-as-timestamps` is deliberately absent. Jackson 3 removed
+    # that SerializationFeature; java.time values are ISO-8601 by default in Spring Boot 4,
+    # so Instant renders as "2026-10-13T03:21:44.512Z" without any setting.
+    default-property-inclusion: non_null
+
+server:
+  port: 8080
+  error:
+    include-message: never
+    include-stacktrace: never
+
+app:
+  cors:
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173}
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: method
+
+logging:
+  level:
+    com.hsk: DEBUG
+    org.springframework.web: INFO
+
+---
+# ---------------------------------------------------------------------------
+# Test profile: a dedicated schema, rebuilt on every run so tests stay
+# deterministic (agreed option A — plain local MySQL, no Testcontainers).
+# ---------------------------------------------------------------------------
+spring:
+  config:
+    activate:
+      on-profile: test
+  datasource:
+    url: ${TEST_DB_URL:jdbc:mysql://localhost:3306/hsk_learning_test?sslMode=DISABLED&allowPublicKeyRetrieval=true&connectionTimeZone=UTC&preserveInstants=true&characterEncoding=UTF-8}
+    username: ${TEST_DB_USERNAME:${DB_USERNAME:hsk_app}}
+    password: ${TEST_DB_PASSWORD:${DB_PASSWORD:}}
+  flyway:
+    # TestDatabaseConfig replaces this with clean + migrate on every run.
+    clean-disabled: false
+
+logging:
+  level:
+    com.hsk: DEBUG
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  jpa:
+    show-sql: false

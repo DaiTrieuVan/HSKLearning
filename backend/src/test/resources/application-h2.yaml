@@ -1,0 +1,34 @@
+# ---------------------------------------------------------------------------
+# In-memory profile: verifies the HTTP behaviour, the validation rules and the
+# registration logic without needing a MySQL server, so the rules of
+# HTT-01-CN-001 are covered on every machine.
+#
+# The real migration (V1) and MySQL specific constraints are covered by the
+# "test" profile, which skips itself when no database is reachable.
+#
+# MODE=MySQL keeps the generated SQL close to production.
+# ---------------------------------------------------------------------------
+spring:
+  datasource:
+    url: jdbc:h2:mem:hsk;DB_CLOSE_DELAY=-1;MODE=MySQL
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+
+  flyway:
+    # Schema comes from the entity mapping here, not from the MySQL migration.
+    enabled: false
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+    # Let Hibernate create the tables first, then run the seed below.
+    defer-datasource-initialization: true
+
+  sql:
+    init:
+      mode: always
+      data-locations: classpath:db/h2/roles.sql

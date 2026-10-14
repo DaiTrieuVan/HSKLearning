@@ -519,7 +519,7 @@ export const HskRoadmapPage: React.FC = () => {
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <button
                               type="button"
-                              onClick={() => navigate('/curriculum')}
+                              onClick={() => navigate(`/lessons/${lesson.id}`)}
                               className={`btn-gamified ${lesson.completed ? 'btn-green' : 'btn-primary'}`}
                               style={{ padding: '8px 16px', fontSize: '0.85rem' }}
                             >

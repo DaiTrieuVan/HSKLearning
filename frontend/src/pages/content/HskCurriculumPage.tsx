@@ -522,28 +522,40 @@ export const HskCurriculumPage: React.FC = () => {
                     </p>
                   </div>
 
-                  {isTeacher && (
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button
-                        type="button"
-                        onClick={() => setShowImport(!showImport)}
-                        className="btn-gamified btn-gold"
-                        style={{ padding: '6px 14px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}
-                      >
-                        <FileSpreadsheet size={14} />
-                        <span>{showImport ? 'Đóng CSV' : 'Nhập CSV'}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowAddVocab(!showAddVocab)}
-                        className="btn-gamified btn-primary"
-                        style={{ padding: '6px 14px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}
-                      >
-                        <PlusCircle size={14} />
-                        <span>{showAddVocab ? 'Đóng thêm từ' : 'Thêm từ mới'}</span>
-                      </button>
-                    </div>
-                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/lessons/${selectedLesson.id}`)}
+                      className="btn-gamified btn-primary"
+                      style={{ padding: '6px 16px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <BookOpen size={15} />
+                      <span>Vào học bài</span>
+                    </button>
+
+                    {isTeacher && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setShowImport(!showImport)}
+                          className="btn-gamified btn-gold"
+                          style={{ padding: '6px 14px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                        >
+                          <FileSpreadsheet size={14} />
+                          <span>{showImport ? 'Đóng CSV' : 'Nhập CSV'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowAddVocab(!showAddVocab)}
+                          className="btn-gamified btn-primary"
+                          style={{ padding: '6px 14px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                        >
+                          <PlusCircle size={14} />
+                          <span>{showAddVocab ? 'Đóng thêm từ' : 'Thêm từ mới'}</span>
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 {/* Inline Add Vocab Form for Teacher */}

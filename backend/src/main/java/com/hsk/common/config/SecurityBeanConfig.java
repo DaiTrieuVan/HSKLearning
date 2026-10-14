@@ -55,6 +55,8 @@ public class SecurityBeanConfig {
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/api/v1/auth/**").permitAll()
 						.requestMatchers("/api/v1/content/levels/**").permitAll()
+						.requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/content/lessons/**").permitAll()
+						.requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/content/vocabularies/**").permitAll()
 						.requestMatchers("/api/v1/content/vocabularies/*/audio").permitAll()
 						.requestMatchers("/uploads/**").permitAll()
 						.requestMatchers("/v3/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()

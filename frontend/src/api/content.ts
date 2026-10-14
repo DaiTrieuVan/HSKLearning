@@ -220,3 +220,147 @@ export async function importVocabularies(
   }
   return data
 }
+
+export async function searchVocabularies(query?: string, token?: string): Promise<VocabularyItem[]> {
+  const headers: Record<string, string> = { Accept: 'application/json' }
+  if (token) headers['Authorization'] = `Bearer ${token}`
+
+  const url = query ? `${API_BASE}/vocabularies?query=${encodeURIComponent(query)}` : `${API_BASE}/vocabularies`
+  const response = await fetch(url, { headers })
+  if (!response.ok) {
+    throw new ApiError(response.status, 'FETCH_VOCAB_FAILED', 'Không thể tải danh sách từ vựng')
+  }
+  return response.json()
+}
+
+export async function getMyPrivateVocabularies(token: string): Promise<VocabularyItem[]> {
+  const response = await fetch(`${API_BASE}/vocabularies/my-private`, {
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
+  if (!response.ok) {
+    throw new ApiError(response.status, 'FETCH_PRIVATE_VOCAB_FAILED', 'Không thể tải từ vựng riêng')
+  }
+  return response.json()
+}
+
+export async function getMyVocabSets(token: string): Promise<VocabSetItem[]> {
+  const response = await fetch(`${API_BASE}/vocab-sets`, {
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
+  if (!response.ok) {
+    throw new ApiError(response.status, 'FETCH_VOCAB_SETS_FAILED', 'Không thể tải danh sách bộ từ vựng')
+  }
+  return response.json()
+}
+
+export async function createVocabSet(
+  payload: { title: string; description?: string; vocabularyIds?: number[] },
+  token: string
+): Promise<VocabSetItem> {
+  const response = await fetch(`${API_BASE}/vocab-sets`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+  const data = await response.json().catch(() => null)
+  if (!response.ok) {
+    throw new ApiError(response.status, data?.code || 'ERROR', data?.message || 'Không thể tạo bộ từ vựng')
+  }
+  return data
+}
+
+export async function getVocabSetItems(vocabSetId: number, token: string): Promise<VocabularyItem[]> {
+  const response = await fetch(`${API_BASE}/vocab-sets/${vocabSetId}/vocabularies`, {
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
+  if (!response.ok) {
+    throw new ApiError(response.status, 'FETCH_VOCAB_SET_ITEMS_FAILED', 'Không thể tải từ vựng trong bộ')
+  }
+  return response.json()
+}
+
+export async function addVocabularyToVocabSet(
+  vocabSetId: number,
+  vocabularyId: number,
+  token: string
+): Promise<void> {
+  const response = await fetch(`${API_BASE}/vocab-sets/${vocabSetId}/vocabularies/${vocabularyId}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+  if (!response.ok) {
+    throw new ApiError(response.status, 'ADD_VOCAB_TO_SET_FAILED', 'Không thể thêm từ vào bộ từ vựng')
+  }
+}
+
+export async function removeVocabularyFromVocabSet(
+  vocabSetId: number,
+  vocabularyId: number,
+  token: string
+): Promise<void> {
+  const response = await fetch(`${API_BASE}/vocab-sets/${vocabSetId}/vocabularies/${vocabularyId}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+  if (!response.ok) {
+    throw new ApiError(response.status, 'REMOVE_VOCAB_FROM_SET_FAILED', 'Không thể xóa từ khỏi bộ từ vựng')
+  }
+}
+
+export async function deleteVocabSet(vocabSetId: number, token: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/vocab-sets/${vocabSetId}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+  if (!response.ok) {
+    throw new ApiError(response.status, 'DELETE_VOCAB_SET_FAILED', 'Không thể xóa bộ từ vựng')
+  }
+}
+
+export async function assignVocabSetToClass(
+  classId: number,
+  vocabSetId: number,
+  token: string
+): Promise<void> {
+  const response = await fetch(`${API_BASE}/classes/${classId}/vocab-sets/${vocabSetId}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+  if (!response.ok) {
+    throw new ApiError(response.status, 'ASSIGN_VOCAB_SET_FAILED', 'Không thể gán bộ từ vựng cho lớp học')
+  }
+}
+
+export async function getClassVocabSets(classId: number, token: string): Promise<VocabSetItem[]> {
+  const response = await fetch(`${API_BASE}/classes/${classId}/vocab-sets`, {
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
+  if (!response.ok) {
+    throw new ApiError(response.status, 'FETCH_CLASS_VOCAB_SETS_FAILED', 'Không thể tải bộ từ vựng của lớp')
+  }
+  return response.json()
+}

@@ -570,4 +570,74 @@ public class ContentService {
 			return VocabSetResponse.fromEntity(s, count);
 		}).toList();
 	}
+
+	@Transactional(readOnly = true)
+	public List<VocabularyResponse> getTeacherPrivateVocabularies(Long teacherId) {
+		return vocabularyRepository.findAllByOwnerIdAndHiddenFalse(teacherId)
+			.stream().map(VocabularyResponse::fromEntity).toList();
+	}
+
+	@Transactional(readOnly = true)
+	public List<VocabularyResponse> getVocabSetItems(Long vocabSetId, Long userId) {
+		VocabSetEntity set = vocabSetRepository.findById(vocabSetId)
+			.orElseThrow(() -> new ApiException(ApiErrorCode.VOCAB_SET_NOT_FOUND));
+
+		boolean isOwner = Objects.equals(set.getTeacherId(), userId);
+		if (!isOwner) {
+			List<ClassVocabSetEntity> assignments = classVocabSetRepository.findAll();
+			boolean hasAccess = assignments.stream()
+				.anyMatch(a -> Objects.equals(a.getVocabSet().getId(), vocabSetId) &&
+					(Objects.equals(a.getClassroom().getTeacher().getId(), userId) ||
+					 classMemberRepository.findByClassroom_IdAndStudent_Id(a.getClassroom().getId(), userId)
+						.map(m -> m.getStatus() == ClassMemberStatus.ACTIVE).orElse(false)));
+			if (!hasAccess) {
+				throw new ApiException(ApiErrorCode.FORBIDDEN);
+			}
+		}
+
+		return vocabSetItemRepository.findAllByVocabSetIdOrderBySortOrderAsc(vocabSetId)
+			.stream()
+			.map(item -> VocabularyResponse.fromEntity(item.getVocabulary()))
+			.toList();
+	}
+
+	@Transactional
+	public void addVocabularyToVocabSet(Long vocabSetId, Long vocabularyId, Long teacherId) {
+		VocabSetEntity set = vocabSetRepository.findById(vocabSetId)
+			.orElseThrow(() -> new ApiException(ApiErrorCode.VOCAB_SET_NOT_FOUND));
+		if (!Objects.equals(set.getTeacherId(), teacherId)) {
+			throw new ApiException(ApiErrorCode.FORBIDDEN);
+		}
+		VocabularyEntity vocab = vocabularyRepository.findById(vocabularyId)
+			.orElseThrow(() -> new ApiException(ApiErrorCode.VOCABULARY_NOT_FOUND));
+
+		int currentCount = vocabSetItemRepository.findAllByVocabSetIdOrderBySortOrderAsc(vocabSetId).size();
+		VocabSetItemEntity item = new VocabSetItemEntity(set, vocab, currentCount + 1);
+		vocabSetItemRepository.save(item);
+	}
+
+	@Transactional
+	public void removeVocabularyFromVocabSet(Long vocabSetId, Long vocabularyId, Long teacherId) {
+		VocabSetEntity set = vocabSetRepository.findById(vocabSetId)
+			.orElseThrow(() -> new ApiException(ApiErrorCode.VOCAB_SET_NOT_FOUND));
+		if (!Objects.equals(set.getTeacherId(), teacherId)) {
+			throw new ApiException(ApiErrorCode.FORBIDDEN);
+		}
+		vocabSetItemRepository.deleteByVocabSetIdAndVocabularyId(vocabSetId, vocabularyId);
+	}
+
+	@Transactional
+	public void deleteVocabSet(Long vocabSetId, Long teacherId) {
+		VocabSetEntity set = vocabSetRepository.findById(vocabSetId)
+			.orElseThrow(() -> new ApiException(ApiErrorCode.VOCAB_SET_NOT_FOUND));
+		if (!Objects.equals(set.getTeacherId(), teacherId)) {
+			throw new ApiException(ApiErrorCode.FORBIDDEN);
+		}
+		classVocabSetRepository.findAll().stream()
+			.filter(c -> Objects.equals(c.getVocabSet().getId(), vocabSetId))
+			.forEach(classVocabSetRepository::delete);
+		vocabSetItemRepository.findAllByVocabSetIdOrderBySortOrderAsc(vocabSetId)
+			.forEach(vocabSetItemRepository::delete);
+		vocabSetRepository.delete(set);
+	}
 }

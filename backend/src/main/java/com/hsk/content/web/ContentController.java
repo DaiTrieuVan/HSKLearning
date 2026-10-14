@@ -240,9 +240,52 @@ public class ContentController {
 		contentService.assignVocabSetToClass(classId, vocabSetId, user.getId());
 	}
 
+	@GetMapping("/vocabularies/my-private")
+	public List<VocabularyResponse> getMyPrivateVocabularies(Principal principal) {
+		UserEntity user = requireUser(principal);
+		return contentService.getTeacherPrivateVocabularies(user.getId());
+	}
+
 	@GetMapping("/classes/{classId}/vocab-sets")
 	public List<VocabSetResponse> getClassVocabSets(@PathVariable Long classId, Principal principal) {
 		UserEntity user = requireUser(principal);
 		return contentService.getClassVocabSets(classId, user.getId());
+	}
+
+	@GetMapping("/vocab-sets/{vocabSetId}/vocabularies")
+	public List<VocabularyResponse> getVocabSetItems(
+			@PathVariable Long vocabSetId,
+			Principal principal) {
+		UserEntity user = requireUser(principal);
+		return contentService.getVocabSetItems(vocabSetId, user.getId());
+	}
+
+	@PostMapping("/vocab-sets/{vocabSetId}/vocabularies/{vocabularyId}")
+	@ResponseStatus(HttpStatus.CREATED)
+	public void addVocabularyToVocabSet(
+			@PathVariable Long vocabSetId,
+			@PathVariable Long vocabularyId,
+			Principal principal) {
+		UserEntity user = requireUser(principal);
+		contentService.addVocabularyToVocabSet(vocabSetId, vocabularyId, user.getId());
+	}
+
+	@DeleteMapping("/vocab-sets/{vocabSetId}/vocabularies/{vocabularyId}")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	public void removeVocabularyFromVocabSet(
+			@PathVariable Long vocabSetId,
+			@PathVariable Long vocabularyId,
+			Principal principal) {
+		UserEntity user = requireUser(principal);
+		contentService.removeVocabularyFromVocabSet(vocabSetId, vocabularyId, user.getId());
+	}
+
+	@DeleteMapping("/vocab-sets/{vocabSetId}")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	public void deleteVocabSet(
+			@PathVariable Long vocabSetId,
+			Principal principal) {
+		UserEntity user = requireUser(principal);
+		contentService.deleteVocabSet(vocabSetId, user.getId());
 	}
 }

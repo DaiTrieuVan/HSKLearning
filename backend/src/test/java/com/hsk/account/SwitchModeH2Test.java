@@ -103,8 +103,24 @@ class SwitchModeH2Test {
 		studentOnlyToken = loginAndGetToken(STUDENT_ONLY_EMAIL, PASSWORD);
 	}
 
+	@Autowired
+	private com.hsk.classroom.repository.ClassJoinAttemptRepository classJoinAttemptRepository;
+
+	@Autowired
+	private com.hsk.classroom.repository.ClassMemberEventRepository classMemberEventRepository;
+
+	@Autowired
+	private com.hsk.classroom.repository.ClassMemberRepository classMemberRepository;
+
+	@Autowired
+	private com.hsk.classroom.repository.ClassRepository classRepository;
+
 	@AfterEach
 	void tearDown() {
+		classJoinAttemptRepository.deleteAll();
+		classMemberEventRepository.deleteAll();
+		classMemberRepository.deleteAll();
+		classRepository.deleteAll();
 		auditLogRepository.deleteAll();
 		teacherRequestRepository.deleteAll();
 		passwordResetTokenRepository.deleteAll();

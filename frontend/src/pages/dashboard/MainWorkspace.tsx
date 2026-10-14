@@ -14,10 +14,12 @@ import {
   CheckCircle2,
   Users,
   LayoutDashboard,
+  BookMarked,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { PandaMascot } from '../../components/common/PandaMascot'
 import { TeacherRequestModal } from '../../components/teacher/TeacherRequestModal'
+import { TeacherVocabSetsModal } from '../../components/teacher/TeacherVocabSetsModal'
 import { AdminTeacherReviewPanel } from '../../components/teacher/AdminTeacherReviewPanel'
 import { AdminUserManagementPanel } from '../../components/admin/AdminUserManagementPanel'
 import { UserProfileModal } from '../../components/profile/UserProfileModal'
@@ -45,6 +47,7 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
 
   // Content States (HTT-03)
   const [hskCurriculumModalOpen, setHskCurriculumModalOpen] = useState(false)
+  const [teacherVocabSetsModalOpen, setTeacherVocabSetsModalOpen] = useState(false)
 
   // Classroom States (HTT-02)
   const [createClassModalOpen, setCreateClassModalOpen] = useState(false)
@@ -747,6 +750,54 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
                 </div>
               )}
 
+              {/* Card 3: Teacher Vocab Sets (HTT-03-CN-009, 011 / QTN-19) */}
+              {isTeacher && (
+                <div
+                  className="game-card"
+                  style={{
+                    padding: '24px',
+                    backgroundColor: '#ffffff',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <div>
+                    <div
+                      style={{
+                        width: '44px',
+                        height: '44px',
+                        borderRadius: 'var(--radius-md)',
+                        backgroundColor: 'var(--primary-light)',
+                        color: 'var(--primary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginBottom: '16px',
+                      }}
+                    >
+                      <BookMarked size={24} />
+                    </div>
+                    <h3 style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: '6px' }}>
+                      Bộ từ vựng & Từ riêng
+                    </h3>
+                    <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '16px' }}>
+                      Tạo bộ từ vựng theo chuyên đề, quản lý kho từ vựng riêng của giáo viên và giao cho các lớp học phụ trách (QTN-19).
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setTeacherVocabSetsModalOpen(true)}
+                    className="btn-gamified btn-primary"
+                    style={{ width: '100%', fontSize: '0.92rem', padding: '10px' }}
+                  >
+                    <BookMarked size={18} />
+                    <span>Quản lý bộ từ vựng</span>
+                  </button>
+                </div>
+              )}
+
               {/* Card 4: Daily Streak */}
               {(isTeacher || isAdmin) && (
                 <div
@@ -1045,6 +1096,14 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
         onClose={() => setHskCurriculumModalOpen(false)}
         token={user.token}
         isTeacher={isTeacher}
+      />
+
+      {/* Teacher Vocab Sets Modal (HTT-03-CN-009, 011 / QTN-19) */}
+      <TeacherVocabSetsModal
+        isOpen={teacherVocabSetsModalOpen}
+        onClose={() => setTeacherVocabSetsModalOpen(false)}
+        token={user.token}
+        classes={classesList}
       />
     </div>
   )

@@ -18,8 +18,7 @@ import {
   getLessonVocabularies,
   getLessonGrammar,
   createLesson,
-  createVocabulary,
-  addVocabularyToLesson,
+  createOrAddVocabularyToLesson,
   importVocabularies,
   type HskLevelItem,
   type LessonItem,
@@ -112,8 +111,8 @@ export const HskCurriculumPage: React.FC = () => {
     try {
       setContentLoading(true)
       const [vList, gList] = await Promise.all([
-        getLessonVocabularies(lessonId),
-        getLessonGrammar(lessonId),
+        getLessonVocabularies(lessonId, user?.token),
+        getLessonGrammar(lessonId, user?.token),
       ])
       setVocabularies(vList)
       setGrammarPoints(gList)
@@ -180,10 +179,19 @@ export const HskCurriculumPage: React.FC = () => {
     e.preventDefault()
     if (!user || !selectedLesson || !newHanzi.trim() || !newPinyin.trim() || !newMeaning.trim()) return
 
+    const isAlreadyInLesson = vocabularies.some(
+      (v) => v.hanzi.trim() === newHanzi.trim() && v.pinyin.trim().toLowerCase() === newPinyin.trim().toLowerCase()
+    )
+    if (isAlreadyInLesson) {
+      setErrorMessage(`Từ vựng "${newHanzi.trim()}" (${newPinyin.trim()}) đã có trong bài học này rồi!`)
+      return
+    }
+
     try {
       setLoading(true)
       setErrorMessage(null)
-      const created = await createVocabulary(
+      const createdOrLinked = await createOrAddVocabularyToLesson(
+        selectedLesson.id,
         {
           hanzi: newHanzi.trim(),
           pinyin: newPinyin.trim(),
@@ -196,8 +204,13 @@ export const HskCurriculumPage: React.FC = () => {
         },
         user.token
       )
-      await addVocabularyToLesson(selectedLesson.id, created.id, user.token)
-      setVocabularies((prev) => [...prev, created])
+
+      setVocabularies((prev) => {
+        if (prev.some((v) => v.id === createdOrLinked.id)) {
+          return prev
+        }
+        return [...prev, createdOrLinked]
+      })
       setShowAddVocab(false)
       setNewHanzi('')
       setNewPinyin('')
@@ -205,11 +218,13 @@ export const HskCurriculumPage: React.FC = () => {
       setNewExampleSentence('')
       setNewExamplePinyin('')
       setNewExampleMeaning('')
-      setActionMessage('Thêm từ vựng vào bài học thành công!')
+      setActionMessage(`Thêm từ vựng "${createdOrLinked.hanzi}" vào bài học thành công!`)
       setTimeout(() => setActionMessage(null), 3000)
     } catch (err) {
       if (err instanceof ApiError) {
         setErrorMessage(err.message)
+      } else {
+        setErrorMessage('Không thể thêm từ vựng vào bài học.')
       }
     } finally {
       setLoading(false)

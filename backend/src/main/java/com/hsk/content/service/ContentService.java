@@ -12,6 +12,7 @@ import com.hsk.content.domain.GrammarPointEntity;
 import com.hsk.content.domain.HskLevelEntity;
 import com.hsk.content.domain.LessonEntity;
 import com.hsk.content.domain.LessonVocabularyEntity;
+import com.hsk.content.domain.LessonVocabularyId;
 import com.hsk.content.domain.VocabSetEntity;
 import com.hsk.content.domain.VocabSetItemEntity;
 import com.hsk.content.domain.VocabularyEntity;
@@ -27,6 +28,7 @@ import com.hsk.content.dto.LessonStudyResponse;
 import com.hsk.content.dto.UpdateLessonRequest;
 import com.hsk.content.dto.UpdateVocabularyRequest;
 import com.hsk.content.dto.VocabSetResponse;
+import com.hsk.content.dto.VocabularyAudioResponse;
 import com.hsk.content.dto.VocabularyResponse;
 import com.hsk.content.repository.ClassVocabSetRepository;
 import com.hsk.content.repository.GrammarPointRepository;
@@ -363,8 +365,74 @@ public class ContentService {
 		VocabularyEntity vocabulary = vocabularyRepository.findById(vocabularyId)
 			.orElseThrow(() -> new ApiException(ApiErrorCode.VOCABULARY_NOT_FOUND));
 
+		LessonVocabularyId relId = new LessonVocabularyId(lessonId, vocabularyId);
+		if (lessonVocabularyRepository.existsById(relId)) {
+			return;
+		}
+
 		LessonVocabularyEntity relation = new LessonVocabularyEntity(lesson, vocabulary, sortOrder != null ? sortOrder : 1);
 		lessonVocabularyRepository.save(relation);
+	}
+
+	@Transactional
+	public VocabularyResponse createOrAddVocabularyToLesson(Long lessonId, CreateVocabularyRequest req, Long userId) {
+		LessonEntity lesson = lessonRepository.findById(lessonId)
+			.orElseThrow(() -> new ApiException(ApiErrorCode.LESSON_NOT_FOUND));
+
+		Long ownerId = Boolean.TRUE.equals(req.isPrivate()) ? userId : null;
+		String ownerKey = VocabularyEntity.buildOwnerKey(ownerId, req.hanzi(), req.pinyin());
+
+		VocabularyEntity vocab = vocabularyRepository.findByOwnerKey(ownerKey).orElse(null);
+		if (vocab == null) {
+			HskLevelEntity level = null;
+			if (req.hskLevelId() != null) {
+				level = levelRepository.findById(req.hskLevelId()).orElse(null);
+			}
+			if (level == null) {
+				level = lesson.getHskLevel();
+			}
+
+			vocab = new VocabularyEntity(
+				req.hanzi().trim(),
+				req.pinyin().trim(),
+				req.meaning().trim(),
+				req.partOfSpeech(),
+				req.audioUrl(),
+				req.exampleSentence(),
+				req.examplePinyin(),
+				req.exampleMeaning(),
+				level,
+				ownerId
+			);
+			vocab = vocabularyRepository.save(vocab);
+		} else {
+			if (vocab.isHidden()) {
+				vocab.setHidden(false);
+			}
+			if (req.meaning() != null && !req.meaning().isBlank()) {
+				vocab.setMeaning(req.meaning().trim());
+			}
+			if (req.partOfSpeech() != null && !req.partOfSpeech().isBlank()) {
+				vocab.setPartOfSpeech(req.partOfSpeech());
+			}
+			if (req.audioUrl() != null && !req.audioUrl().isBlank()) {
+				vocab.setAudioUrl(req.audioUrl());
+			}
+			if (req.exampleSentence() != null) {
+				vocab.setExampleSentence(req.exampleSentence());
+				vocab.setExamplePinyin(req.examplePinyin());
+				vocab.setExampleMeaning(req.exampleMeaning());
+			}
+			vocab = vocabularyRepository.save(vocab);
+		}
+
+		LessonVocabularyId relId = new LessonVocabularyId(lesson.getId(), vocab.getId());
+		if (!lessonVocabularyRepository.existsById(relId)) {
+			int currentCount = lessonVocabularyRepository.findAllByLessonIdOrderBySortOrderAsc(lesson.getId()).size();
+			lessonVocabularyRepository.save(new LessonVocabularyEntity(lesson, vocab, currentCount + 1));
+		}
+
+		return VocabularyResponse.fromEntity(vocab);
 	}
 
 	@Transactional
@@ -408,6 +476,32 @@ public class ContentService {
 			log.error("Failed to store audio file", e);
 			throw new ApiException(ApiErrorCode.INTERNAL_ERROR);
 		}
+	}
+
+	@Transactional(readOnly = true)
+	public VocabularyAudioResponse getVocabularyAudio(Long vocabularyId) {
+		VocabularyEntity vocab = vocabularyRepository.findById(vocabularyId)
+			.orElseThrow(() -> new ApiException(ApiErrorCode.VOCABULARY_NOT_FOUND));
+
+		if (vocab.isHidden()) {
+			throw new ApiException(ApiErrorCode.VOCABULARY_NOT_FOUND);
+		}
+
+		String audioUrl = vocab.getAudioUrl();
+		if (audioUrl == null || audioUrl.trim().isEmpty()) {
+			throw new ApiException(ApiErrorCode.AUDIO_NOT_FOUND);
+		}
+
+		// HTT-04-CN-003-TC-03: Xử lý khi tệp audio không tồn tại
+		if (audioUrl.startsWith("/uploads/") || audioUrl.startsWith("uploads/")) {
+			String relative = audioUrl.startsWith("/") ? audioUrl.substring(1) : audioUrl;
+			Path filePath = Paths.get(relative);
+			if (!Files.exists(filePath)) {
+				throw new ApiException(ApiErrorCode.AUDIO_FILE_NOT_FOUND);
+			}
+		}
+
+		return new VocabularyAudioResponse(vocab.getId(), vocab.getHanzi(), vocab.getPinyin(), audioUrl);
 	}
 
 	// ==================== 5. BULK IMPORT (HTT-03-CN-007 / QTN-07) ====================

@@ -113,6 +113,12 @@ public enum ApiErrorCode {
 	/** HTT-03-CN-009: Vocabulary set not found. */
 	VOCAB_SET_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy bộ từ vựng"),
 
+	/** HTT-04-CN-003: Vocabulary has no audio attached. */
+	AUDIO_NOT_FOUND(HttpStatus.NOT_FOUND, "Từ vựng chưa có tệp âm thanh phát âm"),
+
+	/** HTT-04-CN-003: Audio file does not exist on disk or cannot be reached. */
+	AUDIO_FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "Tệp âm thanh không tồn tại hoặc đã bị xóa"),
+
 	/** Unexpected server side failure; the client may retry. */
 	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Hệ thống đang gặp sự cố, vui lòng thử lại sau");
 

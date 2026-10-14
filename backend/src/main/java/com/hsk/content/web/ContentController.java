@@ -171,6 +171,16 @@ public class ContentController {
 		contentService.addVocabularyToLesson(lessonId, vocabularyId, sortOrder);
 	}
 
+	@PostMapping("/lessons/{lessonId}/vocabularies/create-or-add")
+	@ResponseStatus(HttpStatus.CREATED)
+	public VocabularyResponse createOrAddVocabularyToLesson(
+			@PathVariable Long lessonId,
+			@Valid @RequestBody CreateVocabularyRequest req,
+			Principal principal) {
+		UserEntity user = requireUser(principal);
+		return contentService.createOrAddVocabularyToLesson(lessonId, req, user.getId());
+	}
+
 	@DeleteMapping("/lessons/{lessonId}/vocabularies/{vocabularyId}")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public void removeVocabularyFromLesson(

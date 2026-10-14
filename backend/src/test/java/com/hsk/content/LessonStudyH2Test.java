@@ -84,7 +84,7 @@ class LessonStudyH2Test {
 	void setUp() throws Exception {
 		// Tạo học sinh và lấy JWT token
 		if (userRepository.findByEmail(STUDENT_EMAIL).isEmpty()) {
-			registrationService.registerStudent(new RegisterStudentRequest(STUDENT_EMAIL, PASSWORD, PASSWORD, "Học sinh kiểm thử"));
+			registrationService.registerStudent(new RegisterStudentRequest("Học sinh kiểm thử", STUDENT_EMAIL, PASSWORD, PASSWORD));
 		}
 		studentToken = obtainToken(STUDENT_EMAIL, PASSWORD);
 

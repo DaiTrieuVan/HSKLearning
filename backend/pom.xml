@@ -15,7 +15,7 @@
 	<description>Backend for the HSK Chinese learning platform (teacher assigns work to classes)</description>
 
 	<properties>
-		<java.version>23</java.version>
+		<java.version>21</java.version>
 		<springdoc.version>3.1.1</springdoc.version>
 	</properties>
 

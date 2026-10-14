@@ -1,5 +1,7 @@
 package com.hsk.common.config;
 
+import java.util.List;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -17,85 +19,148 @@ import com.hsk.account.domain.UserRoleEntity;
 import com.hsk.account.repository.RoleRepository;
 import com.hsk.account.repository.UserRepository;
 import com.hsk.account.repository.UserRoleRepository;
+import com.hsk.classroom.domain.ClassEntity;
+import com.hsk.classroom.domain.ClassMemberEntity;
+import com.hsk.classroom.repository.ClassMemberRepository;
+import com.hsk.classroom.repository.ClassRepository;
+import com.hsk.content.domain.VocabSetEntity;
+import com.hsk.content.domain.VocabSetItemEntity;
+import com.hsk.content.domain.VocabularyEntity;
+import com.hsk.content.repository.VocabSetItemRepository;
+import com.hsk.content.repository.VocabSetRepository;
+import com.hsk.content.repository.VocabularyRepository;
 
 /**
- * Initializes default development accounts (Admin, Teacher, Student) on application startup
- * if they do not exist yet. Only active on non-test profiles.
+ * Initializes default development accounts (Admin, Teachers, Students) and sample data
+ * on application startup if they do not exist yet. Only active on non-test profiles.
  */
 @Component
 @Profile("!test & !test-h2")
 public class DataInitializer implements ApplicationRunner {
 
 	private static final Logger log = LoggerFactory.getLogger(DataInitializer.class);
+	public static final String DEFAULT_PASSWORD = "Password123";
 
 	private final UserRepository userRepository;
 	private final RoleRepository roleRepository;
 	private final UserRoleRepository userRoleRepository;
 	private final PasswordEncoder passwordEncoder;
+	private final ClassRepository classRepository;
+	private final ClassMemberRepository classMemberRepository;
+	private final VocabSetRepository vocabSetRepository;
+	private final VocabSetItemRepository vocabSetItemRepository;
+	private final VocabularyRepository vocabularyRepository;
 
 	public DataInitializer(
 			UserRepository userRepository,
 			RoleRepository roleRepository,
 			UserRoleRepository userRoleRepository,
-			PasswordEncoder passwordEncoder) {
+			PasswordEncoder passwordEncoder,
+			ClassRepository classRepository,
+			ClassMemberRepository classMemberRepository,
+			VocabSetRepository vocabSetRepository,
+			VocabSetItemRepository vocabSetItemRepository,
+			VocabularyRepository vocabularyRepository) {
 		this.userRepository = userRepository;
 		this.roleRepository = roleRepository;
 		this.userRoleRepository = userRoleRepository;
 		this.passwordEncoder = passwordEncoder;
+		this.classRepository = classRepository;
+		this.classMemberRepository = classMemberRepository;
+		this.vocabSetRepository = vocabSetRepository;
+		this.vocabSetItemRepository = vocabSetItemRepository;
+		this.vocabularyRepository = vocabularyRepository;
 	}
 
 	@Override
 	@Transactional
 	public void run(ApplicationArguments args) {
-		initAdminUser();
-		initTeacherUser();
-		initStudentUser();
+		log.info("==> [DataInitializer] Checking and seeding default development accounts & data...");
+
+		RoleEntity adminRole = roleRepository.findByCode(RoleCode.ADMIN).orElse(null);
+		RoleEntity teacherRole = roleRepository.findByCode(RoleCode.TEACHER).orElse(null);
+		RoleEntity studentRole = roleRepository.findByCode(RoleCode.STUDENT).orElse(null);
+
+		// 1. Quản trị viên (ADMIN) - admin@hsk.com
+		createOrUpdateAccount("admin@hsk.com", "Quản trị viên Hệ thống", List.of(adminRole, teacherRole, studentRole), UiMode.TEACHER);
+
+		// 2. Giáo viên 1 & 2 (TEACHER)
+		UserEntity teacher1 = createOrUpdateAccount("teacher1@hsk.com", "Cô Vương Lệ (Giáo viên)", List.of(teacherRole, studentRole), UiMode.TEACHER);
+		createOrUpdateAccount("teacher2@hsk.com", "Thầy Trương Vĩ (Giáo viên)", List.of(teacherRole, studentRole), UiMode.TEACHER);
+
+		// 3. Học sinh 1 & 2 (STUDENT)
+		UserEntity student1 = createOrUpdateAccount("student1@hsk.com", "Nguyễn Văn Học (Học sinh)", List.of(studentRole), UiMode.STUDENT);
+		createOrUpdateAccount("student2@hsk.com", "Trần Thị Sinh (Học sinh)", List.of(studentRole), UiMode.STUDENT);
+
+		// Giữ thêm alias .edu cũ để tương thích ngược nếu cần
+		createOrUpdateAccount("admin@hsk.edu", "Quản trị viên Hệ thống (edu)", List.of(adminRole, teacherRole, studentRole), UiMode.TEACHER);
+		createOrUpdateAccount("teacher@hsk.edu", "Cô Trương (Giáo viên edu)", List.of(teacherRole, studentRole), UiMode.TEACHER);
+		createOrUpdateAccount("student@hsk.edu", "Lý Tiểu Long (Học sinh edu)", List.of(studentRole), UiMode.STUDENT);
+
+		// 4. Khởi tạo Lớp học mẫu & Bộ từ vựng mẫu
+		if (teacher1 != null && student1 != null) {
+			initSampleClassroom(teacher1, student1);
+			initSampleVocabSet(teacher1);
+		}
+
+		log.info("==> [DataInitializer] Completed. All seed accounts are ready with password '{}'!", DEFAULT_PASSWORD);
 	}
 
-	private void initAdminUser() {
-		String email = "admin@hsk.edu";
-		if (userRepository.findByEmailIgnoreCase(email).isEmpty()) {
-			log.info("Seeding default Administrator account: {}", email);
-			UserEntity admin = UserEntity.register(email, passwordEncoder.encode("Admin@123"), "Quản trị viên Hệ thống");
-			admin.switchMode(UiMode.TEACHER);
-			UserEntity saved = userRepository.save(admin);
+	private UserEntity createOrUpdateAccount(String email, String fullName, List<RoleEntity> roles, UiMode defaultMode) {
+		UserEntity user = userRepository.findByEmailIgnoreCase(email).orElse(null);
+		if (user == null) {
+			log.info("==> [DataInitializer] Seeding account: {}", email);
+			user = UserEntity.register(email, passwordEncoder.encode(DEFAULT_PASSWORD), fullName);
+			if (defaultMode != null) {
+				user.switchMode(defaultMode);
+			}
+			user = userRepository.save(user);
 
-			RoleEntity adminRole = roleRepository.findByCode(RoleCode.ADMIN).orElse(null);
-			RoleEntity teacherRole = roleRepository.findByCode(RoleCode.TEACHER).orElse(null);
-			RoleEntity studentRole = roleRepository.findByCode(RoleCode.STUDENT).orElse(null);
+			for (RoleEntity role : roles) {
+				if (role != null) {
+					userRoleRepository.save(UserRoleEntity.of(user, role, null));
+				}
+			}
+		}
+		return user;
+	}
 
-			if (adminRole != null) userRoleRepository.save(UserRoleEntity.of(saved, adminRole, null));
-			if (teacherRole != null) userRoleRepository.save(UserRoleEntity.of(saved, teacherRole, null));
-			if (studentRole != null) userRoleRepository.save(UserRoleEntity.of(saved, studentRole, null));
+	private void initSampleClassroom(UserEntity teacher, UserEntity student) {
+		String joinCode = "HSK101";
+		ClassEntity classroom = classRepository.findByJoinCode(joinCode).orElse(null);
+		if (classroom == null) {
+			log.info("==> [DataInitializer] Seeding sample classroom with join code '{}'", joinCode);
+			classroom = ClassEntity.create(
+					teacher,
+					"Lớp HSK 1 Cơ bản - Khóa K01",
+					"Lớp học từ vựng và ngữ pháp nền tảng HSK 1 cho người mới bắt đầu.",
+					joinCode
+			);
+			classroom = classRepository.save(classroom);
+		}
+
+		if (classroom != null && classMemberRepository.findByClassroom_IdAndStudent_Id(classroom.getId(), student.getId()).isEmpty()) {
+			log.info("==> [DataInitializer] Enrolling '{}' into sample classroom '{}'", student.getEmail(), joinCode);
+			classMemberRepository.save(ClassMemberEntity.create(classroom, student));
 		}
 	}
 
-	private void initTeacherUser() {
-		String email = "teacher@hsk.edu";
-		if (userRepository.findByEmailIgnoreCase(email).isEmpty()) {
-			log.info("Seeding default Teacher account: {}", email);
-			UserEntity teacher = UserEntity.register(email, passwordEncoder.encode("Teacher@123"), "Cô Trương (Giáo viên)");
-			teacher.switchMode(UiMode.TEACHER);
-			UserEntity saved = userRepository.save(teacher);
+	private void initSampleVocabSet(UserEntity teacher) {
+		if (vocabSetRepository.findAllByTeacherIdOrderByCreatedAtDesc(teacher.getId()).isEmpty()) {
+			log.info("==> [DataInitializer] Seeding sample vocabulary set for teacher '{}'", teacher.getEmail());
+			VocabSetEntity set = new VocabSetEntity(
+					teacher.getId(),
+					"Bộ 20 từ vựng HSK 1 thông dụng",
+					"Tổng hợp các từ vựng giao tiếp cơ bản nhất cho người mới bắt đầu học tiếng Trung."
+			);
+			VocabSetEntity savedSet = vocabSetRepository.save(set);
 
-			RoleEntity teacherRole = roleRepository.findByCode(RoleCode.TEACHER).orElse(null);
-			RoleEntity studentRole = roleRepository.findByCode(RoleCode.STUDENT).orElse(null);
-
-			if (teacherRole != null) userRoleRepository.save(UserRoleEntity.of(saved, teacherRole, null));
-			if (studentRole != null) userRoleRepository.save(UserRoleEntity.of(saved, studentRole, null));
-		}
-	}
-
-	private void initStudentUser() {
-		String email = "student@hsk.edu";
-		if (userRepository.findByEmailIgnoreCase(email).isEmpty()) {
-			log.info("Seeding default Student account: {}", email);
-			UserEntity student = UserEntity.register(email, passwordEncoder.encode("Student@123"), "Lý Tiểu Long (Học sinh)");
-			student.switchMode(UiMode.STUDENT);
-			UserEntity saved = userRepository.save(student);
-
-			RoleEntity studentRole = roleRepository.findByCode(RoleCode.STUDENT).orElse(null);
-			if (studentRole != null) userRoleRepository.save(UserRoleEntity.of(saved, studentRole, null));
+			List<VocabularyEntity> vocabs = vocabularyRepository.findAll();
+			int order = 1;
+			for (VocabularyEntity v : vocabs) {
+				if (order > 10) break;
+				vocabSetItemRepository.save(new VocabSetItemEntity(savedSet, v, order++));
+			}
 		}
 	}
 }

@@ -943,6 +943,7 @@ export const TeacherVocabSetsModal: React.FC<TeacherVocabSetsModalProps> = ({
               justifyContent: 'center',
               zIndex: 1100,
             }}
+            onClick={() => setShowCreateSet(false)}
           >
             <div
               className="game-card animate-scale-up"
@@ -953,8 +954,25 @@ export const TeacherVocabSetsModal: React.FC<TeacherVocabSetsModalProps> = ({
                 borderRadius: 'var(--radius-lg)',
                 padding: '24px',
               }}
+              onClick={(e) => e.stopPropagation()}
             >
-              <h3 style={{ margin: '0 0 16px', fontSize: '1.15rem', fontWeight: 800 }}>Tạo bộ từ vựng mới</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800 }}>Tạo bộ từ vựng mới</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateSet(false)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--text-muted)',
+                    padding: '4px',
+                  }}
+                  title="Đóng"
+                >
+                  <X size={20} />
+                </button>
+              </div>
               <form onSubmit={handleCreateSetSubmit}>
                 <div style={{ marginBottom: '14px' }}>
                   <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, marginBottom: '6px' }}>
@@ -1041,6 +1059,7 @@ export const TeacherVocabSetsModal: React.FC<TeacherVocabSetsModalProps> = ({
               justifyContent: 'center',
               zIndex: 1100,
             }}
+            onClick={() => setAssigningSet(null)}
           >
             <div
               className="game-card animate-scale-up"
@@ -1051,15 +1070,46 @@ export const TeacherVocabSetsModal: React.FC<TeacherVocabSetsModalProps> = ({
                 borderRadius: 'var(--radius-lg)',
                 padding: '24px',
               }}
+              onClick={(e) => e.stopPropagation()}
             >
-              <h3 style={{ margin: '0 0 10px', fontSize: '1.15rem', fontWeight: 800 }}>Gán bộ từ vào lớp học</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800 }}>Gán bộ từ vào lớp học</h3>
+                <button
+                  type="button"
+                  onClick={() => setAssigningSet(null)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--text-muted)',
+                    padding: '4px',
+                    borderRadius: 'var(--radius-sm)',
+                  }}
+                  title="Đóng"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
               <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0 0 16px' }}>
                 Học sinh trong lớp được chọn sẽ nhìn thấy và học toàn bộ từ vựng trong bộ &quot;<strong>{assigningSet.title}</strong>&quot;.
               </p>
 
               {classes.length === 0 ? (
-                <div style={{ padding: '16px', backgroundColor: '#fef3c7', borderRadius: 'var(--radius-md)', marginBottom: '16px', fontSize: '0.85rem', color: '#92400e' }}>
-                  Bạn chưa có lớp học nào đang phụ trách. Vui lòng tạo lớp học trước!
+                <div>
+                  <div style={{ padding: '16px', backgroundColor: '#fef3c7', borderRadius: 'var(--radius-md)', marginBottom: '20px', fontSize: '0.85rem', color: '#92400e', lineHeight: 1.5 }}>
+                    Bạn chưa có lớp học nào đang phụ trách. Vui lòng tạo lớp học trước!
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <button
+                      type="button"
+                      onClick={() => setAssigningSet(null)}
+                      className="btn-gamified btn-primary"
+                      style={{ padding: '8px 20px', fontSize: '0.9rem' }}
+                    >
+                      Đã hiểu / Đóng
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <form onSubmit={handleAssignToClassSubmit}>
@@ -1131,6 +1181,7 @@ export const TeacherVocabSetsModal: React.FC<TeacherVocabSetsModalProps> = ({
               justifyContent: 'center',
               zIndex: 1100,
             }}
+            onClick={() => setShowAddWordToSet(false)}
           >
             <div
               className="game-card animate-scale-up"
@@ -1144,6 +1195,7 @@ export const TeacherVocabSetsModal: React.FC<TeacherVocabSetsModalProps> = ({
                 display: 'flex',
                 flexDirection: 'column',
               }}
+              onClick={(e) => e.stopPropagation()}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
                 <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800 }}>
@@ -1252,6 +1304,7 @@ export const TeacherVocabSetsModal: React.FC<TeacherVocabSetsModalProps> = ({
               justifyContent: 'center',
               zIndex: 1100,
             }}
+            onClick={() => setShowAddWord(false)}
           >
             <div
               className="game-card animate-scale-up"
@@ -1262,10 +1315,27 @@ export const TeacherVocabSetsModal: React.FC<TeacherVocabSetsModalProps> = ({
                 borderRadius: 'var(--radius-lg)',
                 padding: '24px',
               }}
+              onClick={(e) => e.stopPropagation()}
             >
-              <h3 style={{ margin: '0 0 16px', fontSize: '1.15rem', fontWeight: 800 }}>
-                Thêm từ vựng riêng của Giáo viên
-              </h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800 }}>
+                  Thêm từ vựng riêng của Giáo viên
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowAddWord(false)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--text-muted)',
+                    padding: '4px',
+                  }}
+                  title="Đóng"
+                >
+                  <X size={20} />
+                </button>
+              </div>
               <form onSubmit={handleCreatePrivateWordSubmit}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
                   <div>
@@ -1455,6 +1525,7 @@ export const TeacherVocabSetsModal: React.FC<TeacherVocabSetsModalProps> = ({
               justifyContent: 'center',
               zIndex: 1100,
             }}
+            onClick={() => setShowImport(false)}
           >
             <div
               className="game-card animate-scale-up"
@@ -1465,8 +1536,25 @@ export const TeacherVocabSetsModal: React.FC<TeacherVocabSetsModalProps> = ({
                 borderRadius: 'var(--radius-lg)',
                 padding: '24px',
               }}
+              onClick={(e) => e.stopPropagation()}
             >
-              <h3 style={{ margin: '0 0 10px', fontSize: '1.15rem', fontWeight: 800 }}>Nhập file CSV từ vựng riêng</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800 }}>Nhập file CSV từ vựng riêng</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowImport(false)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--text-muted)',
+                    padding: '4px',
+                  }}
+                  title="Đóng"
+                >
+                  <X size={20} />
+                </button>
+              </div>
               <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '0 0 16px', lineHeight: 1.5 }}>
                 Định dạng tệp CSV UTF-8 theo cột: <code>hanzi,pinyin,meaning,partOfSpeech,exampleSentence,examplePinyin,exampleMeaning</code>
               </p>

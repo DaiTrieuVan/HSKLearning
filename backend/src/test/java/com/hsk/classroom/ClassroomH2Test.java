@@ -52,7 +52,7 @@ import com.hsk.common.audit.AuditLogRepository;
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("test-h2")
+@ActiveProfiles("h2")
 class ClassroomH2Test {
 
 	private static final String LOGIN_URL = "/api/v1/auth/login";

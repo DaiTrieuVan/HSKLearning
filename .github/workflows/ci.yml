@@ -37,6 +37,18 @@ jobs:
       - name: Build and verify with Maven
         run: ./mvnw -B clean verify
 
+      - name: Print test reports on failure
+        if: failure()
+        run: |
+          for f in target/surefire-reports/*.txt; do
+            if [ -f "$f" ]; then
+              echo "================================================================="
+              echo "FILE: $f"
+              echo "================================================================="
+              head -n 120 "$f"
+            fi
+          done
+
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4

@@ -44,7 +44,7 @@ import com.hsk.content.repository.VocabularyRepository;
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("test-h2")
+@ActiveProfiles("h2")
 class LessonStudyH2Test {
 
 	private static final String LOGIN_URL = "/api/v1/auth/login";

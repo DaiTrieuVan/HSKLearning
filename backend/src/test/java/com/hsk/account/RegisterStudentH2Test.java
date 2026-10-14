@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,6 +60,12 @@ class RegisterStudentH2Test {
 
 	private static RegisterStudentRequest request(String email, String password, String confirm) {
 		return new RegisterStudentRequest("Nguyễn Văn An", email, password, confirm);
+	}
+
+	@BeforeEach
+	void cleanUp() {
+		this.userRoleRepository.deleteAll();
+		this.userRepository.deleteAll();
 	}
 
 	@Test

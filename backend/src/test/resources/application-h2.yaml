@@ -32,3 +32,12 @@ spring:
     init:
       mode: always
       data-locations: classpath:db/h2/roles.sql
+
+app:
+  cors:
+    allowed-origins: http://localhost:5173
+  jwt:
+    secret: default-secret-key-that-is-at-least-32-bytes-long-for-hsk-dev-2026!
+    expiration-hours: 24
+  upload:
+    dir: target/test-uploads

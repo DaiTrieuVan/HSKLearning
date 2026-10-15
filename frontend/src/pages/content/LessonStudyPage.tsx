@@ -27,6 +27,7 @@ import {
   unmarkLessonComplete,
   type LessonProgressResponse,
 } from '../../api/roadmap'
+import { getFlashcards, reviewFlashcard, type FlashcardItem } from '../../api/flashcard'
 import { PandaMascot } from '../../components/common/PandaMascot'
 
 export const LessonStudyPage: React.FC = () => {
@@ -50,9 +51,16 @@ export const LessonStudyPage: React.FC = () => {
   // Search filter inside vocabulary list
   const [vocabSearch, setVocabSearch] = useState('')
 
-  // Flashcard mode states
+  // Flashcard mode states (HTT-04-CN-005)
+  const [flashcards, setFlashcards] = useState<FlashcardItem[]>([])
+  const [flashcardsLoading, setFlashcardsLoading] = useState(false)
   const [flashcardIndex, setFlashcardIndex] = useState(0)
   const [isFlipped, setIsFlipped] = useState(false)
+  const [isSessionFinished, setIsSessionFinished] = useState(false)
+  const [isRelearningOnlyForgotten, setIsRelearningOnlyForgotten] = useState(false)
+  const [sessionRememberedCount, setSessionRememberedCount] = useState(0)
+  const [sessionForgottenCount, setSessionForgottenCount] = useState(0)
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false)
 
   // Audio playback state
   const [playingAudioId, setPlayingAudioId] = useState<number | null>(null)
@@ -177,7 +185,7 @@ export const LessonStudyPage: React.FC = () => {
   }
 
   // Pronunciation handler: HTT-04-CN-003 Play/Stop audio
-  const togglePronunciation = useCallback((vocab: VocabularyItem) => {
+  const togglePronunciation = useCallback((vocab: VocabularyItem | FlashcardItem) => {
     if (!vocab.audioUrl || !vocab.audioUrl.trim()) {
       return
     }
@@ -261,17 +269,97 @@ export const LessonStudyPage: React.FC = () => {
     )
   })
 
-  // Flashcard navigation
-  const nextFlashcard = () => {
-    if (!lessonData || lessonData.vocabularies.length === 0) return
-    setIsFlipped(false)
-    setFlashcardIndex((prev) => (prev + 1) % lessonData.vocabularies.length)
+  // Flashcard API loading & review logic (HTT-04-CN-005)
+  const loadFlashcards = useCallback(async (onlyForgotten: boolean = false) => {
+    if (!lessonId) return
+    setFlashcardsLoading(true)
+    try {
+      const idNum = parseInt(lessonId, 10)
+      if (isNaN(idNum)) return
+      if (token) {
+        const data = await getFlashcards(token, { lessonId: idNum, onlyForgotten })
+        setFlashcards(data)
+      } else {
+        const fallbackCards: FlashcardItem[] = (lessonData?.vocabularies || []).map(v => ({
+          id: v.id,
+          hanzi: v.hanzi,
+          pinyin: v.pinyin,
+          meaning: v.meaning,
+          partOfSpeech: v.partOfSpeech,
+          audioUrl: v.audioUrl,
+          exampleSentence: v.exampleSentence,
+          examplePinyin: v.examplePinyin,
+          exampleMeaning: v.exampleMeaning,
+          lastResult: null,
+        }))
+        setFlashcards(fallbackCards)
+      }
+      setFlashcardIndex(0)
+      setIsFlipped(false)
+      setIsSessionFinished(false)
+      setIsRelearningOnlyForgotten(onlyForgotten)
+      setSessionRememberedCount(0)
+      setSessionForgottenCount(0)
+    } catch (err: any) {
+      console.error('Failed to load flashcards:', err)
+    } finally {
+      setFlashcardsLoading(false)
+    }
+  }, [lessonId, token, lessonData])
+
+  useEffect(() => {
+    if (activeTab === 'FLASHCARD') {
+      loadFlashcards(false)
+    }
+  }, [activeTab, loadFlashcards])
+
+  // TC-02: Đánh dấu đã nhớ hoặc chưa nhớ
+  const handleReviewCard = async (result: 'REMEMBERED' | 'FORGOTTEN') => {
+    if (flashcards.length === 0 || isSubmittingReview) return
+    const currentCard = flashcards[flashcardIndex]
+    if (!currentCard) return
+
+    setIsSubmittingReview(true)
+    try {
+      if (token) {
+        await reviewFlashcard(token, { vocabularyId: currentCard.id, result })
+      }
+
+      setFlashcards(prev =>
+        prev.map((c, i) => (i === flashcardIndex ? { ...c, lastResult: result } : c))
+      )
+
+      if (result === 'REMEMBERED') {
+        setSessionRememberedCount(prev => prev + 1)
+      } else {
+        setSessionForgottenCount(prev => prev + 1)
+      }
+
+      // TC-02: Chuyển sang thẻ kế tiếp
+      if (flashcardIndex < flashcards.length - 1) {
+        setIsFlipped(false)
+        setFlashcardIndex(prev => prev + 1)
+      } else {
+        // TC-03: Đã đi hết các thẻ -> Kết thúc lượt học
+        setIsSessionFinished(true)
+      }
+    } catch (err: any) {
+      showAudioError(err?.message || 'Không thể lưu kết quả học từ.')
+    } finally {
+      setIsSubmittingReview(false)
+    }
   }
 
   const prevFlashcard = () => {
-    if (!lessonData || lessonData.vocabularies.length === 0) return
+    if (flashcards.length === 0) return
     setIsFlipped(false)
-    setFlashcardIndex((prev) => (prev - 1 + lessonData.vocabularies.length) % lessonData.vocabularies.length)
+    setFlashcardIndex((prev) => (prev - 1 + flashcards.length) % flashcards.length)
+  }
+
+  const nextFlashcard = () => {
+    if (flashcards.length === 0) return
+    setIsFlipped(false)
+    setFlashcardIndex((prev) => (prev + 1) % flashcards.length)
   }
 
   // ==================== RENDERING STATES ====================
@@ -338,7 +426,7 @@ export const LessonStudyPage: React.FC = () => {
   }
 
   const hasGrammar = lessonData.grammarPoints && lessonData.grammarPoints.length > 0
-  const currentCard = lessonData.vocabularies[flashcardIndex]
+  const currentCard = flashcards[flashcardIndex] || (lessonData.vocabularies && lessonData.vocabularies[flashcardIndex])
 
   return (
     <div className="min-h-screen bg-slate-50 text-gray-800 pb-16">
@@ -624,95 +712,304 @@ export const LessonStudyPage: React.FC = () => {
           </div>
         )}
 
-        {/* TAB 3: FLASHCARD ÔN TẬP TƯƠNG TÁC */}
-        {activeTab === 'FLASHCARD' && currentCard && (
+        {/* TAB 3: FLASHCARD ÔN TẬP TƯƠNG TÁC (HTT-04-CN-005) */}
+        {activeTab === 'FLASHCARD' && (
           <div className="max-w-md mx-auto">
-            <div className="flex items-center justify-between text-xs text-gray-500 font-medium mb-3 px-2">
-              <span>
-                Thẻ {flashcardIndex + 1} / {lessonData.vocabularies.length}
-              </span>
-              <span className="text-emerald-700 font-semibold">Chạm thẻ để lật xem đáp án</span>
-            </div>
+            {/* Case 1: Loading */}
+            {flashcardsLoading && (
+              <div className="bg-white rounded-3xl p-12 text-center border border-gray-100 shadow-sm">
+                <Loader2 className="w-8 h-8 animate-spin text-emerald-600 mx-auto mb-3" />
+                <p className="text-gray-600 font-medium text-sm">Đang tải danh sách thẻ flashcard...</p>
+              </div>
+            )}
 
-            {/* Flip Card Container */}
-            <div
-              onClick={() => setIsFlipped(!isFlipped)}
-              className="w-full h-80 bg-white rounded-3xl border-2 border-emerald-300 shadow-xl p-8 flex flex-col items-center justify-center cursor-pointer text-center select-none hover:shadow-2xl transition-all relative overflow-hidden"
-            >
-              {/* TC-02: Ẩn nút nghe nếu từ vựng chưa có audio */}
-              {currentCard.audioUrl && currentCard.audioUrl.trim() && (
-                <div className="absolute top-4 right-4">
+            {/* Case 2: Dữ liệu rỗng (HTT-04-CN-005-TC-04) */}
+            {!flashcardsLoading && flashcards.length === 0 && (
+              <div className="bg-white rounded-3xl p-10 text-center border border-gray-100 shadow-sm space-y-4">
+                <PandaMascot size={64} className="mx-auto opacity-70" />
+                <div>
+                  <h3 className="text-base font-bold text-gray-900 mb-1">Không có từ để học</h3>
+                  <p className="text-xs text-gray-500">
+                    {isRelearningOnlyForgotten
+                      ? 'Tuyệt vời! Bạn không còn từ nào ở trạng thái chưa nhớ.'
+                      : 'Bài học này hiện chưa có từ vựng nào trong danh sách ôn tập flashcard.'}
+                  </p>
+                </div>
+                <div className="pt-2">
                   <button
                     type="button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      togglePronunciation(currentCard)
+                    onClick={() => {
+                      if (isRelearningOnlyForgotten) {
+                        loadFlashcards(false)
+                      } else {
+                        setActiveTab('VOCAB')
+                      }
                     }}
-                    className={`p-2.5 rounded-full transition-all ${
-                      playingAudioId === currentCard.id
-                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30 ring-2 ring-emerald-400'
-                        : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                    }`}
-                    title={playingAudioId === currentCard.id ? 'Dừng phát âm' : 'Nghe phát âm'}
-                    aria-label={playingAudioId === currentCard.id ? `Dừng phát âm từ ${currentCard.hanzi}` : `Nghe phát âm từ ${currentCard.hanzi}`}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-all shadow-md shadow-emerald-600/20"
                   >
-                    {playingAudioId === currentCard.id ? (
-                      <VolumeX className="w-5 h-5" />
+                    {isRelearningOnlyForgotten ? (
+                      <>
+                        <RotateCw className="w-3.5 h-3.5" />
+                        <span>Học lại toàn bộ thẻ</span>
+                      </>
                     ) : (
-                      <Volume2 className="w-5 h-5" />
+                      <>
+                        <BookOpen className="w-3.5 h-3.5" />
+                        <span>Xem danh sách từ vựng</span>
+                      </>
                     )}
                   </button>
                 </div>
-              )}
+              </div>
+            )}
 
-              {!isFlipped ? (
-                // FRONT SIDE: Hanzi
-                <div className="space-y-4">
-                  <div className="text-5xl sm:text-6xl font-bold text-gray-900 font-sans tracking-wide">
-                    {currentCard.hanzi}
-                  </div>
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold">
-                    <RotateCw className="w-3.5 h-3.5" />
-                    <span>Bấm để xem Pinyin & Nghĩa</span>
+            {/* Case 3: Kết thúc lượt học - Màn hình tổng kết (HTT-04-CN-005-TC-03, KHÔNG DÙNG MODAL) */}
+            {!flashcardsLoading && flashcards.length > 0 && isSessionFinished && (
+              <div className="bg-white rounded-3xl p-8 border-2 border-emerald-300 shadow-xl text-center space-y-6 animate-fadeIn">
+                <div className="flex justify-center">
+                  <div className="p-3.5 rounded-full bg-emerald-100 text-emerald-700 ring-8 ring-emerald-50">
+                    <Award className="w-10 h-10" />
                   </div>
                 </div>
-              ) : (
-                // BACK SIDE: Pinyin & Meaning
-                <div className="space-y-3 animate-fadeIn">
-                  <div className="text-3xl font-bold text-gray-900 font-sans">{currentCard.hanzi}</div>
-                  <div className="text-2xl font-bold text-emerald-700">{currentCard.pinyin}</div>
-                  <div className="text-lg font-semibold text-gray-800">{currentCard.meaning}</div>
-                  {currentCard.partOfSpeech && (
-                    <span className="inline-block text-xs font-semibold px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800">
-                      {currentCard.partOfSpeech}
-                    </span>
+
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">Hoàn thành lượt học!</h3>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {isRelearningOnlyForgotten
+                      ? 'Bạn đã hoàn thành lượt ôn tập riêng các từ chưa nhớ.'
+                      : 'Bạn đã đi hết toàn bộ các thẻ từ vựng trong lượt học này.'}
+                  </p>
+                </div>
+
+                {/* Thống kê số từ đã nhớ và chưa nhớ (TC-03) */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-emerald-50/90 border border-emerald-200/90 rounded-2xl p-4 text-center">
+                    <div className="flex items-center justify-center gap-1.5 text-emerald-700 font-extrabold text-3xl">
+                      <Check className="w-6 h-6" />
+                      <span>{sessionRememberedCount}</span>
+                    </div>
+                    <div className="text-xs font-semibold text-emerald-800 mt-1">Đã nhớ</div>
+                  </div>
+
+                  <div className="bg-amber-50/90 border border-amber-200/90 rounded-2xl p-4 text-center">
+                    <div className="flex items-center justify-center gap-1.5 text-amber-700 font-extrabold text-3xl">
+                      <X className="w-6 h-6" />
+                      <span>{sessionForgottenCount}</span>
+                    </div>
+                    <div className="text-xs font-semibold text-amber-800 mt-1">Chưa nhớ</div>
+                  </div>
+                </div>
+
+                {/* Các nút hành động sau khi hoàn thành */}
+                <div className="space-y-3 pt-2">
+                  {/* TC-03: Cho phép học lại riêng các từ chưa nhớ */}
+                  {sessionForgottenCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => loadFlashcards(true)}
+                      className="w-full py-3.5 px-4 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-semibold transition-all shadow-md shadow-amber-600/25 active:scale-[0.98] inline-flex items-center justify-center gap-2 text-sm"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                      <span>Học lại riêng {sessionForgottenCount} từ chưa nhớ</span>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => loadFlashcards(false)}
+                    className="w-full py-3.5 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold transition-all shadow-md shadow-emerald-600/25 active:scale-[0.98] inline-flex items-center justify-center gap-2 text-sm"
+                  >
+                    <RotateCw className="w-4 h-4" />
+                    <span>Học lại từ đầu (Toàn bộ thẻ)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('VOCAB')}
+                    className="w-full py-2.5 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition-all text-xs inline-flex items-center justify-center gap-1.5"
+                  >
+                    <BookOpen className="w-3.5 h-3.5" />
+                    <span>Xem lại danh sách từ vựng</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Case 4: Giao diện học Flashcard đang diễn ra (TC-01, TC-02) */}
+            {!flashcardsLoading && flashcards.length > 0 && !isSessionFinished && currentCard && (
+              <div className="space-y-4">
+                {/* Header thanh tiến trình & thông tin thẻ */}
+                <div className="bg-white p-3.5 rounded-2xl border border-gray-200/80 shadow-sm space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-gray-800">
+                        Thẻ {flashcardIndex + 1} / {flashcards.length}
+                      </span>
+                      {isRelearningOnlyForgotten && (
+                        <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[11px] font-semibold">
+                          Ôn từ chưa nhớ
+                        </span>
+                      )}
+                    </div>
+
+                    {currentCard.lastResult && (
+                      <span
+                        className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                          currentCard.lastResult === 'REMEMBERED'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-amber-100 text-amber-800'
+                        }`}
+                      >
+                        {currentCard.lastResult === 'REMEMBERED' ? (
+                          <>
+                            <Check className="w-3 h-3" /> Đã nhớ
+                          </>
+                        ) : (
+                          <>
+                            <X className="w-3 h-3" /> Chưa nhớ
+                          </>
+                        )}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Thanh tiến độ học flashcard */}
+                  <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                    <div
+                      className="bg-emerald-600 h-full rounded-full transition-all duration-300"
+                      style={{ width: `${((flashcardIndex + 1) / flashcards.length) * 100}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Flip Card Container */}
+                <div
+                  onClick={() => setIsFlipped(!isFlipped)}
+                  className="w-full min-h-[320px] bg-white rounded-3xl border-2 border-emerald-300 shadow-xl p-8 flex flex-col items-center justify-center cursor-pointer text-center select-none hover:shadow-2xl transition-all relative overflow-hidden"
+                >
+                  {/* Nút phát âm (TC-02: Ẩn nếu từ không có audio) */}
+                  {currentCard.audioUrl && currentCard.audioUrl.trim() && (
+                    <div className="absolute top-4 right-4">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          togglePronunciation(currentCard)
+                        }}
+                        className={`p-2.5 rounded-full transition-all ${
+                          playingAudioId === currentCard.id
+                            ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30 ring-2 ring-emerald-400'
+                            : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                        }`}
+                        title={playingAudioId === currentCard.id ? 'Dừng phát âm' : 'Nghe phát âm'}
+                        aria-label={
+                          playingAudioId === currentCard.id
+                            ? `Dừng phát âm từ ${currentCard.hanzi}`
+                            : `Nghe phát âm từ ${currentCard.hanzi}`
+                        }
+                      >
+                        {playingAudioId === currentCard.id ? (
+                          <VolumeX className="w-5 h-5" />
+                        ) : (
+                          <Volume2 className="w-5 h-5" />
+                        )}
+                      </button>
+                    </div>
+                  )}
+
+                  {!isFlipped ? (
+                    // MẶT TRƯỚC (TC-01): Chữ Hán
+                    <div className="space-y-4">
+                      <div className="text-5xl sm:text-6xl font-bold text-gray-900 font-sans tracking-wide">
+                        {currentCard.hanzi}
+                      </div>
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold">
+                        <RotateCw className="w-3.5 h-3.5" />
+                        <span>Bấm để lật xem Pinyin & Nghĩa</span>
+                      </div>
+                    </div>
+                  ) : (
+                    // MẶT SAU (TC-01): Pinyin và Nghĩa
+                    <div className="space-y-3 animate-fadeIn w-full max-w-sm">
+                      <div className="text-3xl font-bold text-gray-900 font-sans">{currentCard.hanzi}</div>
+                      <div className="text-2xl font-bold text-emerald-700">{currentCard.pinyin}</div>
+                      <div className="text-lg font-semibold text-gray-800">{currentCard.meaning}</div>
+                      {currentCard.partOfSpeech && (
+                        <span className="inline-block text-xs font-semibold px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800">
+                          {currentCard.partOfSpeech}
+                        </span>
+                      )}
+
+                      {/* Câu ví dụ nếu có */}
+                      {currentCard.exampleSentence && (
+                        <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 text-xs space-y-1 text-left mt-2">
+                          <div className="font-semibold text-gray-900 font-sans">
+                            {currentCard.exampleSentence}
+                          </div>
+                          {currentCard.examplePinyin && (
+                            <div className="text-emerald-700">{currentCard.examplePinyin}</div>
+                          )}
+                          {currentCard.exampleMeaning && (
+                            <div className="text-gray-600">{currentCard.exampleMeaning}</div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
-              )}
-            </div>
 
-            {/* Flashcard Controls */}
-            <div className="flex items-center justify-between gap-4 mt-6">
-              <button
-                onClick={prevFlashcard}
-                className="flex-1 py-3 px-4 rounded-2xl bg-white border border-gray-200 font-semibold text-gray-700 hover:bg-gray-50 transition-all shadow-sm active:scale-[0.98]"
-              >
-                Từ trước
-              </button>
-              <button
-                onClick={() => setIsFlipped(!isFlipped)}
-                className="p-3 rounded-2xl bg-emerald-100 text-emerald-800 hover:bg-emerald-200 transition-colors shadow-sm"
-                title="Lật thẻ"
-              >
-                <RotateCw className="w-5 h-5" />
-              </button>
-              <button
-                onClick={nextFlashcard}
-                className="flex-1 py-3 px-4 rounded-2xl bg-emerald-600 text-white font-semibold hover:bg-emerald-700 transition-all shadow-md shadow-emerald-600/20 active:scale-[0.98]"
-              >
-                Từ tiếp theo
-              </button>
-            </div>
+                {/* Các nút hành động Flashcard: Chưa nhớ & Đã nhớ (HTT-04-CN-005-TC-02) */}
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <button
+                    type="button"
+                    disabled={isSubmittingReview}
+                    onClick={() => handleReviewCard('FORGOTTEN')}
+                    className="py-3 px-4 rounded-2xl bg-amber-50 hover:bg-amber-100 text-amber-800 border-2 border-amber-300 font-bold transition-all shadow-sm active:scale-[0.98] inline-flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    <X className="w-5 h-5 text-amber-600" />
+                    <span>Chưa nhớ</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isSubmittingReview}
+                    onClick={() => handleReviewCard('REMEMBERED')}
+                    className="py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition-all shadow-md shadow-emerald-600/25 active:scale-[0.98] inline-flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    <Check className="w-5 h-5 text-white" />
+                    <span>Đã nhớ</span>
+                  </button>
+                </div>
+
+                {/* Nút lật thẻ & điều hướng tay phụ */}
+                <div className="flex items-center justify-between text-xs text-gray-500 px-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={prevFlashcard}
+                    className="hover:text-emerald-700 transition-colors font-medium"
+                  >
+                    ← Thẻ trước
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsFlipped(!isFlipped)}
+                    className="inline-flex items-center gap-1 text-emerald-700 hover:text-emerald-800 font-semibold transition-colors"
+                  >
+                    <RotateCw className="w-3.5 h-3.5" />
+                    <span>Lật thẻ</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={nextFlashcard}
+                    className="hover:text-emerald-700 transition-colors font-medium"
+                  >
+                    Thẻ tiếp →
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

@@ -15,9 +15,18 @@ import {
   ChevronRight,
   RotateCw,
   Search,
+  Check,
+  RotateCcw,
+  Award,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { getLessonStudy, type LessonStudyData, type VocabularyItem } from '../../api/content'
+import {
+  getLessonProgress,
+  markLessonComplete,
+  unmarkLessonComplete,
+  type LessonProgressResponse,
+} from '../../api/roadmap'
 import { PandaMascot } from '../../components/common/PandaMascot'
 
 export const LessonStudyPage: React.FC = () => {
@@ -32,6 +41,11 @@ export const LessonStudyPage: React.FC = () => {
 
   // Active tab: 'VOCAB' | 'GRAMMAR' | 'FLASHCARD'
   const [activeTab, setActiveTab] = useState<'VOCAB' | 'GRAMMAR' | 'FLASHCARD'>('VOCAB')
+
+  // Lesson completion states (HTT-04-CN-004)
+  const [progressData, setProgressData] = useState<LessonProgressResponse | null>(null)
+  const [isCompleting, setIsCompleting] = useState(false)
+  const [showCelebration, setShowCelebration] = useState(false)
 
   // Search filter inside vocabulary list
   const [vocabSearch, setVocabSearch] = useState('')
@@ -90,9 +104,13 @@ export const LessonStudyPage: React.FC = () => {
           return
         }
 
-        const data = await getLessonStudy(idNum, token || undefined)
+        const [data, prog] = await Promise.all([
+          getLessonStudy(idNum, token || undefined),
+          token ? getLessonProgress(idNum, token).catch(() => null) : Promise.resolve(null),
+        ])
         if (isMounted) {
           setLessonData(data)
+          setProgressData(prog)
           // TC-03: If grammar points are empty, default to VOCAB tab
           setActiveTab('VOCAB')
         }
@@ -113,6 +131,50 @@ export const LessonStudyPage: React.FC = () => {
       isMounted = false
     }
   }, [lessonId, token])
+
+  // HTT-04-CN-004: Xử lý đánh dấu hoàn thành bài học
+  const handleToggleComplete = async () => {
+    if (!token) {
+      navigate('/login')
+      return
+    }
+    if (!lessonId) return
+    const idNum = parseInt(lessonId, 10)
+    if (isNaN(idNum)) return
+
+    try {
+      setIsCompleting(true)
+      if (progressData?.completed) {
+        await unmarkLessonComplete(idNum, token)
+        setProgressData((prev) =>
+          prev
+            ? {
+                ...prev,
+                completed: false,
+                completedAt: undefined,
+                completedLessonsInLevel: Math.max(0, prev.completedLessonsInLevel - 1),
+                levelProgressPercent:
+                  prev.totalLessonsInLevel > 0
+                    ? Math.round(
+                        (Math.max(0, prev.completedLessonsInLevel - 1) * 100) /
+                          prev.totalLessonsInLevel
+                      )
+                    : 0,
+              }
+            : null
+        )
+        setShowCelebration(false)
+      } else {
+        const updated = await markLessonComplete(idNum, token)
+        setProgressData(updated)
+        setShowCelebration(true)
+      }
+    } catch (err: any) {
+      showAudioError(err?.message || 'Không thể cập nhật tiến độ bài học.')
+    } finally {
+      setIsCompleting(false)
+    }
+  }
 
   // Pronunciation handler: HTT-04-CN-003 Play/Stop audio
   const togglePronunciation = useCallback((vocab: VocabularyItem) => {
@@ -654,25 +716,134 @@ export const LessonStudyPage: React.FC = () => {
           </div>
         )}
 
-        {/* Bottom completion encouragement */}
-        <div className="mt-12 bg-white rounded-3xl p-6 border border-gray-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-4 text-center sm:text-left">
-            <PandaMascot size={52} />
-            <div>
-              <div className="text-sm font-bold text-gray-900">Bạn đã hoàn thành bài học này chưa?</div>
-              <p className="text-xs text-gray-500">
-                Hãy ôn lại từ vựng bằng flashcard trước khi sang bài học tiếp theo nhé!
-              </p>
+        {/* HTT-04-CN-004: Bottom Completion Action & Inline Celebration Progress */}
+        <div className="mt-12 space-y-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-200/90 shadow-sm transition-all overflow-hidden">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+              <div className="flex items-center gap-4">
+                <PandaMascot size={56} />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base sm:text-lg font-bold text-gray-900">
+                      {progressData?.completed ? 'Bài học đã hoàn thành' : 'Bạn đã nắm vững bài học này chưa?'}
+                    </h2>
+                    {progressData?.completed && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        <Check className="w-3.5 h-3.5" />
+                        Đã hoàn thành
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs sm:text-sm text-gray-500 mt-1 leading-relaxed">
+                    {progressData?.completed
+                      ? progressData.completedAt
+                        ? `Được ghi nhận hoàn thành vào ${new Date(progressData.completedAt).toLocaleString('vi-VN')}`
+                        : 'Tiến độ cấp độ đã được ghi nhận vào tài khoản của bạn.'
+                      : 'Đánh dấu hoàn thành để ghi nhận tiến độ vào lộ trình HSK và bảng thống kê học tập.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="w-full sm:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
+                {token ? (
+                  <>
+                    <button
+                      type="button"
+                      disabled={isCompleting}
+                      onClick={handleToggleComplete}
+                      className={`inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-semibold transition-all shadow-md active:scale-[0.98] ${
+                        progressData?.completed
+                          ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300/80 shadow-none'
+                          : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/25 ring-2 ring-emerald-500/20'
+                      }`}
+                    >
+                      {isCompleting ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Đang lưu...</span>
+                        </>
+                      ) : progressData?.completed ? (
+                        <>
+                          <RotateCcw className="w-4 h-4 text-slate-500" />
+                          <span>Học lại (Bỏ hoàn thành)</span>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="w-4 h-4 text-white" />
+                          <span>Đánh dấu hoàn thành</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => navigate('/curriculum')}
+                      className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-white hover:bg-gray-50 text-gray-700 font-semibold border border-gray-200 transition-all shadow-sm"
+                    >
+                      <Layers className="w-4 h-4 text-gray-500" />
+                      <span>Lộ trình HSK</span>
+                      <ChevronRight className="w-4 h-4 text-gray-400" />
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => navigate('/login')}
+                    className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold transition-all shadow-md shadow-emerald-600/25"
+                  >
+                    <span>Đăng nhập để lưu tiến độ</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             </div>
+
+            {/* TC-01 & GEMINI.md: Inline Celebration & Level Progress Banner (TUYỆT ĐỐI KHÔNG DÙNG MODAL) */}
+            {showCelebration && progressData?.completed && (
+              <div className="mt-6 pt-6 border-t border-emerald-100 bg-gradient-to-r from-emerald-50/80 via-teal-50/60 to-cyan-50/50 -mx-6 -mb-6 sm:-mx-8 sm:-mb-8 p-6 sm:p-8 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex items-start gap-3.5">
+                    <div className="p-2.5 rounded-2xl bg-emerald-500 text-white shadow-md shadow-emerald-500/20 shrink-0">
+                      <Sparkles className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-base font-bold text-emerald-950">
+                          Chúc mừng bạn đã hoàn thành bài học này!
+                        </span>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-emerald-200/70 text-emerald-900">
+                          <Award className="w-3.5 h-3.5" />
+                          +1 Bài học
+                        </span>
+                      </div>
+                      <p className="text-xs sm:text-sm text-emerald-800/90 mt-1">
+                        Tiến độ của cấp độ hiện tại:{' '}
+                        <strong>
+                          {progressData.completedLessonsInLevel}/{progressData.totalLessonsInLevel}
+                        </strong>{' '}
+                        bài ({progressData.levelProgressPercent}%).
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="w-full md:w-64 space-y-1.5 shrink-0">
+                    <div className="flex items-center justify-between text-xs font-bold text-emerald-900">
+                      <span>Tiến độ cấp độ</span>
+                      <span>{progressData.levelProgressPercent}%</span>
+                    </div>
+                    <div className="w-full bg-white/80 rounded-full h-3 p-0.5 overflow-hidden border border-emerald-200">
+                      <div
+                        className="bg-gradient-to-r from-emerald-500 to-teal-500 h-full rounded-full transition-all duration-700 ease-out"
+                        style={{
+                          width: `${Math.min(100, Math.max(0, progressData.levelProgressPercent))}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-          <button
-            onClick={() => navigate('/curriculum')}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold transition-all shadow-md shadow-emerald-600/20"
-          >
-            <CheckCircle2 className="w-4 h-4" />
-            <span>Tiếp tục lộ trình</span>
-            <ChevronRight className="w-4 h-4" />
-          </button>
         </div>
 
         {/* TC-03: Thông báo lỗi phát audio nhẹ nhàng dạng Toast (KHÔNG DÙNG MODAL) */}

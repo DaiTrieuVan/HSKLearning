@@ -23,7 +23,12 @@ import com.hsk.account.repository.TeacherRequestRepository;
 import com.hsk.account.repository.UserRepository;
 import com.hsk.account.repository.UserRoleRepository;
 import com.hsk.account.service.RegistrationService;
+import com.hsk.classroom.repository.ClassJoinAttemptRepository;
+import com.hsk.classroom.repository.ClassMemberEventRepository;
+import com.hsk.classroom.repository.ClassMemberRepository;
+import com.hsk.classroom.repository.ClassRepository;
 import com.hsk.common.api.ApiErrorCode;
+import com.hsk.common.audit.AuditLogRepository;
 import com.hsk.question.domain.QuestionEntity;
 import com.hsk.question.domain.QuestionType;
 import com.hsk.question.dto.CreateQuestionOptionRequest;
@@ -79,6 +84,21 @@ class QuestionH2Test {
 	private PasswordResetTokenRepository passwordResetTokenRepository;
 
 	@Autowired
+	private AuditLogRepository auditLogRepository;
+
+	@Autowired
+	private ClassRepository classRepository;
+
+	@Autowired
+	private ClassMemberRepository classMemberRepository;
+
+	@Autowired
+	private ClassMemberEventRepository classMemberEventRepository;
+
+	@Autowired
+	private ClassJoinAttemptRepository classJoinAttemptRepository;
+
+	@Autowired
 	private QuestionRepository questionRepository;
 
 	@Autowired
@@ -125,6 +145,11 @@ class QuestionH2Test {
 		questionOptionRepository.deleteAll();
 		questionRepository.deleteAll();
 
+		auditLogRepository.deleteAll();
+		classJoinAttemptRepository.deleteAll();
+		classMemberEventRepository.deleteAll();
+		classMemberRepository.deleteAll();
+		classRepository.deleteAll();
 		teacherRequestRepository.deleteAll();
 		passwordResetTokenRepository.deleteAll();
 		userRoleRepository.deleteAll();
@@ -176,8 +201,9 @@ class QuestionH2Test {
 
 		List<QuestionEntity> savedQuestions = questionRepository.findByOwnerIdAndIsHiddenFalseOrderByCreatedAtDesc(teacherUser.getId());
 		assertEquals(1, savedQuestions.size());
-		QuestionEntity saved = savedQuestions.get(0);
+		QuestionEntity saved = questionRepository.findWithOptionsById(savedQuestions.get(0).getId()).orElseThrow();
 		assertEquals("你好 nghĩa là gì?", saved.getContent());
+		assertNotNull(saved.getOptions());
 		assertEquals(4, saved.getOptions().size());
 	}
 

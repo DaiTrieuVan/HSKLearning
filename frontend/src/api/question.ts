@@ -1,0 +1,84 @@
+import { ApiError } from './auth'
+
+export interface QuestionOptionItem {
+  id: number
+  content: string
+  isCorrect: boolean
+  sortOrder: number
+}
+
+export interface QuestionItem {
+  id: number
+  ownerId: number
+  type: 'MCQ' | 'FILL' | 'MATCH' | 'ORDER'
+  content: string
+  explanation?: string
+  payload?: string
+  options: QuestionOptionItem[]
+  createdAt: string
+}
+
+export interface CreateQuestionOptionPayload {
+  content: string
+  isCorrect: boolean
+}
+
+export interface CreateQuestionPayload {
+  content: string
+  explanation?: string
+  type?: 'MCQ' | 'FILL' | 'MATCH' | 'ORDER'
+  payload?: string
+  options: CreateQuestionOptionPayload[]
+}
+
+const API_BASE = '/api/questions'
+
+export async function createMultipleChoiceQuestion(
+  payload: CreateQuestionPayload,
+  token: string
+): Promise<QuestionItem> {
+  const response = await fetch(`${API_BASE}/multiple-choice`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  const data = await response.json().catch(() => null)
+
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'UNKNOWN_ERROR',
+      data?.message || 'Không thể tạo câu hỏi trắc nghiệm',
+      data?.fields
+    )
+  }
+
+  return data as QuestionItem
+}
+
+export async function getMyQuestions(token: string): Promise<QuestionItem[]> {
+  const response = await fetch(`${API_BASE}/my`, {
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  const data = await response.json().catch(() => null)
+
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'UNKNOWN_ERROR',
+      data?.message || 'Không thể lấy danh sách câu hỏi',
+      data?.fields
+    )
+  }
+
+  return data as QuestionItem[]
+}

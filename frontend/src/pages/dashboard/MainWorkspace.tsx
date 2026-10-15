@@ -17,6 +17,7 @@ import {
   LayoutDashboard,
   BookMarked,
   Search,
+  HelpCircle,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { PandaMascot } from '../../components/common/PandaMascot'
@@ -871,6 +872,54 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
                   >
                     <BookMarked size={18} />
                     <span>Quản lý bộ từ vựng</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Card 4: Question Bank (HTT-05-CN-001 / QTN-19) */}
+              {isTeacher && (
+                <div
+                  className="game-card"
+                  style={{
+                    padding: '24px',
+                    backgroundColor: '#ffffff',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <div>
+                    <div
+                      style={{
+                        width: '44px',
+                        height: '44px',
+                        borderRadius: 'var(--radius-md)',
+                        backgroundColor: '#e0e7ff',
+                        color: '#4338ca',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginBottom: '16px',
+                      }}
+                    >
+                      <HelpCircle size={24} />
+                    </div>
+                    <h3 style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: '6px' }}>
+                      Ngân hàng câu hỏi
+                    </h3>
+                    <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '16px' }}>
+                      Soạn câu hỏi trắc nghiệm tiếng Trung với đáp án, giải thích chi tiết và lưu trữ an toàn trong kho của bạn (QTN-08, QTN-19).
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => navigate('/questions')}
+                    className="btn-gamified btn-primary"
+                    style={{ width: '100%', fontSize: '0.92rem', padding: '10px' }}
+                  >
+                    <HelpCircle size={18} />
+                    <span>Quản lý ngân hàng câu hỏi</span>
                   </button>
                 </div>
               )}

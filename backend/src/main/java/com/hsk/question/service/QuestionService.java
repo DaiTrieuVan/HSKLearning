@@ -41,11 +41,10 @@ public class QuestionService {
 
 	public QuestionService(
 			QuestionRepository questionRepository,
-			UserRoleRepository userRoleRepository,
-			ObjectMapper objectMapper) {
+			UserRoleRepository userRoleRepository) {
 		this.questionRepository = questionRepository;
 		this.userRoleRepository = userRoleRepository;
-		this.objectMapper = objectMapper;
+		this.objectMapper = new ObjectMapper();
 	}
 
 	/**

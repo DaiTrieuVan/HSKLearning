@@ -41,3 +41,13 @@
 - **KHÔNG DÙNG MODAL (NO POPUPS / NO MODALS):**
   - Tuyệt đối không thiết kế các tác vụ mở popup/modal dialog che chắn màn hình.
   - Thay thế bằng các giải pháp UX hiện đại hơn: inline expand (accordion, thẻ mở rộng tại chỗ), Drawer/Slide-over bên cạnh, hoặc điều hướng trang chuyên biệt (Dedicated sub-page).
+
+---
+
+## 5. NGUYÊN TẮC THIẾT KẾ CƠ SỞ DỮ LIỆU (DATABASE CONSTRAINTS)
+- **Ưu tiên kiểm tra và tái sử dụng cấu trúc bảng hiện có:**
+  - Trước khi tạo bảng mới, BẮT BUỘC phải rà soát kỹ lưỡng toàn bộ schema và các file migration hiện tại xem cấu trúc bảng/trường tương đương đã tồn tại chưa.
+  - Tối đa hóa việc tái sử dụng schema hiện có để đảm bảo tính nhất quán (Single Source of Truth), tránh phân mảnh dữ liệu và tránh tạo migration dư thừa.
+- **Chỉ tạo bảng mới khi thực sự cần thiết:**
+  - Chỉ tạo bảng hoặc migration mới khi nghiệp vụ yêu cầu một thực thể độc lập hoàn toàn mới hoặc việc tách bảng mang lại lợi ích rõ rệt về mặt hiệu năng (indexing, partitioning, normalization).
+  - Phải giải trình rõ lý do và sự cần thiết trong Implementation Plan trước khi thực hiện.

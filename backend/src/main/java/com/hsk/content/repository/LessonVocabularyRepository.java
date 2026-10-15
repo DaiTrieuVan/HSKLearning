@@ -11,6 +11,10 @@ public interface LessonVocabularyRepository extends JpaRepository<LessonVocabula
 
 	List<LessonVocabularyEntity> findAllByLessonIdOrderBySortOrderAsc(Long lessonId);
 
+	List<LessonVocabularyEntity> findAllByVocabularyId(Long vocabularyId);
+
+	List<LessonVocabularyEntity> findAllByVocabularyIdIn(java.util.Collection<Long> vocabularyIds);
+
 	boolean existsByVocabularyId(Long vocabularyId);
 
 	void deleteByLessonIdAndVocabularyId(Long lessonId, Long vocabularyId);

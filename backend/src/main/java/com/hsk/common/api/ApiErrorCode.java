@@ -113,6 +113,39 @@ public enum ApiErrorCode {
 	/** HTT-03-CN-009: Vocabulary set not found. */
 	VOCAB_SET_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy bộ từ vựng"),
 
+	/** HTT-04-CN-003: Vocabulary has no audio attached. */
+	AUDIO_NOT_FOUND(HttpStatus.NOT_FOUND, "Từ vựng chưa có tệp âm thanh phát âm"),
+
+	/** HTT-04-CN-003: Audio file does not exist on disk or cannot be reached. */
+	AUDIO_FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "Tệp âm thanh không tồn tại hoặc đã bị xóa"),
+
+	/** HTT-05-CN-001 / QTN-08: Multiple choice question must have at least 2 options. */
+	QUESTION_MIN_OPTIONS(HttpStatus.BAD_REQUEST, "Câu hỏi trắc nghiệm phải có ít nhất 2 lựa chọn"),
+
+	/** HTT-05-CN-001 / QTN-08: Multiple choice question must have exactly one correct answer. */
+	QUESTION_EXACTLY_ONE_CORRECT(HttpStatus.BAD_REQUEST, "Câu hỏi trắc nghiệm phải có đúng một đáp án đúng"),
+
+	/** HTT-05-CN-001: Multiple choice question cannot have duplicate options. */
+	QUESTION_DUPLICATE_OPTIONS(HttpStatus.BAD_REQUEST, "Các lựa chọn không được có nội dung trùng nhau"),
+
+	/** HTT-05-CN-001: Question content cannot be blank. */
+	QUESTION_CONTENT_BLANK(HttpStatus.BAD_REQUEST, "Nội dung câu hỏi không được để trống"),
+
+	/** HTT-05-CN-001: Option content cannot be blank. */
+	QUESTION_OPTION_CONTENT_BLANK(HttpStatus.BAD_REQUEST, "Nội dung lựa chọn không được để trống"),
+
+	/** HTT-05-CN-004 / TC-04: Vocab set has 0 words. */
+	VOCAB_SET_EMPTY(HttpStatus.BAD_REQUEST, "Bộ từ vựng chưa có từ nào để tạo câu hỏi"),
+
+	/** HTT-05-CN-004 / TC-03: Vocab set has fewer than 4 words. */
+	VOCAB_SET_INSUFFICIENT_WORDS(HttpStatus.BAD_REQUEST, "Bộ từ vựng cần có ít nhất 4 từ để tạo câu hỏi trắc nghiệm"),
+
+	/** HTT-05-CN-004 / TC-05: Access denied to vocab set of another teacher (QTN-19). */
+	ACCESS_DENIED_VOCAB_SET(HttpStatus.FORBIDDEN, "Bạn không có quyền truy cập bộ từ vựng này"),
+
+	/** HTT-05-CN-004: Empty batch save request. */
+	BATCH_QUESTIONS_EMPTY(HttpStatus.BAD_REQUEST, "Danh sách câu hỏi lưu vào ngân hàng không được để trống"),
+
 	/** Unexpected server side failure; the client may retry. */
 	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Hệ thống đang gặp sự cố, vui lòng thử lại sau");
 

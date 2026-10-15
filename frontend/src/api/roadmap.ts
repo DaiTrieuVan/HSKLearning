@@ -31,6 +31,16 @@ export interface RoadmapResponse {
   levels: RoadmapLevelItem[]
 }
 
+export interface LessonProgressResponse {
+  lessonId: number
+  hskLevelId?: number
+  completed: boolean
+  completedAt?: string
+  completedLessonsInLevel: number
+  totalLessonsInLevel: number
+  levelProgressPercent: number
+}
+
 const API_BASE = '/api/v1/roadmap'
 
 export async function getRoadmap(token: string): Promise<RoadmapResponse> {
@@ -46,16 +56,31 @@ export async function getRoadmap(token: string): Promise<RoadmapResponse> {
   return response.json()
 }
 
-export async function markLessonComplete(lessonId: number, token: string): Promise<void> {
+export async function getLessonProgress(lessonId: number, token: string): Promise<LessonProgressResponse> {
+  const response = await fetch(`${API_BASE}/lessons/${lessonId}/progress`, {
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
+  if (!response.ok) {
+    throw new ApiError(response.status, 'FETCH_PROGRESS_FAILED', 'Không thể tải tiến độ bài học')
+  }
+  return response.json()
+}
+
+export async function markLessonComplete(lessonId: number, token: string): Promise<LessonProgressResponse> {
   const response = await fetch(`${API_BASE}/lessons/${lessonId}/complete`, {
     method: 'POST',
     headers: {
+      Accept: 'application/json',
       Authorization: `Bearer ${token}`,
     },
   })
   if (!response.ok) {
     throw new ApiError(response.status, 'MARK_LESSON_FAILED', 'Không thể cập nhật tiến độ bài học')
   }
+  return response.json()
 }
 
 export async function unmarkLessonComplete(lessonId: number, token: string): Promise<void> {
@@ -69,3 +94,4 @@ export async function unmarkLessonComplete(lessonId: number, token: string): Pro
     throw new ApiError(response.status, 'UNMARK_LESSON_FAILED', 'Không thể hủy tiến độ bài học')
   }
 }
+

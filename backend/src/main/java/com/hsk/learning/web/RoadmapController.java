@@ -4,6 +4,7 @@ import com.hsk.account.domain.UserEntity;
 import com.hsk.account.repository.UserRepository;
 import com.hsk.common.api.ApiErrorCode;
 import com.hsk.common.api.ApiException;
+import com.hsk.learning.dto.LessonProgressResponse;
 import com.hsk.learning.dto.RoadmapResponse;
 import com.hsk.learning.service.RoadmapService;
 import java.security.Principal;
@@ -42,11 +43,18 @@ public class RoadmapController {
 		return ResponseEntity.ok(response);
 	}
 
-	@PostMapping("/lessons/{lessonId}/complete")
-	public ResponseEntity<Void> markLessonCompleted(@PathVariable Long lessonId, Principal principal) {
+	@GetMapping("/lessons/{lessonId}/progress")
+	public ResponseEntity<LessonProgressResponse> getLessonProgress(@PathVariable Long lessonId, Principal principal) {
 		UserEntity user = requireUser(principal);
-		roadmapService.markLessonCompleted(user.getId(), lessonId);
-		return ResponseEntity.ok().build();
+		LessonProgressResponse response = roadmapService.getLessonProgress(user.getId(), lessonId);
+		return ResponseEntity.ok(response);
+	}
+
+	@PostMapping("/lessons/{lessonId}/complete")
+	public ResponseEntity<LessonProgressResponse> markLessonCompleted(@PathVariable Long lessonId, Principal principal) {
+		UserEntity user = requireUser(principal);
+		LessonProgressResponse response = roadmapService.markLessonCompleted(user.getId(), lessonId);
+		return ResponseEntity.ok(response);
 	}
 
 	@DeleteMapping("/lessons/{lessonId}/complete")

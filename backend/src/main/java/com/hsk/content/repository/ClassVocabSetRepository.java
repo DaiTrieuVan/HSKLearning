@@ -11,5 +11,7 @@ public interface ClassVocabSetRepository extends JpaRepository<ClassVocabSetEnti
 
 	List<ClassVocabSetEntity> findAllByClassroomId(Long classId);
 
+	List<ClassVocabSetEntity> findAllByVocabSetId(Long vocabSetId);
+
 	void deleteByClassroomIdAndVocabSetId(Long classId, Long vocabSetId);
 }

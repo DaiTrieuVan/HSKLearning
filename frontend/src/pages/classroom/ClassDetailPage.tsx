@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -15,6 +15,13 @@ import {
   ChevronRight,
   Plus,
   Users,
+  Volume2,
+  RotateCw,
+  X,
+  ChevronLeft,
+  Sparkles,
+  BookOpen,
+  Layers,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import {
@@ -36,6 +43,11 @@ import {
   type VocabSetItem,
   type VocabularyItem,
 } from '../../api/content'
+import {
+  getFlashcards,
+  reviewFlashcard,
+  type FlashcardItem,
+} from '../../api/flashcard'
 import { ApiError } from '../../api/auth'
 
 export const ClassDetailPage: React.FC = () => {
@@ -63,6 +75,24 @@ export const ClassDetailPage: React.FC = () => {
   const [expandedSetId, setExpandedSetId] = useState<number | null>(null)
   const [expandedWords, setExpandedWords] = useState<Record<number, VocabularyItem[]>>({})
   const [wordsLoadingId, setWordsLoadingId] = useState<number | null>(null)
+
+  // Per-set study mode: 'LIST' or 'FLASHCARD'
+  const [studyModes, setStudyModes] = useState<Record<number, 'LIST' | 'FLASHCARD'>>({})
+
+  // Flashcard learning state for active expanded set
+  const [activeFlashcards, setActiveFlashcards] = useState<FlashcardItem[]>([])
+  const [flashcardsLoading, setFlashcardsLoading] = useState(false)
+  const [flashcardIndex, setFlashcardIndex] = useState(0)
+  const [isFlipped, setIsFlipped] = useState(false)
+  const [isSessionFinished, setIsSessionFinished] = useState(false)
+  const [sessionRememberedCount, setSessionRememberedCount] = useState(0)
+  const [sessionForgottenCount, setSessionForgottenCount] = useState(0)
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false)
+
+  // Audio pronunciation state
+  const [playingVocabId, setPlayingVocabId] = useState<number | null>(null)
+  const [audioError, setAudioError] = useState<string | null>(null)
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null)
 
   // Assign vocab set dropdown
   const [showAssignDropdown, setShowAssignDropdown] = useState(false)
@@ -142,6 +172,134 @@ export const ClassDetailPage: React.FC = () => {
     }
   }
 
+  useEffect(() => {
+    return () => {
+      if (currentAudioRef.current) {
+        currentAudioRef.current.pause()
+        currentAudioRef.current = null
+      }
+    }
+  }, [])
+
+  const handlePlayAudio = (e: React.MouseEvent, vocab: { id: number; audioUrl?: string }) => {
+    e.stopPropagation()
+    if (!vocab.audioUrl || !vocab.audioUrl.trim()) {
+      setAudioError('Từ vựng này chưa có tệp âm thanh phát âm')
+      setTimeout(() => setAudioError(null), 3500)
+      return
+    }
+
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause()
+      currentAudioRef.current.currentTime = 0
+      if (playingVocabId === vocab.id) {
+        setPlayingVocabId(null)
+        currentAudioRef.current = null
+        return
+      }
+    }
+
+    const rawUrl = vocab.audioUrl.trim()
+    const resolvedUrl =
+      rawUrl.startsWith('http://') || rawUrl.startsWith('https://') || rawUrl.startsWith('/')
+        ? rawUrl
+        : `/${rawUrl}`
+
+    const audio = new Audio(resolvedUrl)
+    currentAudioRef.current = audio
+    setPlayingVocabId(vocab.id)
+
+    audio.onended = () => {
+      if (currentAudioRef.current === audio) {
+        setPlayingVocabId(null)
+        currentAudioRef.current = null
+      }
+    }
+
+    audio.onerror = () => {
+      if (currentAudioRef.current === audio) {
+        setPlayingVocabId(null)
+        currentAudioRef.current = null
+        setAudioError('Không tìm thấy tệp âm thanh hoặc tệp đã bị xóa')
+        setTimeout(() => setAudioError(null), 3500)
+      }
+    }
+
+    audio.play().catch(() => {
+      if (currentAudioRef.current === audio) {
+        setPlayingVocabId(null)
+        currentAudioRef.current = null
+        setAudioError('Không thể phát âm thanh của từ này')
+        setTimeout(() => setAudioError(null), 3500)
+      }
+    })
+  }
+
+  const loadFlashcardsForSet = async (setId: number, onlyForgotten = false) => {
+    if (!user) return
+    setFlashcardsLoading(true)
+    try {
+      const cards = await getFlashcards(user.token, { vocabSetId: setId, onlyForgotten })
+      setActiveFlashcards(cards)
+      setFlashcardIndex(0)
+      setIsFlipped(false)
+      setIsSessionFinished(false)
+      setSessionRememberedCount(0)
+      setSessionForgottenCount(0)
+    } catch (err: any) {
+      setAudioError(err?.message || 'Không thể tải thẻ flashcard')
+      setTimeout(() => setAudioError(null), 3500)
+    } finally {
+      setFlashcardsLoading(false)
+    }
+  }
+
+  const handleSwitchMode = (setId: number, mode: 'LIST' | 'FLASHCARD') => {
+    setStudyModes((prev) => ({ ...prev, [setId]: mode }))
+    if (mode === 'FLASHCARD') {
+      loadFlashcardsForSet(setId, false)
+    } else if (!expandedWords[setId] && user) {
+      setWordsLoadingId(setId)
+      getVocabSetItems(setId, user.token)
+        .then((words) => setExpandedWords((prev) => ({ ...prev, [setId]: words })))
+        .catch(() => {})
+        .finally(() => setWordsLoadingId(null))
+    }
+  }
+
+  const handleReviewFlashcardCard = async (result: 'REMEMBERED' | 'FORGOTTEN') => {
+    if (activeFlashcards.length === 0 || isSubmittingReview || !user) return
+    const currentCard = activeFlashcards[flashcardIndex]
+    if (!currentCard) return
+
+    setIsSubmittingReview(true)
+    try {
+      await reviewFlashcard(user.token, { vocabularyId: currentCard.id, result })
+
+      setActiveFlashcards((prev) =>
+        prev.map((c, i) => (i === flashcardIndex ? { ...c, lastResult: result } : c))
+      )
+
+      if (result === 'REMEMBERED') {
+        setSessionRememberedCount((prev) => prev + 1)
+      } else {
+        setSessionForgottenCount((prev) => prev + 1)
+      }
+
+      if (flashcardIndex < activeFlashcards.length - 1) {
+        setIsFlipped(false)
+        setFlashcardIndex((prev) => prev + 1)
+      } else {
+        setIsSessionFinished(true)
+      }
+    } catch (err: any) {
+      setAudioError(err?.message || 'Không thể lưu kết quả học từ')
+      setTimeout(() => setAudioError(null), 3500)
+    } finally {
+      setIsSubmittingReview(false)
+    }
+  }
+
   const handleToggleExpandSet = async (setId: number) => {
     if (!user) return
     if (expandedSetId === setId) {
@@ -150,7 +308,10 @@ export const ClassDetailPage: React.FC = () => {
     }
 
     setExpandedSetId(setId)
-    if (!expandedWords[setId]) {
+    const mode = studyModes[setId] || 'LIST'
+    if (mode === 'FLASHCARD') {
+      loadFlashcardsForSet(setId, false)
+    } else if (!expandedWords[setId]) {
       try {
         setWordsLoadingId(setId)
         const words = await getVocabSetItems(setId, user.token)
@@ -713,11 +874,12 @@ export const ClassDetailPage: React.FC = () => {
                   : 'Giáo viên chưa giao bộ từ vựng nào cho lớp học.'}
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 {classVocabSets.map((vs) => {
                   const isExpanded = expandedSetId === vs.id
                   const words = expandedWords[vs.id] || []
                   const isLoadingWords = wordsLoadingId === vs.id
+                  const currentMode = studyModes[vs.id] || 'LIST'
 
                   return (
                     <div
@@ -727,12 +889,13 @@ export const ClassDetailPage: React.FC = () => {
                         border: '1.5px solid var(--border-card)',
                         backgroundColor: '#f8fafc',
                         overflow: 'hidden',
+                        transition: 'all 0.2s ease',
                       }}
                     >
                       <div
                         onClick={() => handleToggleExpandSet(vs.id)}
                         style={{
-                          padding: '14px 18px',
+                          padding: '16px 20px',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
@@ -740,77 +903,543 @@ export const ClassDetailPage: React.FC = () => {
                           backgroundColor: '#ffffff',
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <BookMarked size={18} style={{ color: 'var(--primary)' }} />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div
+                            style={{
+                              width: '38px',
+                              height: '38px',
+                              borderRadius: 'var(--radius-md)',
+                              backgroundColor: 'var(--primary-light)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: 'var(--primary)',
+                              flexShrink: 0,
+                            }}
+                          >
+                            <BookMarked size={20} />
+                          </div>
                           <div>
-                            <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-main)' }}>
+                            <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-main)' }}>
                               {vs.title}
                             </div>
                             {vs.description && (
-                              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '2px' }}>
                                 {vs.description}
                               </div>
                             )}
                           </div>
                         </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                           <span
                             style={{
-                              fontSize: '0.78rem',
+                              fontSize: '0.8rem',
                               fontWeight: 800,
-                              padding: '2px 8px',
+                              padding: '4px 10px',
                               borderRadius: 'var(--radius-full)',
                               backgroundColor: 'var(--primary-light)',
                               color: 'var(--primary)',
                             }}
                           >
-                            {vs.itemCount} từ
+                            {vs.itemCount} từ vựng
                           </span>
-                          {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                          {isExpanded ? <ChevronDown size={20} style={{ color: 'var(--text-muted)' }} /> : <ChevronRight size={20} style={{ color: 'var(--text-muted)' }} />}
                         </div>
                       </div>
 
                       {isExpanded && (
-                        <div style={{ padding: '16px', borderTop: '1px solid var(--border-card)', backgroundColor: '#f8fafc' }}>
-                          {isLoadingWords ? (
-                            <div style={{ textAlign: 'center', padding: '16px', color: 'var(--text-muted)' }}>
-                              Đang tải danh sách từ vựng...
+                        <div style={{ padding: '20px', borderTop: '1px solid var(--border-card)', backgroundColor: '#f8fafc' }}>
+                          {/* Mode Switcher Tabs */}
+                          <div style={{ display: 'flex', gap: '8px', marginBottom: '18px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleSwitchMode(vs.id, 'LIST')}
+                              className="btn-gamified"
+                              style={{
+                                padding: '8px 16px',
+                                fontSize: '0.84rem',
+                                fontWeight: 800,
+                                borderRadius: 'var(--radius-md)',
+                                backgroundColor: currentMode === 'LIST' ? 'var(--primary)' : '#ffffff',
+                                color: currentMode === 'LIST' ? '#ffffff' : 'var(--text-muted)',
+                                borderColor: currentMode === 'LIST' ? 'var(--primary)' : '#e2e8f0',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                              }}
+                            >
+                              <BookOpen size={16} />
+                              <span>Danh sách từ ({words.length > 0 ? words.length : vs.itemCount})</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleSwitchMode(vs.id, 'FLASHCARD')}
+                              className="btn-gamified"
+                              style={{
+                                padding: '8px 16px',
+                                fontSize: '0.84rem',
+                                fontWeight: 800,
+                                borderRadius: 'var(--radius-md)',
+                                backgroundColor: currentMode === 'FLASHCARD' ? 'var(--primary)' : '#ffffff',
+                                color: currentMode === 'FLASHCARD' ? '#ffffff' : 'var(--text-muted)',
+                                borderColor: currentMode === 'FLASHCARD' ? 'var(--primary)' : '#e2e8f0',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                              }}
+                            >
+                              <Layers size={16} />
+                              <span>Học bằng Flashcard</span>
+                            </button>
+                          </div>
+
+                          {/* 1. LIST MODE */}
+                          {currentMode === 'LIST' && (
+                            <div>
+                              {isLoadingWords ? (
+                                <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                                  <Loader2 className="animate-spin" size={24} style={{ margin: '0 auto 8px' }} />
+                                  <div style={{ fontSize: '0.88rem', fontWeight: 600 }}>Đang tải danh sách từ vựng...</div>
+                                </div>
+                              ) : words.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
+                                  Bộ từ vựng này hiện chưa có từ nào.
+                                </div>
+                              ) : (
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '14px' }}>
+                                  {words.map((w) => (
+                                    <div
+                                      key={w.id}
+                                      style={{
+                                        padding: '16px',
+                                        borderRadius: 'var(--radius-md)',
+                                        backgroundColor: '#ffffff',
+                                        border: '1.5px solid var(--border-card)',
+                                        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        justifyContent: 'space-between',
+                                      }}
+                                    >
+                                      <div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                                          <div>
+                                            <span className="hanzi" style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--text-chinese)' }}>
+                                              {w.hanzi}
+                                            </span>
+                                            <span style={{ marginLeft: '10px', fontSize: '0.96rem', fontWeight: 800, color: 'var(--primary)' }}>
+                                              {w.pinyin}
+                                            </span>
+                                          </div>
+
+                                          {w.audioUrl && (
+                                            <button
+                                              type="button"
+                                              onClick={(e) => handlePlayAudio(e, w)}
+                                              title="Phát âm từ vựng"
+                                              style={{
+                                                padding: '6px 10px',
+                                                borderRadius: 'var(--radius-full)',
+                                                border: '1px solid var(--border-card)',
+                                                backgroundColor: playingVocabId === w.id ? 'var(--primary-light)' : '#f8fafc',
+                                                color: playingVocabId === w.id ? 'var(--primary)' : 'var(--text-muted)',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '4px',
+                                                fontSize: '0.78rem',
+                                                fontWeight: 700,
+                                              }}
+                                            >
+                                              <Volume2 size={15} />
+                                              <span>{playingVocabId === w.id ? 'Đang phát...' : 'Phát âm'}</span>
+                                            </button>
+                                          )}
+                                        </div>
+
+                                        <div style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '6px' }}>
+                                          {w.meaning}
+                                        </div>
+
+                                        {w.partOfSpeech && (
+                                          <span
+                                            style={{
+                                              display: 'inline-block',
+                                              fontSize: '0.72rem',
+                                              fontWeight: 700,
+                                              padding: '2px 8px',
+                                              borderRadius: 'var(--radius-sm)',
+                                              backgroundColor: '#f1f5f9',
+                                              color: 'var(--text-muted)',
+                                              marginBottom: '8px',
+                                            }}
+                                          >
+                                            {w.partOfSpeech}
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      {w.exampleSentence && (
+                                        <div
+                                          style={{
+                                            marginTop: '8px',
+                                            padding: '10px 12px',
+                                            borderRadius: 'var(--radius-sm)',
+                                            backgroundColor: '#f8fafc',
+                                            border: '1px solid #e2e8f0',
+                                            fontSize: '0.8rem',
+                                          }}
+                                        >
+                                          <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{w.exampleSentence}</div>
+                                          {w.examplePinyin && <div style={{ fontSize: '0.76rem', color: 'var(--primary)', marginTop: '2px' }}>{w.examplePinyin}</div>}
+                                          {w.exampleMeaning && <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: '2px' }}>{w.exampleMeaning}</div>}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
-                          ) : words.length === 0 ? (
-                            <div style={{ textAlign: 'center', padding: '16px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                              Bộ từ vựng này hiện chưa có từ nào.
-                            </div>
-                          ) : (
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '10px' }}>
-                              {words.map((w) => (
+                          )}
+
+                          {/* 2. FLASHCARD MODE */}
+                          {currentMode === 'FLASHCARD' && (
+                            <div style={{ maxWidth: '640px', margin: '0 auto' }}>
+                              {flashcardsLoading ? (
+                                <div style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>
+                                  <Loader2 className="animate-spin" size={28} style={{ margin: '0 auto 8px' }} />
+                                  <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>Đang chuẩn bị thẻ Flashcard...</div>
+                                </div>
+                              ) : activeFlashcards.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
+                                  Bộ từ vựng này hiện chưa có thẻ flashcard nào để học.
+                                </div>
+                              ) : isSessionFinished ? (
                                 <div
-                                  key={w.id}
                                   style={{
-                                    padding: '12px',
-                                    borderRadius: 'var(--radius-sm)',
+                                    padding: '32px 24px',
+                                    textAlign: 'center',
                                     backgroundColor: '#ffffff',
-                                    border: '1px solid var(--border-card)',
+                                    borderRadius: 'var(--radius-lg)',
+                                    border: '1.5px solid var(--border-card)',
+                                    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)',
                                   }}
                                 >
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                                    <span className="hanzi" style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--text-chinese)' }}>
-                                      {w.hanzi}
-                                    </span>
-                                    <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--primary)' }}>
-                                      {w.pinyin}
-                                    </span>
+                                  <div
+                                    style={{
+                                      width: '60px',
+                                      height: '60px',
+                                      borderRadius: '50%',
+                                      backgroundColor: '#ecfdf5',
+                                      color: '#10b981',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      margin: '0 auto 12px',
+                                    }}
+                                  >
+                                    <Sparkles size={30} />
                                   </div>
-                                  <div style={{ fontSize: '0.85rem', color: 'var(--text-main)', marginTop: '4px' }}>
-                                    {w.meaning}
-                                  </div>
-                                  {w.exampleSentence && (
-                                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px', fontStyle: 'italic' }}>
-                                      &ldquo;{w.exampleSentence}&rdquo;
+                                  <h4 style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--text-main)', margin: '0 0 6px' }}>
+                                    Chúc mừng bạn đã hoàn thành lượt học!
+                                  </h4>
+                                  <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)', margin: '0 0 22px' }}>
+                                    Bạn đã lật và kiểm tra toàn bộ {activeFlashcards.length} thẻ từ trong bộ từ vựng này.
+                                  </p>
+
+                                  <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '24px' }}>
+                                    <div style={{ padding: '12px 24px', borderRadius: 'var(--radius-md)', backgroundColor: '#ecfdf5', border: '1px solid #a7f3d0' }}>
+                                      <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#059669' }}>{sessionRememberedCount}</div>
+                                      <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#047857' }}>Đã ghi nhớ</div>
                                     </div>
-                                  )}
+                                    <div style={{ padding: '12px 24px', borderRadius: 'var(--radius-md)', backgroundColor: '#fef2f2', border: '1px solid #fecaca' }}>
+                                      <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#dc2626' }}>{sessionForgottenCount}</div>
+                                      <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#b91c1c' }}>Cần ôn lại</div>
+                                    </div>
+                                  </div>
+
+                                  <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                                    <button
+                                      type="button"
+                                      onClick={() => loadFlashcardsForSet(vs.id, false)}
+                                      className="btn-gamified btn-primary"
+                                      style={{ padding: '9px 18px', fontSize: '0.85rem' }}
+                                    >
+                                      <RotateCcw size={15} />
+                                      <span>Học lại toàn bộ</span>
+                                    </button>
+                                    {sessionForgottenCount > 0 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => loadFlashcardsForSet(vs.id, true)}
+                                        className="btn-gamified"
+                                        style={{ padding: '9px 18px', fontSize: '0.85rem', backgroundColor: '#fef2f2', color: '#dc2626', borderColor: '#fca5a5' }}
+                                      >
+                                        <RotateCcw size={15} />
+                                        <span>Chỉ ôn từ chưa nhớ ({sessionForgottenCount})</span>
+                                      </button>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSwitchMode(vs.id, 'LIST')}
+                                      className="btn-gamified"
+                                      style={{ padding: '9px 18px', fontSize: '0.85rem', backgroundColor: '#f1f5f9', color: 'var(--text-main)', borderColor: '#e2e8f0' }}
+                                    >
+                                      <BookOpen size={15} />
+                                      <span>Xem danh sách từ</span>
+                                    </button>
+                                  </div>
                                 </div>
-                              ))}
+                              ) : (
+                                <div>
+                                  {/* Progress bar */}
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+                                    <span>Thẻ {flashcardIndex + 1} / {activeFlashcards.length}</span>
+                                    <span>{Math.round(((flashcardIndex + 1) / activeFlashcards.length) * 100)}% hoàn thành</span>
+                                  </div>
+                                  <div style={{ height: '6px', width: '100%', backgroundColor: '#e2e8f0', borderRadius: 'var(--radius-full)', overflow: 'hidden', marginBottom: '16px' }}>
+                                    <div
+                                      style={{
+                                        height: '100%',
+                                        width: `${((flashcardIndex + 1) / activeFlashcards.length) * 100}%`,
+                                        backgroundColor: 'var(--primary)',
+                                        borderRadius: 'var(--radius-full)',
+                                        transition: 'width 0.3s ease',
+                                      }}
+                                    />
+                                  </div>
+
+                                  {/* The Card */}
+                                  {(() => {
+                                    const card = activeFlashcards[flashcardIndex]
+                                    if (!card) return null
+
+                                    return (
+                                      <div>
+                                        <div
+                                          onClick={() => setIsFlipped(!isFlipped)}
+                                          style={{
+                                            minHeight: '230px',
+                                            backgroundColor: '#ffffff',
+                                            borderRadius: 'var(--radius-lg)',
+                                            border: '2px solid var(--border-card)',
+                                            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.06)',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            padding: '28px',
+                                            position: 'relative',
+                                            transition: 'all 0.25s ease',
+                                            userSelect: 'none',
+                                          }}
+                                        >
+                                          {/* Audio button inside card if audioUrl exists */}
+                                          {card.audioUrl && (
+                                            <button
+                                              type="button"
+                                              onClick={(e) => handlePlayAudio(e, card)}
+                                              title="Phát âm từ vựng"
+                                              style={{
+                                                position: 'absolute',
+                                                top: '14px',
+                                                right: '14px',
+                                                padding: '8px',
+                                                borderRadius: '50%',
+                                                border: '1px solid var(--border-card)',
+                                                backgroundColor: playingVocabId === card.id ? 'var(--primary-light)' : '#f8fafc',
+                                                color: playingVocabId === card.id ? 'var(--primary)' : 'var(--text-muted)',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                              }}
+                                            >
+                                              <Volume2 size={18} />
+                                            </button>
+                                          )}
+
+                                          {!isFlipped ? (
+                                            // Front Face
+                                            <div style={{ textAlign: 'center' }}>
+                                              <div className="hanzi" style={{ fontSize: '3.6rem', fontWeight: 900, color: 'var(--text-chinese)', marginBottom: '12px' }}>
+                                                {card.hanzi}
+                                              </div>
+                                              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontStyle: 'italic', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                                <RotateCw size={14} />
+                                                <span>Nhấn vào thẻ hoặc nút &ldquo;Lật thẻ&rdquo; để xem nghĩa & pinyin</span>
+                                              </div>
+                                            </div>
+                                          ) : (
+                                            // Back Face
+                                            <div style={{ textAlign: 'center', width: '100%' }}>
+                                              <div className="hanzi" style={{ fontSize: '2.2rem', fontWeight: 900, color: 'var(--text-chinese)', marginBottom: '4px' }}>
+                                                {card.hanzi}
+                                              </div>
+                                              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary)', marginBottom: '8px' }}>
+                                                {card.pinyin}
+                                              </div>
+                                              <div style={{ fontSize: '1.18rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '8px' }}>
+                                                {card.meaning}
+                                              </div>
+                                              {card.partOfSpeech && (
+                                                <span
+                                                  style={{
+                                                    display: 'inline-block',
+                                                    fontSize: '0.74rem',
+                                                    fontWeight: 700,
+                                                    padding: '2px 8px',
+                                                    borderRadius: 'var(--radius-sm)',
+                                                    backgroundColor: '#f1f5f9',
+                                                    color: 'var(--text-muted)',
+                                                    marginBottom: '8px',
+                                                  }}
+                                                >
+                                                  {card.partOfSpeech}
+                                                </span>
+                                              )}
+                                              {card.exampleSentence && (
+                                                <div
+                                                  style={{
+                                                    marginTop: '10px',
+                                                    padding: '10px 14px',
+                                                    borderRadius: 'var(--radius-md)',
+                                                    backgroundColor: '#f8fafc',
+                                                    border: '1px solid var(--border-card)',
+                                                    fontSize: '0.82rem',
+                                                    textAlign: 'left',
+                                                  }}
+                                                >
+                                                  <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{card.exampleSentence}</div>
+                                                  {card.examplePinyin && <div style={{ fontSize: '0.76rem', color: 'var(--primary)', marginTop: '2px' }}>{card.examplePinyin}</div>}
+                                                  {card.exampleMeaning && <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: '2px' }}>{card.exampleMeaning}</div>}
+                                                </div>
+                                              )}
+                                            </div>
+                                          )}
+                                        </div>
+
+                                        {/* Action Review Buttons */}
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginTop: '16px' }}>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleReviewFlashcardCard('FORGOTTEN')}
+                                            disabled={isSubmittingReview}
+                                            className="btn-gamified"
+                                            style={{
+                                              padding: '10px 20px',
+                                              fontSize: '0.88rem',
+                                              fontWeight: 800,
+                                              backgroundColor: '#fef2f2',
+                                              color: '#dc2626',
+                                              borderColor: '#fca5a5',
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              gap: '6px',
+                                            }}
+                                          >
+                                            <X size={16} />
+                                            <span>Chưa nhớ</span>
+                                          </button>
+
+                                          <button
+                                            type="button"
+                                            onClick={() => setIsFlipped(!isFlipped)}
+                                            className="btn-gamified"
+                                            style={{
+                                              padding: '10px 20px',
+                                              fontSize: '0.88rem',
+                                              fontWeight: 800,
+                                              backgroundColor: '#f1f5f9',
+                                              color: 'var(--text-main)',
+                                              borderColor: '#cbd5e1',
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              gap: '6px',
+                                            }}
+                                          >
+                                            <RotateCw size={16} />
+                                            <span>Lật thẻ</span>
+                                          </button>
+
+                                          <button
+                                            type="button"
+                                            onClick={() => handleReviewFlashcardCard('REMEMBERED')}
+                                            disabled={isSubmittingReview}
+                                            className="btn-gamified"
+                                            style={{
+                                              padding: '10px 20px',
+                                              fontSize: '0.88rem',
+                                              fontWeight: 800,
+                                              backgroundColor: '#ecfdf5',
+                                              color: '#059669',
+                                              borderColor: '#6ee7b7',
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              gap: '6px',
+                                            }}
+                                          >
+                                            <Check size={16} />
+                                            <span>Đã nhớ</span>
+                                          </button>
+                                        </div>
+
+                                        {/* Navigation arrows */}
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '14px', padding: '0 4px' }}>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setIsFlipped(false)
+                                              setFlashcardIndex((prev) => Math.max(0, prev - 1))
+                                            }}
+                                            disabled={flashcardIndex === 0}
+                                            style={{
+                                              border: 'none',
+                                              background: 'none',
+                                              fontSize: '0.82rem',
+                                              fontWeight: 700,
+                                              color: flashcardIndex === 0 ? '#cbd5e1' : 'var(--primary)',
+                                              cursor: flashcardIndex === 0 ? 'default' : 'pointer',
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              gap: '4px',
+                                            }}
+                                          >
+                                            <ChevronLeft size={16} />
+                                            <span>Thẻ trước</span>
+                                          </button>
+
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setIsFlipped(false)
+                                              setFlashcardIndex((prev) => Math.min(activeFlashcards.length - 1, prev + 1))
+                                            }}
+                                            disabled={flashcardIndex === activeFlashcards.length - 1}
+                                            style={{
+                                              border: 'none',
+                                              background: 'none',
+                                              fontSize: '0.82rem',
+                                              fontWeight: 700,
+                                              color: flashcardIndex === activeFlashcards.length - 1 ? '#cbd5e1' : 'var(--primary)',
+                                              cursor: flashcardIndex === activeFlashcards.length - 1 ? 'default' : 'pointer',
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              gap: '4px',
+                                            }}
+                                          >
+                                            <span>Thẻ sau</span>
+                                            <ChevronRight size={16} />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    )
+                                  })()}
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
@@ -945,6 +1574,46 @@ export const ClassDetailPage: React.FC = () => {
                 {actionLoading === removingStudent.studentId ? 'Đang xử lý...' : 'Xác nhận khai trừ'}
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Audio Error Toast */}
+        {audioError && (
+          <div
+            style={{
+              position: 'fixed',
+              bottom: '24px',
+              right: '24px',
+              padding: '12px 18px',
+              backgroundColor: '#fef2f2',
+              border: '1.5px solid #fca5a5',
+              borderRadius: 'var(--radius-md)',
+              color: '#b91c1c',
+              boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+              zIndex: 1000,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              fontSize: '0.85rem',
+              fontWeight: 700,
+            }}
+          >
+            <AlertCircle size={18} style={{ color: '#ef4444', flexShrink: 0 }} />
+            <span>{audioError}</span>
+            <button
+              type="button"
+              onClick={() => setAudioError(null)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#b91c1c',
+                cursor: 'pointer',
+                padding: '2px',
+                marginLeft: '4px',
+              }}
+            >
+              <X size={14} />
+            </button>
           </div>
         )}
       </div>

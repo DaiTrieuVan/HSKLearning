@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.nio.charset.StandardCharsets;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -32,11 +33,16 @@ import com.hsk.content.domain.HskLevelEntity;
 import com.hsk.content.domain.LessonEntity;
 import com.hsk.content.domain.LessonVocabularyEntity;
 import com.hsk.content.domain.VocabularyEntity;
+import com.hsk.content.repository.GrammarExampleRepository;
 import com.hsk.content.repository.GrammarPointRepository;
 import com.hsk.content.repository.HskLevelRepository;
 import com.hsk.content.repository.LessonRepository;
 import com.hsk.content.repository.LessonVocabularyRepository;
+import com.hsk.content.repository.VocabSetItemRepository;
+import com.hsk.content.repository.VocabSetRepository;
 import com.hsk.content.repository.VocabularyRepository;
+import com.hsk.learning.repository.LessonProgressRepository;
+import com.hsk.learning.repository.VocabLearningRepository;
 
 /**
  * Kiểm thử cho Story HTT-04-CN-002: Học bài
@@ -75,6 +81,21 @@ class LessonStudyH2Test {
 	@Autowired
 	private GrammarPointRepository grammarPointRepository;
 
+	@Autowired
+	private GrammarExampleRepository grammarExampleRepository;
+
+	@Autowired
+	private VocabSetRepository vocabSetRepository;
+
+	@Autowired
+	private VocabSetItemRepository vocabSetItemRepository;
+
+	@Autowired
+	private VocabLearningRepository vocabLearningRepository;
+
+	@Autowired
+	private LessonProgressRepository lessonProgressRepository;
+
 	private final ObjectMapper objectMapper = new ObjectMapper();
 
 	private String studentToken;
@@ -82,6 +103,8 @@ class LessonStudyH2Test {
 
 	@BeforeEach
 	void setUp() throws Exception {
+		tearDown();
+
 		// Tạo học sinh và lấy JWT token
 		if (userRepository.findByEmail(STUDENT_EMAIL).isEmpty()) {
 			registrationService.registerStudent(new RegisterStudentRequest("Học sinh kiểm thử", STUDENT_EMAIL, PASSWORD, PASSWORD));
@@ -92,6 +115,26 @@ class LessonStudyH2Test {
 		hsk1 = levelRepository.findByCode("HSK_1").orElseGet(() -> {
 			HskLevelEntity level = new HskLevelEntity("HSK_1", "HSK 1 - Nhập môn", 1, "Cấp độ cơ bản", 150);
 			return levelRepository.save(level);
+		});
+	}
+
+	@AfterEach
+	void tearDown() {
+		vocabLearningRepository.deleteAll();
+		lessonProgressRepository.deleteAll();
+		grammarExampleRepository.deleteAll();
+		grammarPointRepository.deleteAll();
+		vocabSetItemRepository.deleteAll();
+		vocabSetRepository.deleteAll();
+		lessonVocabularyRepository.deleteAll();
+		vocabularyRepository.deleteAll();
+		lessonRepository.deleteAll();
+	}
+
+	private VocabularyEntity createOrGetVocab(String hanzi, String pinyin, String meaning, String partOfSpeech, String exampleSentence, String examplePinyin, String exampleMeaning) {
+		String ownerKey = VocabularyEntity.buildOwnerKey(null, hanzi, pinyin);
+		return vocabularyRepository.findByOwnerKey(ownerKey).orElseGet(() -> {
+			return vocabularyRepository.save(new VocabularyEntity(hanzi, pinyin, meaning, partOfSpeech, null, exampleSentence, examplePinyin, exampleMeaning, hsk1, null));
 		});
 	}
 
@@ -112,8 +155,8 @@ class LessonStudyH2Test {
 		// Given
 		LessonEntity lesson = lessonRepository.save(new LessonEntity(hsk1, "Bài 1: Chào hỏi", "Bài học chào hỏi cơ bản", 1, null));
 
-		VocabularyEntity v1 = vocabularyRepository.save(new VocabularyEntity("你好", "nǐ hǎo", "xin chào", "đại từ", null, "你好吗？", "Nǐ hǎo ma?", "Bạn khỏe không?", hsk1, null));
-		VocabularyEntity v2 = vocabularyRepository.save(new VocabularyEntity("再见", "zàijiàn", "tạm biệt", "động từ", null, null, null, null, hsk1, null));
+		VocabularyEntity v1 = createOrGetVocab("你好", "nǐ hǎo", "xin chào", "đại từ", "你好吗？", "Nǐ hǎo ma?", "Bạn khỏe không?");
+		VocabularyEntity v2 = createOrGetVocab("再见", "zàijiàn", "tạm biệt", "động từ", null, null, null);
 
 		lessonVocabularyRepository.save(new LessonVocabularyEntity(lesson, v1, 1));
 		lessonVocabularyRepository.save(new LessonVocabularyEntity(lesson, v2, 2));
@@ -145,7 +188,7 @@ class LessonStudyH2Test {
 		// Given
 		LessonEntity lesson = lessonRepository.save(new LessonEntity(hsk1, "Bài 2: Cảm ơn và xin lỗi", "Kiểm tra dấu thanh", 2, null));
 
-		VocabularyEntity v = vocabularyRepository.save(new VocabularyEntity("谢谢", "xièxie", "cảm ơn", "động từ", null, "不客气", "bù kèqi", "Đừng khách sáo", hsk1, null));
+		VocabularyEntity v = createOrGetVocab("谢谢", "xièxie", "cảm ơn", "động từ", "不客气", "bù kèqi", "Đừng khách sáo");
 		lessonVocabularyRepository.save(new LessonVocabularyEntity(lesson, v, 1));
 
 		// When & Then
@@ -170,7 +213,7 @@ class LessonStudyH2Test {
 	void testGetLessonStudy_EmptyGrammarPoints() throws Exception {
 		// Given - bài chỉ có từ vựng, không có ngữ pháp
 		LessonEntity lesson = lessonRepository.save(new LessonEntity(hsk1, "Bài 3: Chỉ có từ vựng", "Không có ngữ pháp", 3, null));
-		VocabularyEntity v = vocabularyRepository.save(new VocabularyEntity("水", "shuǐ", "nước", "danh từ", null, null, null, null, hsk1, null));
+		VocabularyEntity v = createOrGetVocab("水", "shuǐ", "nước", "danh từ", null, null, null);
 		lessonVocabularyRepository.save(new LessonVocabularyEntity(lesson, v, 1));
 
 		// When & Then

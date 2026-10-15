@@ -4,11 +4,15 @@ import com.hsk.account.domain.UserEntity;
 import com.hsk.account.repository.UserRepository;
 import com.hsk.common.api.ApiErrorCode;
 import com.hsk.common.api.ApiException;
+import com.hsk.classroom.domain.ClassMemberStatus;
+import com.hsk.classroom.repository.ClassMemberRepository;
+import com.hsk.content.domain.ClassVocabSetEntity;
 import com.hsk.content.domain.LessonEntity;
 import com.hsk.content.domain.LessonVocabularyEntity;
 import com.hsk.content.domain.VocabSetEntity;
 import com.hsk.content.domain.VocabSetItemEntity;
 import com.hsk.content.domain.VocabularyEntity;
+import com.hsk.content.repository.ClassVocabSetRepository;
 import com.hsk.content.repository.LessonRepository;
 import com.hsk.content.repository.LessonVocabularyRepository;
 import com.hsk.content.repository.VocabSetItemRepository;
@@ -25,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +44,8 @@ public class FlashcardLearningService {
 	private final UserRepository userRepository;
 	private final LessonRepository lessonRepository;
 	private final VocabSetRepository vocabSetRepository;
+	private final ClassVocabSetRepository classVocabSetRepository;
+	private final ClassMemberRepository classMemberRepository;
 
 	public FlashcardLearningService(
 			VocabLearningRepository vocabLearningRepository,
@@ -47,7 +54,9 @@ public class FlashcardLearningService {
 			VocabularyRepository vocabularyRepository,
 			UserRepository userRepository,
 			LessonRepository lessonRepository,
-			VocabSetRepository vocabSetRepository) {
+			VocabSetRepository vocabSetRepository,
+			ClassVocabSetRepository classVocabSetRepository,
+			ClassMemberRepository classMemberRepository) {
 		this.vocabLearningRepository = vocabLearningRepository;
 		this.lessonVocabularyRepository = lessonVocabularyRepository;
 		this.vocabSetItemRepository = vocabSetItemRepository;
@@ -55,11 +64,13 @@ public class FlashcardLearningService {
 		this.userRepository = userRepository;
 		this.lessonRepository = lessonRepository;
 		this.vocabSetRepository = vocabSetRepository;
+		this.classVocabSetRepository = classVocabSetRepository;
+		this.classMemberRepository = classMemberRepository;
 	}
 
 	@Transactional(readOnly = true)
 	public List<FlashcardCardResponse> getFlashcards(Long currentUserId, Long lessonId, Long vocabSetId, Boolean onlyForgotten) {
-		List<VocabularyEntity> vocabs = getAccessibleVocabularies(lessonId, vocabSetId);
+		List<VocabularyEntity> vocabs = getAccessibleVocabularies(currentUserId, lessonId, vocabSetId);
 		if (vocabs.isEmpty()) {
 			return Collections.emptyList();
 		}
@@ -116,7 +127,7 @@ public class FlashcardLearningService {
 
 	@Transactional(readOnly = true)
 	public FlashcardSessionSummaryResponse getSessionSummary(Long currentUserId, Long lessonId, Long vocabSetId) {
-		List<VocabularyEntity> vocabs = getAccessibleVocabularies(lessonId, vocabSetId);
+		List<VocabularyEntity> vocabs = getAccessibleVocabularies(currentUserId, lessonId, vocabSetId);
 		if (vocabs.isEmpty()) {
 			return new FlashcardSessionSummaryResponse(0, 0, 0, 0, Collections.emptyList());
 		}
@@ -153,7 +164,7 @@ public class FlashcardLearningService {
 		);
 	}
 
-	private List<VocabularyEntity> getAccessibleVocabularies(Long lessonId, Long vocabSetId) {
+	private List<VocabularyEntity> getAccessibleVocabularies(Long currentUserId, Long lessonId, Long vocabSetId) {
 		if (lessonId == null && vocabSetId == null) {
 			throw new ApiException(ApiErrorCode.VALIDATION_FAILED);
 		}
@@ -171,7 +182,20 @@ public class FlashcardLearningService {
 					.toList();
 		} else {
 			VocabSetEntity vocabSet = vocabSetRepository.findById(vocabSetId)
-					.orElseThrow(() -> new ApiException(ApiErrorCode.RESOURCE_NOT_FOUND));
+					.orElseThrow(() -> new ApiException(ApiErrorCode.VOCAB_SET_NOT_FOUND));
+
+			boolean isOwner = Objects.equals(vocabSet.getTeacherId(), currentUserId);
+			if (!isOwner) {
+				List<ClassVocabSetEntity> assignments = classVocabSetRepository.findAllByVocabSetId(vocabSetId);
+				boolean hasAccess = assignments.stream()
+						.anyMatch(a -> Objects.equals(a.getClassroom().getTeacher().getId(), currentUserId) ||
+								classMemberRepository.findByClassroom_IdAndStudent_Id(a.getClassroom().getId(), currentUserId)
+										.map(m -> m.getStatus() == ClassMemberStatus.ACTIVE).orElse(false));
+				if (!hasAccess) {
+					throw new ApiException(ApiErrorCode.FORBIDDEN);
+				}
+			}
+
 			return vocabSetItemRepository.findAllByVocabSetIdOrderBySortOrderAsc(vocabSetId)
 					.stream()
 					.map(VocabSetItemEntity::getVocabulary)

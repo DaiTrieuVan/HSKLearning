@@ -31,6 +31,17 @@ export interface CreateQuestionPayload {
   options: CreateQuestionOptionPayload[]
 }
 
+export type QuestionFormat = 'HANZI_TO_MEANING' | 'MEANING_TO_HANZI' | 'HANZI_TO_PINYIN'
+
+export interface QuickGeneratePreviewPayload {
+  vocabSetId: number
+  format?: QuestionFormat
+}
+
+export interface BatchCreateQuestionsPayload {
+  questions: CreateQuestionPayload[]
+}
+
 const API_BASE = '/api/questions'
 
 export async function createMultipleChoiceQuestion(
@@ -59,6 +70,62 @@ export async function createMultipleChoiceQuestion(
   }
 
   return data as QuestionItem
+}
+
+export async function quickGeneratePreview(
+  payload: QuickGeneratePreviewPayload,
+  token: string
+): Promise<CreateQuestionPayload[]> {
+  const response = await fetch(`${API_BASE}/quick-generate/preview`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  const data = await response.json().catch(() => null)
+
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'UNKNOWN_ERROR',
+      data?.message || 'Không thể sinh câu hỏi tự động',
+      data?.fields
+    )
+  }
+
+  return data as CreateQuestionPayload[]
+}
+
+export async function batchCreateQuestions(
+  payload: BatchCreateQuestionsPayload,
+  token: string
+): Promise<QuestionItem[]> {
+  const response = await fetch(`${API_BASE}/batch`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  const data = await response.json().catch(() => null)
+
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'UNKNOWN_ERROR',
+      data?.message || 'Không thể lưu danh sách câu hỏi',
+      data?.fields
+    )
+  }
+
+  return data as QuestionItem[]
 }
 
 export async function getMyQuestions(token: string): Promise<QuestionItem[]> {

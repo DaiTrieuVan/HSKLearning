@@ -16,14 +16,21 @@ import {
   Layers,
   Calendar,
   BookOpen,
+  Wand2,
+  BookMarked,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import {
   getMyQuestions,
   createMultipleChoiceQuestion,
+  quickGeneratePreview,
+  batchCreateQuestions,
   type QuestionItem,
   type CreateQuestionOptionPayload,
+  type CreateQuestionPayload,
+  type QuestionFormat,
 } from '../../api/question'
+import { getMyVocabSets, type VocabSetItem } from '../../api/content'
 import { ApiError } from '../../api/auth'
 
 interface DraftOption {
@@ -36,14 +43,15 @@ export const QuestionBankPage: React.FC = () => {
   const navigate = useNavigate()
 
   const [questions, setQuestions] = useState<QuestionItem[]>([])
+  const [vocabSets, setVocabSets] = useState<VocabSetItem[]>([])
   const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
 
-  // Form Drawer / Inline state (No Modal!)
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  // Manual Form Drawer / Inline state (No Modal!)
+  const [isManualDrawerOpen, setIsManualDrawerOpen] = useState(false)
   const [questionContent, setQuestionContent] = useState('')
   const [explanation, setExplanation] = useState('')
   const [options, setOptions] = useState<DraftOption[]>([
@@ -54,9 +62,18 @@ export const QuestionBankPage: React.FC = () => {
   ])
   const [formErrors, setFormErrors] = useState<string[]>([])
 
+  // Quick Generate Panel state (HTT-05-CN-004)
+  const [isQuickGenOpen, setIsQuickGenOpen] = useState(false)
+  const [selectedVocabSetId, setSelectedVocabSetId] = useState<number | null>(null)
+  const [selectedFormat, setSelectedFormat] = useState<QuestionFormat>('HANZI_TO_MEANING')
+  const [generating, setGenerating] = useState(false)
+  const [batchSaving, setBatchSaving] = useState(false)
+  const [generatedDrafts, setGeneratedDrafts] = useState<CreateQuestionPayload[]>([])
+
   useEffect(() => {
     if (user) {
       loadQuestions()
+      loadVocabSets()
     }
   }, [user])
 
@@ -78,6 +95,19 @@ export const QuestionBankPage: React.FC = () => {
     }
   }
 
+  const loadVocabSets = async () => {
+    if (!user) return
+    try {
+      const data = await getMyVocabSets(user.token)
+      setVocabSets(data)
+      if (data.length > 0 && !selectedVocabSetId) {
+        setSelectedVocabSetId(data[0].id)
+      }
+    } catch {
+      // silently fail if cannot load sets
+    }
+  }
+
   const handleAddOption = () => {
     setOptions([...options, { content: '', isCorrect: false }])
   }
@@ -89,7 +119,6 @@ export const QuestionBankPage: React.FC = () => {
     }
     const wasCorrect = options[index].isCorrect
     const next = options.filter((_, i) => i !== index)
-    // If the removed option was the correct one, default the first remaining one to correct
     if (wasCorrect && next.length > 0) {
       next[0].isCorrect = true
     }
@@ -122,7 +151,6 @@ export const QuestionBankPage: React.FC = () => {
     if (hasEmptyOption) {
       errors.push('Các lựa chọn không được để trống nội dung (TC-04).')
     }
-    // Check duplicates
     const seen = new Set<string>()
     let hasDuplicate = false
     for (const opt of options) {
@@ -176,7 +204,6 @@ export const QuestionBankPage: React.FC = () => {
       )
 
       setSuccessMessage('Tạo câu hỏi trắc nghiệm thành công và đã lưu vào ngân hàng!')
-      // Reset form
       setQuestionContent('')
       setExplanation('')
       setOptions([
@@ -185,7 +212,7 @@ export const QuestionBankPage: React.FC = () => {
         { content: '', isCorrect: false },
         { content: '', isCorrect: false },
       ])
-      setIsDrawerOpen(false)
+      setIsManualDrawerOpen(false)
       loadQuestions()
     } catch (err) {
       if (err instanceof ApiError) {
@@ -195,6 +222,71 @@ export const QuestionBankPage: React.FC = () => {
       }
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  // HTT-05-CN-004: Handle Quick Generate Preview
+  const handleQuickGenerate = async () => {
+    if (!user) return
+    if (!selectedVocabSetId) {
+      setErrorMessage('Vui lòng chọn một bộ từ vựng để tạo câu hỏi.')
+      return
+    }
+
+    setErrorMessage(null)
+    setSuccessMessage(null)
+    setGenerating(true)
+    try {
+      const drafts = await quickGeneratePreview(
+        {
+          vocabSetId: selectedVocabSetId,
+          format: selectedFormat,
+        },
+        user.token
+      )
+      setGeneratedDrafts(drafts)
+      setSuccessMessage(`Đã sinh thành công ${drafts.length} câu hỏi trắc nghiệm! Hãy kiểm tra và lưu lại.`)
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setErrorMessage(err.message)
+      } else {
+        setErrorMessage('Không thể tạo nhanh câu hỏi từ bộ từ vựng')
+      }
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  // HTT-05-CN-004-TC-02: Remove a single draft question
+  const handleRemoveDraftQuestion = (index: number) => {
+    const next = generatedDrafts.filter((_, i) => i !== index)
+    setGeneratedDrafts(next)
+  }
+
+  // HTT-05-CN-004-TC-02: Batch save retained questions
+  const handleBatchSave = async () => {
+    if (!user || generatedDrafts.length === 0) return
+
+    setErrorMessage(null)
+    setSuccessMessage(null)
+    setBatchSaving(true)
+    try {
+      const saved = await batchCreateQuestions(
+        { questions: generatedDrafts },
+        user.token
+      )
+      setSuccessMessage(`Đã lưu thành công ${saved.length} câu hỏi vào ngân hàng câu hỏi!`)
+      setGeneratedDrafts([])
+      setIsQuickGenOpen(false)
+      loadQuestions()
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setErrorMessage(err.message)
+      } else {
+        setErrorMessage('Đã xảy ra lỗi khi lưu danh sách câu hỏi')
+      }
+    } finally {
+      setBatchSaving(false)
     }
   }
 
@@ -208,7 +300,7 @@ export const QuestionBankPage: React.FC = () => {
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col">
       {/* Top Navbar */}
       <header className="sticky top-0 z-20 bg-white border-b border-slate-200 px-6 py-4 shadow-sm">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center space-x-4">
             <button
               onClick={() => navigate('/')}
@@ -232,26 +324,48 @@ export const QuestionBankPage: React.FC = () => {
             </div>
           </div>
 
-          <button
-            onClick={() => {
-              setIsDrawerOpen(!isDrawerOpen)
-              setErrorMessage(null)
-              setFormErrors([])
-            }}
-            className="flex items-center space-x-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl shadow-sm transition"
-          >
-            {isDrawerOpen ? (
-              <>
-                <X className="w-4 h-4" />
-                <span>Đóng khung soạn câu hỏi</span>
-              </>
-            ) : (
-              <>
-                <Plus className="w-4 h-4" />
-                <span>Soạn câu trắc nghiệm mới</span>
-              </>
-            )}
-          </button>
+          <div className="flex items-center space-x-3">
+            {/* HTT-05-CN-004: Quick Generate Action */}
+            <button
+              onClick={() => {
+                setIsQuickGenOpen(!isQuickGenOpen)
+                setIsManualDrawerOpen(false)
+                setErrorMessage(null)
+                setFormErrors([])
+              }}
+              className={`flex items-center space-x-2 px-4 py-2.5 font-medium rounded-xl shadow-sm transition ${
+                isQuickGenOpen
+                  ? 'bg-amber-600 text-white hover:bg-amber-700'
+                  : 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100'
+              }`}
+            >
+              <Wand2 className="w-4 h-4" />
+              <span>{isQuickGenOpen ? 'Đóng tạo nhanh' : 'Tạo nhanh từ bộ từ vựng'}</span>
+            </button>
+
+            {/* Manual MCQ creation */}
+            <button
+              onClick={() => {
+                setIsManualDrawerOpen(!isManualDrawerOpen)
+                setIsQuickGenOpen(false)
+                setErrorMessage(null)
+                setFormErrors([])
+              }}
+              className="flex items-center space-x-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl shadow-sm transition"
+            >
+              {isManualDrawerOpen ? (
+                <>
+                  <X className="w-4 h-4" />
+                  <span>Đóng soạn thủ công</span>
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4" />
+                  <span>Soạn thủ công</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -284,8 +398,209 @@ export const QuestionBankPage: React.FC = () => {
           </div>
         )}
 
-        {/* INLINE EXPAND FORM / DRAWER (NO MODAL AS PER RULES) */}
-        {isDrawerOpen && (
+        {/* HTT-05-CN-004: QUICK GENERATE FROM VOCAB SET PANEL (NO MODAL) */}
+        {isQuickGenOpen && (
+          <div className="bg-white border-2 border-amber-300 rounded-2xl shadow-lg p-6 lg:p-8 animate-fadeIn space-y-6">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-700">
+                  <Wand2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">
+                    Tạo nhanh câu hỏi trắc nghiệm từ bộ từ vựng
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    Hệ thống tự động tạo câu hỏi trắc nghiệm 4 lựa chọn với phương án gây nhiễu lấy từ các từ khác trong bộ (QTN-08, QTN-19).
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsQuickGenOpen(false)}
+                className="p-2 text-slate-400 hover:text-slate-600 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Selection Form */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-end bg-amber-50/50 p-5 rounded-2xl border border-amber-100">
+              <div className="md:col-span-5">
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5 flex items-center space-x-1.5">
+                  <BookMarked className="w-4 h-4 text-amber-600" />
+                  <span>Chọn bộ từ vựng (QTN-19)</span>
+                </label>
+                {vocabSets.length === 0 ? (
+                  <div className="text-xs text-slate-500 py-2">
+                    Bạn chưa có bộ từ vựng nào. Hãy vào{' '}
+                    <button
+                      type="button"
+                      onClick={() => navigate('/vocab-sets')}
+                      className="text-indigo-600 underline font-semibold"
+                    >
+                      Bộ từ vựng
+                    </button>{' '}
+                    để tạo bộ từ trước.
+                  </div>
+                ) : (
+                  <select
+                    value={selectedVocabSetId || ''}
+                    onChange={(e) => setSelectedVocabSetId(Number(e.target.value))}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  >
+                    {vocabSets.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.title}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              <div className="md:col-span-4">
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                  Dạng câu hỏi trắc nghiệm
+                </label>
+                <select
+                  value={selectedFormat}
+                  onChange={(e) => setSelectedFormat(e.target.value as QuestionFormat)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                >
+                  <option value="HANZI_TO_MEANING">Chữ Hán ➔ Chọn nghĩa tiếng Việt</option>
+                  <option value="MEANING_TO_HANZI">Nghĩa tiếng Việt ➔ Chọn chữ Hán</option>
+                  <option value="HANZI_TO_PINYIN">Chữ Hán ➔ Chọn Pinyin</option>
+                </select>
+              </div>
+
+              <div className="md:col-span-3">
+                <button
+                  type="button"
+                  onClick={handleQuickGenerate}
+                  disabled={generating || vocabSets.length === 0}
+                  className="w-full flex items-center justify-center space-x-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold text-sm rounded-xl shadow-sm transition disabled:opacity-50"
+                >
+                  {generating ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Đang sinh câu hỏi...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Wand2 className="w-4 h-4" />
+                      <span>Sinh câu hỏi tự động</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Generated Drafts Preview & Review Area (HTT-05-CN-004-TC-02) */}
+            {generatedDrafts.length > 0 && (
+              <div className="space-y-4 pt-4 border-t border-slate-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-indigo-50 border border-indigo-100 rounded-xl">
+                  <div>
+                    <h3 className="text-sm font-bold text-indigo-900 flex items-center space-x-2">
+                      <Sparkles className="w-4 h-4 text-indigo-600" />
+                      <span>
+                        Đã sinh {generatedDrafts.length} câu hỏi trắc nghiệm
+                      </span>
+                    </h3>
+                    <p className="text-xs text-indigo-700 mt-0.5">
+                      Bạn có thể bấm biểu tượng thùng rác để bỏ bớt các câu không mong muốn trước khi lưu (TC-02).
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleBatchSave}
+                    disabled={batchSaving}
+                    className="flex items-center space-x-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl shadow-sm transition disabled:opacity-50 flex-shrink-0"
+                  >
+                    {batchSaving ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Đang lưu vào ngân hàng...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Lưu {generatedDrafts.length} câu vào ngân hàng</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Drafts Cards Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {generatedDrafts.map((draft, idx) => (
+                    <div
+                      key={idx}
+                      className="bg-white border border-slate-200 hover:border-amber-300 rounded-2xl p-5 shadow-sm transition flex flex-col justify-between space-y-3"
+                    >
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-md">
+                            Câu #{idx + 1}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveDraftQuestion(idx)}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                            title="Bỏ câu này khỏi danh sách lưu"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        <div className="text-sm font-bold text-slate-900 leading-snug break-words">
+                          {draft.content}
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                          {draft.options.map((opt, oIdx) => (
+                            <div
+                              key={oIdx}
+                              className={`px-3 py-1.5 rounded-lg text-xs flex items-center space-x-2 ${
+                                opt.isCorrect
+                                  ? 'bg-emerald-50 text-emerald-900 border border-emerald-300 font-semibold'
+                                  : 'bg-slate-50 text-slate-700 border border-slate-200'
+                              }`}
+                            >
+                              <span
+                                className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                                  opt.isCorrect
+                                    ? 'bg-emerald-600 text-white'
+                                    : 'bg-slate-200 text-slate-600'
+                                }`}
+                              >
+                                {optionLetters[oIdx] || oIdx + 1}
+                              </span>
+                              <span className="flex-1 truncate">{opt.content}</span>
+                              {opt.isCorrect && (
+                                <Check className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+
+                        {draft.explanation && (
+                          <div className="text-[11px] text-slate-500 bg-slate-50 p-2 rounded-lg">
+                            <span className="font-semibold text-slate-700">Giải thích: </span>
+                            <span>{draft.explanation}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* MANUAL CREATION INLINE PANEL (NO MODAL) */}
+        {isManualDrawerOpen && (
           <div className="bg-white border-2 border-indigo-200 rounded-2xl shadow-lg p-6 lg:p-8 animate-fadeIn">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
               <div className="flex items-center space-x-3">
@@ -303,7 +618,7 @@ export const QuestionBankPage: React.FC = () => {
               </div>
               <button
                 type="button"
-                onClick={() => setIsDrawerOpen(false)}
+                onClick={() => setIsManualDrawerOpen(false)}
                 className="p-2 text-slate-400 hover:text-slate-600 rounded-lg"
               >
                 <X className="w-5 h-5" />
@@ -372,7 +687,6 @@ export const QuestionBankPage: React.FC = () => {
                             : 'bg-white border-slate-200 hover:border-slate-300'
                         }`}
                       >
-                        {/* Radio select correct answer */}
                         <label
                           className="flex items-center cursor-pointer space-x-2"
                           title="Chọn làm đáp án đúng"
@@ -395,7 +709,6 @@ export const QuestionBankPage: React.FC = () => {
                           </span>
                         </label>
 
-                        {/* Input Content */}
                         <input
                           type="text"
                           value={opt.content}
@@ -404,7 +717,6 @@ export const QuestionBankPage: React.FC = () => {
                           className="flex-1 px-3 py-2 text-sm bg-transparent border-b border-transparent focus:border-indigo-400 focus:outline-none text-slate-800"
                         />
 
-                        {/* Correct badge */}
                         {opt.isCorrect && (
                           <span className="hidden sm:inline-flex items-center space-x-1 text-xs font-medium text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full">
                             <Check className="w-3.5 h-3.5" />
@@ -412,7 +724,6 @@ export const QuestionBankPage: React.FC = () => {
                           </span>
                         )}
 
-                        {/* Remove Option */}
                         <button
                           type="button"
                           onClick={() => handleRemoveOption(idx)}
@@ -446,7 +757,7 @@ export const QuestionBankPage: React.FC = () => {
                 <div className="pt-2 flex items-center justify-end space-x-3">
                   <button
                     type="button"
-                    onClick={() => setIsDrawerOpen(false)}
+                    onClick={() => setIsManualDrawerOpen(false)}
                     className="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-100 font-medium text-sm transition"
                   >
                     Hủy bỏ
@@ -461,7 +772,7 @@ export const QuestionBankPage: React.FC = () => {
                 </div>
               </form>
 
-              {/* LIVE STUDENT PREVIEW (Preview như học sinh nhìn thấy) */}
+              {/* LIVE STUDENT PREVIEW */}
               <div className="lg:col-span-5 bg-slate-50 border border-slate-200 rounded-2xl p-5 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center space-x-2 text-xs font-bold text-slate-400 tracking-wider uppercase mb-4">
@@ -570,16 +881,31 @@ export const QuestionBankPage: React.FC = () => {
             <p className="text-xs text-slate-500 mb-6 leading-relaxed">
               {searchTerm
                 ? 'Thử tìm kiếm với từ khóa khác hoặc xóa bộ lọc.'
-                : 'Bạn chưa tạo câu hỏi trắc nghiệm nào. Hãy bắt đầu tạo câu hỏi để xây dựng nguồn đề thi chất lượng cho học sinh.'}
+                : 'Bạn chưa tạo câu hỏi trắc nghiệm nào. Hãy bắt đầu bằng cách soạn thủ công hoặc tạo nhanh từ một bộ từ vựng.'}
             </p>
             {!searchTerm && (
-              <button
-                onClick={() => setIsDrawerOpen(true)}
-                className="inline-flex items-center space-x-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl shadow-sm transition"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Soạn câu hỏi đầu tiên</span>
-              </button>
+              <div className="flex items-center justify-center space-x-3">
+                <button
+                  onClick={() => {
+                    setIsQuickGenOpen(true)
+                    setIsManualDrawerOpen(false)
+                  }}
+                  className="inline-flex items-center space-x-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-xl shadow-sm transition"
+                >
+                  <Wand2 className="w-4 h-4" />
+                  <span>Tạo nhanh từ bộ từ</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setIsManualDrawerOpen(true)
+                    setIsQuickGenOpen(false)
+                  }}
+                  className="inline-flex items-center space-x-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl shadow-sm transition"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Soạn thủ công</span>
+                </button>
+              </div>
             )}
           </div>
         ) : (
@@ -591,7 +917,6 @@ export const QuestionBankPage: React.FC = () => {
                   className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition flex flex-col justify-between space-y-4"
                 >
                   <div className="space-y-3">
-                    {/* Header of Card */}
                     <div className="flex items-start justify-between">
                       <span className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 text-xs font-semibold">
                         <span>Câu #{q.id}</span>
@@ -604,12 +929,10 @@ export const QuestionBankPage: React.FC = () => {
                       </span>
                     </div>
 
-                    {/* Question Content */}
                     <div className="text-base font-bold text-slate-900 leading-snug break-words">
                       {q.content}
                     </div>
 
-                    {/* Options list */}
                     <div className="space-y-2 pt-1">
                       {q.options.map((opt, oIdx) => (
                         <div
@@ -640,7 +963,6 @@ export const QuestionBankPage: React.FC = () => {
                       ))}
                     </div>
 
-                    {/* Explanation */}
                     {q.explanation && (
                       <div className="p-3 bg-amber-50/70 border border-amber-100 rounded-xl text-xs text-amber-900">
                         <span className="font-bold">Giải thích: </span>

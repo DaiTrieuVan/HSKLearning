@@ -22,27 +22,27 @@ WHERE NOT EXISTS (SELECT 1 FROM roles r WHERE r.code = c.code);
 SET @pwd_hash = '$2a$10$ebMFfYj5ArkAW6Ni1mV4UuoR0X5ub3dA2sSRNv66Cu8dLfa8pnP/m';
 
 -- Admin: admin@hsk.com
-INSERT INTO users (email, password_hash, full_name, status, last_mode, failed_login_count)
-VALUES ('admin@hsk.com', @pwd_hash, 'Quản trị viên Hệ thống', 'ACTIVE', 'TEACHER', 0)
-ON DUPLICATE KEY UPDATE full_name = VALUES(full_name), status = 'ACTIVE';
+INSERT INTO users (email, password_hash, full_name, status, last_mode, failed_login_count, locked_until)
+VALUES ('admin@hsk.com', @pwd_hash, 'Quản trị viên Hệ thống', 'ACTIVE', 'TEACHER', 0, NULL)
+ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash), full_name = VALUES(full_name), status = 'ACTIVE', failed_login_count = 0, locked_until = NULL;
 
 -- Giáo viên 1 & 2
-INSERT INTO users (email, password_hash, full_name, status, last_mode, failed_login_count)
-VALUES ('teacher1@hsk.com', @pwd_hash, 'Cô Vương Lệ (Giáo viên)', 'ACTIVE', 'TEACHER', 0)
-ON DUPLICATE KEY UPDATE full_name = VALUES(full_name), status = 'ACTIVE';
+INSERT INTO users (email, password_hash, full_name, status, last_mode, failed_login_count, locked_until)
+VALUES ('teacher1@hsk.com', @pwd_hash, 'Cô Vương Lệ (Giáo viên)', 'ACTIVE', 'TEACHER', 0, NULL)
+ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash), full_name = VALUES(full_name), status = 'ACTIVE', failed_login_count = 0, locked_until = NULL;
 
-INSERT INTO users (email, password_hash, full_name, status, last_mode, failed_login_count)
-VALUES ('teacher2@hsk.com', @pwd_hash, 'Thầy Trương Vĩ (Giáo viên)', 'ACTIVE', 'TEACHER', 0)
-ON DUPLICATE KEY UPDATE full_name = VALUES(full_name), status = 'ACTIVE';
+INSERT INTO users (email, password_hash, full_name, status, last_mode, failed_login_count, locked_until)
+VALUES ('teacher2@hsk.com', @pwd_hash, 'Thầy Trương Vĩ (Giáo viên)', 'ACTIVE', 'TEACHER', 0, NULL)
+ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash), full_name = VALUES(full_name), status = 'ACTIVE', failed_login_count = 0, locked_until = NULL;
 
 -- Học sinh 1 & 2
-INSERT INTO users (email, password_hash, full_name, status, last_mode, failed_login_count)
-VALUES ('student1@hsk.com', @pwd_hash, 'Nguyễn Văn Học (Học sinh)', 'ACTIVE', 'STUDENT', 0)
-ON DUPLICATE KEY UPDATE full_name = VALUES(full_name), status = 'ACTIVE';
+INSERT INTO users (email, password_hash, full_name, status, last_mode, failed_login_count, locked_until)
+VALUES ('student1@hsk.com', @pwd_hash, 'Nguyễn Văn Học (Học sinh)', 'ACTIVE', 'STUDENT', 0, NULL)
+ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash), full_name = VALUES(full_name), status = 'ACTIVE', failed_login_count = 0, locked_until = NULL;
 
-INSERT INTO users (email, password_hash, full_name, status, last_mode, failed_login_count)
-VALUES ('student2@hsk.com', @pwd_hash, 'Trần Thị Sinh (Học sinh)', 'ACTIVE', 'STUDENT', 0)
-ON DUPLICATE KEY UPDATE full_name = VALUES(full_name), status = 'ACTIVE';
+INSERT INTO users (email, password_hash, full_name, status, last_mode, failed_login_count, locked_until)
+VALUES ('student2@hsk.com', @pwd_hash, 'Trần Thị Sinh (Học sinh)', 'ACTIVE', 'STUDENT', 0, NULL)
+ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash), full_name = VALUES(full_name), status = 'ACTIVE', failed_login_count = 0, locked_until = NULL;
 
 -- 3. Phân quyền (user_roles)
 -- Gán quyền ADMIN cho admin@hsk.com

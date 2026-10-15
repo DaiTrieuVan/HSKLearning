@@ -135,6 +135,11 @@ public class DataInitializer implements ApplicationRunner {
 					userRoleRepository.save(UserRoleEntity.of(user, role, null));
 				}
 			}
+		} else {
+			// Dev mode: Tự động mở khóa và đồng bộ mật khẩu chuẩn cho các tài khoản seed
+			user.unlock();
+			user.changePassword(passwordEncoder.encode(DEFAULT_PASSWORD));
+			user = userRepository.save(user);
 		}
 		return user;
 	}

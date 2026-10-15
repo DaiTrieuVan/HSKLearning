@@ -11,6 +11,7 @@ import { JoinClassPage } from './pages/classroom/JoinClassPage'
 import { ClassDetailPage } from './pages/classroom/ClassDetailPage'
 import { UserProfilePage } from './pages/profile/UserProfilePage'
 import { TeacherRequestPage } from './pages/teacher/TeacherRequestPage'
+import { VocabSearchPage } from './pages/content/VocabSearchPage'
 
 function AppRoutes() {
   const { isLoggedIn } = useAuth()
@@ -31,6 +32,7 @@ function AppRoutes() {
       <Route path="/classes/:classId" element={<ClassDetailPage />} />
       <Route path="/profile" element={<UserProfilePage />} />
       <Route path="/teacher-request" element={<TeacherRequestPage />} />
+      <Route path="/vocab-search" element={<VocabSearchPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

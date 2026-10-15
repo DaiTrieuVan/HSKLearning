@@ -16,6 +16,7 @@ import {
   Users,
   LayoutDashboard,
   BookMarked,
+  Search,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { PandaMascot } from '../../components/common/PandaMascot'
@@ -166,6 +167,29 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
           >
             <BookMarked size={16} color="var(--primary)" />
             <span>Lộ trình HSK</span>
+          </button>
+
+          {/* Vocab Search Link (HTT-04-CN-006) */}
+          <button
+            type="button"
+            id="nav-vocab-search-btn"
+            onClick={() => navigate('/vocab-search')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 14px',
+              borderRadius: 'var(--radius-md)',
+              border: '1.5px solid var(--border-card)',
+              backgroundColor: '#ffffff',
+              color: 'var(--text-main)',
+              fontSize: '0.82rem',
+              fontWeight: 800,
+              cursor: 'pointer',
+            }}
+          >
+            <Search size={16} color="var(--primary)" />
+            <span>Tra từ vựng</span>
           </button>
 
           {/* Admin Navigation Tabs */}

@@ -471,6 +471,14 @@ export const LessonStudyPage: React.FC = () => {
                 </>
               )}
             </div>
+            <button
+              onClick={() => navigate('/vocab-search')}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-full transition-colors border border-emerald-200"
+              title="Tra cứu từ vựng"
+            >
+              <Search className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Tra từ</span>
+            </button>
             <PandaMascot size={38} className="drop-shadow-sm" />
           </div>
         </div>

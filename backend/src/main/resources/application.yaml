@@ -30,6 +30,7 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+    encoding: UTF-8
     # A migration must never run against a schema created by something else.
     baseline-on-missing: false
     validate-migration-naming: true

@@ -15,6 +15,7 @@ import {
   X,
   Layers,
   Calendar,
+  BookOpen,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import {

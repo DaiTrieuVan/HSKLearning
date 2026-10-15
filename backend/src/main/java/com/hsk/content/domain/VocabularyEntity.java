@@ -12,6 +12,7 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import com.hsk.content.util.PinyinUtils;
 
 @Entity
 @Table(name = "vocabularies")
@@ -26,6 +27,9 @@ public class VocabularyEntity {
 
 	@Column(name = "pinyin", nullable = false, length = 150)
 	private String pinyin;
+
+	@Column(name = "pinyin_search", length = 150)
+	private String pinyinSearch;
 
 	@Column(name = "meaning", nullable = false, length = 500)
 	private String meaning;
@@ -74,6 +78,7 @@ public class VocabularyEntity {
 			HskLevelEntity hskLevel, Long ownerId) {
 		this.hanzi = hanzi;
 		this.pinyin = pinyin;
+		this.pinyinSearch = PinyinUtils.normalizeForSearch(pinyin);
 		this.meaning = meaning;
 		this.partOfSpeech = partOfSpeech;
 		this.audioUrl = audioUrl;
@@ -113,7 +118,16 @@ public class VocabularyEntity {
 
 	public void setPinyin(String pinyin) {
 		this.pinyin = pinyin;
+		this.pinyinSearch = PinyinUtils.normalizeForSearch(pinyin);
 		this.ownerKey = buildOwnerKey(this.ownerId, this.hanzi, this.pinyin);
+	}
+
+	public String getPinyinSearch() {
+		return pinyinSearch;
+	}
+
+	public void setPinyinSearch(String pinyinSearch) {
+		this.pinyinSearch = pinyinSearch;
 	}
 
 	public String getMeaning() {

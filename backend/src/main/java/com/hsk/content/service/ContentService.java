@@ -731,12 +731,11 @@ public class ContentService {
 
 		boolean isOwner = Objects.equals(set.getTeacherId(), userId);
 		if (!isOwner) {
-			List<ClassVocabSetEntity> assignments = classVocabSetRepository.findAll();
+			List<ClassVocabSetEntity> assignments = classVocabSetRepository.findAllByVocabSetId(vocabSetId);
 			boolean hasAccess = assignments.stream()
-				.anyMatch(a -> Objects.equals(a.getVocabSet().getId(), vocabSetId) &&
-					(Objects.equals(a.getClassroom().getTeacher().getId(), userId) ||
+				.anyMatch(a -> Objects.equals(a.getClassroom().getTeacher().getId(), userId) ||
 					 classMemberRepository.findByClassroom_IdAndStudent_Id(a.getClassroom().getId(), userId)
-						.map(m -> m.getStatus() == ClassMemberStatus.ACTIVE).orElse(false)));
+						.map(m -> m.getStatus() == ClassMemberStatus.ACTIVE).orElse(false));
 			if (!hasAccess) {
 				throw new ApiException(ApiErrorCode.FORBIDDEN);
 			}

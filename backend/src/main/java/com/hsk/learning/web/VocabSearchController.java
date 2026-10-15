@@ -36,10 +36,12 @@ public class VocabSearchController {
 
 	@GetMapping("/search")
 	public ResponseEntity<List<VocabSearchResultItem>> searchVocabularies(
-			@RequestParam(required = false) String query,
+			@RequestParam(name = "q", required = false) String q,
+			@RequestParam(name = "query", required = false) String query,
 			Principal principal) {
+		String keyword = (q != null && !q.isBlank()) ? q : query;
 		UserEntity user = requireUser(principal);
-		List<VocabSearchResultItem> results = vocabSearchService.searchVocabularies(user.getId(), query);
+		List<VocabSearchResultItem> results = vocabSearchService.searchVocabularies(user.getId(), keyword);
 		return ResponseEntity.ok(results);
 	}
 }

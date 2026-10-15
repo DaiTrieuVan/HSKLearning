@@ -28,7 +28,10 @@ export async function searchVocabularies(
   query: string
 ): Promise<VocabSearchResult[]> {
   const params = new URLSearchParams()
-  if (query) params.append('q', query)
+  if (query) {
+    params.append('q', query)
+    params.append('query', query)
+  }
 
   const response = await fetch(`${API_BASE}/search?${params.toString()}`, {
     headers: {

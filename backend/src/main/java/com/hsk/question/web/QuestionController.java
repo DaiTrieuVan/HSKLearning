@@ -61,6 +61,21 @@ public class QuestionController {
 		return ResponseEntity.status(HttpStatus.CREATED).body(response);
 	}
 
+	@PostMapping("/fill-blank")
+	@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
+	@Operation(
+			summary = "HTT-05-CN-002 — Tạo câu hỏi điền từ vào chỗ trống",
+			description = "Giáo viên tạo câu hỏi điền từ vào chỗ trống trong ngân hàng cá nhân (QTN-19). Bắt buộc có ít nhất 1 chỗ trống (___), số chỗ trống khớp số đáp án và đáp án đúng không được rỗng."
+	)
+	public ResponseEntity<QuestionResponse> createFillBlankQuestion(
+			@RequestBody com.hsk.question.dto.CreateFillBlankQuestionRequest request,
+			Principal principal
+	) {
+		UserEntity user = requireUser(principal);
+		QuestionResponse response = questionService.createFillBlankQuestion(user.getId(), request);
+		return ResponseEntity.status(HttpStatus.CREATED).body(response);
+	}
+
 	@GetMapping("/my")
 	@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
 	@Operation(

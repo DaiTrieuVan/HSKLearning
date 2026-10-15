@@ -31,6 +31,18 @@ export interface CreateQuestionPayload {
   options: CreateQuestionOptionPayload[]
 }
 
+export interface BlankAnswerItem {
+  index: number
+  correctAnswer: string
+  acceptableAnswers: string[]
+}
+
+export interface CreateFillBlankQuestionPayload {
+  content: string
+  explanation?: string
+  blanks: BlankAnswerItem[]
+}
+
 const API_BASE = '/api/questions'
 
 export async function createMultipleChoiceQuestion(
@@ -54,6 +66,34 @@ export async function createMultipleChoiceQuestion(
       response.status,
       data?.code || 'UNKNOWN_ERROR',
       data?.message || 'Không thể tạo câu hỏi trắc nghiệm',
+      data?.fields
+    )
+  }
+
+  return data as QuestionItem
+}
+
+export async function createFillBlankQuestion(
+  payload: CreateFillBlankQuestionPayload,
+  token: string
+): Promise<QuestionItem> {
+  const response = await fetch(`${API_BASE}/fill-blank`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  const data = await response.json().catch(() => null)
+
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'UNKNOWN_ERROR',
+      data?.message || 'Không thể tạo câu hỏi điền từ',
       data?.fields
     )
   }

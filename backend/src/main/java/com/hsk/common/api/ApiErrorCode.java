@@ -119,6 +119,21 @@ public enum ApiErrorCode {
 	/** HTT-04-CN-003: Audio file does not exist on disk or cannot be reached. */
 	AUDIO_FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "Tệp âm thanh không tồn tại hoặc đã bị xóa"),
 
+	/** HTT-05-CN-001 / QTN-08: Multiple choice question must have at least 2 options. */
+	QUESTION_MIN_OPTIONS(HttpStatus.BAD_REQUEST, "Câu hỏi trắc nghiệm phải có ít nhất 2 lựa chọn"),
+
+	/** HTT-05-CN-001 / QTN-08: Multiple choice question must have exactly one correct answer. */
+	QUESTION_EXACTLY_ONE_CORRECT(HttpStatus.BAD_REQUEST, "Câu hỏi trắc nghiệm phải có đúng một đáp án đúng"),
+
+	/** HTT-05-CN-001: Multiple choice question cannot have duplicate options. */
+	QUESTION_DUPLICATE_OPTIONS(HttpStatus.BAD_REQUEST, "Các lựa chọn không được có nội dung trùng nhau"),
+
+	/** HTT-05-CN-001: Question content cannot be blank. */
+	QUESTION_CONTENT_BLANK(HttpStatus.BAD_REQUEST, "Nội dung câu hỏi không được để trống"),
+
+	/** HTT-05-CN-001: Option content cannot be blank. */
+	QUESTION_OPTION_CONTENT_BLANK(HttpStatus.BAD_REQUEST, "Nội dung lựa chọn không được để trống"),
+
 	/** Unexpected server side failure; the client may retry. */
 	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Hệ thống đang gặp sự cố, vui lòng thử lại sau");
 

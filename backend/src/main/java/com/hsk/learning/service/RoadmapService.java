@@ -12,6 +12,7 @@ import com.hsk.content.repository.LessonRepository;
 import com.hsk.content.repository.LessonVocabularyRepository;
 import com.hsk.learning.domain.LessonProgressEntity;
 import com.hsk.learning.domain.LessonProgressId;
+import com.hsk.learning.dto.LessonProgressResponse;
 import com.hsk.learning.dto.RoadmapLessonDto;
 import com.hsk.learning.dto.RoadmapLevelDto;
 import com.hsk.learning.dto.RoadmapResponse;
@@ -21,6 +22,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -125,8 +128,49 @@ public class RoadmapService {
 		return new RoadmapResponse(totalCompletedAllLevels, overallProgressPercent, levelDtos);
 	}
 
+	@Transactional(readOnly = true)
+	public LessonProgressResponse getLessonProgress(Long userId, Long lessonId) {
+		LessonEntity lesson = lessonRepository.findById(lessonId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.LESSON_NOT_FOUND));
+
+		if (lesson.isHidden()) {
+			throw new ApiException(ApiErrorCode.LESSON_NOT_FOUND);
+		}
+
+		Long levelId = lesson.getHskLevel() != null ? lesson.getHskLevel().getId() : null;
+		Optional<LessonProgressEntity> progressOpt = lessonProgressRepository.findByIdUserIdAndIdLessonId(userId, lessonId);
+		boolean completed = progressOpt.isPresent();
+		Instant completedAt = progressOpt.map(LessonProgressEntity::getCompletedAt).orElse(null);
+
+		int totalInLevel = 0;
+		int completedInLevel = 0;
+		int progressPercent = 0;
+
+		if (levelId != null) {
+			List<LessonEntity> visibleLessons = lessonRepository.findAllByHskLevelIdAndHiddenFalseOrderBySortOrderAsc(levelId);
+			totalInLevel = visibleLessons.size();
+			Set<Long> completedIds = lessonProgressRepository.findCompletedLessonIdsByUserId(userId);
+			for (LessonEntity l : visibleLessons) {
+				if (completedIds.contains(l.getId())) {
+					completedInLevel++;
+				}
+			}
+			progressPercent = totalInLevel == 0 ? 0 : (int) Math.round((completedInLevel * 100.0) / totalInLevel);
+		}
+
+		return new LessonProgressResponse(
+				lessonId,
+				levelId,
+				completed,
+				completedAt,
+				completedInLevel,
+				totalInLevel,
+				progressPercent
+		);
+	}
+
 	@Transactional
-	public void markLessonCompleted(Long userId, Long lessonId) {
+	public LessonProgressResponse markLessonCompleted(Long userId, Long lessonId) {
 		UserEntity user = userRepository.findById(userId)
 				.orElseThrow(() -> new ApiException(ApiErrorCode.UNAUTHORIZED));
 		LessonEntity lesson = lessonRepository.findById(lessonId)
@@ -136,14 +180,78 @@ public class RoadmapService {
 			throw new ApiException(ApiErrorCode.LESSON_NOT_FOUND);
 		}
 
-		if (!lessonProgressRepository.existsByIdUserIdAndIdLessonId(userId, lessonId)) {
+		Optional<LessonProgressEntity> existingOpt = lessonProgressRepository.findByIdUserIdAndIdLessonId(userId, lessonId);
+		Instant completedAt;
+		if (existingOpt.isPresent()) {
+			// HTT-04-CN-004-TC-02: Dữ liệu trùng lặp (Idempotent) -> giữ nguyên mốc thời gian cũ, không ghi đè
+			completedAt = existingOpt.get().getCompletedAt();
+		} else {
+			// HTT-04-CN-004-TC-01 & TC-04: Lưu mới với thời điểm hoàn thành
 			LessonProgressEntity progress = new LessonProgressEntity(user, lesson);
-			lessonProgressRepository.save(progress);
+			LessonProgressEntity saved = lessonProgressRepository.saveAndFlush(progress);
+			completedAt = saved.getCompletedAt();
 		}
+
+		Long levelId = lesson.getHskLevel() != null ? lesson.getHskLevel().getId() : null;
+		int totalInLevel = 0;
+		int completedInLevel = 0;
+		int progressPercent = 0;
+
+		if (levelId != null) {
+			List<LessonEntity> visibleLessons = lessonRepository.findAllByHskLevelIdAndHiddenFalseOrderBySortOrderAsc(levelId);
+			totalInLevel = visibleLessons.size();
+			Set<Long> completedIds = lessonProgressRepository.findCompletedLessonIdsByUserId(userId);
+			for (LessonEntity l : visibleLessons) {
+				if (completedIds.contains(l.getId()) || l.getId().equals(lessonId)) {
+					completedInLevel++;
+				}
+			}
+			progressPercent = totalInLevel == 0 ? 0 : (int) Math.round((completedInLevel * 100.0) / totalInLevel);
+		}
+
+		return new LessonProgressResponse(
+				lessonId,
+				levelId,
+				true,
+				completedAt,
+				completedInLevel,
+				totalInLevel,
+				progressPercent
+		);
 	}
 
 	@Transactional
-	public void unmarkLessonCompleted(Long userId, Long lessonId) {
+	public LessonProgressResponse unmarkLessonCompleted(Long userId, Long lessonId) {
+		LessonEntity lesson = lessonRepository.findById(lessonId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.LESSON_NOT_FOUND));
+
 		lessonProgressRepository.deleteById(new LessonProgressId(userId, lessonId));
+
+		Long levelId = lesson.getHskLevel() != null ? lesson.getHskLevel().getId() : null;
+		int totalInLevel = 0;
+		int completedInLevel = 0;
+		int progressPercent = 0;
+
+		if (levelId != null) {
+			List<LessonEntity> visibleLessons = lessonRepository.findAllByHskLevelIdAndHiddenFalseOrderBySortOrderAsc(levelId);
+			totalInLevel = visibleLessons.size();
+			Set<Long> completedIds = lessonProgressRepository.findCompletedLessonIdsByUserId(userId);
+			for (LessonEntity l : visibleLessons) {
+				if (completedIds.contains(l.getId()) && !l.getId().equals(lessonId)) {
+					completedInLevel++;
+				}
+			}
+			progressPercent = totalInLevel == 0 ? 0 : (int) Math.round((completedInLevel * 100.0) / totalInLevel);
+		}
+
+		return new LessonProgressResponse(
+				lessonId,
+				levelId,
+				false,
+				null,
+				completedInLevel,
+				totalInLevel,
+				progressPercent
+		);
 	}
 }

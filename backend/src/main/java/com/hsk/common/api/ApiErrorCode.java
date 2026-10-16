@@ -170,6 +170,12 @@ public enum ApiErrorCode {
 	/** HTT-05-CN-004: Empty batch save request. */
 	BATCH_QUESTIONS_EMPTY(HttpStatus.BAD_REQUEST, "Danh sách câu hỏi lưu vào ngân hàng không được để trống"),
 
+	/** HTT-05-CN-005: Question not found. */
+	QUESTION_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy câu hỏi trong hệ thống"),
+
+	/** HTT-05-CN-005 / TC-06: Access denied to question of another teacher (QTN-19). */
+	ACCESS_DENIED_QUESTION(HttpStatus.FORBIDDEN, "Bạn không có quyền thao tác với câu hỏi này"),
+
 	/** Unexpected server side failure; the client may retry. */
 	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Hệ thống đang gặp sự cố, vui lòng thử lại sau");
 

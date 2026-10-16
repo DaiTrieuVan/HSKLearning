@@ -20,9 +20,12 @@ import com.hsk.question.repository.QuestionRepository;
 import com.hsk.question.service.QuestionService;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -279,8 +282,20 @@ public class ExerciseService {
 		exercise.setDescription(request.description() != null && !request.description().trim().isEmpty() ? request.description().trim() : null);
 		exercise.setStatus(status);
 
-		// Xóa các liên kết câu hỏi cũ
-		exercise.getQuestions().clear();
+		// 1. Loại bỏ các câu hỏi không còn trong danh sách yêu cầu mới
+		Set<Long> targetQuestionIds = questionItems.stream()
+				.map(CreateExerciseQuestionItem::questionId)
+				.collect(Collectors.toSet());
+
+		exercise.getQuestions().removeIf(eq -> eq.getQuestion() == null || !targetQuestionIds.contains(eq.getQuestion().getId()));
+
+		// 2. Map các câu hỏi còn giữ lại để tái sử dụng entity và tránh lỗi Unique Constraint
+		Map<Long, ExerciseQuestionEntity> existingMap = new HashMap<>();
+		for (ExerciseQuestionEntity eq : exercise.getQuestions()) {
+			if (eq.getQuestion() != null) {
+				existingMap.put(eq.getQuestion().getId(), eq);
+			}
+		}
 
 		BigDecimal totalPoints = BigDecimal.ZERO;
 		int defaultOrder = 1;
@@ -291,24 +306,31 @@ public class ExerciseService {
 				throw new ApiException(ApiErrorCode.EXERCISE_QUESTION_POINTS_INVALID);
 			}
 
-			QuestionEntity question = questionRepository.findById(item.questionId())
-					.orElseThrow(() -> new ApiException(ApiErrorCode.QUESTION_NOT_FOUND));
-
-			if (question.isHidden()) {
-				throw new ApiException(ApiErrorCode.QUESTION_NOT_FOUND);
-			}
-
-			// QTN-19: Giáo viên chỉ được đưa câu hỏi của mình vào bài tập
-			if (!question.getOwnerId().equals(teacherId)) {
-				throw new ApiException(ApiErrorCode.ACCESS_DENIED_QUESTION);
-			}
-
-			// QTN-14: Đánh dấu câu hỏi đã được dùng trong bài tập
-			questionService.markQuestionAsUsedInExercise(question.getId());
-
 			int sortOrder = item.sortOrder() != null ? item.sortOrder() : defaultOrder;
-			ExerciseQuestionEntity eq = new ExerciseQuestionEntity(exercise, question, item.points(), sortOrder);
-			exercise.addQuestion(eq);
+			ExerciseQuestionEntity existingEq = existingMap.get(item.questionId());
+
+			if (existingEq != null) {
+				existingEq.setPoints(item.points());
+				existingEq.setSortOrder(sortOrder);
+			} else {
+				QuestionEntity question = questionRepository.findById(item.questionId())
+						.orElseThrow(() -> new ApiException(ApiErrorCode.QUESTION_NOT_FOUND));
+
+				if (question.isHidden()) {
+					throw new ApiException(ApiErrorCode.QUESTION_NOT_FOUND);
+				}
+
+				// QTN-19: Giáo viên chỉ được đưa câu hỏi của mình vào bài tập
+				if (!question.getOwnerId().equals(teacherId)) {
+					throw new ApiException(ApiErrorCode.ACCESS_DENIED_QUESTION);
+				}
+
+				// QTN-14: Đánh dấu câu hỏi đã được dùng trong bài tập
+				questionService.markQuestionAsUsedInExercise(question.getId());
+
+				ExerciseQuestionEntity newEq = new ExerciseQuestionEntity(exercise, question, item.points(), sortOrder);
+				exercise.addQuestion(newEq);
+			}
 
 			totalPoints = totalPoints.add(item.points());
 			defaultOrder++;

@@ -134,6 +134,15 @@ public enum ApiErrorCode {
 	/** HTT-05-CN-001: Option content cannot be blank. */
 	QUESTION_OPTION_CONTENT_BLANK(HttpStatus.BAD_REQUEST, "Nội dung lựa chọn không được để trống"),
 
+	/** HTT-05-CN-002-TC-03: Fill in blank question must have at least one blank. */
+	QUESTION_NO_BLANKS(HttpStatus.BAD_REQUEST, "Câu hỏi phải chứa ít nhất một chỗ trống (ký hiệu ___)"),
+
+	/** HTT-05-CN-002-TC-04: Number of blanks must match number of configured answers. */
+	QUESTION_BLANK_COUNT_MISMATCH(HttpStatus.BAD_REQUEST, "Số lượng chỗ trống trong câu không khớp với số lượng đáp án đã cung cấp"),
+
+	/** HTT-05-CN-002-TC-05: Correct answer for blank cannot be empty. */
+	QUESTION_CORRECT_ANSWER_BLANK(HttpStatus.BAD_REQUEST, "Đáp án đúng cho mỗi chỗ trống không được để trống"),
+
 	/** HTT-05-CN-004 / TC-04: Vocab set has 0 words. */
 	VOCAB_SET_EMPTY(HttpStatus.BAD_REQUEST, "Bộ từ vựng chưa có từ nào để tạo câu hỏi"),
 

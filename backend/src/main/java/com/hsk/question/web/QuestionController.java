@@ -64,6 +64,21 @@ public class QuestionController {
 		return ResponseEntity.status(HttpStatus.CREATED).body(response);
 	}
 
+	@PostMapping("/fill-blank")
+	@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
+	@Operation(
+			summary = "HTT-05-CN-002 — Tạo câu hỏi điền từ vào chỗ trống",
+			description = "Giáo viên tạo câu hỏi điền từ vào chỗ trống trong ngân hàng cá nhân (QTN-19). Bắt buộc có ít nhất 1 chỗ trống (___), số chỗ trống khớp số đáp án và đáp án đúng không được rỗng."
+	)
+	public ResponseEntity<QuestionResponse> createFillBlankQuestion(
+			@RequestBody com.hsk.question.dto.CreateFillBlankQuestionRequest request,
+			Principal principal
+	) {
+		UserEntity user = requireUser(principal);
+		QuestionResponse response = questionService.createFillBlankQuestion(user.getId(), request);
+		return ResponseEntity.status(HttpStatus.CREATED).body(response);
+	}
+
 	@PostMapping("/quick-generate/preview")
 	@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
 	@Operation(
@@ -71,7 +86,7 @@ public class QuestionController {
 			description = "Sinh câu hỏi trắc nghiệm 4 lựa chọn từ các từ trong bộ từ vựng của giáo viên (QTN-08, QTN-19)."
 	)
 	public ResponseEntity<List<CreateQuestionRequest>> quickGeneratePreview(
-			@Valid @RequestBody QuickGeneratePreviewRequest request,
+			@RequestBody QuickGeneratePreviewRequest request,
 			Principal principal
 	) {
 		UserEntity user = requireUser(principal);
@@ -86,7 +101,7 @@ public class QuestionController {
 			description = "Lưu các câu hỏi đã chọn lọc từ danh sách tạo nhanh vào ngân hàng câu hỏi của giáo viên."
 	)
 	public ResponseEntity<List<QuestionResponse>> batchCreateQuestions(
-			@Valid @RequestBody BatchCreateQuestionsRequest request,
+			@RequestBody BatchCreateQuestionsRequest request,
 			Principal principal
 	) {
 		UserEntity user = requireUser(principal);

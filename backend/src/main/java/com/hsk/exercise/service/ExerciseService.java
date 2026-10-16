@@ -7,6 +7,7 @@ import com.hsk.common.api.ApiException;
 import com.hsk.exercise.domain.ExerciseEntity;
 import com.hsk.exercise.domain.ExerciseQuestionEntity;
 import com.hsk.exercise.domain.ExerciseStatus;
+import com.hsk.exercise.dto.CopyExerciseRequest;
 import com.hsk.exercise.dto.CreateExerciseQuestionItem;
 import com.hsk.exercise.dto.CreateExerciseRequest;
 import com.hsk.exercise.dto.ExerciseQuestionResponse;
@@ -168,6 +169,65 @@ public class ExerciseService {
 		}
 
 		return mapToResponse(exercise);
+	}
+
+	/**
+	 * HTT-05-CN-007: Sao chép bài tập có sẵn thành bản sao ở trạng thái DRAFT (QTN-19).
+	 * Bản sao độc lập hoàn toàn với bài gốc, kế thừa toàn bộ câu hỏi, điểm và thứ tự sắp xếp.
+	 */
+	@Transactional
+	public ExerciseResponse copyExercise(Long teacherId, Long exerciseId, CopyExerciseRequest request) {
+		assertTeacherOrAdmin(teacherId);
+
+		ExerciseEntity sourceExercise = exerciseRepository.findWithQuestionsById(exerciseId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.EXERCISE_NOT_FOUND));
+
+		// QTN-19: Giáo viên chỉ được sao chép bài tập của chính mình
+		if (!sourceExercise.getOwnerId().equals(teacherId)) {
+			throw new ApiException(ApiErrorCode.ACCESS_DENIED_EXERCISE);
+		}
+
+		String newTitle;
+		if (request != null && request.newTitle() != null && !request.newTitle().trim().isEmpty()) {
+			newTitle = request.newTitle().trim();
+		} else {
+			String baseTitle = sourceExercise.getTitle() != null ? sourceExercise.getTitle().trim() : "Bài tập";
+			newTitle = baseTitle + " (Bản sao)";
+		}
+
+		if (newTitle.length() > 255) {
+			newTitle = newTitle.substring(0, 255);
+		}
+
+		ExerciseEntity newExercise = new ExerciseEntity();
+		newExercise.setOwnerId(teacherId);
+		newExercise.setTitle(newTitle);
+		newExercise.setDescription(sourceExercise.getDescription());
+		newExercise.setStatus(ExerciseStatus.DRAFT);
+		newExercise.setTotalPoints(sourceExercise.getTotalPoints());
+
+		ExerciseEntity savedExercise = exerciseRepository.save(newExercise);
+
+		List<ExerciseQuestionEntity> copiedQuestions = new ArrayList<>();
+		if (sourceExercise.getQuestions() != null && !sourceExercise.getQuestions().isEmpty()) {
+			for (ExerciseQuestionEntity sourceEq : sourceExercise.getQuestions()) {
+				ExerciseQuestionEntity newEq = new ExerciseQuestionEntity();
+				newEq.setExercise(savedExercise);
+				newEq.setQuestion(sourceEq.getQuestion());
+				newEq.setPoints(sourceEq.getPoints());
+				newEq.setSortOrder(sourceEq.getSortOrder());
+				copiedQuestions.add(newEq);
+
+				// Đảm bảo câu hỏi được đánh dấu đã sử dụng (QTN-14)
+				if (sourceEq.getQuestion() != null) {
+					questionService.markQuestionAsUsedInExercise(sourceEq.getQuestion().getId());
+				}
+			}
+			exerciseQuestionRepository.saveAll(copiedQuestions);
+		}
+		savedExercise.setQuestions(copiedQuestions);
+
+		return mapToResponse(savedExercise);
 	}
 
 	public ExerciseResponse mapToResponse(ExerciseEntity entity) {

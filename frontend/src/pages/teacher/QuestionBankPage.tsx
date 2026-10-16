@@ -27,6 +27,7 @@ import {
   BookMarked,
   Save,
   AlertTriangle,
+  FileCheck,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import {
@@ -972,6 +973,16 @@ export const QuestionBankPage: React.FC = () => {
           </div>
 
           <div className="flex items-center space-x-3">
+            {/* HTT-05-CN-006: Go to Exercises */}
+            <button
+              onClick={() => navigate('/exercises')}
+              className="flex items-center space-x-2 px-4 py-2.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 font-medium rounded-xl shadow-xs transition text-sm"
+              title="Đóng gói câu hỏi thành bài tập hoàn chỉnh"
+            >
+              <FileCheck className="w-4 h-4" />
+              <span>Quản lý bài tập</span>
+            </button>
+
             {/* HTT-05-CN-004: Quick Generate Action */}
             <button
               onClick={() => {

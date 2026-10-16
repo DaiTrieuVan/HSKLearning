@@ -18,11 +18,13 @@ import {
   X,
   Eye,
   Copy,
+  Pencil,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import {
   getMyExercises,
   createExercise,
+  updateExercise,
   getExerciseDetail,
   copyExercise,
   type ExerciseItem,
@@ -51,8 +53,9 @@ export const ExerciseManagementPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'DRAFT' | 'READY'>('ALL')
 
-  // Drawer Create Exercise state (No Modal!)
+  // Drawer Create & Edit Exercise state (No Modal! HTT-05-CN-008)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  const [editingExerciseId, setEditingExerciseId] = useState<number | null>(null)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [status, setStatus] = useState<ExerciseStatus>('DRAFT')
@@ -103,8 +106,9 @@ export const ExerciseManagementPage: React.FC = () => {
     }
   }
 
-  // --- Handlers for Create Exercise Drawer ---
+  // --- Handlers for Create & Edit Exercise Drawer ---
   const handleOpenCreateDrawer = () => {
+    setEditingExerciseId(null)
     setTitle('')
     setDescription('')
     setStatus('DRAFT')
@@ -112,11 +116,31 @@ export const ExerciseManagementPage: React.FC = () => {
     setFormErrors([])
     setErrorMessage(null)
     setDetailExercise(null)
+    setIsCopyDrawerOpen(false)
+    setIsDrawerOpen(true)
+  }
+
+  const handleOpenEditDrawer = (ex: ExerciseItem) => {
+    setEditingExerciseId(ex.id)
+    setTitle(ex.title)
+    setDescription(ex.description || '')
+    setStatus(ex.status)
+    const configs: SelectedQuestionConfig[] = (ex.questions || []).map((q, idx) => ({
+      questionId: q.questionId,
+      points: q.points,
+      sortOrder: q.sortOrder || idx + 1,
+    }))
+    setSelectedConfigs(configs)
+    setFormErrors([])
+    setErrorMessage(null)
+    setDetailExercise(null)
+    setIsCopyDrawerOpen(false)
     setIsDrawerOpen(true)
   }
 
   const handleCloseCreateDrawer = () => {
     setIsDrawerOpen(false)
+    setEditingExerciseId(null)
     setFormErrors([])
   }
 
@@ -234,24 +258,38 @@ export const ExerciseManagementPage: React.FC = () => {
         })
       )
 
-      const saved = await createExercise(
-        {
-          title: title.trim(),
-          description: description.trim() ? description.trim() : undefined,
-          status,
-          questions: questionsPayload,
-        },
-        user.token
-      )
+      if (editingExerciseId) {
+        const updated = await updateExercise(
+          editingExerciseId,
+          {
+            title: title.trim(),
+            description: description.trim() ? description.trim() : undefined,
+            status,
+            questions: questionsPayload,
+          },
+          user.token
+        )
+        setSuccessMessage(`Đã cập nhật bài tập "${updated.title}" thành công!`)
+      } else {
+        const saved = await createExercise(
+          {
+            title: title.trim(),
+            description: description.trim() ? description.trim() : undefined,
+            status,
+            questions: questionsPayload,
+          },
+          user.token
+        )
+        setSuccessMessage(`Đã tạo thành công bài tập "${saved.title}" (Tổng điểm: ${saved.totalPoints})!`)
+      }
 
-      setSuccessMessage(`Đã tạo thành công bài tập "${saved.title}" (Tổng điểm: ${saved.totalPoints})!`)
       handleCloseCreateDrawer()
       loadExercises()
     } catch (err) {
       if (err instanceof ApiError) {
         setErrorMessage(err.message)
       } else {
-        setErrorMessage('Không thể tạo bài tập')
+        setErrorMessage(editingExerciseId ? 'Không thể cập nhật bài tập' : 'Không thể tạo bài tập')
       }
     } finally {
       setSubmitting(false)
@@ -394,18 +432,22 @@ export const ExerciseManagementPage: React.FC = () => {
           </div>
         )}
 
-        {/* CREATE EXERCISE SLIDE-OVER DRAWER (NO MODAL!) */}
+        {/* CREATE & EDIT EXERCISE SLIDE-OVER DRAWER (NO MODAL! HTT-05-CN-008) */}
         {isDrawerOpen && (
           <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-xl overflow-hidden">
             <div className="bg-gradient-to-r from-purple-700 via-purple-600 to-indigo-600 px-6 py-4 flex items-center justify-between text-white">
               <div className="flex items-center space-x-3">
                 <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center font-bold text-white text-sm">
-                  <FileText className="w-5 h-5" />
+                  {editingExerciseId ? <Pencil className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
                 </div>
                 <div>
-                  <h2 className="text-base font-bold">Tạo bài tập mới từ câu hỏi</h2>
+                  <h2 className="text-base font-bold">
+                    {editingExerciseId ? 'Chỉnh sửa bài tập (HTT-05-CN-008)' : 'Tạo bài tập mới từ câu hỏi'}
+                  </h2>
                   <p className="text-xs text-purple-100">
-                    Chọn câu hỏi từ ngân hàng của bạn, gán điểm từng câu và đặt trạng thái giao bài (QTN-09, QTN-19).
+                    {editingExerciseId
+                      ? 'Cập nhật tên bài, điểm từng câu, đổi thứ tự và thêm/bớt câu hỏi (QTN-09, QTN-10, QTN-19).'
+                      : 'Chọn câu hỏi từ ngân hàng của bạn, gán điểm từng câu và đặt trạng thái giao bài (QTN-09, QTN-19).'}
                   </p>
                 </div>
               </div>
@@ -689,7 +731,7 @@ export const ExerciseManagementPage: React.FC = () => {
                   ) : (
                     <FileCheck className="w-4 h-4" />
                   )}
-                  <span>Lưu bài tập</span>
+                  <span>{editingExerciseId ? 'Cập nhật bài tập' : 'Lưu bài tập'}</span>
                 </button>
               </div>
             </form>
@@ -815,6 +857,15 @@ export const ExerciseManagementPage: React.FC = () => {
                 </div>
               </div>
               <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => handleOpenEditDrawer(detailExercise)}
+                  className="flex items-center space-x-1 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 px-3 py-1.5 rounded-lg transition shadow-sm"
+                  title="Chỉnh sửa bài tập này"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  <span>Sửa</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => handleOpenCopyDrawer(detailExercise)}
@@ -1011,6 +1062,16 @@ export const ExerciseManagementPage: React.FC = () => {
                   </div>
 
                   <div className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditDrawer(ex)}
+                      className="flex items-center space-x-1 text-xs font-bold text-amber-700 hover:text-amber-800 bg-amber-50 hover:bg-amber-100 px-2.5 py-1.5 rounded-lg transition"
+                      title="Chỉnh sửa bài tập"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                      <span>Sửa</span>
+                    </button>
+
                     <button
                       type="button"
                       onClick={() => handleOpenCopyDrawer(ex)}

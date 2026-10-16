@@ -51,3 +51,12 @@
 - **Chỉ tạo bảng mới khi thực sự cần thiết:**
   - Chỉ tạo bảng hoặc migration mới khi nghiệp vụ yêu cầu một thực thể độc lập hoàn toàn mới hoặc việc tách bảng mang lại lợi ích rõ rệt về mặt hiệu năng (indexing, partitioning, normalization).
   - Phải giải trình rõ lý do và sự cần thiết trong Implementation Plan trước khi thực hiện.
+
+---
+
+## 6. QUY TẮC CẬP NHẬT TRẠNG THÁI STORY (STORY STATUS TRACKING)
+- **Khi bắt đầu triển khai một story:**
+  - Cập nhật trường `Trạng thái: Đang thực hiện` trong file tài liệu user story tương ứng tại `hsk_agent_automation/docs/user-stories/<Mã_Story>.md`.
+- **Khi hoàn thành và kiểm thử xong story:**
+  - Cập nhật trường `Trạng thái: Đã thực hiện` trong file tài liệu user story (`hsk_agent_automation/docs/user-stories/<Mã_Story>.md`).
+  - Đánh dấu trạng thái `ĐÃ HOÀN THÀNH (COMPLETED)` trong Implementation Plan tương ứng (`hsk_agent_automation/docs/implementation-plans/<Mã_Story>.md`).

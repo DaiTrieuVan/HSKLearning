@@ -134,6 +134,30 @@ public enum ApiErrorCode {
 	/** HTT-05-CN-001: Option content cannot be blank. */
 	QUESTION_OPTION_CONTENT_BLANK(HttpStatus.BAD_REQUEST, "Nội dung lựa chọn không được để trống"),
 
+	/** HTT-05-CN-002-TC-03: Fill in blank question must have at least one blank. */
+	QUESTION_NO_BLANKS(HttpStatus.BAD_REQUEST, "Câu hỏi phải chứa ít nhất một chỗ trống (ký hiệu ___)"),
+
+	/** HTT-05-CN-002-TC-04: Number of blanks must match number of configured answers. */
+	QUESTION_BLANK_COUNT_MISMATCH(HttpStatus.BAD_REQUEST, "Số lượng chỗ trống trong câu không khớp với số lượng đáp án đã cung cấp"),
+
+	/** HTT-05-CN-002-TC-05: Correct answer for blank cannot be empty. */
+	QUESTION_CORRECT_ANSWER_BLANK(HttpStatus.BAD_REQUEST, "Đáp án đúng cho mỗi chỗ trống không được để trống"),
+
+	/** HTT-05-CN-003-TC-03: Matching question must have at least 2 pairs. */
+	QUESTION_MATCH_MIN_PAIRS(HttpStatus.BAD_REQUEST, "Câu hỏi nối từ phải có ít nhất 2 cặp từ và nghĩa"),
+
+	/** HTT-05-CN-003-TC-04: Matching pair sides cannot be blank. */
+	QUESTION_MATCH_PAIR_BLANK(HttpStatus.BAD_REQUEST, "Các vế của cặp nối từ không được để trống"),
+
+	/** HTT-05-CN-003-TC-05: Matching question cannot have duplicate left items. */
+	QUESTION_MATCH_DUPLICATE_LEFT(HttpStatus.BAD_REQUEST, "Các cặp nối từ không được có vế trái trùng nhau"),
+
+	/** HTT-05-CN-003-TC-04: Ordering question must have at least 2 items. */
+	QUESTION_ORDER_MIN_ITEMS(HttpStatus.BAD_REQUEST, "Câu hỏi sắp xếp câu phải có ít nhất 2 thành phần"),
+
+	/** HTT-05-CN-003-TC-04: Ordering question items cannot be blank. */
+	QUESTION_ORDER_ITEM_BLANK(HttpStatus.BAD_REQUEST, "Thành phần của câu sắp xếp không được để trống"),
+
 	/** HTT-05-CN-004 / TC-04: Vocab set has 0 words. */
 	VOCAB_SET_EMPTY(HttpStatus.BAD_REQUEST, "Bộ từ vựng chưa có từ nào để tạo câu hỏi"),
 
@@ -145,6 +169,12 @@ public enum ApiErrorCode {
 
 	/** HTT-05-CN-004: Empty batch save request. */
 	BATCH_QUESTIONS_EMPTY(HttpStatus.BAD_REQUEST, "Danh sách câu hỏi lưu vào ngân hàng không được để trống"),
+
+	/** HTT-05-CN-005: Question not found. */
+	QUESTION_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy câu hỏi trong hệ thống"),
+
+	/** HTT-05-CN-005 / TC-06: Access denied to question of another teacher (QTN-19). */
+	ACCESS_DENIED_QUESTION(HttpStatus.FORBIDDEN, "Bạn không có quyền thao tác với câu hỏi này"),
 
 	/** Unexpected server side failure; the client may retry. */
 	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Hệ thống đang gặp sự cố, vui lòng thử lại sau");

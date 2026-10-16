@@ -42,6 +42,35 @@ export interface BatchCreateQuestionsPayload {
   questions: CreateQuestionPayload[]
 }
 
+export interface BlankAnswerItem {
+  index: number
+  correctAnswer: string
+  acceptableAnswers: string[]
+}
+
+export interface CreateFillBlankQuestionPayload {
+  content: string
+  explanation?: string
+  blanks: BlankAnswerItem[]
+}
+
+export interface MatchingPairItem {
+  left: string
+  right: string
+}
+
+export interface CreateMatchingQuestionPayload {
+  content: string
+  explanation?: string
+  pairs: MatchingPairItem[]
+}
+
+export interface CreateOrderingQuestionPayload {
+  content: string
+  explanation?: string
+  items: string[]
+}
+
 const API_BASE = '/api/questions'
 
 export async function createMultipleChoiceQuestion(
@@ -65,6 +94,90 @@ export async function createMultipleChoiceQuestion(
       response.status,
       data?.code || 'UNKNOWN_ERROR',
       data?.message || 'Không thể tạo câu hỏi trắc nghiệm',
+      data?.fields
+    )
+  }
+
+  return data as QuestionItem
+}
+
+export async function createFillBlankQuestion(
+  payload: CreateFillBlankQuestionPayload,
+  token: string
+): Promise<QuestionItem> {
+  const response = await fetch(`${API_BASE}/fill-blank`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  const data = await response.json().catch(() => null)
+
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'UNKNOWN_ERROR',
+      data?.message || 'Không thể tạo câu hỏi điền từ',
+      data?.fields
+    )
+  }
+
+  return data as QuestionItem
+}
+
+export async function createMatchingQuestion(
+  payload: CreateMatchingQuestionPayload,
+  token: string
+): Promise<QuestionItem> {
+  const response = await fetch(`${API_BASE}/matching`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  const data = await response.json().catch(() => null)
+
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'UNKNOWN_ERROR',
+      data?.message || 'Không thể tạo câu hỏi nối từ',
+      data?.fields
+    )
+  }
+
+  return data as QuestionItem
+}
+
+export async function createOrderingQuestion(
+  payload: CreateOrderingQuestionPayload,
+  token: string
+): Promise<QuestionItem> {
+  const response = await fetch(`${API_BASE}/ordering`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  const data = await response.json().catch(() => null)
+
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'UNKNOWN_ERROR',
+      data?.message || 'Không thể tạo câu hỏi sắp xếp câu',
       data?.fields
     )
   }
@@ -149,3 +262,81 @@ export async function getMyQuestions(token: string): Promise<QuestionItem[]> {
 
   return data as QuestionItem[]
 }
+
+export interface UpdateQuestionPayload {
+  content: string
+  explanation?: string
+  options?: CreateQuestionOptionPayload[]
+  payload?: string
+}
+
+export async function getQuestionDetail(id: number, token: string): Promise<QuestionItem> {
+  const response = await fetch(`${API_BASE}/${id}`, {
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  const data = await response.json().catch(() => null)
+
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'UNKNOWN_ERROR',
+      data?.message || 'Không thể lấy chi tiết câu hỏi',
+      data?.fields
+    )
+  }
+
+  return data as QuestionItem
+}
+
+export async function updateQuestion(
+  id: number,
+  payload: UpdateQuestionPayload,
+  token: string
+): Promise<QuestionItem> {
+  const response = await fetch(`${API_BASE}/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  const data = await response.json().catch(() => null)
+
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'UNKNOWN_ERROR',
+      data?.message || 'Không thể cập nhật câu hỏi',
+      data?.fields
+    )
+  }
+
+  return data as QuestionItem
+}
+
+export async function deleteQuestion(id: number, token: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/${id}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => null)
+    throw new ApiError(
+      response.status,
+      data?.code || 'UNKNOWN_ERROR',
+      data?.message || 'Không thể xóa câu hỏi',
+      data?.fields
+    )
+  }
+}
+

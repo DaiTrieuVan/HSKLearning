@@ -18,6 +18,7 @@ import {
   BookMarked,
   Search,
   HelpCircle,
+  FileCheck,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { PandaMascot } from '../../components/common/PandaMascot'
@@ -920,6 +921,54 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
                   >
                     <HelpCircle size={18} />
                     <span>Quản lý ngân hàng câu hỏi</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Card 5: Exercise Management (HTT-05-CN-006 / QTN-19) */}
+              {isTeacher && (
+                <div
+                  className="game-card"
+                  style={{
+                    padding: '24px',
+                    backgroundColor: '#ffffff',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <div>
+                    <div
+                      style={{
+                        width: '44px',
+                        height: '44px',
+                        borderRadius: 'var(--radius-md)',
+                        backgroundColor: '#f3e8ff',
+                        color: '#7e22ce',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginBottom: '16px',
+                      }}
+                    >
+                      <FileCheck size={24} />
+                    </div>
+                    <h3 style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: '6px' }}>
+                      Quản lý bài tập
+                    </h3>
+                    <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '16px' }}>
+                      Đóng gói câu hỏi từ ngân hàng cá nhân thành các bài tập kiểm tra hoàn chỉnh, gán điểm và sẵn sàng giao cho lớp (QTN-09, QTN-19).
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => navigate('/exercises')}
+                    className="btn-gamified btn-primary"
+                    style={{ width: '100%', fontSize: '0.92rem', padding: '10px', backgroundColor: '#7e22ce', borderColor: '#6b21a8' }}
+                  >
+                    <FileCheck size={18} />
+                    <span>Quản lý & tạo bài tập</span>
                   </button>
                 </div>
               )}

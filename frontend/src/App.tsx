@@ -13,6 +13,7 @@ import { UserProfilePage } from './pages/profile/UserProfilePage'
 import { TeacherRequestPage } from './pages/teacher/TeacherRequestPage'
 import { VocabSearchPage } from './pages/content/VocabSearchPage'
 import { QuestionBankPage } from './pages/teacher/QuestionBankPage'
+import { ExerciseManagementPage } from './pages/teacher/ExerciseManagementPage'
 
 function AppRoutes() {
   const { isLoggedIn } = useAuth()
@@ -29,6 +30,7 @@ function AppRoutes() {
       <Route path="/lessons/:lessonId" element={<LessonStudyPage />} />
       <Route path="/vocab-sets" element={<TeacherVocabSetsPage />} />
       <Route path="/questions" element={<QuestionBankPage />} />
+      <Route path="/exercises" element={<ExerciseManagementPage />} />
       <Route path="/classes/create" element={<CreateClassPage />} />
       <Route path="/classes/join" element={<JoinClassPage />} />
       <Route path="/classes/:classId" element={<ClassDetailPage />} />

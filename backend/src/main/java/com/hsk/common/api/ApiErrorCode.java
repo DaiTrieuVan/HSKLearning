@@ -176,6 +176,24 @@ public enum ApiErrorCode {
 	/** HTT-05-CN-005 / TC-06: Access denied to question of another teacher (QTN-19). */
 	ACCESS_DENIED_QUESTION(HttpStatus.FORBIDDEN, "Bạn không có quyền thao tác với câu hỏi này"),
 
+	/** HTT-05-CN-006 / TC-03: Exercise title is blank. */
+	EXERCISE_TITLE_BLANK(HttpStatus.BAD_REQUEST, "Tên bài tập không được để trống"),
+
+	/** HTT-05-CN-006 / TC-04: Question points must be greater than 0. */
+	EXERCISE_QUESTION_POINTS_INVALID(HttpStatus.BAD_REQUEST, "Điểm của câu hỏi phải lớn hơn 0"),
+
+	/** HTT-05-CN-006 / TC-05 & QTN-09: Ready status requires at least 1 question. */
+	EXERCISE_READY_REQUIRES_QUESTIONS(HttpStatus.BAD_REQUEST, "Bài tập phải có ít nhất 1 câu hỏi mới được chuyển sang trạng thái sẵn sàng giao"),
+
+	/** HTT-05-CN-006 / TC-06: Duplicate question in exercise. */
+	EXERCISE_DUPLICATE_QUESTIONS(HttpStatus.BAD_REQUEST, "Bài tập không được chứa câu hỏi trùng lặp"),
+
+	/** HTT-05-CN-006: Exercise not found. */
+	EXERCISE_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy bài tập trong hệ thống"),
+
+	/** HTT-05-CN-006 / QTN-19: Access denied to exercise of another teacher. */
+	ACCESS_DENIED_EXERCISE(HttpStatus.FORBIDDEN, "Bạn không có quyền thao tác với bài tập này"),
+
 	/** Unexpected server side failure; the client may retry. */
 	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Hệ thống đang gặp sự cố, vui lòng thử lại sau");
 

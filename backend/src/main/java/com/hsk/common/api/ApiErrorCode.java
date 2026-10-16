@@ -143,6 +143,21 @@ public enum ApiErrorCode {
 	/** HTT-05-CN-002-TC-05: Correct answer for blank cannot be empty. */
 	QUESTION_CORRECT_ANSWER_BLANK(HttpStatus.BAD_REQUEST, "Đáp án đúng cho mỗi chỗ trống không được để trống"),
 
+	/** HTT-05-CN-003-TC-03: Matching question must have at least 2 pairs. */
+	QUESTION_MATCH_MIN_PAIRS(HttpStatus.BAD_REQUEST, "Câu hỏi nối từ phải có ít nhất 2 cặp từ và nghĩa"),
+
+	/** HTT-05-CN-003-TC-04: Matching pair sides cannot be blank. */
+	QUESTION_MATCH_PAIR_BLANK(HttpStatus.BAD_REQUEST, "Các vế của cặp nối từ không được để trống"),
+
+	/** HTT-05-CN-003-TC-05: Matching question cannot have duplicate left items. */
+	QUESTION_MATCH_DUPLICATE_LEFT(HttpStatus.BAD_REQUEST, "Các cặp nối từ không được có vế trái trùng nhau"),
+
+	/** HTT-05-CN-003-TC-04: Ordering question must have at least 2 items. */
+	QUESTION_ORDER_MIN_ITEMS(HttpStatus.BAD_REQUEST, "Câu hỏi sắp xếp câu phải có ít nhất 2 thành phần"),
+
+	/** HTT-05-CN-003-TC-04: Ordering question items cannot be blank. */
+	QUESTION_ORDER_ITEM_BLANK(HttpStatus.BAD_REQUEST, "Thành phần của câu sắp xếp không được để trống"),
+
 	/** HTT-05-CN-004 / TC-04: Vocab set has 0 words. */
 	VOCAB_SET_EMPTY(HttpStatus.BAD_REQUEST, "Bộ từ vựng chưa có từ nào để tạo câu hỏi"),
 

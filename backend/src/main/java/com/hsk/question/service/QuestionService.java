@@ -18,9 +18,14 @@ import com.hsk.question.domain.QuestionType;
 import com.hsk.question.dto.BatchCreateQuestionsRequest;
 import com.hsk.question.dto.BlankAnswerDto;
 import com.hsk.question.dto.CreateFillBlankQuestionRequest;
+import com.hsk.question.dto.CreateMatchingQuestionRequest;
+import com.hsk.question.dto.CreateOrderingQuestionRequest;
 import com.hsk.question.dto.CreateQuestionOptionRequest;
 import com.hsk.question.dto.CreateQuestionRequest;
 import com.hsk.question.dto.FillBlankPayloadDto;
+import com.hsk.question.dto.MatchingPairDto;
+import com.hsk.question.dto.MatchingPayloadDto;
+import com.hsk.question.dto.OrderingPayloadDto;
 import com.hsk.question.dto.QuestionOptionResponse;
 import com.hsk.question.dto.QuestionResponse;
 import com.hsk.question.dto.QuickGeneratePreviewRequest;
@@ -37,7 +42,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Dịch vụ xử lý nghiệp vụ câu hỏi (HTT-05-CN-001, HTT-05-CN-002, HTT-05-CN-004).
+ * Dịch vụ xử lý nghiệp vụ câu hỏi (HTT-05-CN-001, HTT-05-CN-002, HTT-05-CN-003, HTT-05-CN-004).
  * Tuân thủ quy tắc QTN-08 (hợp lệ trắc nghiệm) và QTN-19 (quyền sở hữu của giáo viên).
  */
 @Service
@@ -142,6 +147,123 @@ public class QuestionService {
 		QuestionEntity question = new QuestionEntity(
 				teacherId,
 				QuestionType.FILL,
+				request.content().trim(),
+				explanation,
+				jsonPayload
+		);
+
+		QuestionEntity saved = questionRepository.save(question);
+		return mapToResponse(saved);
+	}
+
+	/**
+	 * HTT-05-CN-003: Tạo câu hỏi nối từ vào ngân hàng câu hỏi của giáo viên (QTN-19).
+	 */
+	@Transactional
+	public QuestionResponse createMatchingQuestion(Long teacherId, CreateMatchingQuestionRequest request) {
+		assertTeacherOrAdmin(teacherId);
+
+		if (request == null) {
+			throw new ApiException(ApiErrorCode.MALFORMED_REQUEST_BODY);
+		}
+
+		if (request.content() == null || request.content().trim().isEmpty()) {
+			throw new ApiException(ApiErrorCode.QUESTION_CONTENT_BLANK);
+		}
+
+		// HTT-05-CN-003-TC-03: Ít nhất 2 cặp từ và nghĩa cần nối
+		if (request.pairs() == null || request.pairs().size() < 2) {
+			throw new ApiException(ApiErrorCode.QUESTION_MATCH_MIN_PAIRS);
+		}
+
+		Set<String> uniqueLeftItems = new HashSet<>();
+		List<MatchingPairDto> sanitizedPairs = new ArrayList<>();
+
+		for (MatchingPairDto pair : request.pairs()) {
+			// HTT-05-CN-003-TC-04: Một vế của cặp bị bỏ trống
+			if (pair == null
+					|| pair.left() == null || pair.left().trim().isEmpty()
+					|| pair.right() == null || pair.right().trim().isEmpty()) {
+				throw new ApiException(ApiErrorCode.QUESTION_MATCH_PAIR_BLANK);
+			}
+
+			String leftTrimmed = pair.left().trim();
+			String rightTrimmed = pair.right().trim();
+
+			// HTT-05-CN-003-TC-05: Hai cặp có vế trái giống nhau
+			if (!uniqueLeftItems.add(leftTrimmed)) {
+				throw new ApiException(ApiErrorCode.QUESTION_MATCH_DUPLICATE_LEFT);
+			}
+
+			sanitizedPairs.add(new MatchingPairDto(leftTrimmed, rightTrimmed));
+		}
+
+		String jsonPayload;
+		try {
+			jsonPayload = objectMapper.writeValueAsString(new MatchingPayloadDto(sanitizedPairs));
+		} catch (JsonProcessingException e) {
+			throw new ApiException(ApiErrorCode.MALFORMED_REQUEST_BODY);
+		}
+
+		String explanation = request.explanation() != null && !request.explanation().trim().isEmpty()
+				? request.explanation().trim()
+				: null;
+
+		QuestionEntity question = new QuestionEntity(
+				teacherId,
+				QuestionType.MATCH,
+				request.content().trim(),
+				explanation,
+				jsonPayload
+		);
+
+		QuestionEntity saved = questionRepository.save(question);
+		return mapToResponse(saved);
+	}
+
+	/**
+	 * HTT-05-CN-003: Tạo câu hỏi sắp xếp câu vào ngân hàng câu hỏi của giáo viên (QTN-19).
+	 */
+	@Transactional
+	public QuestionResponse createOrderingQuestion(Long teacherId, CreateOrderingQuestionRequest request) {
+		assertTeacherOrAdmin(teacherId);
+
+		if (request == null) {
+			throw new ApiException(ApiErrorCode.MALFORMED_REQUEST_BODY);
+		}
+
+		if (request.content() == null || request.content().trim().isEmpty()) {
+			throw new ApiException(ApiErrorCode.QUESTION_CONTENT_BLANK);
+		}
+
+		// HTT-05-CN-003-TC-04: Câu sắp xếp chỉ có 1 thành phần -> Cần ít nhất 2 thành phần
+		if (request.items() == null || request.items().size() < 2) {
+			throw new ApiException(ApiErrorCode.QUESTION_ORDER_MIN_ITEMS);
+		}
+
+		List<String> sanitizedItems = new ArrayList<>();
+		for (String item : request.items()) {
+			// HTT-05-CN-003-TC-04: Thành phần bị bỏ trống
+			if (item == null || item.trim().isEmpty()) {
+				throw new ApiException(ApiErrorCode.QUESTION_ORDER_ITEM_BLANK);
+			}
+			sanitizedItems.add(item.trim());
+		}
+
+		String jsonPayload;
+		try {
+			jsonPayload = objectMapper.writeValueAsString(new OrderingPayloadDto(sanitizedItems));
+		} catch (JsonProcessingException e) {
+			throw new ApiException(ApiErrorCode.MALFORMED_REQUEST_BODY);
+		}
+
+		String explanation = request.explanation() != null && !request.explanation().trim().isEmpty()
+				? request.explanation().trim()
+				: null;
+
+		QuestionEntity question = new QuestionEntity(
+				teacherId,
+				QuestionType.ORDER,
 				request.content().trim(),
 				explanation,
 				jsonPayload

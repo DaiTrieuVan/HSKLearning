@@ -54,6 +54,23 @@ export interface CreateFillBlankQuestionPayload {
   blanks: BlankAnswerItem[]
 }
 
+export interface MatchingPairItem {
+  left: string
+  right: string
+}
+
+export interface CreateMatchingQuestionPayload {
+  content: string
+  explanation?: string
+  pairs: MatchingPairItem[]
+}
+
+export interface CreateOrderingQuestionPayload {
+  content: string
+  explanation?: string
+  items: string[]
+}
+
 const API_BASE = '/api/questions'
 
 export async function createMultipleChoiceQuestion(
@@ -105,6 +122,62 @@ export async function createFillBlankQuestion(
       response.status,
       data?.code || 'UNKNOWN_ERROR',
       data?.message || 'Không thể tạo câu hỏi điền từ',
+      data?.fields
+    )
+  }
+
+  return data as QuestionItem
+}
+
+export async function createMatchingQuestion(
+  payload: CreateMatchingQuestionPayload,
+  token: string
+): Promise<QuestionItem> {
+  const response = await fetch(`${API_BASE}/matching`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  const data = await response.json().catch(() => null)
+
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'UNKNOWN_ERROR',
+      data?.message || 'Không thể tạo câu hỏi nối từ',
+      data?.fields
+    )
+  }
+
+  return data as QuestionItem
+}
+
+export async function createOrderingQuestion(
+  payload: CreateOrderingQuestionPayload,
+  token: string
+): Promise<QuestionItem> {
+  const response = await fetch(`${API_BASE}/ordering`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  const data = await response.json().catch(() => null)
+
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'UNKNOWN_ERROR',
+      data?.message || 'Không thể tạo câu hỏi sắp xếp câu',
       data?.fields
     )
   }

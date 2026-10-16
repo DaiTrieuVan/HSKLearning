@@ -42,8 +42,8 @@ public class ExerciseController {
 		if (principal == null || principal.getName() == null) {
 			throw new ApiException(ApiErrorCode.UNAUTHORIZED);
 		}
-		return userRepository.findByEmailIgnoreCase(principal.getName())
-				.orElseThrow(() -> new ApiException(ApiErrorCode.USER_NOT_FOUND));
+		return userRepository.findByEmail(principal.getName())
+				.orElseThrow(() -> new ApiException(ApiErrorCode.UNAUTHORIZED));
 	}
 
 	@PostMapping

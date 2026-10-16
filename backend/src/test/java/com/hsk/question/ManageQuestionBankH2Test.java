@@ -36,6 +36,8 @@ import com.hsk.content.repository.HskLevelRepository;
 import com.hsk.content.repository.VocabSetItemRepository;
 import com.hsk.content.repository.VocabSetRepository;
 import com.hsk.content.repository.VocabularyRepository;
+import com.hsk.exercise.repository.ExerciseQuestionRepository;
+import com.hsk.exercise.repository.ExerciseRepository;
 import com.hsk.question.domain.QuestionEntity;
 import com.hsk.question.domain.QuestionType;
 import com.hsk.question.dto.CreateQuestionOptionRequest;
@@ -129,6 +131,12 @@ class ManageQuestionBankH2Test {
 	@Autowired
 	private QuestionService questionService;
 
+	@Autowired(required = false)
+	private ExerciseQuestionRepository exerciseQuestionRepository;
+
+	@Autowired(required = false)
+	private ExerciseRepository exerciseRepository;
+
 	private String teacherToken;
 	private String otherTeacherToken;
 	private Long teacherId;
@@ -164,6 +172,13 @@ class ManageQuestionBankH2Test {
 	}
 
 	private void cleanDatabase() {
+		questionService.clearUsedInExerciseQuestionIds();
+		if (exerciseQuestionRepository != null) {
+			exerciseQuestionRepository.deleteAll();
+		}
+		if (exerciseRepository != null) {
+			exerciseRepository.deleteAll();
+		}
 		questionOptionRepository.deleteAll();
 		questionRepository.deleteAll();
 		vocabSetItemRepository.deleteAll();

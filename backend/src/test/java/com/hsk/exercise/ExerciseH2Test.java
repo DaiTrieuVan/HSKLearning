@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -37,6 +38,7 @@ import com.hsk.exercise.domain.ExerciseStatus;
 import com.hsk.exercise.dto.CopyExerciseRequest;
 import com.hsk.exercise.dto.CreateExerciseQuestionItem;
 import com.hsk.exercise.dto.CreateExerciseRequest;
+import com.hsk.exercise.dto.UpdateExerciseRequest;
 import com.hsk.exercise.repository.ExerciseQuestionRepository;
 import com.hsk.exercise.repository.ExerciseRepository;
 import com.hsk.question.domain.QuestionType;
@@ -170,6 +172,7 @@ class ExerciseH2Test {
 	}
 
 	private void cleanDatabase() {
+		questionService.clearUsedInExerciseQuestionIds();
 		exerciseQuestionRepository.deleteAll();
 		exerciseRepository.deleteAll();
 		questionOptionRepository.deleteAll();
@@ -571,5 +574,262 @@ class ExerciseH2Test {
 				.contentType(MediaType.APPLICATION_JSON))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.code", is(ApiErrorCode.EXERCISE_NOT_FOUND.name())));
+	}
+
+	// =========================================================================
+	// HTT-05-CN-008: Chỉnh sửa bài tập
+	// =========================================================================
+
+	@Test
+	@DisplayName("HTT-05-CN-008-TC-01: Sửa bài tập nháp thành công -> Bài tập được cập nhật, tổng điểm tính lại chuẩn xác")
+	void test_CN008_TC01_updateExercise_success() throws Exception {
+		QuestionResponse q1 = createSampleQuestion(teacherId, "Câu 1 ban đầu");
+		QuestionResponse q2 = createSampleQuestion(teacherId, "Câu 2 thêm vào");
+
+		// Tạo bài DRAFT 1 câu, điểm 2.0
+		CreateExerciseRequest createReq = new CreateExerciseRequest(
+				"Bài tập nháp ban đầu",
+				"Mô tả cũ",
+				ExerciseStatus.DRAFT,
+				List.of(new CreateExerciseQuestionItem(q1.id(), new BigDecimal("2.0"), 1))
+		);
+		MvcResult createResult = mockMvc.perform(post(EXERCISES_URL)
+				.header("Authorization", "Bearer " + teacherToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(createReq)))
+				.andExpect(status().isCreated())
+				.andReturn();
+		long exerciseId = objectMapper.readTree(createResult.getResponse().getContentAsString()).get("id").asLong();
+
+		// Sửa: đổi tên, sửa điểm câu 1 thành 3.0, thêm câu 2 điểm 4.0 -> tổng điểm 7.0
+		UpdateExerciseRequest updateReq = new UpdateExerciseRequest(
+				"Bài tập đã sửa đổi hoàn thiện",
+				"Mô tả cập nhật mới",
+				ExerciseStatus.DRAFT,
+				List.of(
+						new CreateExerciseQuestionItem(q1.id(), new BigDecimal("3.0"), 1),
+						new CreateExerciseQuestionItem(q2.id(), new BigDecimal("4.0"), 2)
+				)
+		);
+
+		mockMvc.perform(put(EXERCISES_URL + "/" + exerciseId)
+				.header("Authorization", "Bearer " + teacherToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(updateReq)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.title", is("Bài tập đã sửa đổi hoàn thiện")))
+				.andExpect(jsonPath("$.description", is("Mô tả cập nhật mới")))
+				.andExpect(jsonPath("$.status", is("DRAFT")))
+				.andExpect(jsonPath("$.totalPoints").value(7.0))
+				.andExpect(jsonPath("$.questionCount", is(2)))
+				.andExpect(jsonPath("$.questions", hasSize(2)));
+	}
+
+	@Test
+	@DisplayName("HTT-05-CN-008-TC-02: Sửa trạng thái bài tập sang READY khi có câu hỏi hợp lệ")
+	void test_CN008_TC02_updateExercise_changeStatusToReady() throws Exception {
+		QuestionResponse q1 = createSampleQuestion(teacherId, "Câu 1");
+
+		CreateExerciseRequest createReq = new CreateExerciseRequest(
+				"Bài tập chuẩn bị giao",
+				null,
+				ExerciseStatus.DRAFT,
+				List.of(new CreateExerciseQuestionItem(q1.id(), new BigDecimal("5.0"), 1))
+		);
+		MvcResult createResult = mockMvc.perform(post(EXERCISES_URL)
+				.header("Authorization", "Bearer " + teacherToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(createReq)))
+				.andExpect(status().isCreated())
+				.andReturn();
+		long exerciseId = objectMapper.readTree(createResult.getResponse().getContentAsString()).get("id").asLong();
+
+		UpdateExerciseRequest updateReq = new UpdateExerciseRequest(
+				"Bài tập chuẩn bị giao",
+				null,
+				ExerciseStatus.READY,
+				List.of(new CreateExerciseQuestionItem(q1.id(), new BigDecimal("5.0"), 1))
+		);
+
+		mockMvc.perform(put(EXERCISES_URL + "/" + exerciseId)
+				.header("Authorization", "Bearer " + teacherToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(updateReq)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.status", is("READY")));
+	}
+
+	@Test
+	@DisplayName("HTT-05-CN-008-TC-04: Xóa trống tên bài tập khi sửa -> Báo lỗi EXERCISE_TITLE_BLANK (HTTP 400)")
+	void test_CN008_TC04_updateExercise_blankTitle_badRequest() throws Exception {
+		QuestionResponse q1 = createSampleQuestion(teacherId, "Câu 1");
+
+		CreateExerciseRequest createReq = new CreateExerciseRequest(
+				"Tên hợp lệ",
+				null,
+				ExerciseStatus.DRAFT,
+				List.of(new CreateExerciseQuestionItem(q1.id(), new BigDecimal("2.0"), 1))
+		);
+		MvcResult createResult = mockMvc.perform(post(EXERCISES_URL)
+				.header("Authorization", "Bearer " + teacherToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(createReq)))
+				.andExpect(status().isCreated())
+				.andReturn();
+		long exerciseId = objectMapper.readTree(createResult.getResponse().getContentAsString()).get("id").asLong();
+
+		UpdateExerciseRequest updateReq = new UpdateExerciseRequest(
+				"   ", // Tên rỗng
+				null,
+				ExerciseStatus.DRAFT,
+				List.of(new CreateExerciseQuestionItem(q1.id(), new BigDecimal("2.0"), 1))
+		);
+
+		mockMvc.perform(put(EXERCISES_URL + "/" + exerciseId)
+				.header("Authorization", "Bearer " + teacherToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(updateReq)))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code", is(ApiErrorCode.VALIDATION_FAILED.name())))
+				.andExpect(jsonPath("$.fields.title").exists());
+	}
+
+	@Test
+	@DisplayName("HTT-05-CN-008-TC-05: Thử sửa bài tập của giáo viên khác -> Báo lỗi ACCESS_DENIED_EXERCISE (HTTP 403, QTN-19)")
+	void test_CN008_TC05_updateExercise_ofOtherTeacher_forbidden() throws Exception {
+		QuestionResponse otherQ = createSampleQuestion(otherTeacherId, "Câu của GV khác");
+		CreateExerciseRequest createReq = new CreateExerciseRequest(
+				"Bài tập riêng của GV khác",
+				null,
+				ExerciseStatus.DRAFT,
+				List.of(new CreateExerciseQuestionItem(otherQ.id(), new BigDecimal("5.0"), 1))
+		);
+		MvcResult createResult = mockMvc.perform(post(EXERCISES_URL)
+				.header("Authorization", "Bearer " + otherTeacherToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(createReq)))
+				.andExpect(status().isCreated())
+				.andReturn();
+		long otherExerciseId = objectMapper.readTree(createResult.getResponse().getContentAsString()).get("id").asLong();
+
+		// Teacher 1 cố tình sửa bài của Teacher 2
+		UpdateExerciseRequest updateReq = new UpdateExerciseRequest(
+				"Cố tình sửa bài người khác",
+				null,
+				ExerciseStatus.DRAFT,
+				List.of()
+		);
+
+		mockMvc.perform(put(EXERCISES_URL + "/" + otherExerciseId)
+				.header("Authorization", "Bearer " + teacherToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(updateReq)))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.code", is(ApiErrorCode.ACCESS_DENIED_EXERCISE.name())));
+	}
+
+	@Test
+	@DisplayName("HTT-05-CN-008-TC-06: Sửa bài tập 0 câu hỏi sang trạng thái READY -> Báo lỗi EXERCISE_READY_REQUIRES_QUESTIONS (HTTP 400, QTN-09)")
+	void test_CN008_TC06_updateExercise_readyWithoutQuestions_badRequest() throws Exception {
+		QuestionResponse q1 = createSampleQuestion(teacherId, "Câu 1");
+
+		CreateExerciseRequest createReq = new CreateExerciseRequest(
+				"Bài tập có câu hỏi",
+				null,
+				ExerciseStatus.DRAFT,
+				List.of(new CreateExerciseQuestionItem(q1.id(), new BigDecimal("5.0"), 1))
+		);
+		MvcResult createResult = mockMvc.perform(post(EXERCISES_URL)
+				.header("Authorization", "Bearer " + teacherToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(createReq)))
+				.andExpect(status().isCreated())
+				.andReturn();
+		long exerciseId = objectMapper.readTree(createResult.getResponse().getContentAsString()).get("id").asLong();
+
+		// Cố tình chuyển sang READY nhưng xóa sạch câu hỏi (list rỗng)
+		UpdateExerciseRequest updateReq = new UpdateExerciseRequest(
+				"Bài tập rỗng câu hỏi",
+				null,
+				ExerciseStatus.READY,
+				List.of()
+		);
+
+		mockMvc.perform(put(EXERCISES_URL + "/" + exerciseId)
+				.header("Authorization", "Bearer " + teacherToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(updateReq)))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code", is(ApiErrorCode.EXERCISE_READY_REQUIRES_QUESTIONS.name())));
+	}
+
+	@Test
+	@DisplayName("HTT-05-CN-008: Sửa bài tập chọn câu hỏi của giáo viên khác -> Báo lỗi ACCESS_DENIED_QUESTION (HTTP 403, QTN-19)")
+	void test_CN008_updateExercise_useOtherTeacherQuestion_forbidden() throws Exception {
+		QuestionResponse myQ = createSampleQuestion(teacherId, "Câu của mình");
+		QuestionResponse otherQ = createSampleQuestion(otherTeacherId, "Câu của giáo viên khác");
+
+		CreateExerciseRequest createReq = new CreateExerciseRequest(
+				"Bài tập ban đầu",
+				null,
+				ExerciseStatus.DRAFT,
+				List.of(new CreateExerciseQuestionItem(myQ.id(), new BigDecimal("2.0"), 1))
+		);
+		MvcResult createResult = mockMvc.perform(post(EXERCISES_URL)
+				.header("Authorization", "Bearer " + teacherToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(createReq)))
+				.andExpect(status().isCreated())
+				.andReturn();
+		long exerciseId = objectMapper.readTree(createResult.getResponse().getContentAsString()).get("id").asLong();
+
+		// Sửa bài bằng cách cố tình thêm câu hỏi của giáo viên khác
+		UpdateExerciseRequest updateReq = new UpdateExerciseRequest(
+				"Bài tập cố tình lấy trộm câu hỏi",
+				null,
+				ExerciseStatus.DRAFT,
+				List.of(new CreateExerciseQuestionItem(otherQ.id(), new BigDecimal("5.0"), 1))
+		);
+
+		mockMvc.perform(put(EXERCISES_URL + "/" + exerciseId)
+				.header("Authorization", "Bearer " + teacherToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(updateReq)))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.code", is(ApiErrorCode.ACCESS_DENIED_QUESTION.name())));
+	}
+
+	@Test
+	@DisplayName("HTT-05-CN-008: Sửa bài tập với điểm câu <= 0 -> Báo lỗi EXERCISE_QUESTION_POINTS_INVALID (HTTP 400)")
+	void test_CN008_updateExercise_invalidPoints_badRequest() throws Exception {
+		QuestionResponse myQ = createSampleQuestion(teacherId, "Câu điểm hợp lệ");
+
+		CreateExerciseRequest createReq = new CreateExerciseRequest(
+				"Bài ban đầu",
+				null,
+				ExerciseStatus.DRAFT,
+				List.of(new CreateExerciseQuestionItem(myQ.id(), new BigDecimal("2.0"), 1))
+		);
+		MvcResult createResult = mockMvc.perform(post(EXERCISES_URL)
+				.header("Authorization", "Bearer " + teacherToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(createReq)))
+				.andExpect(status().isCreated())
+				.andReturn();
+		long exerciseId = objectMapper.readTree(createResult.getResponse().getContentAsString()).get("id").asLong();
+
+		UpdateExerciseRequest updateReq = new UpdateExerciseRequest(
+				"Bài sửa điểm âm",
+				null,
+				ExerciseStatus.DRAFT,
+				List.of(new CreateExerciseQuestionItem(myQ.id(), new BigDecimal("-1.0"), 1))
+		);
+
+		mockMvc.perform(put(EXERCISES_URL + "/" + exerciseId)
+				.header("Authorization", "Bearer " + teacherToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(updateReq)))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code", is(ApiErrorCode.EXERCISE_QUESTION_POINTS_INVALID.name())));
 	}
 }

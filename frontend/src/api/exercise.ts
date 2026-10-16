@@ -143,3 +143,34 @@ export async function copyExercise(
 
   return data as ExerciseItem
 }
+
+export type UpdateExercisePayload = CreateExercisePayload
+
+export async function updateExercise(
+  id: number,
+  payload: UpdateExercisePayload,
+  token: string
+): Promise<ExerciseItem> {
+  const response = await fetch(`${API_BASE}/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  const data = await response.json().catch(() => null)
+
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'UNKNOWN_ERROR',
+      data?.message || 'Không thể cập nhật bài tập',
+      data?.fields
+    )
+  }
+
+  return data as ExerciseItem
+}

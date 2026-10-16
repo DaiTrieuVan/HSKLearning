@@ -7,6 +7,7 @@ import com.hsk.common.api.ApiException;
 import com.hsk.exercise.dto.CopyExerciseRequest;
 import com.hsk.exercise.dto.CreateExerciseRequest;
 import com.hsk.exercise.dto.ExerciseResponse;
+import com.hsk.exercise.dto.UpdateExerciseRequest;
 import com.hsk.exercise.service.ExerciseService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -19,6 +20,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -76,6 +78,22 @@ public class ExerciseController {
 		UserEntity user = requireUser(principal);
 		ExerciseResponse response = exerciseService.copyExercise(user.getId(), id, request);
 		return ResponseEntity.status(HttpStatus.CREATED).body(response);
+	}
+
+	@PutMapping("/{id}")
+	@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
+	@Operation(
+			summary = "HTT-05-CN-008 — Chỉnh sửa bài tập",
+			description = "Giáo viên chỉnh sửa tên, mô tả, trạng thái, danh sách câu hỏi, điểm từng câu và thứ tự sắp xếp của bài tập (QTN-09, QTN-10, QTN-14, QTN-19)."
+	)
+	public ResponseEntity<ExerciseResponse> updateExercise(
+			@PathVariable("id") Long id,
+			@Valid @RequestBody UpdateExerciseRequest request,
+			Principal principal
+	) {
+		UserEntity user = requireUser(principal);
+		ExerciseResponse response = exerciseService.updateExercise(user.getId(), id, request);
+		return ResponseEntity.ok(response);
 	}
 
 	@GetMapping("/my")

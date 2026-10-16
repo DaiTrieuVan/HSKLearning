@@ -627,9 +627,8 @@ public class QuestionService {
 			int order = 1;
 			for (CreateQuestionOptionRequest optReq : request.options()) {
 				QuestionOptionEntity opt = new QuestionOptionEntity(
-						question,
 						optReq.content().trim(),
-						optReq.isCorrect(),
+						Boolean.TRUE.equals(optReq.isCorrect()),
 						order++
 				);
 				question.addOption(opt);

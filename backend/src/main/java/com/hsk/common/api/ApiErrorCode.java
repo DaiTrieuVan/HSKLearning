@@ -158,6 +158,18 @@ public enum ApiErrorCode {
 	/** HTT-05-CN-003-TC-04: Ordering question items cannot be blank. */
 	QUESTION_ORDER_ITEM_BLANK(HttpStatus.BAD_REQUEST, "Thành phần của câu sắp xếp không được để trống"),
 
+	/** HTT-05-CN-004 / TC-04: Vocab set has 0 words. */
+	VOCAB_SET_EMPTY(HttpStatus.BAD_REQUEST, "Bộ từ vựng chưa có từ nào để tạo câu hỏi"),
+
+	/** HTT-05-CN-004 / TC-03: Vocab set has fewer than 4 words. */
+	VOCAB_SET_INSUFFICIENT_WORDS(HttpStatus.BAD_REQUEST, "Bộ từ vựng cần có ít nhất 4 từ để tạo câu hỏi trắc nghiệm"),
+
+	/** HTT-05-CN-004 / TC-05: Access denied to vocab set of another teacher (QTN-19). */
+	ACCESS_DENIED_VOCAB_SET(HttpStatus.FORBIDDEN, "Bạn không có quyền truy cập bộ từ vựng này"),
+
+	/** HTT-05-CN-004: Empty batch save request. */
+	BATCH_QUESTIONS_EMPTY(HttpStatus.BAD_REQUEST, "Danh sách câu hỏi lưu vào ngân hàng không được để trống"),
+
 	/** Unexpected server side failure; the client may retry. */
 	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Hệ thống đang gặp sự cố, vui lòng thử lại sau");
 

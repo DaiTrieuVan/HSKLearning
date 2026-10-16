@@ -11,6 +11,7 @@ import com.hsk.content.domain.VocabSetItemEntity;
 import com.hsk.content.domain.VocabularyEntity;
 import com.hsk.content.repository.VocabSetItemRepository;
 import com.hsk.content.repository.VocabSetRepository;
+import com.hsk.exercise.repository.ExerciseQuestionRepository;
 import com.hsk.question.domain.QuestionEntity;
 import com.hsk.question.domain.QuestionFormat;
 import com.hsk.question.domain.QuestionOptionEntity;
@@ -39,6 +40,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -55,18 +57,21 @@ public class QuestionService {
 	private final UserRoleRepository userRoleRepository;
 	private final VocabSetRepository vocabSetRepository;
 	private final VocabSetItemRepository vocabSetItemRepository;
+	private final ObjectProvider<ExerciseQuestionRepository> exerciseQuestionRepositoryProvider;
 	private final ObjectMapper objectMapper;
 
 	public QuestionService(
 			QuestionRepository questionRepository,
 			UserRoleRepository userRoleRepository,
 			VocabSetRepository vocabSetRepository,
-			VocabSetItemRepository vocabSetItemRepository
+			VocabSetItemRepository vocabSetItemRepository,
+			ObjectProvider<ExerciseQuestionRepository> exerciseQuestionRepositoryProvider
 	) {
 		this.questionRepository = questionRepository;
 		this.userRoleRepository = userRoleRepository;
 		this.vocabSetRepository = vocabSetRepository;
 		this.vocabSetItemRepository = vocabSetItemRepository;
+		this.exerciseQuestionRepositoryProvider = exerciseQuestionRepositoryProvider;
 		this.objectMapper = new ObjectMapper();
 	}
 
@@ -531,7 +536,7 @@ public class QuestionService {
 	private final Set<Long> usedInExerciseQuestionIds = Collections.synchronizedSet(new HashSet<>());
 
 	/**
-	 * Đánh dấu câu hỏi đã được sử dụng trong bài tập (phục vụ mô phỏng QTN-14 cho đến khi HTT-05-CN-006 hoàn thiện).
+	 * Đánh dấu câu hỏi đã được sử dụng trong bài tập (phục vụ mô phỏng QTN-14).
 	 */
 	public void markQuestionAsUsedInExercise(Long questionId) {
 		if (questionId != null) {
@@ -540,10 +545,28 @@ public class QuestionService {
 	}
 
 	/**
-	 * Kiểm tra xem câu hỏi đã được gắn vào bài tập nào hay chưa.
+	 * Xóa cache mô phỏng câu hỏi đã dùng (dùng cho test isolation).
+	 */
+	public void clearUsedInExerciseQuestionIds() {
+		usedInExerciseQuestionIds.clear();
+	}
+
+	/**
+	 * Kiểm tra xem câu hỏi đã được gắn vào bài tập nào hay chưa (QTN-14).
+	 * Kiểm tra trực tiếp trong DB thông qua ExerciseQuestionRepository nếu có,
+	 * đồng thời kiểm tra thêm bộ nhớ in-memory cache/mock.
 	 */
 	public boolean isQuestionUsedInAnyExercise(Long questionId) {
-		return questionId != null && usedInExerciseQuestionIds.contains(questionId);
+		if (questionId == null) {
+			return false;
+		}
+		ExerciseQuestionRepository exerciseQuestionRepository = exerciseQuestionRepositoryProvider != null
+				? exerciseQuestionRepositoryProvider.getIfAvailable()
+				: null;
+		if (exerciseQuestionRepository != null && exerciseQuestionRepository.existsByQuestion_Id(questionId)) {
+			return true;
+		}
+		return usedInExerciseQuestionIds.contains(questionId);
 	}
 
 	/**

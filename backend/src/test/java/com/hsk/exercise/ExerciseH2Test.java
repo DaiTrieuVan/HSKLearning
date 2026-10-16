@@ -172,6 +172,7 @@ class ExerciseH2Test {
 	}
 
 	private void cleanDatabase() {
+		questionService.clearUsedInExerciseQuestionIds();
 		exerciseQuestionRepository.deleteAll();
 		exerciseRepository.deleteAll();
 		questionOptionRepository.deleteAll();

@@ -4,6 +4,7 @@ import com.hsk.account.domain.UserEntity;
 import com.hsk.account.repository.UserRepository;
 import com.hsk.common.api.ApiErrorCode;
 import com.hsk.common.api.ApiException;
+import com.hsk.exercise.dto.CopyExerciseRequest;
 import com.hsk.exercise.dto.CreateExerciseRequest;
 import com.hsk.exercise.dto.ExerciseResponse;
 import com.hsk.exercise.service.ExerciseService;
@@ -23,11 +24,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST Controller cho phân hệ Bài tập (HTT-05-CN-006).
+ * REST Controller cho phân hệ Bài tập (HTT-05-CN-006, HTT-05-CN-007).
  */
 @RestController
 @RequestMapping("/api/exercises")
-@Tag(name = "Exercises", description = "HTT-05-CN-006 — Quản lý và tạo bài tập từ câu hỏi")
+@Tag(name = "Exercises", description = "HTT-05 — Quản lý, tạo và sao chép bài tập")
 public class ExerciseController {
 
 	private final ExerciseService exerciseService;
@@ -58,6 +59,22 @@ public class ExerciseController {
 	) {
 		UserEntity user = requireUser(principal);
 		ExerciseResponse response = exerciseService.createExercise(user.getId(), request);
+		return ResponseEntity.status(HttpStatus.CREATED).body(response);
+	}
+
+	@PostMapping("/{id}/copy")
+	@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
+	@Operation(
+			summary = "HTT-05-CN-007 — Sao chép bài tập",
+			description = "Sao chép một bài tập có sẵn thành bài mới ở trạng thái DRAFT với đầy đủ câu hỏi và điểm số (QTN-19)."
+	)
+	public ResponseEntity<ExerciseResponse> copyExercise(
+			@PathVariable("id") Long id,
+			@RequestBody(required = false) CopyExerciseRequest request,
+			Principal principal
+	) {
+		UserEntity user = requireUser(principal);
+		ExerciseResponse response = exerciseService.copyExercise(user.getId(), id, request);
 		return ResponseEntity.status(HttpStatus.CREATED).body(response);
 	}
 

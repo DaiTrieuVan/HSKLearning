@@ -34,6 +34,7 @@ import com.hsk.content.repository.VocabSetRepository;
 import com.hsk.content.repository.VocabularyRepository;
 import com.hsk.exercise.domain.ExerciseEntity;
 import com.hsk.exercise.domain.ExerciseStatus;
+import com.hsk.exercise.dto.CopyExerciseRequest;
 import com.hsk.exercise.dto.CreateExerciseQuestionItem;
 import com.hsk.exercise.dto.CreateExerciseRequest;
 import com.hsk.exercise.repository.ExerciseQuestionRepository;
@@ -421,5 +422,154 @@ class ExerciseH2Test {
 				.content(objectMapper.writeValueAsString(request)))
 				.andExpect(status().isForbidden())
 				.andExpect(jsonPath("$.code", is(ApiErrorCode.ACCESS_DENIED_QUESTION.name())));
+	}
+
+	// =========================================================================
+	// HTT-05-CN-007: Sao chép bài tập
+	// =========================================================================
+
+	@Test
+	@DisplayName("HTT-05-CN-007-TC-01: Sao chép bài tập thành công -> Tạo bản sao DRAFT, đủ câu hỏi & điểm, bài gốc không đổi")
+	void test_CN007_TC01_copyExercise_success() throws Exception {
+		QuestionResponse q1 = createSampleQuestion(teacherId, "Câu 1 của bài gốc");
+		QuestionResponse q2 = createSampleQuestion(teacherId, "Câu 2 của bài gốc");
+
+		// Tạo bài tập gốc READY
+		CreateExerciseRequest createReq = new CreateExerciseRequest(
+				"Kiểm tra bài 1",
+				"Mô tả bài kiểm tra 1",
+				ExerciseStatus.READY,
+				List.of(
+						new CreateExerciseQuestionItem(q1.id(), new BigDecimal("2.5"), 1),
+						new CreateExerciseQuestionItem(q2.id(), new BigDecimal("2.5"), 2)
+				)
+		);
+		MvcResult createResult = mockMvc.perform(post(EXERCISES_URL)
+				.header("Authorization", "Bearer " + teacherToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(createReq)))
+				.andExpect(status().isCreated())
+				.andReturn();
+		JsonNode createdNode = objectMapper.readTree(createResult.getResponse().getContentAsString());
+		long sourceId = createdNode.get("id").asLong();
+
+		// Gọi API sao chép
+		MvcResult copyResult = mockMvc.perform(post(EXERCISES_URL + "/" + sourceId + "/copy")
+				.header("Authorization", "Bearer " + teacherToken)
+				.contentType(MediaType.APPLICATION_JSON))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.title", is("Kiểm tra bài 1 (Bản sao)")))
+				.andExpect(jsonPath("$.status", is("DRAFT")))
+				.andExpect(jsonPath("$.totalPoints").value(5.0))
+				.andExpect(jsonPath("$.questionCount", is(2)))
+				.andExpect(jsonPath("$.questions", hasSize(2)))
+				.andReturn();
+
+		JsonNode copyNode = objectMapper.readTree(copyResult.getResponse().getContentAsString());
+		long copyId = copyNode.get("id").asLong();
+		assertNotNull(copyId);
+		org.junit.jupiter.api.Assertions.assertNotEquals(sourceId, copyId);
+
+		// Kiểm tra bài gốc hoàn toàn không bị thay đổi
+		mockMvc.perform(get(EXERCISES_URL + "/" + sourceId)
+				.header("Authorization", "Bearer " + teacherToken))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.title", is("Kiểm tra bài 1")))
+				.andExpect(jsonPath("$.status", is("READY")))
+				.andExpect(jsonPath("$.totalPoints").value(5.0));
+	}
+
+	@Test
+	@DisplayName("HTT-05-CN-007-TC-02: Bản sao tùy chọn newTitle và tính độc lập của bản sao")
+	void test_CN007_TC02_copyExercise_withCustomTitle() throws Exception {
+		QuestionResponse q1 = createSampleQuestion(teacherId, "Câu 1");
+
+		CreateExerciseRequest createReq = new CreateExerciseRequest(
+				"Đề thi Giữa kỳ",
+				"Mô tả giữa kỳ",
+				ExerciseStatus.READY,
+				List.of(new CreateExerciseQuestionItem(q1.id(), new BigDecimal("10.0"), 1))
+		);
+		MvcResult createResult = mockMvc.perform(post(EXERCISES_URL)
+				.header("Authorization", "Bearer " + teacherToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(createReq)))
+				.andExpect(status().isCreated())
+				.andReturn();
+		long sourceId = objectMapper.readTree(createResult.getResponse().getContentAsString()).get("id").asLong();
+
+		// Sao chép với tiêu đề tùy chỉnh
+		CopyExerciseRequest copyReq = new CopyExerciseRequest("Đề thi Giữa kỳ (Lớp HSK3-B)");
+		mockMvc.perform(post(EXERCISES_URL + "/" + sourceId + "/copy")
+				.header("Authorization", "Bearer " + teacherToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(copyReq)))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.title", is("Đề thi Giữa kỳ (Lớp HSK3-B)")))
+				.andExpect(jsonPath("$.status", is("DRAFT")))
+				.andExpect(jsonPath("$.totalPoints").value(10.0));
+	}
+
+	@Test
+	@DisplayName("HTT-05-CN-007-TC-03: Sao chép bài tập gốc ở trạng thái READY luôn sinh bản sao ở trạng thái DRAFT")
+	void test_CN007_TC03_copyExercise_alwaysDraftStatus() throws Exception {
+		QuestionResponse q1 = createSampleQuestion(teacherId, "Câu 1");
+
+		CreateExerciseRequest createReq = new CreateExerciseRequest(
+				"Bài tập đã giao",
+				"Đã giao cho lớp",
+				ExerciseStatus.READY,
+				List.of(new CreateExerciseQuestionItem(q1.id(), new BigDecimal("5.0"), 1))
+		);
+		MvcResult createResult = mockMvc.perform(post(EXERCISES_URL)
+				.header("Authorization", "Bearer " + teacherToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(createReq)))
+				.andExpect(status().isCreated())
+				.andReturn();
+		long sourceId = objectMapper.readTree(createResult.getResponse().getContentAsString()).get("id").asLong();
+
+		mockMvc.perform(post(EXERCISES_URL + "/" + sourceId + "/copy")
+				.header("Authorization", "Bearer " + teacherToken)
+				.contentType(MediaType.APPLICATION_JSON))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.status", is("DRAFT")));
+	}
+
+	@Test
+	@DisplayName("HTT-05-CN-007-TC-04: Thử sao chép bài tập của giáo viên khác -> Báo lỗi ACCESS_DENIED_EXERCISE (HTTP 403, QTN-19)")
+	void test_CN007_TC04_copyExercise_ofOtherTeacher_forbidden() throws Exception {
+		// Giáo viên khác tạo câu hỏi và bài tập
+		QuestionResponse otherQ = createSampleQuestion(otherTeacherId, "Câu của giáo viên khác");
+		CreateExerciseRequest createReq = new CreateExerciseRequest(
+				"Bài tập riêng của GV khác",
+				"Tuyệt mật",
+				ExerciseStatus.READY,
+				List.of(new CreateExerciseQuestionItem(otherQ.id(), new BigDecimal("10.0"), 1))
+		);
+		MvcResult createResult = mockMvc.perform(post(EXERCISES_URL)
+				.header("Authorization", "Bearer " + otherTeacherToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(createReq)))
+				.andExpect(status().isCreated())
+				.andReturn();
+		long otherExerciseId = objectMapper.readTree(createResult.getResponse().getContentAsString()).get("id").asLong();
+
+		// Teacher 1 cố tình sao chép bài của Teacher 2
+		mockMvc.perform(post(EXERCISES_URL + "/" + otherExerciseId + "/copy")
+				.header("Authorization", "Bearer " + teacherToken)
+				.contentType(MediaType.APPLICATION_JSON))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.code", is(ApiErrorCode.ACCESS_DENIED_EXERCISE.name())));
+	}
+
+	@Test
+	@DisplayName("HTT-05-CN-007: Sao chép bài tập không tồn tại -> Báo lỗi EXERCISE_NOT_FOUND (HTTP 404)")
+	void test_CN007_copyExercise_notFound() throws Exception {
+		mockMvc.perform(post(EXERCISES_URL + "/999999/copy")
+				.header("Authorization", "Bearer " + teacherToken)
+				.contentType(MediaType.APPLICATION_JSON))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code", is(ApiErrorCode.EXERCISE_NOT_FOUND.name())));
 	}
 }

@@ -1,0 +1,202 @@
+package com.hsk.exercise.service;
+
+import com.hsk.account.domain.RoleCode;
+import com.hsk.account.repository.UserRoleRepository;
+import com.hsk.common.api.ApiErrorCode;
+import com.hsk.common.api.ApiException;
+import com.hsk.exercise.domain.ExerciseEntity;
+import com.hsk.exercise.domain.ExerciseQuestionEntity;
+import com.hsk.exercise.domain.ExerciseStatus;
+import com.hsk.exercise.dto.CreateExerciseQuestionItem;
+import com.hsk.exercise.dto.CreateExerciseRequest;
+import com.hsk.exercise.dto.ExerciseQuestionResponse;
+import com.hsk.exercise.dto.ExerciseResponse;
+import com.hsk.exercise.repository.ExerciseQuestionRepository;
+import com.hsk.exercise.repository.ExerciseRepository;
+import com.hsk.question.domain.QuestionEntity;
+import com.hsk.question.repository.QuestionRepository;
+import com.hsk.question.service.QuestionService;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * Dịch vụ xử lý nghiệp vụ bài tập (HTT-05-CN-006).
+ * Đóng gói câu hỏi thành bài tập, gán điểm và xác thực quy tắc QTN-09, QTN-14, QTN-19.
+ */
+@Service
+public class ExerciseService {
+
+	private final ExerciseRepository exerciseRepository;
+	private final ExerciseQuestionRepository exerciseQuestionRepository;
+	private final QuestionRepository questionRepository;
+	private final QuestionService questionService;
+	private final UserRoleRepository userRoleRepository;
+
+	public ExerciseService(
+			ExerciseRepository exerciseRepository,
+			ExerciseQuestionRepository exerciseQuestionRepository,
+			QuestionRepository questionRepository,
+			QuestionService questionService,
+			UserRoleRepository userRoleRepository
+	) {
+		this.exerciseRepository = exerciseRepository;
+		this.exerciseQuestionRepository = exerciseQuestionRepository;
+		this.questionRepository = questionRepository;
+		this.questionService = questionService;
+		this.userRoleRepository = userRoleRepository;
+	}
+
+	/**
+	 * Kiểm tra xem người dùng có quyền giáo viên hoặc quản trị viên hay không.
+	 */
+	public void assertTeacherOrAdmin(Long userId) {
+		boolean isTeacher = userRoleRepository.existsByUser_IdAndRole_Code(userId, RoleCode.TEACHER)
+				|| userRoleRepository.existsByUser_IdAndRole_Code(userId, RoleCode.ADMIN);
+		if (!isTeacher) {
+			throw new ApiException(ApiErrorCode.TEACHER_ROLE_NOT_GRANTED);
+		}
+	}
+
+	/**
+	 * HTT-05-CN-006: Tạo bài tập mới từ danh sách câu hỏi trong ngân hàng của giáo viên.
+	 */
+	@Transactional
+	public ExerciseResponse createExercise(Long teacherId, CreateExerciseRequest request) {
+		assertTeacherOrAdmin(teacherId);
+
+		if (request == null) {
+			throw new ApiException(ApiErrorCode.MALFORMED_REQUEST_BODY);
+		}
+
+		// HTT-05-CN-006-TC-03: Bỏ trống tên bài tập -> báo lỗi
+		if (request.title() == null || request.title().trim().isEmpty()) {
+			throw new ApiException(ApiErrorCode.EXERCISE_TITLE_BLANK);
+		}
+
+		ExerciseStatus status = request.status() != null ? request.status() : ExerciseStatus.DRAFT;
+
+		// HTT-05-CN-006-TC-05 & QTN-09: Bài 0 câu hỏi chỉ cho phép lưu DRAFT, chặn chuyển READY
+		List<CreateExerciseQuestionItem> questionItems = request.questions() != null ? request.questions() : List.of();
+		if (status == ExerciseStatus.READY && questionItems.isEmpty()) {
+			throw new ApiException(ApiErrorCode.EXERCISE_READY_REQUIRES_QUESTIONS);
+		}
+
+		ExerciseEntity exercise = new ExerciseEntity(
+				teacherId,
+				request.title().trim(),
+				request.description() != null && !request.description().trim().isEmpty() ? request.description().trim() : null,
+				status
+		);
+
+		// HTT-05-CN-006-TC-06: Kiểm tra câu hỏi trùng lặp trong bài tập
+		Set<Long> seenQuestionIds = new HashSet<>();
+		for (CreateExerciseQuestionItem item : questionItems) {
+			if (item == null || item.questionId() == null) {
+				throw new ApiException(ApiErrorCode.MALFORMED_REQUEST_BODY);
+			}
+			if (!seenQuestionIds.add(item.questionId())) {
+				throw new ApiException(ApiErrorCode.EXERCISE_DUPLICATE_QUESTIONS);
+			}
+		}
+
+		BigDecimal totalPoints = BigDecimal.ZERO;
+		int defaultOrder = 1;
+
+		for (CreateExerciseQuestionItem item : questionItems) {
+			// HTT-05-CN-006-TC-04: Điểm của câu hỏi phải > 0
+			if (item.points() == null || item.points().compareTo(BigDecimal.ZERO) <= 0) {
+				throw new ApiException(ApiErrorCode.EXERCISE_QUESTION_POINTS_INVALID);
+			}
+
+			// Kiểm tra câu hỏi tồn tại trong ngân hàng
+			QuestionEntity question = questionRepository.findById(item.questionId())
+					.orElseThrow(() -> new ApiException(ApiErrorCode.QUESTION_NOT_FOUND));
+
+			if (question.isHidden()) {
+				throw new ApiException(ApiErrorCode.QUESTION_NOT_FOUND);
+			}
+
+			// HTT-05-CN-006-TC-07 & QTN-19: Giáo viên chỉ được đưa câu hỏi của mình vào bài tập
+			if (!question.getOwnerId().equals(teacherId)) {
+				throw new ApiException(ApiErrorCode.ACCESS_DENIED_QUESTION);
+			}
+
+			// QTN-14: Đánh dấu câu hỏi đã được dùng trong bài tập
+			questionService.markQuestionAsUsedInExercise(question.getId());
+
+			int sortOrder = item.sortOrder() != null ? item.sortOrder() : defaultOrder;
+			ExerciseQuestionEntity eq = new ExerciseQuestionEntity(exercise, question, item.points(), sortOrder);
+			exercise.addQuestion(eq);
+
+			totalPoints = totalPoints.add(item.points());
+			defaultOrder++;
+		}
+
+		exercise.setTotalPoints(totalPoints);
+		ExerciseEntity saved = exerciseRepository.save(exercise);
+		return mapToResponse(saved);
+	}
+
+	/**
+	 * Lấy danh sách bài tập của giáo viên đăng nhập (QTN-19).
+	 */
+	@Transactional(readOnly = true)
+	public List<ExerciseResponse> getMyExercises(Long teacherId) {
+		assertTeacherOrAdmin(teacherId);
+		return exerciseRepository.findByOwnerIdOrderByCreatedAtDesc(teacherId).stream()
+				.map(this::mapToResponse)
+				.toList();
+	}
+
+	/**
+	 * Lấy chi tiết bài tập kèm danh sách câu hỏi và điểm số (QTN-19).
+	 */
+	@Transactional(readOnly = true)
+	public ExerciseResponse getExerciseDetail(Long teacherId, Long exerciseId) {
+		assertTeacherOrAdmin(teacherId);
+
+		ExerciseEntity exercise = exerciseRepository.findWithQuestionsById(exerciseId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.EXERCISE_NOT_FOUND));
+
+		if (!exercise.getOwnerId().equals(teacherId)) {
+			throw new ApiException(ApiErrorCode.ACCESS_DENIED_EXERCISE);
+		}
+
+		return mapToResponse(exercise);
+	}
+
+	public ExerciseResponse mapToResponse(ExerciseEntity entity) {
+		List<ExerciseQuestionResponse> questionResponses = new ArrayList<>();
+		if (entity.getQuestions() != null) {
+			for (ExerciseQuestionEntity eq : entity.getQuestions()) {
+				QuestionEntity q = eq.getQuestion();
+				questionResponses.add(new ExerciseQuestionResponse(
+						eq.getId(),
+						q != null ? q.getId() : null,
+						q != null ? q.getContent() : null,
+						q != null ? q.getType() : null,
+						eq.getPoints(),
+						eq.getSortOrder()
+				));
+			}
+		}
+
+		return new ExerciseResponse(
+				entity.getId(),
+				entity.getOwnerId(),
+				entity.getTitle(),
+				entity.getDescription(),
+				entity.getStatus(),
+				entity.getTotalPoints(),
+				questionResponses.size(),
+				questionResponses,
+				entity.getCreatedAt(),
+				entity.getUpdatedAt()
+		);
+	}
+}

@@ -29,6 +29,7 @@ import com.hsk.question.dto.OrderingPayloadDto;
 import com.hsk.question.dto.QuestionOptionResponse;
 import com.hsk.question.dto.QuestionResponse;
 import com.hsk.question.dto.QuickGeneratePreviewRequest;
+import com.hsk.question.dto.UpdateQuestionRequest;
 import com.hsk.question.repository.QuestionRepository;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -42,7 +43,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Dịch vụ xử lý nghiệp vụ câu hỏi (HTT-05-CN-001, HTT-05-CN-002, HTT-05-CN-003, HTT-05-CN-004).
+ * Dịch vụ xử lý nghiệp vụ câu hỏi (HTT-05-CN-001 -> HTT-05-CN-005).
  * Tuân thủ quy tắc QTN-08 (hợp lệ trắc nghiệm) và QTN-19 (quyền sở hữu của giáo viên).
  */
 @Service
@@ -523,5 +524,149 @@ public class QuestionService {
 				optionResponses,
 				entity.getCreatedAt()
 		);
+	}
+
+	// --- HTT-05-CN-005: Quản lý ngân hàng câu hỏi ---
+
+	private final Set<Long> usedInExerciseQuestionIds = Collections.synchronizedSet(new HashSet<>());
+
+	/**
+	 * Đánh dấu câu hỏi đã được sử dụng trong bài tập (phục vụ mô phỏng QTN-14 cho đến khi HTT-05-CN-006 hoàn thiện).
+	 */
+	public void markQuestionAsUsedInExercise(Long questionId) {
+		if (questionId != null) {
+			usedInExerciseQuestionIds.add(questionId);
+		}
+	}
+
+	/**
+	 * Kiểm tra xem câu hỏi đã được gắn vào bài tập nào hay chưa.
+	 */
+	public boolean isQuestionUsedInAnyExercise(Long questionId) {
+		return questionId != null && usedInExerciseQuestionIds.contains(questionId);
+	}
+
+	/**
+	 * HTT-05-CN-005 / TC-06: Xem chi tiết câu hỏi (QTN-19: chỉ giáo viên sở hữu mới được xem).
+	 */
+	@Transactional(readOnly = true)
+	public QuestionResponse getQuestionDetail(Long teacherId, Long questionId) {
+		assertTeacherOrAdmin(teacherId);
+
+		QuestionEntity question = questionRepository.findWithOptionsById(questionId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.QUESTION_NOT_FOUND));
+
+		if (question.isHidden()) {
+			throw new ApiException(ApiErrorCode.QUESTION_NOT_FOUND);
+		}
+
+		if (!question.getOwnerId().equals(teacherId)) {
+			throw new ApiException(ApiErrorCode.ACCESS_DENIED_QUESTION);
+		}
+
+		return mapToResponse(question);
+	}
+
+	/**
+	 * HTT-05-CN-005 / TC-02, TC-03: Sửa câu hỏi trong ngân hàng của giáo viên (QTN-10, QTN-19).
+	 */
+	@Transactional
+	public QuestionResponse updateQuestion(Long teacherId, Long questionId, UpdateQuestionRequest request) {
+		assertTeacherOrAdmin(teacherId);
+
+		if (request == null) {
+			throw new ApiException(ApiErrorCode.MALFORMED_REQUEST_BODY);
+		}
+
+		if (request.content() == null || request.content().trim().isEmpty()) {
+			throw new ApiException(ApiErrorCode.QUESTION_CONTENT_BLANK);
+		}
+
+		QuestionEntity question = questionRepository.findWithOptionsById(questionId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.QUESTION_NOT_FOUND));
+
+		if (question.isHidden()) {
+			throw new ApiException(ApiErrorCode.QUESTION_NOT_FOUND);
+		}
+
+		// QTN-19: Giáo viên chỉ có quyền sửa câu hỏi của mình
+		if (!question.getOwnerId().equals(teacherId)) {
+			throw new ApiException(ApiErrorCode.ACCESS_DENIED_QUESTION);
+		}
+
+		question.setContent(request.content().trim());
+		question.setExplanation(request.explanation() != null && !request.explanation().trim().isEmpty()
+				? request.explanation().trim()
+				: null);
+
+		// Nếu là dạng câu hỏi trắc nghiệm MCQ -> cập nhật và kiểm tra hợp lệ các lựa chọn (QTN-08)
+		if (question.getType() == QuestionType.MCQ) {
+			if (request.options() == null || request.options().size() < 2) {
+				throw new ApiException(ApiErrorCode.QUESTION_MIN_OPTIONS);
+			}
+
+			long correctCount = request.options().stream()
+					.filter(CreateQuestionOptionRequest::isCorrect)
+					.count();
+			if (correctCount != 1) {
+				throw new ApiException(ApiErrorCode.QUESTION_EXACTLY_ONE_CORRECT);
+			}
+
+			Set<String> seenContents = new HashSet<>();
+			for (CreateQuestionOptionRequest optReq : request.options()) {
+				if (optReq.content() == null || optReq.content().trim().isEmpty()) {
+					throw new ApiException(ApiErrorCode.QUESTION_OPTION_CONTENT_BLANK);
+				}
+				String normalized = optReq.content().trim().toLowerCase();
+				if (!seenContents.add(normalized)) {
+					throw new ApiException(ApiErrorCode.QUESTION_DUPLICATE_OPTIONS);
+				}
+			}
+
+			question.getOptions().clear();
+			int order = 1;
+			for (CreateQuestionOptionRequest optReq : request.options()) {
+				QuestionOptionEntity opt = new QuestionOptionEntity(
+						optReq.content().trim(),
+						Boolean.TRUE.equals(optReq.isCorrect()),
+						order++
+				);
+				question.addOption(opt);
+			}
+		} else {
+			// Với các loại FILL, MATCH, ORDER -> cập nhật payload nếu có
+			if (request.payload() != null && !request.payload().trim().isEmpty()) {
+				question.setPayload(request.payload().trim());
+			}
+		}
+
+		// QTN-10: Sửa câu hỏi trong ngân hàng không ảnh hưởng nội dung snapshot đã chụp trong các lần giao bài trước
+		QuestionEntity saved = questionRepository.save(question);
+		return mapToResponse(saved);
+	}
+
+	/**
+	 * HTT-05-CN-005 / TC-04, TC-05: Xóa hoặc ẩn câu hỏi (QTN-14, QTN-19).
+	 */
+	@Transactional
+	public void deleteOrHideQuestion(Long teacherId, Long questionId) {
+		assertTeacherOrAdmin(teacherId);
+
+		QuestionEntity question = questionRepository.findWithOptionsById(questionId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.QUESTION_NOT_FOUND));
+
+		// QTN-19: Giáo viên chỉ có quyền xóa/ẩn câu hỏi của mình
+		if (!question.getOwnerId().equals(teacherId)) {
+			throw new ApiException(ApiErrorCode.ACCESS_DENIED_QUESTION);
+		}
+
+		// QTN-14: Câu hỏi đã dùng trong bài tập thì chỉ ẩn đi, không xóa cứng
+		if (isQuestionUsedInAnyExercise(questionId)) {
+			question.setHidden(true);
+			questionRepository.save(question);
+		} else {
+			// Câu hỏi chưa từng dùng trong bài tập nào -> cho phép xóa cứng khỏi database
+			questionRepository.delete(question);
+		}
 	}
 }

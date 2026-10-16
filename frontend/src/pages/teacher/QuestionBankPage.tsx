@@ -25,6 +25,9 @@ import {
   Split,
   Wand2,
   BookMarked,
+  Save,
+  AlertTriangle,
+  FileCheck,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import {
@@ -35,9 +38,12 @@ import {
   createOrderingQuestion,
   quickGeneratePreview,
   batchCreateQuestions,
+  updateQuestion,
+  deleteQuestion,
   type QuestionItem,
   type CreateQuestionOptionPayload,
   type CreateQuestionPayload,
+  type UpdateQuestionPayload,
   type QuestionFormat,
   type BlankAnswerItem,
   type MatchingPairItem,
@@ -110,6 +116,173 @@ export const QuestionBankPage: React.FC = () => {
   const [generating, setGenerating] = useState(false)
   const [batchSaving, setBatchSaving] = useState(false)
   const [generatedDrafts, setGeneratedDrafts] = useState<CreateQuestionPayload[]>([])
+
+  // --- Edit Question Drawer state (HTT-05-CN-005 / QTN-10, QTN-19) ---
+  const [editingQuestion, setEditingQuestion] = useState<QuestionItem | null>(null)
+  const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false)
+  const [editContent, setEditContent] = useState('')
+  const [editExplanation, setEditExplanation] = useState('')
+  const [editOptions, setEditOptions] = useState<DraftOption[]>([])
+  const [editPayload, setEditPayload] = useState('')
+  const [editErrors, setEditErrors] = useState<string[]>([])
+  const [editSubmitting, setEditSubmitting] = useState(false)
+
+  // --- Inline Delete state (HTT-05-CN-005 / QTN-14, QTN-19) ---
+  const [deletingQuestionId, setDeletingQuestionId] = useState<number | null>(null)
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false)
+
+  const handleOpenEdit = (q: QuestionItem) => {
+    setEditingQuestion(q)
+    setEditContent(q.content)
+    setEditExplanation(q.explanation || '')
+    setEditPayload(q.payload || '')
+    setEditErrors([])
+    if (q.type === 'MCQ' && q.options && q.options.length > 0) {
+      setEditOptions(
+        q.options.map((opt) => ({
+          content: opt.content,
+          isCorrect: opt.isCorrect,
+        }))
+      )
+    } else {
+      setEditOptions([
+        { content: '', isCorrect: true },
+        { content: '', isCorrect: false },
+      ])
+    }
+    setIsEditDrawerOpen(true)
+    setIsDrawerOpen(false)
+    setIsQuickGenOpen(false)
+  }
+
+  const handleCloseEdit = () => {
+    setIsEditDrawerOpen(false)
+    setEditingQuestion(null)
+    setEditErrors([])
+  }
+
+  const handleAddEditOption = () => {
+    setEditOptions([...editOptions, { content: '', isCorrect: false }])
+  }
+
+  const handleRemoveEditOption = (index: number) => {
+    if (editOptions.length <= 2) {
+      setEditErrors(['Câu hỏi trắc nghiệm phải có ít nhất 2 lựa chọn (QTN-08).'])
+      return
+    }
+    const wasCorrect = editOptions[index].isCorrect
+    const next = editOptions.filter((_, i) => i !== index)
+    if (wasCorrect && next.length > 0) {
+      next[0].isCorrect = true
+    }
+    setEditOptions(next)
+  }
+
+  const handleEditOptionChange = (index: number, val: string) => {
+    const next = [...editOptions]
+    next[index].content = val
+    setEditOptions(next)
+  }
+
+  const handleSelectEditCorrect = (index: number) => {
+    const next = editOptions.map((opt, i) => ({
+      ...opt,
+      isCorrect: i === index,
+    }))
+    setEditOptions(next)
+  }
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!user || !editingQuestion) return
+
+    const errors: string[] = []
+    if (!editContent.trim()) {
+      errors.push('Nội dung câu hỏi không được để trống (TC-02).')
+    }
+
+    if (editingQuestion.type === 'MCQ') {
+      if (editOptions.length < 2) {
+        errors.push('Câu hỏi trắc nghiệm phải có ít nhất 2 lựa chọn (QTN-08).')
+      }
+      for (let i = 0; i < editOptions.length; i++) {
+        if (!editOptions[i].content.trim()) {
+          errors.push(`Lựa chọn ${optionLetters[i] || i + 1} không được để trống.`)
+        }
+      }
+      const uniqueContents = new Set<string>()
+      for (const opt of editOptions) {
+        const normalized = opt.content.trim().toLowerCase()
+        if (normalized && uniqueContents.has(normalized)) {
+          errors.push('Các lựa chọn đáp án không được trùng nhau.')
+          break
+        }
+        uniqueContents.add(normalized)
+      }
+      const correctCount = editOptions.filter((opt) => opt.isCorrect).length
+      if (correctCount !== 1) {
+        errors.push('Phải chọn đúng 1 đáp án chính xác (QTN-08).')
+      }
+    }
+
+    setEditErrors(errors)
+    if (errors.length > 0) return
+
+    setEditSubmitting(true)
+    setErrorMessage(null)
+    setSuccessMessage(null)
+
+    try {
+      const payload: UpdateQuestionPayload = {
+        content: editContent.trim(),
+        explanation: editExplanation.trim() ? editExplanation.trim() : undefined,
+        options:
+          editingQuestion.type === 'MCQ'
+            ? editOptions.map((o) => ({ content: o.content.trim(), isCorrect: o.isCorrect }))
+            : undefined,
+        payload: editPayload.trim() ? editPayload.trim() : undefined,
+      }
+
+      const updated = await updateQuestion(editingQuestion.id, payload, user.token)
+
+      setQuestions((prev) =>
+        prev.map((q) => (q.id === updated.id ? updated : q))
+      )
+      setSuccessMessage(`Đã cập nhật thành công câu hỏi #${updated.id}!`)
+      handleCloseEdit()
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setErrorMessage(err.message)
+      } else {
+        setErrorMessage('Không thể cập nhật câu hỏi')
+      }
+    } finally {
+      setEditSubmitting(false)
+    }
+  }
+
+  // Handle Delete Question (Inline confirmation)
+  const handleDeleteQuestion = async (questionId: number) => {
+    if (!user) return
+    setDeleteSubmitting(true)
+    setErrorMessage(null)
+    setSuccessMessage(null)
+
+    try {
+      await deleteQuestion(questionId, user.token)
+      setQuestions((prev) => prev.filter((q) => q.id !== questionId))
+      setSuccessMessage(`Đã xóa câu hỏi #${questionId} khỏi ngân hàng câu hỏi thành công!`)
+      setDeletingQuestionId(null)
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setErrorMessage(err.message)
+      } else {
+        setErrorMessage('Không thể xóa câu hỏi')
+      }
+    } finally {
+      setDeleteSubmitting(false)
+    }
+  }
 
   useEffect(() => {
     if (user) {
@@ -800,6 +973,16 @@ export const QuestionBankPage: React.FC = () => {
           </div>
 
           <div className="flex items-center space-x-3">
+            {/* HTT-05-CN-006: Go to Exercises */}
+            <button
+              onClick={() => navigate('/exercises')}
+              className="flex items-center space-x-2 px-4 py-2.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 font-medium rounded-xl shadow-xs transition text-sm"
+              title="Đóng gói câu hỏi thành bài tập hoàn chỉnh"
+            >
+              <FileCheck className="w-4 h-4" />
+              <span>Quản lý bài tập</span>
+            </button>
+
             {/* HTT-05-CN-004: Quick Generate Action */}
             <button
               onClick={() => {
@@ -1732,6 +1915,194 @@ export const QuestionBankPage: React.FC = () => {
           </div>
         )}
 
+        {/* HTT-05-CN-005: EDIT QUESTION PANEL (NO MODAL / INLINE DRAWER) */}
+        {isEditDrawerOpen && editingQuestion && (
+          <div className="bg-white rounded-3xl border-2 border-indigo-200 shadow-xl overflow-hidden">
+            <div className="bg-gradient-to-r from-indigo-700 via-indigo-600 to-purple-600 px-6 py-4 flex items-center justify-between text-white">
+              <div className="flex items-center space-x-3">
+                <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center font-bold text-white text-sm">
+                  <Edit3 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold flex items-center space-x-2">
+                    <span>Chỉnh sửa câu hỏi #{editingQuestion.id}</span>
+                    <span className="text-xs bg-white/20 px-2.5 py-0.5 rounded-full font-semibold">
+                      {editingQuestion.type === 'FILL'
+                        ? 'Điền từ'
+                        : editingQuestion.type === 'MATCH'
+                        ? 'Nối từ'
+                        : editingQuestion.type === 'ORDER'
+                        ? 'Sắp xếp câu'
+                        : 'Trắc nghiệm (MCQ)'}
+                    </span>
+                  </h2>
+                  <p className="text-xs text-indigo-100">
+                    Sửa đổi trong ngân hàng không ảnh hưởng nội dung snapshot các lần giao bài trước (QTN-10).
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseEdit}
+                className="p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
+                title="Đóng chỉnh sửa"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="p-6 space-y-6">
+              {editErrors.length > 0 && (
+                <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl space-y-1">
+                  <div className="flex items-center space-x-2 text-rose-800 font-bold text-sm">
+                    <AlertCircle className="w-4 h-4 text-rose-600" />
+                    <span>Vui lòng kiểm tra các lỗi sau:</span>
+                  </div>
+                  <ul className="list-disc list-inside text-xs text-rose-700 space-y-0.5 pl-1">
+                    {editErrors.map((err, idx) => (
+                      <li key={idx}>{err}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="space-y-4">
+                {/* Content field */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Nội dung câu hỏi <span className="text-rose-500">*</span>
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                    placeholder="Nhập nội dung câu hỏi..."
+                    className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                  />
+                </div>
+
+                {/* MCQ Options editing */}
+                {editingQuestion.type === 'MCQ' && (
+                  <div className="space-y-3 pt-2">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        Các lựa chọn trả lời (QTN-08: Tối thiểu 2 lựa chọn, 1 đáp án đúng)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={handleAddEditOption}
+                        className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center space-x-1"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Thêm lựa chọn</span>
+                      </button>
+                    </div>
+
+                    <div className="space-y-2">
+                      {editOptions.map((opt, idx) => (
+                        <div
+                          key={idx}
+                          className={`p-3 rounded-xl border flex items-center space-x-3 transition ${
+                            opt.isCorrect
+                              ? 'bg-emerald-50/60 border-emerald-300'
+                              : 'bg-slate-50 border-slate-200'
+                          }`}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => handleSelectEditCorrect(idx)}
+                            className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs transition ${
+                              opt.isCorrect
+                                ? 'bg-emerald-600 text-white shadow-sm'
+                                : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+                            }`}
+                            title={opt.isCorrect ? 'Đáp án đúng' : 'Đánh dấu là đáp án đúng'}
+                          >
+                            {optionLetters[idx] || idx + 1}
+                          </button>
+                          <input
+                            type="text"
+                            value={opt.content}
+                            onChange={(e) => handleEditOptionChange(idx, e.target.value)}
+                            placeholder={`Nội dung lựa chọn ${optionLetters[idx] || idx + 1}`}
+                            className="flex-1 px-3 py-1.5 text-sm bg-white rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                          {opt.isCorrect && (
+                            <span className="text-xs text-emerald-700 font-bold px-2 py-0.5 bg-emerald-100 rounded-md">
+                              Đáp án đúng
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveEditOption(idx)}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 transition"
+                            title="Xóa lựa chọn này"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Non-MCQ Payload editing if needed */}
+                {editingQuestion.type !== 'MCQ' && (
+                  <div className="space-y-1.5 pt-2">
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Cấu hình đáp án chi tiết (JSON Payload)
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={editPayload}
+                      onChange={(e) => setEditPayload(e.target.value)}
+                      placeholder='{"blanks":[...]}'
+                      className="w-full px-4 py-2 font-mono text-xs rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50"
+                    />
+                  </div>
+                )}
+
+                {/* Explanation field */}
+                <div className="space-y-1.5 pt-2">
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Giải thích chi tiết (Tùy chọn)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={editExplanation}
+                    onChange={(e) => setEditExplanation(e.target.value)}
+                    placeholder="Nhập giải thích củng cố kiến thức cho học sinh sau khi nộp bài..."
+                    className="w-full px-4 py-2 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={handleCloseEdit}
+                  disabled={editSubmitting}
+                  className="px-5 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={editSubmitting}
+                  className="flex items-center space-x-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl shadow-md transition disabled:opacity-50"
+                >
+                  {editSubmitting ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                  <span>Lưu thay đổi</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
         {/* Search & Filter Bar */}
         <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="relative w-full md:w-96">
@@ -1896,10 +2267,28 @@ export const QuestionBankPage: React.FC = () => {
                             : 'Trắc nghiệm (MCQ)'}
                         </span>
                       </span>
-                      <span className="text-xs text-slate-400 flex items-center space-x-1">
-                        <Calendar className="w-3.5 h-3.5" />
-                        <span>{new Date(q.createdAt).toLocaleDateString('vi-VN')}</span>
-                      </span>
+                      <div className="flex items-center space-x-1">
+                        <span className="text-xs text-slate-400 flex items-center space-x-1 mr-1">
+                          <Calendar className="w-3.5 h-3.5" />
+                          <span>{new Date(q.createdAt).toLocaleDateString('vi-VN')}</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEdit(q)}
+                          className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+                          title="Sửa câu hỏi"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeletingQuestionId(deletingQuestionId === q.id ? null : q.id)}
+                          className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                          title="Xóa câu hỏi"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
 
                     <div className="text-base font-bold text-slate-900 leading-snug break-words">
@@ -2026,6 +2415,41 @@ export const QuestionBankPage: React.FC = () => {
                       <div className="p-3 bg-amber-50/70 border border-amber-100 rounded-xl text-xs text-amber-900">
                         <span className="font-bold">Giải thích: </span>
                         <span>{q.explanation}</span>
+                      </div>
+                    )}
+
+                    {/* Inline Delete Confirmation (No Modal!) */}
+                    {deletingQuestionId === q.id && (
+                      <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl space-y-2 text-xs">
+                        <div className="flex items-start space-x-2 text-rose-800">
+                          <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+                          <span className="leading-relaxed">
+                            Xác nhận xóa câu hỏi này khỏi ngân hàng? Nếu câu hỏi đã dùng trong bài tập, hệ thống sẽ ẩn để bảo toàn dữ liệu làm bài (QTN-14).
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-end space-x-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => setDeletingQuestionId(null)}
+                            disabled={deleteSubmitting}
+                            className="px-3 py-1 bg-white border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 transition font-medium"
+                          >
+                            Hủy
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteQuestion(q.id)}
+                            disabled={deleteSubmitting}
+                            className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition font-medium flex items-center space-x-1"
+                          >
+                            {deleteSubmitting ? (
+                              <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <Trash2 className="w-3.5 h-3.5" />
+                            )}
+                            <span>Xác nhận xóa</span>
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>

@@ -11,6 +11,7 @@ import com.hsk.question.dto.CreateOrderingQuestionRequest;
 import com.hsk.question.dto.CreateQuestionRequest;
 import com.hsk.question.dto.QuestionResponse;
 import com.hsk.question.dto.QuickGeneratePreviewRequest;
+import com.hsk.question.dto.UpdateQuestionRequest;
 import com.hsk.question.service.QuestionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -21,8 +22,11 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -152,5 +156,51 @@ public class QuestionController {
 		UserEntity user = requireUser(principal);
 		List<QuestionResponse> response = questionService.getMyQuestions(user.getId());
 		return ResponseEntity.ok(response);
+	}
+
+	@GetMapping("/{id}")
+	@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
+	@Operation(
+			summary = "HTT-05-CN-005 / TC-06 — Xem chi tiết câu hỏi",
+			description = "Xem chi tiết một câu hỏi trong ngân hàng của giáo viên (QTN-19)."
+	)
+	public ResponseEntity<QuestionResponse> getQuestionDetail(
+			@PathVariable("id") Long id,
+			Principal principal
+	) {
+		UserEntity user = requireUser(principal);
+		QuestionResponse response = questionService.getQuestionDetail(user.getId(), id);
+		return ResponseEntity.ok(response);
+	}
+
+	@PutMapping("/{id}")
+	@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
+	@Operation(
+			summary = "HTT-05-CN-005 / TC-02, TC-03 — Cập nhật câu hỏi trong ngân hàng",
+			description = "Sửa nội dung, giải thích, các đáp án trắc nghiệm hoặc payload. Tuân thủ QTN-10 và QTN-19."
+	)
+	public ResponseEntity<QuestionResponse> updateQuestion(
+			@PathVariable("id") Long id,
+			@Valid @RequestBody UpdateQuestionRequest request,
+			Principal principal
+	) {
+		UserEntity user = requireUser(principal);
+		QuestionResponse response = questionService.updateQuestion(user.getId(), id, request);
+		return ResponseEntity.ok(response);
+	}
+
+	@DeleteMapping("/{id}")
+	@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
+	@Operation(
+			summary = "HTT-05-CN-005 / TC-04, TC-05 — Xóa hoặc ẩn câu hỏi",
+			description = "Xóa câu hỏi khỏi ngân hàng. Tuân thủ QTN-14: câu hỏi đã dùng trong bài tập thì ẩn, chưa dùng thì xóa cứng."
+	)
+	public ResponseEntity<Void> deleteOrHideQuestion(
+			@PathVariable("id") Long id,
+			Principal principal
+	) {
+		UserEntity user = requireUser(principal);
+		questionService.deleteOrHideQuestion(user.getId(), id);
+		return ResponseEntity.noContent().build();
 	}
 }

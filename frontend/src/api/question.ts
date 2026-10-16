@@ -262,3 +262,81 @@ export async function getMyQuestions(token: string): Promise<QuestionItem[]> {
 
   return data as QuestionItem[]
 }
+
+export interface UpdateQuestionPayload {
+  content: string
+  explanation?: string
+  options?: CreateQuestionOptionPayload[]
+  payload?: string
+}
+
+export async function getQuestionDetail(id: number, token: string): Promise<QuestionItem> {
+  const response = await fetch(`${API_BASE}/${id}`, {
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  const data = await response.json().catch(() => null)
+
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'UNKNOWN_ERROR',
+      data?.message || 'Không thể lấy chi tiết câu hỏi',
+      data?.fields
+    )
+  }
+
+  return data as QuestionItem
+}
+
+export async function updateQuestion(
+  id: number,
+  payload: UpdateQuestionPayload,
+  token: string
+): Promise<QuestionItem> {
+  const response = await fetch(`${API_BASE}/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  const data = await response.json().catch(() => null)
+
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'UNKNOWN_ERROR',
+      data?.message || 'Không thể cập nhật câu hỏi',
+      data?.fields
+    )
+  }
+
+  return data as QuestionItem
+}
+
+export async function deleteQuestion(id: number, token: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/${id}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => null)
+    throw new ApiError(
+      response.status,
+      data?.code || 'UNKNOWN_ERROR',
+      data?.message || 'Không thể xóa câu hỏi',
+      data?.fields
+    )
+  }
+}
+

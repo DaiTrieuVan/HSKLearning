@@ -4,6 +4,9 @@ import com.hsk.account.domain.UserEntity;
 import com.hsk.account.repository.UserRepository;
 import com.hsk.common.api.ApiErrorCode;
 import com.hsk.common.api.ApiException;
+import com.hsk.question.dto.CreateFillBlankQuestionRequest;
+import com.hsk.question.dto.CreateMatchingQuestionRequest;
+import com.hsk.question.dto.CreateOrderingQuestionRequest;
 import com.hsk.question.dto.CreateQuestionRequest;
 import com.hsk.question.dto.QuestionResponse;
 import com.hsk.question.service.QuestionService;
@@ -68,11 +71,41 @@ public class QuestionController {
 			description = "Giáo viên tạo câu hỏi điền từ vào chỗ trống trong ngân hàng cá nhân (QTN-19). Bắt buộc có ít nhất 1 chỗ trống (___), số chỗ trống khớp số đáp án và đáp án đúng không được rỗng."
 	)
 	public ResponseEntity<QuestionResponse> createFillBlankQuestion(
-			@RequestBody com.hsk.question.dto.CreateFillBlankQuestionRequest request,
+			@RequestBody CreateFillBlankQuestionRequest request,
 			Principal principal
 	) {
 		UserEntity user = requireUser(principal);
 		QuestionResponse response = questionService.createFillBlankQuestion(user.getId(), request);
+		return ResponseEntity.status(HttpStatus.CREATED).body(response);
+	}
+
+	@PostMapping("/matching")
+	@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
+	@Operation(
+			summary = "HTT-05-CN-003 — Tạo câu hỏi nối từ",
+			description = "Giáo viên tạo câu hỏi nối từ với nghĩa trong ngân hàng cá nhân (QTN-19). Bắt buộc có ít nhất 2 cặp, các vế không được rỗng và vế trái không được trùng nhau."
+	)
+	public ResponseEntity<QuestionResponse> createMatchingQuestion(
+			@RequestBody CreateMatchingQuestionRequest request,
+			Principal principal
+	) {
+		UserEntity user = requireUser(principal);
+		QuestionResponse response = questionService.createMatchingQuestion(user.getId(), request);
+		return ResponseEntity.status(HttpStatus.CREATED).body(response);
+	}
+
+	@PostMapping("/ordering")
+	@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
+	@Operation(
+			summary = "HTT-05-CN-003 — Tạo câu hỏi sắp xếp câu",
+			description = "Giáo viên tạo câu hỏi sắp xếp các từ/cụm từ thành câu hoàn chỉnh trong ngân hàng cá nhân (QTN-19). Bắt buộc có ít nhất 2 thành phần và các thành phần không được rỗng."
+	)
+	public ResponseEntity<QuestionResponse> createOrderingQuestion(
+			@RequestBody CreateOrderingQuestionRequest request,
+			Principal principal
+	) {
+		UserEntity user = requireUser(principal);
+		QuestionResponse response = questionService.createOrderingQuestion(user.getId(), request);
 		return ResponseEntity.status(HttpStatus.CREATED).body(response);
 	}
 

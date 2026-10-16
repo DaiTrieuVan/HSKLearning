@@ -18,15 +18,23 @@ import {
   BookOpen,
   Edit3,
   CheckSquare,
+  Link2,
+  ArrowUpDown,
+  MoveUp,
+  MoveDown,
+  Split,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import {
   getMyQuestions,
   createMultipleChoiceQuestion,
   createFillBlankQuestion,
+  createMatchingQuestion,
+  createOrderingQuestion,
   type QuestionItem,
   type CreateQuestionOptionPayload,
   type BlankAnswerItem,
+  type MatchingPairItem,
 } from '../../api/question'
 import { ApiError } from '../../api/auth'
 
@@ -42,7 +50,8 @@ interface DraftBlank {
   newAcceptableInput?: string
 }
 
-type QuestionTabType = 'MCQ' | 'FILL'
+export type QuestionTabType = 'MCQ' | 'FILL' | 'MATCH' | 'ORDER'
+export type QuestionFilterType = 'ALL' | 'MCQ' | 'FILL' | 'MATCH' | 'ORDER'
 
 export const QuestionBankPage: React.FC = () => {
   const { user } = useAuth()
@@ -54,7 +63,7 @@ export const QuestionBankPage: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedFilterType, setSelectedFilterType] = useState<'ALL' | 'MCQ' | 'FILL'>('ALL')
+  const [selectedFilterType, setSelectedFilterType] = useState<QuestionFilterType>('ALL')
 
   // Form Drawer / Inline state (No Modal!)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
@@ -75,6 +84,16 @@ export const QuestionBankPage: React.FC = () => {
 
   // FILL state
   const [blanks, setBlanks] = useState<DraftBlank[]>([])
+
+  // MATCH state
+  const [pairs, setPairs] = useState<MatchingPairItem[]>([
+    { left: '', right: '' },
+    { left: '', right: '' },
+  ])
+
+  // ORDER state
+  const [orderItems, setOrderItems] = useState<string[]>(['', '', ''])
+  const [quickSentenceInput, setQuickSentenceInput] = useState('')
 
   useEffect(() => {
     if (user) {
@@ -199,6 +218,74 @@ export const QuestionBankPage: React.FC = () => {
     )
   }
 
+  // --- MATCH Handlers ---
+  const handleAddPair = () => {
+    setPairs([...pairs, { left: '', right: '' }])
+  }
+
+  const handleRemovePair = (index: number) => {
+    if (pairs.length <= 2) {
+      setErrorMessage('Câu hỏi nối từ phải có ít nhất 2 cặp từ và nghĩa (TC-03).')
+      return
+    }
+    setPairs(pairs.filter((_, i) => i !== index))
+  }
+
+  const handlePairChange = (index: number, side: 'left' | 'right', val: string) => {
+    const next = [...pairs]
+    next[index] = {
+      ...next[index],
+      [side]: val,
+    }
+    setPairs(next)
+  }
+
+  // --- ORDER Handlers ---
+  const handleAddOrderItem = () => {
+    setOrderItems([...orderItems, ''])
+  }
+
+  const handleRemoveOrderItem = (index: number) => {
+    if (orderItems.length <= 2) {
+      setErrorMessage('Câu hỏi sắp xếp câu phải có ít nhất 2 thành phần (TC-04).')
+      return
+    }
+    setOrderItems(orderItems.filter((_, i) => i !== index))
+  }
+
+  const handleOrderItemChange = (index: number, val: string) => {
+    const next = [...orderItems]
+    next[index] = val
+    setOrderItems(next)
+  }
+
+  const handleMoveOrderItem = (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1
+    if (targetIndex < 0 || targetIndex >= orderItems.length) return
+    const next = [...orderItems]
+    const temp = next[index]
+    next[index] = next[targetIndex]
+    next[targetIndex] = temp
+    setOrderItems(next)
+  }
+
+  const handleSplitQuickSentence = () => {
+    const raw = quickSentenceInput.trim()
+    if (!raw) return
+    let segments: string[] = []
+    if (raw.includes('/') || raw.includes('|')) {
+      segments = raw.split(/[/|]/).map((s) => s.trim()).filter(Boolean)
+    } else if (raw.includes(' ')) {
+      segments = raw.split(/\s+/).map((s) => s.trim()).filter(Boolean)
+    } else {
+      segments = Array.from(raw).map((s) => s.trim()).filter(Boolean)
+    }
+    if (segments.length >= 2) {
+      setOrderItems(segments)
+      setQuickSentenceInput('')
+    }
+  }
+
   // --- Validation ---
   const validateDraft = (): string[] => {
     const errors: string[] = []
@@ -234,7 +321,7 @@ export const QuestionBankPage: React.FC = () => {
       if (correctCount !== 1) {
         errors.push('Phải có đúng một đáp án được chọn là đáp án đúng (TC-03 & QTN-08).')
       }
-    } else {
+    } else if (activeTab === 'FILL') {
       // FILL validations (TC-03, TC-04, TC-05)
       const matches = questionContent.match(/_{3,}/g) || []
       if (matches.length === 0) {
@@ -247,6 +334,41 @@ export const QuestionBankPage: React.FC = () => {
         if (!blanks[i].correctAnswer.trim()) {
           errors.push(`Chỗ trống #${i + 1} chưa có đáp án đúng (TC-05).`)
         }
+      }
+    } else if (activeTab === 'MATCH') {
+      // MATCH validations (TC-03, TC-04, TC-05)
+      if (pairs.length < 2) {
+        errors.push('Câu hỏi nối từ phải có ít nhất 2 cặp từ và nghĩa (TC-03).')
+      }
+      const hasEmptySide = pairs.some(
+        (p) => !p.left.trim() || !p.right.trim()
+      )
+      if (hasEmptySide) {
+        errors.push('Các vế của cặp nối từ không được để trống (TC-04).')
+      }
+      const leftSet = new Set<string>()
+      let hasDuplicateLeft = false
+      for (const p of pairs) {
+        const cleanLeft = p.left.trim().toLowerCase()
+        if (cleanLeft) {
+          if (leftSet.has(cleanLeft)) {
+            hasDuplicateLeft = true
+            break
+          }
+          leftSet.add(cleanLeft)
+        }
+      }
+      if (hasDuplicateLeft) {
+        errors.push('Hai cặp nối từ không được có vế trái giống nhau (TC-05).')
+      }
+    } else if (activeTab === 'ORDER') {
+      // ORDER validations (TC-04)
+      if (orderItems.length < 2) {
+        errors.push('Câu hỏi sắp xếp câu phải có ít nhất 2 thành phần (TC-04).')
+      }
+      const hasEmptyItem = orderItems.some((item) => !item.trim())
+      if (hasEmptyItem) {
+        errors.push('Thành phần của câu sắp xếp không được để trống (TC-04).')
       }
     }
 
@@ -285,7 +407,7 @@ export const QuestionBankPage: React.FC = () => {
         )
 
         setSuccessMessage('Tạo câu hỏi trắc nghiệm thành công và đã lưu vào ngân hàng!')
-      } else {
+      } else if (activeTab === 'FILL') {
         const blankPayloads: BlankAnswerItem[] = blanks.map((b) => ({
           index: b.index,
           correctAnswer: b.correctAnswer.trim(),
@@ -302,6 +424,31 @@ export const QuestionBankPage: React.FC = () => {
         )
 
         setSuccessMessage('Tạo câu hỏi điền từ vào chỗ trống thành công và đã lưu vào ngân hàng!')
+      } else if (activeTab === 'MATCH') {
+        await createMatchingQuestion(
+          {
+            content: questionContent.trim(),
+            explanation: explanation.trim() ? explanation.trim() : undefined,
+            pairs: pairs.map((p) => ({
+              left: p.left.trim(),
+              right: p.right.trim(),
+            })),
+          },
+          user.token
+        )
+
+        setSuccessMessage('Tạo câu hỏi nối từ thành công và đã lưu vào ngân hàng!')
+      } else if (activeTab === 'ORDER') {
+        await createOrderingQuestion(
+          {
+            content: questionContent.trim(),
+            explanation: explanation.trim() ? explanation.trim() : undefined,
+            items: orderItems.map((item) => item.trim()),
+          },
+          user.token
+        )
+
+        setSuccessMessage('Tạo câu hỏi sắp xếp câu thành công và đã lưu vào ngân hàng!')
       }
 
       // Reset form
@@ -314,6 +461,12 @@ export const QuestionBankPage: React.FC = () => {
         { content: '', isCorrect: false },
       ])
       setBlanks([])
+      setPairs([
+        { left: '', right: '' },
+        { left: '', right: '' },
+      ])
+      setOrderItems(['', '', ''])
+      setQuickSentenceInput('')
       setIsDrawerOpen(false)
       loadQuestions()
     } catch (err) {
@@ -337,6 +490,26 @@ export const QuestionBankPage: React.FC = () => {
 
   // Helper to parse FILL payload
   const parseFillPayload = (payloadStr?: string): { blanks?: BlankAnswerItem[] } | null => {
+    if (!payloadStr) return null
+    try {
+      return JSON.parse(payloadStr)
+    } catch {
+      return null
+    }
+  }
+
+  // Helper to parse MATCH payload
+  const parseMatchPayload = (payloadStr?: string): { pairs?: MatchingPairItem[] } | null => {
+    if (!payloadStr) return null
+    try {
+      return JSON.parse(payloadStr)
+    } catch {
+      return null
+    }
+  }
+
+  // Helper to parse ORDER payload
+  const parseOrderPayload = (payloadStr?: string): { correctOrder?: string[] } | null => {
     if (!payloadStr) return null
     try {
       return JSON.parse(payloadStr)
@@ -395,6 +568,111 @@ export const QuestionBankPage: React.FC = () => {
             ))}
           </div>
         )}
+      </div>
+    )
+  }
+
+  // Render preview for Matching question
+  const renderMatchingPreview = () => {
+    return (
+      <div className="space-y-4">
+        <div className="text-base font-semibold text-slate-900 leading-snug break-words">
+          {questionContent.trim() ? questionContent : (
+            <span className="text-slate-300 italic">Chưa nhập yêu cầu nối từ...</span>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 pt-2">
+          {/* Cột trái (Từ) */}
+          <div className="space-y-2">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+              Cột A (Từ / Ký tự)
+            </span>
+            {pairs.map((p, i) => (
+              <div
+                key={i}
+                className="p-3 bg-purple-50/60 border border-purple-200 rounded-xl text-sm font-bold text-purple-900 flex items-center justify-between shadow-xs"
+              >
+                <span>{p.left.trim() || `(Cặp #${i + 1} trái)`}</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-purple-400 border-2 border-white shadow-xs" />
+              </div>
+            ))}
+          </div>
+
+          {/* Cột phải (Nghĩa - mô phỏng xáo trộn cho học sinh) */}
+          <div className="space-y-2">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+              Cột B (Nghĩa / Dịch)
+            </span>
+            {/* Mô phỏng xáo trộn bằng cách đảo thứ tự hiển thị */}
+            {[...pairs].reverse().map((p, i) => (
+              <div
+                key={i}
+                className="p-3 bg-indigo-50/60 border border-indigo-200 rounded-xl text-sm font-medium text-indigo-900 flex items-center justify-between shadow-xs"
+              >
+                <span className="w-2.5 h-2.5 rounded-full bg-indigo-400 border-2 border-white shadow-xs" />
+                <span>{p.right.trim() || `(Cặp #${pairs.length - i} phải)`}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <p className="text-xs text-slate-400 text-center italic pt-1">
+          Giao diện học sinh: Kéo hoặc nhấn chọn điểm nối giữa Cột A và Cột B.
+        </p>
+      </div>
+    )
+  }
+
+  // Render preview for Ordering question
+  const renderOrderingPreview = () => {
+    return (
+      <div className="space-y-4">
+        <div className="text-base font-semibold text-slate-900 leading-snug break-words">
+          {questionContent.trim() ? questionContent : (
+            <span className="text-slate-300 italic">Chưa nhập yêu cầu sắp xếp câu...</span>
+          )}
+        </div>
+
+        {/* Khung mô phỏng câu hoàn chỉnh sau khi sắp xếp đúng */}
+        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl space-y-1.5">
+          <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider block">
+            Đáp án câu hoàn chỉnh (thứ tự đúng):
+          </span>
+          <div className="text-base font-bold text-emerald-950 flex flex-wrap items-center gap-1.5">
+            {orderItems.filter(Boolean).length > 0 ? (
+              orderItems.filter(Boolean).map((word, i) => (
+                <span
+                  key={i}
+                  className="px-2.5 py-1 bg-white border border-emerald-300 rounded-lg shadow-xs"
+                >
+                  {word}
+                </span>
+              ))
+            ) : (
+              <span className="text-emerald-400 font-normal italic text-sm">
+                Chưa có từ nào được cấu hình
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Mô phỏng các thẻ từ xáo trộn cho học sinh ghép */}
+        <div className="pt-2 border-t border-slate-100 space-y-2">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+            Mô phỏng các thẻ từ học sinh nhìn thấy (xáo trộn):
+          </span>
+          <div className="flex flex-wrap gap-2">
+            {[...orderItems].filter(Boolean).reverse().map((word, i) => (
+              <span
+                key={i}
+                className="px-3 py-1.5 bg-indigo-50 border-2 border-dashed border-indigo-300 text-indigo-700 font-bold text-sm rounded-xl shadow-xs"
+              >
+                {word}
+              </span>
+            ))}
+          </div>
+        </div>
       </div>
     )
   }
@@ -497,14 +775,14 @@ export const QuestionBankPage: React.FC = () => {
               </div>
 
               {/* Type Switch Tabs */}
-              <div className="flex items-center bg-slate-100 p-1 rounded-xl self-start sm:self-auto">
+              <div className="flex flex-wrap items-center bg-slate-100 p-1 rounded-xl self-start sm:self-auto gap-1">
                 <button
                   type="button"
                   onClick={() => {
                     setActiveTab('MCQ')
                     setFormErrors([])
                   }}
-                  className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+                  className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                     activeTab === 'MCQ'
                       ? 'bg-white text-indigo-700 shadow-sm'
                       : 'text-slate-600 hover:text-slate-900'
@@ -519,14 +797,44 @@ export const QuestionBankPage: React.FC = () => {
                     setActiveTab('FILL')
                     setFormErrors([])
                   }}
-                  className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+                  className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                     activeTab === 'FILL'
-                      ? 'bg-white text-indigo-700 shadow-sm'
+                      ? 'bg-white text-teal-700 shadow-sm'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   <Edit3 className="w-4 h-4" />
                   <span>Điền từ (FILL)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('MATCH')
+                    setFormErrors([])
+                  }}
+                  className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                    activeTab === 'MATCH'
+                      ? 'bg-white text-purple-700 shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Link2 className="w-4 h-4" />
+                  <span>Nối từ (MATCH)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('ORDER')
+                    setFormErrors([])
+                  }}
+                  className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                    activeTab === 'ORDER'
+                      ? 'bg-white text-amber-700 shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <ArrowUpDown className="w-4 h-4" />
+                  <span>Sắp xếp câu (ORDER)</span>
                 </button>
               </div>
             </div>
@@ -571,14 +879,22 @@ export const QuestionBankPage: React.FC = () => {
                     placeholder={
                       activeTab === 'MCQ'
                         ? 'Ví dụ: 你好 nghĩa là gì? Hoặc nhập đoạn văn, câu đố tiếng Trung...'
-                        : 'Ví dụ: 我___学生 (Nhập 3 dấu gạch dưới ___ làm chỗ trống)'
+                        : activeTab === 'FILL'
+                        ? 'Ví dụ: 我___学生 (Nhập 3 dấu gạch dưới ___ làm chỗ trống)'
+                        : activeTab === 'MATCH'
+                        ? 'Ví dụ: Hãy nối các từ chào hỏi sau đây với nghĩa tiếng Việt tương ứng...'
+                        : 'Ví dụ: Hãy sắp xếp các từ sau thành câu hoàn chỉnh...'
                     }
                     className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 text-base"
                   />
                   <p className="text-xs text-slate-400 mt-1">
                     {activeTab === 'MCQ'
                       ? 'Hỗ trợ hiển thị chữ Hán, Pinyin có dấu thanh và tiếng Việt rõ nét.'
-                      : 'Mẹo: Dùng 3 dấu gạch dưới (___) tại mỗi vị trí cần học sinh điền từ.'}
+                      : activeTab === 'FILL'
+                      ? 'Mẹo: Dùng 3 dấu gạch dưới (___) tại mỗi vị trí cần học sinh điền từ.'
+                      : activeTab === 'MATCH'
+                      ? 'Nhập yêu cầu bài tập nối từ, sau đó cấu hình các cặp từ và nghĩa tương ứng bên dưới.'
+                      : 'Nhập yêu cầu bài tập, sau đó cấu hình các thành phần theo đúng thứ tự câu chuẩn bên dưới.'}
                   </p>
                 </div>
 
@@ -778,6 +1094,193 @@ export const QuestionBankPage: React.FC = () => {
                   </div>
                 )}
 
+                {/* MATCH Mode Configuration */}
+                {activeTab === 'MATCH' && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700">
+                          Các cặp từ và nghĩa cần nối <span className="text-rose-500">*</span>
+                        </label>
+                        <p className="text-xs text-slate-400">
+                          Tối thiểu 2 cặp (TC-01, TC-03). Vế trái và vế phải không được để trống (TC-04). Vế trái không được trùng lặp (TC-05).
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleAddPair}
+                        className="inline-flex items-center space-x-1.5 text-xs font-semibold text-purple-700 hover:text-purple-800 px-3 py-1 bg-purple-50 hover:bg-purple-100 rounded-lg transition"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Thêm cặp</span>
+                      </button>
+                    </div>
+
+                    <div className="space-y-3">
+                      {pairs.map((p, idx) => (
+                        <div
+                          key={idx}
+                          className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center space-x-3 transition hover:border-purple-300"
+                        >
+                          <span className="w-6 h-6 rounded-md bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-xs flex-shrink-0">
+                            {idx + 1}
+                          </span>
+
+                          {/* Left item */}
+                          <div className="flex-1">
+                            <input
+                              type="text"
+                              value={p.left}
+                              onChange={(e) => handlePairChange(idx, 'left', e.target.value)}
+                              placeholder={`Vế trái #${idx + 1} (Ví dụ: 你好)`}
+                              className="w-full px-3 py-1.5 text-sm bg-white rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium text-slate-900"
+                            />
+                          </div>
+
+                          <div className="text-slate-400 flex items-center justify-center">
+                            <Link2 className="w-4 h-4 text-purple-500" />
+                          </div>
+
+                          {/* Right item */}
+                          <div className="flex-1">
+                            <input
+                              type="text"
+                              value={p.right}
+                              onChange={(e) => handlePairChange(idx, 'right', e.target.value)}
+                              placeholder={`Vế phải #${idx + 1} (Ví dụ: Xin chào)`}
+                              className="w-full px-3 py-1.5 text-sm bg-white rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium text-slate-900"
+                            />
+                          </div>
+
+                          {/* Delete button */}
+                          <button
+                            type="button"
+                            onClick={() => handleRemovePair(idx)}
+                            disabled={pairs.length <= 2}
+                            className={`p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition ${
+                              pairs.length <= 2 ? 'opacity-30 cursor-not-allowed' : ''
+                            }`}
+                            title="Xóa cặp này"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* ORDER Mode Configuration */}
+                {activeTab === 'ORDER' && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700">
+                          Thành phần câu theo thứ tự chuẩn <span className="text-rose-500">*</span>
+                        </label>
+                        <p className="text-xs text-slate-400">
+                          Nhập các từ hoặc cụm từ theo đúng thứ tự câu đúng (TC-02, tối thiểu 2 thành phần TC-04).
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleAddOrderItem}
+                        className="inline-flex items-center space-x-1.5 text-xs font-semibold text-amber-700 hover:text-amber-800 px-3 py-1 bg-amber-50 hover:bg-amber-100 rounded-lg transition"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Thêm từ</span>
+                      </button>
+                    </div>
+
+                    {/* Quick split tool */}
+                    <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-xl space-y-2">
+                      <div className="flex items-center space-x-1.5 text-xs font-bold text-amber-900">
+                        <Split className="w-4 h-4 text-amber-700" />
+                        <span>Công cụ nhập nhanh câu:</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="text"
+                          value={quickSentenceInput}
+                          onChange={(e) => setQuickSentenceInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              handleSplitQuickSentence()
+                            }
+                          }}
+                          placeholder="Ví dụ: 我 / 是 / 学生 hoặc 我 是 学生 hoặc nhập câu tiếng Trung rồi bấm Tách"
+                          className="flex-1 px-3 py-1.5 text-xs bg-white rounded-lg border border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleSplitQuickSentence}
+                          className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold shadow-xs transition"
+                        >
+                          Tách thành từ
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Order items list */}
+                    <div className="space-y-2">
+                      {orderItems.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center space-x-2.5 transition hover:border-amber-300"
+                        >
+                          <span className="w-6 h-6 rounded-md bg-amber-100 text-amber-800 flex items-center justify-center font-bold text-xs flex-shrink-0">
+                            {idx + 1}
+                          </span>
+
+                          <input
+                            type="text"
+                            value={item}
+                            onChange={(e) => handleOrderItemChange(idx, e.target.value)}
+                            placeholder={`Thành phần #${idx + 1}`}
+                            className="flex-1 px-3 py-1.5 text-sm bg-white rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium text-slate-900"
+                          />
+
+                          {/* Reorder buttons */}
+                          <div className="flex items-center space-x-1">
+                            <button
+                              type="button"
+                              onClick={() => handleMoveOrderItem(idx, 'up')}
+                              disabled={idx === 0}
+                              className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-200 disabled:opacity-20 disabled:cursor-not-allowed"
+                              title="Di chuyển lên trước"
+                            >
+                              <MoveUp className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleMoveOrderItem(idx, 'down')}
+                              disabled={idx === orderItems.length - 1}
+                              className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-200 disabled:opacity-20 disabled:cursor-not-allowed"
+                              title="Di chuyển xuống sau"
+                            >
+                              <MoveDown className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+
+                          {/* Delete button */}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveOrderItem(idx)}
+                            disabled={orderItems.length <= 2}
+                            className={`p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition ${
+                              orderItems.length <= 2 ? 'opacity-30 cursor-not-allowed' : ''
+                            }`}
+                            title="Xóa thành phần này"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Explanation */}
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">
@@ -825,7 +1328,13 @@ export const QuestionBankPage: React.FC = () => {
                       </span>
                       <div className="flex-1">
                         <span className="text-xs font-semibold text-indigo-600 uppercase tracking-wider block mb-1">
-                          {activeTab === 'MCQ' ? 'Câu hỏi trắc nghiệm' : 'Câu hỏi điền từ'}
+                          {activeTab === 'MCQ'
+                            ? 'Câu hỏi trắc nghiệm (MCQ)'
+                            : activeTab === 'FILL'
+                            ? 'Câu hỏi điền từ (FILL)'
+                            : activeTab === 'MATCH'
+                            ? 'Câu hỏi nối từ (MATCH)'
+                            : 'Câu hỏi sắp xếp câu (ORDER)'}
                         </span>
                         {activeTab === 'MCQ' ? (
                           <div className="text-base font-semibold text-slate-900 leading-snug break-words">
@@ -837,8 +1346,12 @@ export const QuestionBankPage: React.FC = () => {
                               </span>
                             )}
                           </div>
-                        ) : (
+                        ) : activeTab === 'FILL' ? (
                           renderFillBlankPreview()
+                        ) : activeTab === 'MATCH' ? (
+                          renderMatchingPreview()
+                        ) : (
+                          renderOrderingPreview()
                         )}
                       </div>
                     </div>
@@ -941,6 +1454,28 @@ export const QuestionBankPage: React.FC = () => {
               >
                 Điền từ
               </button>
+              <button
+                type="button"
+                onClick={() => setSelectedFilterType('MATCH')}
+                className={`px-3 py-1 rounded-lg transition ${
+                  selectedFilterType === 'MATCH'
+                    ? 'bg-white text-purple-700 shadow-sm font-semibold'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Nối từ
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedFilterType('ORDER')}
+                className={`px-3 py-1 rounded-lg transition ${
+                  selectedFilterType === 'ORDER'
+                    ? 'bg-white text-amber-700 shadow-sm font-semibold'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Sắp xếp
+              </button>
             </div>
 
             <span className="flex items-center space-x-1.5 font-medium text-xs text-slate-500">
@@ -983,7 +1518,11 @@ export const QuestionBankPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {filteredQuestions.map((q) => {
               const isFill = q.type === 'FILL'
+              const isMatch = q.type === 'MATCH'
+              const isOrder = q.type === 'ORDER'
               const fillPayload = isFill ? parseFillPayload(q.payload) : null
+              const matchPayload = isMatch ? parseMatchPayload(q.payload) : null
+              const orderPayload = isOrder ? parseOrderPayload(q.payload) : null
 
               return (
                 <div
@@ -997,12 +1536,24 @@ export const QuestionBankPage: React.FC = () => {
                         className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-xs font-semibold ${
                           isFill
                             ? 'bg-teal-50 text-teal-800 border border-teal-200'
+                            : isMatch
+                            ? 'bg-purple-50 text-purple-800 border border-purple-200'
+                            : isOrder
+                            ? 'bg-amber-50 text-amber-800 border border-amber-200'
                             : 'bg-indigo-50 text-indigo-700 border border-indigo-100'
                         }`}
                       >
                         <span>Câu #{q.id}</span>
                         <span>•</span>
-                        <span>{isFill ? 'Điền từ (FILL)' : 'Trắc nghiệm (MCQ)'}</span>
+                        <span>
+                          {isFill
+                            ? 'Điền từ (FILL)'
+                            : isMatch
+                            ? 'Nối từ (MATCH)'
+                            : isOrder
+                            ? 'Sắp xếp (ORDER)'
+                            : 'Trắc nghiệm (MCQ)'}
+                        </span>
                       </span>
                       <span className="text-xs text-slate-400 flex items-center space-x-1">
                         <Calendar className="w-3.5 h-3.5" />
@@ -1048,6 +1599,54 @@ export const QuestionBankPage: React.FC = () => {
                             Chưa có dữ liệu đáp án chi tiết.
                           </div>
                         )}
+                      </div>
+                    ) : isMatch ? (
+                      /* Matching pairs display */
+                      <div className="space-y-2 pt-1">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {matchPayload?.pairs && matchPayload.pairs.length > 0 ? (
+                            matchPayload.pairs.map((p, pIdx) => (
+                              <div
+                                key={pIdx}
+                                className="px-3 py-2 rounded-xl text-xs bg-purple-50/50 text-purple-900 border border-purple-200 flex items-center justify-between"
+                              >
+                                <span className="font-bold">{p.left}</span>
+                                <Link2 className="w-3.5 h-3.5 text-purple-400 mx-1.5 flex-shrink-0" />
+                                <span className="font-medium text-slate-700">{p.right}</span>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="text-xs text-slate-400 italic">
+                              Chưa có dữ liệu cặp nối từ chi tiết.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ) : isOrder ? (
+                      /* Ordering sentence display */
+                      <div className="space-y-2 pt-1">
+                        <span className="text-xs font-semibold text-slate-500 block">
+                          Thứ tự các thành phần đúng:
+                        </span>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {orderPayload?.correctOrder && orderPayload.correctOrder.length > 0 ? (
+                            orderPayload.correctOrder.map((token, tIdx) => (
+                              <span
+                                key={tIdx}
+                                className="px-2.5 py-1 text-xs font-bold bg-amber-50 border border-amber-200 text-amber-900 rounded-lg shadow-2xs"
+                              >
+                                <span className="text-amber-500 mr-1 text-[10px] font-normal">
+                                  {tIdx + 1}.
+                                </span>
+                                {token}
+                              </span>
+                            ))
+                          ) : (
+                            <div className="text-xs text-slate-400 italic">
+                              Chưa có dữ liệu thứ tự câu chi tiết.
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ) : (
                       /* MCQ options list */

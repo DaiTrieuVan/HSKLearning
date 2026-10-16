@@ -110,3 +110,36 @@ export async function getExerciseDetail(id: number, token: string): Promise<Exer
 
   return data as ExerciseItem
 }
+
+export interface CopyExercisePayload {
+  newTitle?: string
+}
+
+export async function copyExercise(
+  id: number,
+  payload: CopyExercisePayload | undefined,
+  token: string
+): Promise<ExerciseItem> {
+  const response = await fetch(`${API_BASE}/${id}/copy`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload || {}),
+  })
+
+  const data = await response.json().catch(() => null)
+
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'UNKNOWN_ERROR',
+      data?.message || 'Không thể sao chép bài tập',
+      data?.fields
+    )
+  }
+
+  return data as ExerciseItem
+}

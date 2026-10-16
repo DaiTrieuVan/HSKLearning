@@ -17,12 +17,14 @@ import {
   Check,
   X,
   Eye,
+  Copy,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import {
   getMyExercises,
   createExercise,
   getExerciseDetail,
+  copyExercise,
   type ExerciseItem,
   type ExerciseStatus,
   type CreateExerciseQuestionItem,
@@ -59,6 +61,12 @@ export const ExerciseManagementPage: React.FC = () => {
 
   // Detail Drawer state (No Modal!)
   const [detailExercise, setDetailExercise] = useState<ExerciseItem | null>(null)
+
+  // Copy Drawer state (No Modal! HTT-05-CN-007)
+  const [isCopyDrawerOpen, setIsCopyDrawerOpen] = useState(false)
+  const [sourceExerciseToCopy, setSourceExerciseToCopy] = useState<ExerciseItem | null>(null)
+  const [newCopyTitle, setNewCopyTitle] = useState('')
+  const [copying, setCopying] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -263,6 +271,49 @@ export const ExerciseManagementPage: React.FC = () => {
       } else {
         setErrorMessage('Không thể lấy chi tiết bài tập')
       }
+    }
+  }
+
+  // --- Handlers for Copy Exercise Drawer (HTT-05-CN-007) ---
+  const handleOpenCopyDrawer = (ex: ExerciseItem) => {
+    setIsDrawerOpen(false)
+    setDetailExercise(null)
+    setSourceExerciseToCopy(ex)
+    setNewCopyTitle(`${ex.title} (Bản sao)`)
+    setIsCopyDrawerOpen(true)
+  }
+
+  const handleCloseCopyDrawer = () => {
+    setIsCopyDrawerOpen(false)
+    setSourceExerciseToCopy(null)
+    setNewCopyTitle('')
+  }
+
+  const handleExecuteCopy = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!user || !sourceExerciseToCopy) return
+    setCopying(true)
+    setErrorMessage(null)
+    try {
+      const copied = await copyExercise(
+        sourceExerciseToCopy.id,
+        { newTitle: newCopyTitle },
+        user.token
+      )
+      setSuccessMessage(
+        `Đã sao chép thành công bài tập "${copied.title}" (Lưu ở trạng thái Bản nháp).`
+      )
+      handleCloseCopyDrawer()
+      await loadExercises()
+      setDetailExercise(copied)
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setErrorMessage(err.message)
+      } else {
+        setErrorMessage('Không thể sao chép bài tập')
+      }
+    } finally {
+      setCopying(false)
     }
   }
 
@@ -645,6 +696,97 @@ export const ExerciseManagementPage: React.FC = () => {
           </div>
         )}
 
+        {/* COPY EXERCISE SLIDE-OVER DRAWER (NO MODAL! HTT-05-CN-007) */}
+        {isCopyDrawerOpen && sourceExerciseToCopy && (
+          <div className="bg-white rounded-3xl border-2 border-indigo-200 shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300">
+            <div className="bg-gradient-to-r from-indigo-700 via-indigo-600 to-purple-600 px-6 py-4 flex items-center justify-between text-white">
+              <div className="flex items-center space-x-3">
+                <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center font-bold text-white text-sm">
+                  <Copy className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold">Sao chép bài tập (HTT-05-CN-007)</h2>
+                  <p className="text-xs text-indigo-100">
+                    Tạo bản sao độc lập ở trạng thái Bản nháp (DRAFT) để tái sử dụng cho lớp khác (QTN-19).
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseCopyDrawer}
+                className="p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
+                title="Đóng sao chép"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleExecuteCopy} className="p-6 space-y-5">
+              <div className="bg-indigo-50/70 border border-indigo-100 rounded-2xl p-4 text-xs text-indigo-900 space-y-2">
+                <div className="font-bold flex items-center space-x-2">
+                  <span>Bài tập gốc:</span>
+                  <span className="text-indigo-700 font-extrabold">{sourceExerciseToCopy.title}</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-4 text-slate-600">
+                  <span>
+                    Số câu hỏi: <strong className="text-indigo-700">{sourceExerciseToCopy.questionCount}</strong>
+                  </span>
+                  <span>
+                    Tổng điểm: <strong className="text-purple-700">{sourceExerciseToCopy.totalPoints} điểm</strong>
+                  </span>
+                  <span>
+                    Trạng thái gốc: <strong className="text-slate-800">{sourceExerciseToCopy.status === 'READY' ? 'Sẵn sàng giao' : 'Bản nháp'}</strong>
+                  </span>
+                </div>
+                <p className="text-slate-500 text-[11px] italic">
+                  * Bản sao sẽ được khởi tạo ở trạng thái <strong>Bản nháp (DRAFT)</strong> và hoàn toàn độc lập với bài gốc. Các bài nộp hay hạn nộp cũ sẽ không bị mang sang bản sao.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-700">
+                  Tên bài tập cho bản sao mới <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newCopyTitle}
+                  onChange={(e) => setNewCopyTitle(e.target.value)}
+                  placeholder="Nhập tên bài tập mới..."
+                  required
+                  className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                />
+              </div>
+
+              <div className="flex items-center justify-end space-x-3 pt-2">
+                <button
+                  type="button"
+                  onClick={handleCloseCopyDrawer}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-100 font-medium text-xs transition"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  disabled={copying}
+                  className="flex items-center space-x-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-sm text-xs transition disabled:opacity-50"
+                >
+                  {copying ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Đang sao chép...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" />
+                      <span>Tạo bản sao ngay</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
         {/* DETAIL SLIDE-OVER DRAWER (NO MODAL!) */}
         {detailExercise && (
           <div className="bg-white rounded-3xl border-2 border-slate-200 shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300">
@@ -672,13 +814,24 @@ export const ExerciseManagementPage: React.FC = () => {
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setDetailExercise(null)}
-                className="p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => handleOpenCopyDrawer(detailExercise)}
+                  className="flex items-center space-x-1 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 rounded-lg transition shadow-sm"
+                  title="Sao chép bài tập này"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Sao chép bài này</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDetailExercise(null)}
+                  className="p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             <div className="p-6 space-y-4">
@@ -857,14 +1010,26 @@ export const ExerciseManagementPage: React.FC = () => {
                     </span>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => handleOpenDetail(ex.id)}
-                    className="flex items-center space-x-1 text-xs font-bold text-purple-600 hover:text-purple-800 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg transition"
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                    <span>Xem chi tiết</span>
-                  </button>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenCopyDrawer(ex)}
+                      className="flex items-center space-x-1 text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1.5 rounded-lg transition"
+                      title="Sao chép bài tập"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Sao chép</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleOpenDetail(ex.id)}
+                      className="flex items-center space-x-1 text-xs font-bold text-purple-600 hover:text-purple-800 bg-purple-50 hover:bg-purple-100 px-2.5 py-1.5 rounded-lg transition"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Chi tiết</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

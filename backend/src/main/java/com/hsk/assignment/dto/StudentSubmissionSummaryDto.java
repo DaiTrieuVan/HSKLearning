@@ -18,5 +18,24 @@ public record StudentSubmissionSummaryDto(
 		BigDecimal effectiveScore,
 		Integer attemptNumber,
 		Instant startedAt,
-		Instant submittedAt
-) {}
+		Instant submittedAt,
+		Instant extendedDueTime,
+		Integer allowedAttempts
+) {
+	public StudentSubmissionSummaryDto(
+			Long studentId,
+			String studentName,
+			String studentEmail,
+			String status,
+			Long submissionId,
+			BigDecimal score,
+			BigDecimal adjustedScore,
+			String adjustReason,
+			BigDecimal effectiveScore,
+			Integer attemptNumber,
+			Instant startedAt,
+			Instant submittedAt
+	) {
+		this(studentId, studentName, studentEmail, status, submissionId, score, adjustedScore, adjustReason, effectiveScore, attemptNumber, startedAt, submittedAt, null, 1);
+	}
+}

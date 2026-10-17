@@ -8,6 +8,7 @@ import com.hsk.account.domain.UserEntity;
 import com.hsk.account.repository.UserRepository;
 import com.hsk.account.repository.UserRoleRepository;
 import com.hsk.assignment.domain.AssignmentEntity;
+import com.hsk.assignment.domain.AssignmentStudentOverrideEntity;
 import com.hsk.assignment.domain.AssignmentSubmissionEntity;
 import com.hsk.assignment.domain.SubmissionStatus;
 import com.hsk.assignment.dto.AdjustScoreRequest;
@@ -15,8 +16,11 @@ import com.hsk.assignment.dto.AssignmentSnapshotOptionDto;
 import com.hsk.assignment.dto.AssignmentSnapshotQuestionDto;
 import com.hsk.assignment.dto.AssignmentSubmissionsOverviewResponse;
 import com.hsk.assignment.dto.DetailedQuestionResultDto;
+import com.hsk.assignment.dto.GrantExtensionRequest;
+import com.hsk.assignment.dto.GrantRetakeRequest;
 import com.hsk.assignment.dto.SaveDraftRequest;
 import com.hsk.assignment.dto.StudentAnswerItemDto;
+import com.hsk.assignment.dto.StudentOverrideResponse;
 import com.hsk.assignment.dto.StudentQuestionDto;
 import com.hsk.assignment.dto.StudentQuestionOptionDto;
 import com.hsk.assignment.dto.StudentSubmissionSummaryDto;
@@ -24,6 +28,7 @@ import com.hsk.assignment.dto.SubmissionResultResponse;
 import com.hsk.assignment.dto.SubmitAssignmentRequest;
 import com.hsk.assignment.dto.TakeAssignmentResponse;
 import com.hsk.assignment.repository.AssignmentRepository;
+import com.hsk.assignment.repository.AssignmentStudentOverrideRepository;
 import com.hsk.assignment.repository.AssignmentSubmissionRepository;
 import com.hsk.classroom.domain.ClassEntity;
 import com.hsk.classroom.domain.ClassMemberEntity;
@@ -55,8 +60,8 @@ import org.springframework.transaction.annotation.Transactional;
  * Service xử lý nghiệp vụ Học sinh làm bài tập và nộp bài (HTT-06-CN-003).
  * Tuân thủ nghiêm ngặt các quy tắc:
  * - QTN-02: Học sinh chỉ xem bài nộp và điểm của chính mình.
- * - QTN-11: Chỉ làm bài trong hạn nộp (trước due_time).
- * - QTN-12: Giới hạn 1 lượt làm duy nhất cho mỗi bài giao.
+ * - QTN-11: Chỉ làm bài trong hạn nộp (hoặc hạn đã gia hạn).
+ * - QTN-12: Giới hạn số lượt làm bài (1 lượt hoặc số lượt được giáo viên cấp làm lại).
  * - QTN-18: Học sinh bắt buộc phải là thành viên lớp đang hoạt động.
  * - QTN-20: Tự động nộp khi hết giờ/quá hạn (AUTO_SUBMITTED) và lưu nháp liên tục.
  */
@@ -65,6 +70,7 @@ public class AssignmentSubmissionService {
 
 	private final AssignmentRepository assignmentRepository;
 	private final AssignmentSubmissionRepository submissionRepository;
+	private final AssignmentStudentOverrideRepository overrideRepository;
 	private final ClassMemberRepository classMemberRepository;
 	private final UserRepository userRepository;
 	private final UserRoleRepository userRoleRepository;
@@ -74,6 +80,7 @@ public class AssignmentSubmissionService {
 	public AssignmentSubmissionService(
 			AssignmentRepository assignmentRepository,
 			AssignmentSubmissionRepository submissionRepository,
+			AssignmentStudentOverrideRepository overrideRepository,
 			ClassMemberRepository classMemberRepository,
 			UserRepository userRepository,
 			UserRoleRepository userRoleRepository,
@@ -81,6 +88,7 @@ public class AssignmentSubmissionService {
 	) {
 		this.assignmentRepository = assignmentRepository;
 		this.submissionRepository = submissionRepository;
+		this.overrideRepository = overrideRepository;
 		this.classMemberRepository = classMemberRepository;
 		this.userRepository = userRepository;
 		this.userRoleRepository = userRoleRepository;
@@ -109,13 +117,26 @@ public class AssignmentSubmissionService {
 			throw new ApiException(ApiErrorCode.ASSIGNMENT_NOT_YET_STARTED);
 		}
 
-		Optional<AssignmentSubmissionEntity> submissionOpt = submissionRepository
-				.findFirstByAssignment_IdAndStudent_IdOrderByAttemptNumberDesc(assignmentId, studentId);
+		Optional<AssignmentStudentOverrideEntity> overrideOpt = overrideRepository
+				.findByAssignment_IdAndStudent_Id(assignmentId, studentId);
+		Instant effectiveDueTime = overrideOpt
+				.map(AssignmentStudentOverrideEntity::getExtendedDueTime)
+				.filter(t -> t != null)
+				.orElse(assignment.getDueTime());
+		int allowedAttempts = overrideOpt
+				.map(AssignmentStudentOverrideEntity::getAllowedAttempts)
+				.filter(a -> a != null)
+				.orElse(1);
+
+		List<AssignmentSubmissionEntity> existingSubs = submissionRepository.findByAssignment_Id(assignmentId).stream()
+				.filter(s -> s.getStudent() != null && s.getStudent().getId().equals(studentId))
+				.sorted((s1, s2) -> Integer.compare(s2.getAttemptNumber(), s1.getAttemptNumber()))
+				.toList();
 
 		AssignmentSubmissionEntity submission;
-		if (submissionOpt.isEmpty()) {
-			// TC-04 / QTN-11: Nếu chưa có lượt làm nào và đã quá hạn -> Từ chối bắt đầu
-			if (now.isAfter(assignment.getDueTime())) {
+		if (existingSubs.isEmpty()) {
+			// TC-04 / QTN-11: Nếu chưa có lượt làm nào và đã quá hạn (hoặc hạn gia hạn) -> Từ chối bắt đầu
+			if (now.isAfter(effectiveDueTime)) {
 				throw new ApiException(ApiErrorCode.ASSIGNMENT_ALREADY_EXPIRED);
 			}
 
@@ -132,20 +153,46 @@ public class AssignmentSubmissionService {
 					"Học sinh " + student.getEmail() + " bắt đầu làm bài tập '" + assignment.getTitle() + "'"
 			);
 		} else {
-			submission = submissionOpt.get();
+			AssignmentSubmissionEntity latest = existingSubs.get(0);
+			if (latest.getStatus() == SubmissionStatus.IN_PROGRESS) {
+				// QTN-20 / TC-05 / QTN-11: Nếu lượt đang IN_PROGRESS nhưng đã quá hạn -> Tự động nộp
+				if (now.isAfter(effectiveDueTime)) {
+					autoGradeAndFinalize(latest, assignment, SubmissionStatus.AUTO_SUBMITTED, parseAnswers(latest.getAnswersData()));
+					submission = submissionRepository.save(latest);
 
-			// QTN-20 / TC-05: Nếu lượt đang IN_PROGRESS nhưng đã quá hạn -> Tự động nộp
-			if (submission.getStatus() == SubmissionStatus.IN_PROGRESS && now.isAfter(assignment.getDueTime())) {
-				autoGradeAndFinalize(submission, assignment, SubmissionStatus.AUTO_SUBMITTED, parseAnswers(submission.getAnswersData()));
-				submission = submissionRepository.save(submission);
+					auditLogService.record(
+							student,
+							"AUTO_SUBMIT_ASSIGNMENT",
+							"ASSIGNMENT_SUBMISSION",
+							submission.getId().toString(),
+							"Bài làm của học sinh " + student.getEmail() + " đã tự động nộp do quá hạn (Điểm: " + submission.getScore() + ")"
+					);
+				} else {
+					submission = latest;
+				}
+			} else {
+				// Lượt gần nhất đã SUBMITTED hoặc AUTO_SUBMITTED
+				// QTN-12 / TC-03: Kiểm tra nếu giáo viên đã cấp thêm lượt làm lại
+				if (existingSubs.size() < allowedAttempts) {
+					if (now.isAfter(effectiveDueTime)) {
+						throw new ApiException(ApiErrorCode.ASSIGNMENT_ALREADY_EXPIRED);
+					}
 
-				auditLogService.record(
-						student,
-						"AUTO_SUBMIT_ASSIGNMENT",
-						"ASSIGNMENT_SUBMISSION",
-						submission.getId().toString(),
-						"Bài làm của học sinh " + student.getEmail() + " đã tự động nộp do quá hạn (Điểm: " + submission.getScore() + ")"
-				);
+					int nextAttemptNumber = existingSubs.size() + 1;
+					submission = AssignmentSubmissionEntity.createAttempt(assignment, student, nextAttemptNumber);
+					submission.setAnswersData("[]");
+					submission = submissionRepository.save(submission);
+
+					auditLogService.record(
+							student,
+							"START_ASSIGNMENT_RETAKE",
+							"ASSIGNMENT_SUBMISSION",
+							submission.getId().toString(),
+							"Học sinh " + student.getEmail() + " bắt đầu làm lại bài tập '" + assignment.getTitle() + "' (Lượt: " + nextAttemptNumber + ")"
+					);
+				} else {
+					submission = latest;
+				}
 			}
 		}
 
@@ -173,7 +220,7 @@ public class AssignmentSubmissionService {
 				assignment.getTitle(),
 				assignment.getDescription(),
 				assignment.getStartTime(),
-				assignment.getDueTime(),
+				effectiveDueTime,
 				assignment.getTotalPoints(),
 				submission.getStatus(),
 				submission.getStartedAt(),
@@ -205,8 +252,9 @@ public class AssignmentSubmissionService {
 		}
 
 		Instant now = Instant.now();
-		// QTN-20 / TC-05: Nếu tới hạn nộp khi đang gửi draft -> Tự động nộp
-		if (now.isAfter(assignment.getDueTime())) {
+		Instant effectiveDueTime = resolveEffectiveDueTime(assignment, studentId);
+		// QTN-20 / TC-05 / QTN-11: Nếu tới hạn nộp khi đang gửi draft -> Tự động nộp
+		if (now.isAfter(effectiveDueTime)) {
 			List<StudentAnswerItemDto> answers = request != null && request.answers() != null ? request.answers() : parseAnswers(submission.getAnswersData());
 			autoGradeAndFinalize(submission, assignment, SubmissionStatus.AUTO_SUBMITTED, answers);
 			submissionRepository.save(submission);
@@ -245,7 +293,8 @@ public class AssignmentSubmissionService {
 		}
 
 		Instant now = Instant.now();
-		SubmissionStatus targetStatus = now.isAfter(assignment.getDueTime())
+		Instant effectiveDueTime = resolveEffectiveDueTime(assignment, studentId);
+		SubmissionStatus targetStatus = now.isAfter(effectiveDueTime)
 				? SubmissionStatus.AUTO_SUBMITTED
 				: SubmissionStatus.SUBMITTED;
 
@@ -449,7 +498,162 @@ public class AssignmentSubmissionService {
 	}
 
 	/**
-	 * Giáo viên xem danh sách học sinh và trạng thái bài nộp của bài đã giao (HTT-06-CN-006, QTN-01).
+	 * Giáo viên gia hạn thời gian nộp bài riêng cho một học sinh trong lớp (HTT-06-CN-008, QTN-11, TC-01, TC-02, TC-04, TC-05, TC-06, TC-08).
+	 */
+	@Transactional
+	public StudentOverrideResponse grantExtension(Long teacherId, Long assignmentId, Long studentId, GrantExtensionRequest request) {
+		AssignmentEntity assignment = assignmentRepository.findById(assignmentId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.ASSIGNMENT_NOT_FOUND));
+
+		ClassEntity classroom = assignment.getClassroom();
+		boolean isAdmin = userRoleRepository.existsByUser_IdAndRole_Code(teacherId, RoleCode.ADMIN);
+		boolean isTeacherOwner = classroom.getTeacher().getId().equals(teacherId);
+
+		// TC-04 & TC-05 & QTN-01: Chỉ giáo viên phụ trách lớp hoặc Admin mới có quyền gia hạn
+		if (!isTeacherOwner && !isAdmin) {
+			throw new ApiException(ApiErrorCode.FORBIDDEN, "Bạn không có quyền gia hạn bài tập cho lớp học này");
+		}
+
+		UserEntity student = userRepository.findById(studentId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy học sinh"));
+
+		boolean isMember = classMemberRepository.findByClassroom_IdAndStudent_Id(classroom.getId(), studentId)
+				.filter(m -> m.getStatus() == ClassMemberStatus.ACTIVE)
+				.isPresent();
+		if (!isMember) {
+			throw new ApiException(ApiErrorCode.FORBIDDEN, "Học sinh không thuộc lớp học này");
+		}
+
+		Instant now = Instant.now();
+		// TC-02: Hạn mới phải sau thời điểm hiện tại
+		if (request.extendedDueTime() == null || !request.extendedDueTime().isAfter(now)) {
+			throw new ApiException(ApiErrorCode.EXTENSION_DUE_TIME_INVALID, "Thời gian gia hạn phải sau thời điểm hiện tại");
+		}
+
+		List<AssignmentSubmissionEntity> existingSubs = submissionRepository.findByAssignment_Id(assignmentId).stream()
+				.filter(s -> s.getStudent() != null && s.getStudent().getId().equals(studentId))
+				.toList();
+
+		// TC-08: Nếu học sinh có lượt đã được hệ thống tự nộp (AUTO_SUBMITTED) khi hết hạn -> Không mở lại lượt đó, báo giáo viên và gợi ý cấp làm lại
+		boolean hasAutoSubmitted = existingSubs.stream().anyMatch(s -> s.getStatus() == SubmissionStatus.AUTO_SUBMITTED);
+		if (hasAutoSubmitted) {
+			throw new ApiException(ApiErrorCode.CANNOT_EXTEND_AUTO_SUBMITTED,
+					"Bài làm của học sinh đã bị hệ thống tự động nộp khi hết hạn. Vui lòng cấp lượt làm lại thay vì gia hạn");
+		}
+
+		boolean hasManuallySubmitted = existingSubs.stream().anyMatch(s -> s.getStatus() == SubmissionStatus.SUBMITTED);
+		if (hasManuallySubmitted) {
+			throw new ApiException(ApiErrorCode.CANNOT_EXTEND_ALREADY_SUBMITTED,
+					"Học sinh đã nộp bài thành công. Vui lòng cấp lượt làm lại nếu muốn cho học sinh làm lại bài");
+		}
+
+		AssignmentStudentOverrideEntity override = overrideRepository
+				.findByAssignment_IdAndStudent_Id(assignmentId, studentId)
+				.orElseGet(() -> AssignmentStudentOverrideEntity.create(assignment, student, request.extendedDueTime(), 1, request.reason()));
+
+		override.grantExtension(request.extendedDueTime(), request.reason());
+		AssignmentStudentOverrideEntity saved = overrideRepository.save(override);
+
+		UserEntity teacher = userRepository.findById(teacherId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.UNAUTHORIZED));
+
+		// TC-06: Ghi nhật ký Audit Log
+		auditLogService.record(
+				teacher,
+				"GRANT_EXTENSION",
+				"ASSIGNMENT_STUDENT_OVERRIDE",
+				saved.getId().toString(),
+				"Giáo viên " + teacher.getEmail() + " đã gia hạn bài tập '" + assignment.getTitle() + "' cho học sinh "
+						+ student.getEmail() + " đến " + request.extendedDueTime()
+						+ (request.reason() != null ? " (Lý do: " + request.reason() + ")" : "")
+		);
+
+		return new StudentOverrideResponse(
+				assignmentId,
+				studentId,
+				saved.getExtendedDueTime(),
+				saved.getAllowedAttempts(),
+				saved.getReason(),
+				saved.getUpdatedAt()
+		);
+	}
+
+	/**
+	 * Giáo viên cho phép học sinh làm lại bài tập (HTT-06-CN-008, QTN-12, TC-03, TC-04, TC-05, TC-06, TC-07).
+	 */
+	@Transactional
+	public StudentOverrideResponse grantRetake(Long teacherId, Long assignmentId, Long studentId, GrantRetakeRequest request) {
+		AssignmentEntity assignment = assignmentRepository.findById(assignmentId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.ASSIGNMENT_NOT_FOUND));
+
+		ClassEntity classroom = assignment.getClassroom();
+		boolean isAdmin = userRoleRepository.existsByUser_IdAndRole_Code(teacherId, RoleCode.ADMIN);
+		boolean isTeacherOwner = classroom.getTeacher().getId().equals(teacherId);
+
+		// TC-04 & TC-05 & QTN-01: Chỉ giáo viên phụ trách lớp hoặc Admin mới có quyền cho làm lại
+		if (!isTeacherOwner && !isAdmin) {
+			throw new ApiException(ApiErrorCode.FORBIDDEN, "Bạn không có quyền thao tác trên lớp học này");
+		}
+
+		UserEntity student = userRepository.findById(studentId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy học sinh"));
+
+		boolean isMember = classMemberRepository.findByClassroom_IdAndStudent_Id(classroom.getId(), studentId)
+				.filter(m -> m.getStatus() == ClassMemberStatus.ACTIVE)
+				.isPresent();
+		if (!isMember) {
+			throw new ApiException(ApiErrorCode.FORBIDDEN, "Học sinh không thuộc lớp học này");
+		}
+
+		List<AssignmentSubmissionEntity> existingSubs = submissionRepository.findByAssignment_Id(assignmentId).stream()
+				.filter(s -> s.getStudent() != null && s.getStudent().getId().equals(studentId))
+				.toList();
+
+		int currentCompletedAttempts = existingSubs.size();
+		int targetAttempts = (request != null && request.allowedAttempts() != null && request.allowedAttempts() >= 2)
+				? request.allowedAttempts()
+				: Math.max(2, currentCompletedAttempts + 1);
+
+		AssignmentStudentOverrideEntity override = overrideRepository
+				.findByAssignment_IdAndStudent_Id(assignmentId, studentId)
+				.orElseGet(() -> AssignmentStudentOverrideEntity.create(assignment, student, null, targetAttempts, request != null ? request.reason() : null));
+
+		override.grantRetake(targetAttempts, request != null ? request.reason() : null);
+		AssignmentStudentOverrideEntity saved = overrideRepository.save(override);
+
+		UserEntity teacher = userRepository.findById(teacherId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.UNAUTHORIZED));
+
+		// TC-06: Ghi nhật ký Audit Log
+		auditLogService.record(
+				teacher,
+				"GRANT_RETAKE",
+				"ASSIGNMENT_STUDENT_OVERRIDE",
+				saved.getId().toString(),
+				"Giáo viên " + teacher.getEmail() + " đã cấp quyền làm lại bài tập '" + assignment.getTitle() + "' cho học sinh "
+						+ student.getEmail() + " (Số lượt tối đa: " + targetAttempts
+						+ (request != null && request.reason() != null ? ", Lý do: " + request.reason() : "") + ")"
+		);
+
+		return new StudentOverrideResponse(
+				assignmentId,
+				studentId,
+				saved.getExtendedDueTime(),
+				saved.getAllowedAttempts(),
+				saved.getReason(),
+				saved.getUpdatedAt()
+		);
+	}
+
+	public Instant resolveEffectiveDueTime(AssignmentEntity assignment, Long studentId) {
+		return overrideRepository.findByAssignment_IdAndStudent_Id(assignment.getId(), studentId)
+				.map(AssignmentStudentOverrideEntity::getExtendedDueTime)
+				.filter(t -> t != null)
+				.orElse(assignment.getDueTime());
+	}
+
+	/**
+	 * Giáo viên xem danh sách học sinh và trạng thái bài nộp của bài đã giao (HTT-06-CN-006, QTN-01, HTT-06-CN-008).
 	 */
 	@Transactional(readOnly = true)
 	public AssignmentSubmissionsOverviewResponse getAssignmentSubmissionsOverview(Long teacherId, Long assignmentId) {
@@ -474,6 +678,12 @@ public class AssignmentSubmissionService {
 		// Batch fetch tất cả submission của assignment để tránh N+1
 		List<AssignmentSubmissionEntity> submissions = submissionRepository.findByAssignment_Id(assignmentId);
 
+		// Batch fetch tất cả override của assignment
+		List<AssignmentStudentOverrideEntity> overrides = overrideRepository.findByAssignment_Id(assignmentId);
+		Map<Long, AssignmentStudentOverrideEntity> overrideMap = overrides.stream()
+				.filter(o -> o.getStudent() != null)
+				.collect(Collectors.toMap(o -> o.getStudent().getId(), o -> o, (o1, o2) -> o1));
+
 		// Gom nhóm submission theo studentId
 		Map<Long, List<AssignmentSubmissionEntity>> submissionsByStudent = submissions.stream()
 				.filter(s -> s.getStudent() != null)
@@ -488,6 +698,9 @@ public class AssignmentSubmissionService {
 		for (ClassMemberEntity member : activeMembers) {
 			UserEntity student = member.getStudent();
 			List<AssignmentSubmissionEntity> studentSubs = new ArrayList<>(submissionsByStudent.getOrDefault(student.getId(), Collections.emptyList()));
+			AssignmentStudentOverrideEntity studentOverride = overrideMap.get(student.getId());
+			Instant extendedDueTime = studentOverride != null ? studentOverride.getExtendedDueTime() : null;
+			Integer allowedAttempts = studentOverride != null ? studentOverride.getAllowedAttempts() : 1;
 
 			if (studentSubs.isEmpty()) {
 				notStartedCount++;
@@ -503,7 +716,9 @@ public class AssignmentSubmissionService {
 						null,
 						0,
 						null,
-						null
+						null,
+						extendedDueTime,
+						allowedAttempts
 				));
 			} else {
 				// Sắp xếp theo attemptNumber giảm dần để lấy lượt mới nhất
@@ -547,7 +762,9 @@ public class AssignmentSubmissionService {
 						bestScore != null ? bestScore : latestSub.getScore(),
 						latestSub.getAttemptNumber(),
 						latestSub.getStartedAt(),
-						latestSub.getSubmittedAt()
+						latestSub.getSubmittedAt(),
+						extendedDueTime,
+						allowedAttempts
 				));
 			}
 		}

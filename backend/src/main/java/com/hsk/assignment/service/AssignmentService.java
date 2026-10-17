@@ -45,6 +45,9 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.hsk.assignment.domain.AssignmentStudentOverrideEntity;
+import com.hsk.assignment.repository.AssignmentStudentOverrideRepository;
+
 /**
  * Dịch vụ xử lý giao bài cho lớp (HTT-06-CN-001) và xem bài được giao cho học sinh (HTT-06-CN-002).
  * Tuân thủ nghiêm ngặt các quy tắc QTN-01 (cách ly theo lớp), QTN-02 (học sinh chỉ xem dữ liệu của mình),
@@ -56,6 +59,7 @@ public class AssignmentService {
 
 	private final AssignmentRepository assignmentRepository;
 	private final AssignmentSubmissionRepository submissionRepository;
+	private final AssignmentStudentOverrideRepository overrideRepository;
 	private final ExerciseRepository exerciseRepository;
 	private final ClassRepository classRepository;
 	private final ClassMemberRepository classMemberRepository;
@@ -67,6 +71,7 @@ public class AssignmentService {
 	public AssignmentService(
 			AssignmentRepository assignmentRepository,
 			AssignmentSubmissionRepository submissionRepository,
+			AssignmentStudentOverrideRepository overrideRepository,
 			ExerciseRepository exerciseRepository,
 			ClassRepository classRepository,
 			ClassMemberRepository classMemberRepository,
@@ -76,6 +81,7 @@ public class AssignmentService {
 	) {
 		this.assignmentRepository = assignmentRepository;
 		this.submissionRepository = submissionRepository;
+		this.overrideRepository = overrideRepository;
 		this.exerciseRepository = exerciseRepository;
 		this.classRepository = classRepository;
 		this.classMemberRepository = classMemberRepository;
@@ -282,9 +288,10 @@ public class AssignmentService {
 	}
 
 	/**
-	 * HTT-06-CN-002: Lấy danh sách bài tập của lớp kèm trạng thái cá nhân hóa cho học sinh.
+	 * HTT-06-CN-002 & HTT-06-CN-008: Lấy danh sách bài tập của lớp kèm trạng thái cá nhân hóa cho học sinh.
 	 * Tuân thủ QTN-18 (chỉ học sinh trong lớp mới xem được) và QTN-02 (học sinh chỉ thấy bài nộp và điểm của mình).
-	 * Tránh N+1 query bằng batch fetching danh sách submissions của học sinh trong lớp.
+	 * Tích hợp gia hạn cá nhân và cấp lượt làm lại (HTT-06-CN-008).
+	 * Tránh N+1 query bằng batch fetching danh sách submissions và overrides của học sinh trong lớp.
 	 */
 	@Transactional(readOnly = true)
 	public List<StudentAssignmentResponse> getStudentAssignmentsForClass(Long studentId, Long classId) {
@@ -298,30 +305,49 @@ public class AssignmentService {
 			throw new ApiException(ApiErrorCode.FORBIDDEN);
 		}
 
-		// Lấy tất cả bài tập của lớp (loại trừ các bài đã lưu trữ ARCHIVED)
+		// Lấy tất cả bài tập của lớp (loại trừ các bài đã lưu trữ ARCHIVED hoặc đã hủy CANCELLED)
 		List<AssignmentEntity> assignments = assignmentRepository.findByClassroom_IdOrderByCreatedAtDesc(classId);
 
 		// Batch fetch tất cả submission của học sinh này trong lớp để chống N+1 query
 		List<AssignmentSubmissionEntity> submissions = submissionRepository.findByAssignment_Classroom_IdAndStudent_Id(classId, studentId);
-		Map<Long, AssignmentSubmissionEntity> submissionMap = submissions.stream()
-				.collect(Collectors.toMap(
-						s -> s.getAssignment().getId(),
-						s -> s,
-						(s1, s2) -> s1.getAttemptNumber() > s2.getAttemptNumber() ? s1 : s2
-				));
+		Map<Long, List<AssignmentSubmissionEntity>> submissionsMap = submissions.stream()
+				.collect(Collectors.groupingBy(s -> s.getAssignment().getId()));
+
+		// Batch fetch overrides của học sinh này trong lớp
+		List<AssignmentStudentOverrideEntity> overrides = overrideRepository.findByAssignment_Classroom_IdAndStudent_Id(classId, studentId);
+		Map<Long, AssignmentStudentOverrideEntity> overrideMap = overrides.stream()
+				.collect(Collectors.toMap(o -> o.getAssignment().getId(), o -> o, (o1, o2) -> o1));
 
 		Instant now = Instant.now();
 
 		return assignments.stream()
 				.filter(a -> a.getStatus() != AssignmentStatus.ARCHIVED && a.getStatus() != AssignmentStatus.CANCELLED)
 				.map(a -> {
-					AssignmentSubmissionEntity sub = submissionMap.get(a.getId());
-					StudentAssignmentStatus status = determineStudentStatus(a, sub, now);
-					boolean canStart = (status == StudentAssignmentStatus.NOT_STARTED || status == StudentAssignmentStatus.IN_PROGRESS);
+					List<AssignmentSubmissionEntity> aSubs = submissionsMap.getOrDefault(a.getId(), Collections.emptyList());
+					AssignmentSubmissionEntity latestSub = aSubs.stream()
+							.max(java.util.Comparator.comparingInt(AssignmentSubmissionEntity::getAttemptNumber))
+							.orElse(null);
 
-					Long submissionId = sub != null ? sub.getId() : null;
-					Instant submittedAt = sub != null ? sub.getSubmittedAt() : null;
-					BigDecimal score = sub != null ? sub.getScore() : null;
+					AssignmentStudentOverrideEntity override = overrideMap.get(a.getId());
+					Instant effectiveDueTime = (override != null && override.getExtendedDueTime() != null)
+							? override.getExtendedDueTime()
+							: a.getDueTime();
+					int allowedAttempts = (override != null && override.getAllowedAttempts() != null)
+							? override.getAllowedAttempts()
+							: 1;
+
+					BigDecimal maxScore = aSubs.stream()
+							.filter(s -> s.getStatus().isCompleted())
+							.map(AssignmentSubmissionEntity::getEffectiveScore)
+							.filter(java.util.Objects::nonNull)
+							.max(BigDecimal::compareTo)
+							.orElse(latestSub != null ? latestSub.getEffectiveScore() : null);
+
+					StudentAssignmentStatus status = determineStudentStatus(a, latestSub, effectiveDueTime, now);
+					boolean canStart = canStudentStart(a, latestSub, aSubs.size(), allowedAttempts, effectiveDueTime, now);
+
+					Long submissionId = latestSub != null ? latestSub.getId() : null;
+					Instant submittedAt = latestSub != null ? latestSub.getSubmittedAt() : null;
 					int qCount = parseSnapshotQuestions(a.getSnapshotData()).size();
 
 					return new StudentAssignmentResponse(
@@ -332,23 +358,24 @@ public class AssignmentService {
 							a.getTitle(),
 							a.getDescription(),
 							a.getStartTime(),
-							a.getDueTime(),
+							effectiveDueTime,
 							a.getTotalPoints(),
 							qCount,
 							status,
 							canStart,
 							submissionId,
 							submittedAt,
-							score
+							maxScore
 					);
 				})
 				.toList();
 	}
 
 	/**
-	 * HTT-06-CN-002: Xem chi tiết bài tập dưới góc nhìn học sinh.
+	 * HTT-06-CN-002 & HTT-06-CN-008: Xem chi tiết bài tập dưới góc nhìn học sinh.
 	 * Chặn rò rỉ đề thi nếu bài chưa đến thời gian mở (UPCOMING) theo TC-03.
 	 * Chặn truy cập nếu học sinh không thuộc lớp (QTN-18 / TC-05).
+	 * Áp dụng hạn gia hạn và cấp lượt làm lại cá nhân (HTT-06-CN-008).
 	 */
 	@Transactional(readOnly = true)
 	public StudentAssignmentDetailResponse getStudentAssignmentDetail(Long studentId, Long assignmentId) {
@@ -369,13 +396,29 @@ public class AssignmentService {
 			throw new ApiException(ApiErrorCode.ASSIGNMENT_NOT_FOUND);
 		}
 
-		// Lấy lượt làm bài mới nhất của học sinh (QTN-02: chỉ dữ liệu của chính mình)
-		Optional<AssignmentSubmissionEntity> subOpt = submissionRepository.findFirstByAssignment_IdAndStudent_IdOrderByAttemptNumberDesc(assignmentId, studentId);
-		AssignmentSubmissionEntity sub = subOpt.orElse(null);
+		// Lấy tất cả lượt làm bài của học sinh đối với bài tập này
+		List<AssignmentSubmissionEntity> aSubs = submissionRepository.findByAssignment_IdAndStudent_IdOrderByAttemptNumberDesc(assignmentId, studentId);
+		AssignmentSubmissionEntity latestSub = aSubs.isEmpty() ? null : aSubs.get(0);
+
+		// Lấy override cá nhân của học sinh nếu có
+		Optional<AssignmentStudentOverrideEntity> overrideOpt = overrideRepository.findByAssignment_IdAndStudent_Id(assignmentId, studentId);
+		Instant effectiveDueTime = (overrideOpt.isPresent() && overrideOpt.get().getExtendedDueTime() != null)
+				? overrideOpt.get().getExtendedDueTime()
+				: assignment.getDueTime();
+		int allowedAttempts = (overrideOpt.isPresent() && overrideOpt.get().getAllowedAttempts() != null)
+				? overrideOpt.get().getAllowedAttempts()
+				: 1;
+
+		BigDecimal maxScore = aSubs.stream()
+				.filter(s -> s.getStatus().isCompleted())
+				.map(AssignmentSubmissionEntity::getEffectiveScore)
+				.filter(java.util.Objects::nonNull)
+				.max(BigDecimal::compareTo)
+				.orElse(latestSub != null ? latestSub.getEffectiveScore() : null);
 
 		Instant now = Instant.now();
-		StudentAssignmentStatus status = determineStudentStatus(assignment, sub, now);
-		boolean canStart = (status == StudentAssignmentStatus.NOT_STARTED || status == StudentAssignmentStatus.IN_PROGRESS);
+		StudentAssignmentStatus status = determineStudentStatus(assignment, latestSub, effectiveDueTime, now);
+		boolean canStart = canStudentStart(assignment, latestSub, aSubs.size(), allowedAttempts, effectiveDueTime, now);
 
 		// TC-03: Nếu bài chưa đến thời gian mở (UPCOMING) -> ẩn hoàn toàn danh sách câu hỏi để chống lộ đề
 		List<AssignmentSnapshotQuestionDto> questions = (status == StudentAssignmentStatus.UPCOMING)
@@ -392,19 +435,38 @@ public class AssignmentService {
 				assignment.getTitle(),
 				assignment.getDescription(),
 				assignment.getStartTime(),
-				assignment.getDueTime(),
+				effectiveDueTime,
 				assignment.getTotalPoints(),
 				questions.size(),
 				status,
 				canStart,
-				sub != null ? sub.getId() : null,
-				sub != null ? sub.getSubmittedAt() : null,
-				sub != null ? sub.getScore() : null,
+				latestSub != null ? latestSub.getId() : null,
+				latestSub != null ? latestSub.getSubmittedAt() : null,
+				maxScore,
 				questions
 		);
 	}
 
-	private StudentAssignmentStatus determineStudentStatus(AssignmentEntity assignment, AssignmentSubmissionEntity sub, Instant now) {
+	private boolean canStudentStart(AssignmentEntity assignment, AssignmentSubmissionEntity latestSub, int subCount, int allowedAttempts, Instant effectiveDueTime, Instant now) {
+		if (assignment.getStartTime().isAfter(now)) {
+			return false;
+		}
+		if (now.isAfter(effectiveDueTime)) {
+			return false;
+		}
+		if (latestSub == null) {
+			return true;
+		}
+		if (latestSub.getStatus() == SubmissionStatus.IN_PROGRESS) {
+			return true;
+		}
+		if (latestSub.getStatus().isCompleted()) {
+			return subCount < allowedAttempts;
+		}
+		return false;
+	}
+
+	private StudentAssignmentStatus determineStudentStatus(AssignmentEntity assignment, AssignmentSubmissionEntity sub, Instant effectiveDueTime, Instant now) {
 		// 1. Nếu chưa đến thời gian bắt đầu
 		if (assignment.getStartTime().isAfter(now)) {
 			return StudentAssignmentStatus.UPCOMING;
@@ -416,7 +478,7 @@ public class AssignmentService {
 		}
 
 		// 3. Nếu đã hết hạn nộp
-		if (now.isAfter(assignment.getDueTime())) {
+		if (now.isAfter(effectiveDueTime)) {
 			return StudentAssignmentStatus.OVERDUE;
 		}
 

@@ -174,4 +174,38 @@ public class AssignmentSubmissionController {
 		SubmissionResultResponse response = submissionService.regradeSubmission(user.getId(), id);
 		return ResponseEntity.ok(response);
 	}
+
+	@PostMapping("/{id}/students/{studentId}/extension")
+	@PreAuthorize("isAuthenticated()")
+	@Operation(
+			summary = "HTT-06-CN-008 — Giáo viên gia hạn nộp bài riêng cho học sinh",
+			description = "Gia hạn thời gian nộp bài riêng cho một học sinh với hạn mới sau hiện tại (QTN-11 / TC-01..TC-08)."
+	)
+	public ResponseEntity<com.hsk.assignment.dto.StudentOverrideResponse> grantExtension(
+			@PathVariable("id") Long id,
+			@PathVariable("studentId") Long studentId,
+			@Valid @RequestBody com.hsk.assignment.dto.GrantExtensionRequest request,
+			Principal principal
+	) {
+		UserEntity user = requireUser(principal);
+		com.hsk.assignment.dto.StudentOverrideResponse response = submissionService.grantExtension(user.getId(), id, studentId, request);
+		return ResponseEntity.ok(response);
+	}
+
+	@PostMapping("/{id}/students/{studentId}/retake")
+	@PreAuthorize("isAuthenticated()")
+	@Operation(
+			summary = "HTT-06-CN-008 — Giáo viên cho phép học sinh làm lại bài",
+			description = "Cấp thêm lượt làm bài cho học sinh (QTN-12 / TC-03..TC-07)."
+	)
+	public ResponseEntity<com.hsk.assignment.dto.StudentOverrideResponse> grantRetake(
+			@PathVariable("id") Long id,
+			@PathVariable("studentId") Long studentId,
+			@Valid @RequestBody com.hsk.assignment.dto.GrantRetakeRequest request,
+			Principal principal
+	) {
+		UserEntity user = requireUser(principal);
+		com.hsk.assignment.dto.StudentOverrideResponse response = submissionService.grantRetake(user.getId(), id, studentId, request);
+		return ResponseEntity.ok(response);
+	}
 }

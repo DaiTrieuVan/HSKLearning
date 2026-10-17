@@ -227,3 +227,35 @@ export async function cancelAssignment(
   return data as AssignmentItem
 }
 
+export interface ExtendDueDatePayload {
+  newDueTime: string
+}
+
+export async function extendAssignmentDueDate(
+  id: number,
+  payload: ExtendDueDatePayload,
+  token: string
+): Promise<AssignmentItem> {
+  const response = await fetch(`${API_BASE}/${id}/extend-due-date`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  const data = await response.json().catch(() => null)
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'UNKNOWN_ERROR',
+      data?.message || 'Không thể kéo dài hạn nộp bài tập',
+      data?.fields
+    )
+  }
+
+  return data as AssignmentItem
+}
+

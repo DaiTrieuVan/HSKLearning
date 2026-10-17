@@ -32,6 +32,7 @@ import {
   Play,
   Ban,
   Trash2,
+  CalendarPlus,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import {
@@ -62,6 +63,7 @@ import {
   getAssignmentsForClass,
   getStudentAssignmentsForClass,
   cancelAssignment,
+  extendAssignmentDueDate,
   type AssignmentItem,
   type StudentAssignmentItem,
 } from '../../api/assignment'
@@ -86,13 +88,17 @@ export const ClassDetailPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
-  // Assignments state (HTT-06-CN-001 & HTT-06-CN-002 & HTT-06-CN-009)
+  // Assignments state (HTT-06-CN-001 & HTT-06-CN-002 & HTT-06-CN-009 & HTT-06-CN-010)
   const [classAssignments, setClassAssignments] = useState<AssignmentItem[]>([])
   const [studentAssignments, setStudentAssignments] = useState<StudentAssignmentItem[]>([])
   const [assignmentsLoading, setAssignmentsLoading] = useState(false)
   const [confirmCancelAssignmentId, setConfirmCancelAssignmentId] = useState<number | null>(null)
   const [cancellingAssignmentId, setCancellingAssignmentId] = useState<number | null>(null)
   const [cancelAssignmentError, setCancelAssignmentError] = useState<string | null>(null)
+  const [extendingAssignmentId, setExtendingAssignmentId] = useState<number | null>(null)
+  const [newDueTimeInput, setNewDueTimeInput] = useState<string>('')
+  const [isSubmittingExtend, setIsSubmittingExtend] = useState<boolean>(false)
+  const [extendDueDateError, setExtendDueDateError] = useState<string | null>(null)
 
   // Vocab Sets state
   const [classVocabSets, setClassVocabSets] = useState<VocabSetItem[]>([])
@@ -202,6 +208,54 @@ export const ClassDetailPage: React.FC = () => {
       }
     } finally {
       setCancellingAssignmentId(null)
+    }
+  }
+
+  const handleOpenExtend = (a: AssignmentItem) => {
+    setConfirmCancelAssignmentId(null)
+    setExtendDueDateError(null)
+    if (extendingAssignmentId === a.id) {
+      setExtendingAssignmentId(null)
+      return
+    }
+    setExtendingAssignmentId(a.id)
+
+    // Khởi tạo hạn nộp mới mặc định: hạn cũ + 1 ngày (hoặc hiện tại + 1 ngày nếu đã hết hạn)
+    const currentDue = new Date(a.dueTime)
+    const baseDate = currentDue.getTime() > Date.now() ? currentDue : new Date()
+    const defaultNext = new Date(baseDate.getTime() + 24 * 60 * 60 * 1000)
+
+    const pad = (n: number) => n.toString().padStart(2, '0')
+    const val = `${defaultNext.getFullYear()}-${pad(defaultNext.getMonth() + 1)}-${pad(defaultNext.getDate())}T${pad(defaultNext.getHours())}:${pad(defaultNext.getMinutes())}`
+    setNewDueTimeInput(val)
+  }
+
+  const handleSaveExtendDueDate = async (assignmentId: number, currentDueTime: string) => {
+    if (!user) return
+    if (!newDueTimeInput) {
+      setExtendDueDateError('Vui lòng chọn hạn nộp mới')
+      return
+    }
+    const chosenDate = new Date(newDueTimeInput)
+    const curDate = new Date(currentDueTime)
+    if (chosenDate.getTime() <= curDate.getTime()) {
+      setExtendDueDateError('Hạn nộp mới phải sau hạn nộp hiện tại')
+      return
+    }
+    try {
+      setIsSubmittingExtend(true)
+      setExtendDueDateError(null)
+      await extendAssignmentDueDate(assignmentId, { newDueTime: chosenDate.toISOString() }, user.token)
+      setExtendingAssignmentId(null)
+      await loadClassAssignments()
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setExtendDueDateError(err.message)
+      } else {
+        setExtendDueDateError('Không thể gia hạn hạn nộp bài tập. Vui lòng thử lại.')
+      }
+    } finally {
+      setIsSubmittingExtend(false)
     }
   }
 
@@ -865,6 +919,7 @@ export const ClassDetailPage: React.FC = () => {
                     const isScheduled = a.status === 'SCHEDULED'
                     const isConfirming = confirmCancelAssignmentId === a.id
                     const isCancelling = cancellingAssignmentId === a.id
+                    const isExtending = extendingAssignmentId === a.id
 
                     return (
                       <div
@@ -961,35 +1016,180 @@ export const ClassDetailPage: React.FC = () => {
                             </div>
 
                             {!isCancelled && (
-                              <button
-                                id={`btn-cancel-assignment-${a.id}`}
-                                type="button"
-                                onClick={() => {
-                                  setCancelAssignmentError(null)
-                                  setConfirmCancelAssignmentId(isConfirming ? null : a.id)
-                                }}
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '6px',
-                                  padding: '7px 12px',
-                                  borderRadius: 'var(--radius-md)',
-                                  border: '1px solid #fee2e2',
-                                  backgroundColor: '#fff1f2',
-                                  color: '#e11d48',
-                                  fontSize: '0.78rem',
-                                  fontWeight: 700,
-                                  cursor: 'pointer',
-                                  transition: 'all 0.2s ease',
-                                }}
-                                title="Hủy lần giao bài này"
-                              >
-                                <Ban size={14} />
-                                <span>Hủy giao bài</span>
-                              </button>
+                              <>
+                                <button
+                                  id={`btn-extend-due-date-${a.id}`}
+                                  type="button"
+                                  onClick={() => handleOpenExtend(a)}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    padding: '7px 12px',
+                                    borderRadius: 'var(--radius-md)',
+                                    border: '1px solid #bfdbfe',
+                                    backgroundColor: isExtending ? '#dbeafe' : '#eff6ff',
+                                    color: '#1d4ed8',
+                                    fontSize: '0.78rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease',
+                                  }}
+                                  title="Kéo dài hạn nộp bài tập này"
+                                >
+                                  <CalendarPlus size={14} />
+                                  <span>Gia hạn nộp</span>
+                                </button>
+
+                                <button
+                                  id={`btn-cancel-assignment-${a.id}`}
+                                  type="button"
+                                  onClick={() => {
+                                    setExtendingAssignmentId(null)
+                                    setCancelAssignmentError(null)
+                                    setConfirmCancelAssignmentId(isConfirming ? null : a.id)
+                                  }}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    padding: '7px 12px',
+                                    borderRadius: 'var(--radius-md)',
+                                    border: '1px solid #fee2e2',
+                                    backgroundColor: '#fff1f2',
+                                    color: '#e11d48',
+                                    fontSize: '0.78rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease',
+                                  }}
+                                  title="Hủy lần giao bài này"
+                                >
+                                  <Ban size={14} />
+                                  <span>Hủy giao bài</span>
+                                </button>
+                              </>
                             )}
                           </div>
                         </div>
+
+                        {/* Inline Extension Form - Tuân thủ NO MODAL constraint (HTT-06-CN-010) */}
+                        {isExtending && (
+                          <div
+                            id={`inline-extend-form-${a.id}`}
+                            style={{
+                              padding: '16px 20px',
+                              backgroundColor: '#f0fdf4',
+                              borderTop: '1px solid #dcfce7',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '12px',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#15803d', fontSize: '0.88rem' }}>
+                              <CalendarPlus size={18} style={{ flexShrink: 0 }} />
+                              <strong>Kéo dài hạn nộp bài tập cho cả lớp (QTN-21)</strong>
+                            </div>
+
+                            <div style={{ fontSize: '0.8rem', color: '#166534', lineHeight: 1.5 }}>
+                              Hạn nộp hiện tại: <strong>{new Date(a.dueTime).toLocaleString('vi-VN')}</strong>.
+                              Hạn nộp mới <strong>bắt buộc phải sau hạn hiện tại</strong>. Học sinh chưa nộp bài sẽ thấy hạn mới và được tiếp tục làm bài.
+                            </div>
+
+                            {extendDueDateError && (
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  color: '#b91c1c',
+                                  fontSize: '0.8rem',
+                                  backgroundColor: '#fef2f2',
+                                  padding: '6px 10px',
+                                  borderRadius: 'var(--radius-sm)',
+                                  border: '1px solid #fecaca',
+                                }}
+                              >
+                                <AlertCircle size={14} />
+                                <span>{extendDueDateError}</span>
+                              </div>
+                            )}
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <label htmlFor={`input-extend-${a.id}`} style={{ fontSize: '0.8rem', fontWeight: 700, color: '#166534' }}>
+                                  Hạn mới:
+                                </label>
+                                <input
+                                  id={`input-extend-${a.id}`}
+                                  type="datetime-local"
+                                  value={newDueTimeInput}
+                                  onChange={(e) => setNewDueTimeInput(e.target.value)}
+                                  style={{
+                                    padding: '6px 10px',
+                                    fontSize: '0.82rem',
+                                    border: '1.5px solid #86efac',
+                                    borderRadius: 'var(--radius-sm)',
+                                    backgroundColor: '#ffffff',
+                                    outline: 'none',
+                                    color: 'var(--text-main)',
+                                  }}
+                                />
+                              </div>
+
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <button
+                                  id={`btn-save-extend-${a.id}`}
+                                  type="button"
+                                  disabled={isSubmittingExtend}
+                                  onClick={() => handleSaveExtendDueDate(a.id, a.dueTime)}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    padding: '6px 14px',
+                                    borderRadius: 'var(--radius-sm)',
+                                    border: 'none',
+                                    backgroundColor: '#16a34a',
+                                    color: '#ffffff',
+                                    fontSize: '0.78rem',
+                                    fontWeight: 700,
+                                    cursor: isSubmittingExtend ? 'not-allowed' : 'pointer',
+                                    opacity: isSubmittingExtend ? 0.7 : 1,
+                                  }}
+                                >
+                                  {isSubmittingExtend ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                                  <span>{isSubmittingExtend ? 'Đang lưu...' : 'Lưu hạn mới'}</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  disabled={isSubmittingExtend}
+                                  onClick={() => {
+                                    setExtendingAssignmentId(null)
+                                    setExtendDueDateError(null)
+                                  }}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    padding: '6px 12px',
+                                    borderRadius: 'var(--radius-sm)',
+                                    border: '1px solid #cbd5e1',
+                                    backgroundColor: '#ffffff',
+                                    color: 'var(--text-muted)',
+                                    fontSize: '0.78rem',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  <X size={14} />
+                                  <span>Hủy bỏ</span>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
 
                         {/* Inline confirmation accordion block - Tuân thủ NO MODAL constraint */}
                         {isConfirming && (

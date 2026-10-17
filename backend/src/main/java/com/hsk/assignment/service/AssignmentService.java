@@ -14,6 +14,7 @@ import com.hsk.assignment.dto.AssignmentDetailResponse;
 import com.hsk.assignment.dto.AssignmentResponse;
 import com.hsk.assignment.dto.AssignmentSnapshotOptionDto;
 import com.hsk.assignment.dto.AssignmentSnapshotQuestionDto;
+import com.hsk.assignment.dto.ExtendAssignmentDueDateRequest;
 import com.hsk.assignment.repository.AssignmentRepository;
 import com.hsk.classroom.domain.ClassEntity;
 import com.hsk.classroom.domain.ClassMemberEntity;
@@ -36,6 +37,7 @@ import com.hsk.assignment.dto.StudentAssignmentResponse;
 import com.hsk.assignment.repository.AssignmentSubmissionRepository;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -549,6 +551,68 @@ public class AssignmentService {
 				"ASSIGNMENT",
 				saved.getId().toString(),
 				"Giáo viên " + teacher.getEmail() + " đã hủy lần giao bài '" + saved.getTitle() + "' của lớp '" + classroom.getTitle() + "'"
+		);
+
+		return mapToResponse(saved);
+	}
+
+	/**
+	 * HTT-06-CN-010: Kéo dài hạn nộp của cả lần giao bài.
+	 * QTN-01: Chỉ giáo viên phụ trách lớp mới được quyền gia hạn.
+	 * QTN-21: Hạn nộp mới bắt buộc phải sau hạn nộp hiện tại (chỉ được kéo dài, không rút ngắn).
+	 * Các lượt đã nộp không bị mở lại.
+	 */
+	@Transactional
+	public AssignmentResponse extendAssignmentDueDate(Long teacherId, Long assignmentId, ExtendAssignmentDueDateRequest request) {
+		assertTeacherOrAdmin(teacherId);
+
+		AssignmentEntity assignment = assignmentRepository.findById(assignmentId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.ASSIGNMENT_NOT_FOUND));
+
+		ClassEntity classroom = assignment.getClassroom();
+		boolean isAdmin = userRoleRepository.existsByUser_IdAndRole_Code(teacherId, RoleCode.ADMIN);
+		boolean isClassTeacher = classroom.getTeacher().getId().equals(teacherId);
+
+		// QTN-01 / TC-05: Kiểm tra quyền sở hữu lớp
+		if (!isClassTeacher && !isAdmin) {
+			throw new ApiException(ApiErrorCode.FORBIDDEN, "Bạn chỉ có thể gia hạn bài tập của lớp do mình phụ trách");
+		}
+
+		// Không thể gia hạn bài đã CANCELLED hoặc ARCHIVED
+		if (assignment.getStatus() == AssignmentStatus.CANCELLED) {
+			throw new ApiException(ApiErrorCode.ASSIGNMENT_CANNOT_EXTEND_CANCELLED);
+		}
+		if (assignment.getStatus() == AssignmentStatus.ARCHIVED) {
+			throw new ApiException(ApiErrorCode.VALIDATION_FAILED, "Không thể gia hạn lần giao bài đã lưu trữ");
+		}
+
+		// QTN-21 / TC-02: Hạn mới bắt buộc phải sau hạn hiện tại (tính đến giây)
+		Instant newDueTime = request != null ? request.newDueTime() : null;
+		if (newDueTime == null || !newDueTime.truncatedTo(ChronoUnit.SECONDS).isAfter(assignment.getDueTime().truncatedTo(ChronoUnit.SECONDS))) {
+			throw new ApiException(ApiErrorCode.ASSIGNMENT_DUE_DATE_MUST_EXTEND);
+		}
+
+		Instant oldDueTime = assignment.getDueTime();
+		assignment.setDueTime(newDueTime);
+
+		// Nếu trước đó bài đã CLOSED do hết hạn cũ nhưng hạn mới trong tương lai -> tự động mở lại ACTIVE
+		if (assignment.getStatus() == AssignmentStatus.CLOSED && newDueTime.isAfter(Instant.now())) {
+			assignment.setStatus(AssignmentStatus.ACTIVE);
+		}
+
+		AssignmentEntity saved = assignmentRepository.save(assignment);
+
+		// TC-06: Ghi Audit Log
+		UserEntity teacher = userRepository.findById(teacherId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.UNAUTHORIZED));
+
+		auditLogService.record(
+				teacher,
+				"EXTEND_ASSIGNMENT_DUE_DATE",
+				"ASSIGNMENT",
+				saved.getId().toString(),
+				"Giáo viên " + teacher.getEmail() + " đã kéo dài hạn nộp bài tập '" + saved.getTitle() + "' lớp '" + classroom.getTitle()
+						+ "' từ " + oldDueTime + " thành " + newDueTime
 		);
 
 		return mapToResponse(saved);

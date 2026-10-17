@@ -215,6 +215,12 @@ public enum ApiErrorCode {
 	/** HTT-06-CN-009 / TC-06: Assignment is already cancelled. */
 	ASSIGNMENT_ALREADY_CANCELLED(HttpStatus.BAD_REQUEST, "Lần giao bài này đã bị hủy trước đó"),
 
+	/** HTT-06-CN-010 / TC-02 & QTN-21: New due date must be after current due date. */
+	ASSIGNMENT_DUE_DATE_MUST_EXTEND(HttpStatus.BAD_REQUEST, "Hạn nộp mới phải sau hạn nộp hiện tại"),
+
+	/** HTT-06-CN-010 & QTN-21: Cannot extend cancelled assignment. */
+	ASSIGNMENT_CANNOT_EXTEND_CANCELLED(HttpStatus.BAD_REQUEST, "Không thể gia hạn lần giao bài đã bị hủy"),
+
 	/** Unexpected server side failure; the client may retry. */
 	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Hệ thống đang gặp sự cố, vui lòng thử lại sau");
 

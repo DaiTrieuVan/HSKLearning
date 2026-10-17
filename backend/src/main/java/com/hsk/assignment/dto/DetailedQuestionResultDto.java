@@ -15,5 +15,21 @@ public record DetailedQuestionResultDto(
 		BigDecimal pointsEarned,
 		Boolean isCorrect,
 		Long selectedOptionId,
+		String studentTextAnswer,
+		String payload,
 		List<AssignmentSnapshotOptionDto> options
-) {}
+) {
+	public DetailedQuestionResultDto(
+			Long questionId,
+			String type,
+			String content,
+			String explanation,
+			BigDecimal maxPoints,
+			BigDecimal pointsEarned,
+			Boolean isCorrect,
+			Long selectedOptionId,
+			List<AssignmentSnapshotOptionDto> options
+	) {
+		this(questionId, type, content, explanation, maxPoints, pointsEarned, isCorrect, selectedOptionId, null, null, options);
+	}
+}

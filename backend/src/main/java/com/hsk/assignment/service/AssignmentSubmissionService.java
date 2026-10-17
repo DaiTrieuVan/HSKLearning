@@ -29,7 +29,14 @@ import com.hsk.classroom.repository.ClassMemberRepository;
 import com.hsk.common.api.ApiErrorCode;
 import com.hsk.common.api.ApiException;
 import com.hsk.common.audit.AuditLogService;
+import com.hsk.question.domain.QuestionType;
+import com.hsk.question.dto.BlankAnswerDto;
+import com.hsk.question.dto.FillBlankPayloadDto;
+import com.hsk.question.dto.MatchingPairDto;
+import com.hsk.question.dto.MatchingPayloadDto;
+import com.hsk.question.dto.OrderingPayloadDto;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -251,13 +258,20 @@ public class AssignmentSubmissionService {
 		List<DetailedQuestionResultDto> detailedResults = autoGradeAndFinalize(submission, assignment, targetStatus, answersToGrade);
 		AssignmentSubmissionEntity saved = submissionRepository.save(submission);
 
-		// TC-11: Ghi nhật ký nộp bài vào Audit Log
+		// TC-11 & HTT-06-CN-004-TC-09: Ghi nhật ký nộp bài và chấm điểm vào Audit Log
 		auditLogService.record(
 				student,
 				targetStatus == SubmissionStatus.AUTO_SUBMITTED ? "AUTO_SUBMIT_ASSIGNMENT" : "SUBMIT_ASSIGNMENT",
 				"ASSIGNMENT_SUBMISSION",
 				saved.getId().toString(),
-				"Học sinh " + student.getEmail() + " đã nộp bài tập '" + assignment.getTitle() + "' (Điểm: " + saved.getScore() + "/" + assignment.getTotalPoints() + ", Trạng thái: " + targetStatus + ")"
+				"Học sinh " + student.getEmail() + " đã nộp bài tập '" + assignment.getTitle() + "' (Điểm gốc: " + saved.getScore() + "/" + assignment.getTotalPoints() + ", Trạng thái: " + targetStatus + ")"
+		);
+		auditLogService.record(
+				student,
+				"AUTO_GRADE_ASSIGNMENT",
+				"ASSIGNMENT_SUBMISSION",
+				saved.getId().toString(),
+				"Chấm điểm tự động bài tập '" + assignment.getTitle() + "' cho học sinh " + student.getEmail() + ": Điểm gốc " + saved.getScore() + "/" + assignment.getTotalPoints()
 		);
 
 		return new SubmissionResultResponse(
@@ -276,6 +290,48 @@ public class AssignmentSubmissionService {
 	}
 
 	/**
+	 * HTT-06-CN-004-TC-08: Chấm lại bài nộp đã hoàn tất (Idempotent - Không tạo thêm điểm mới và giữ nguyên điểm gốc).
+	 */
+	@Transactional
+	public SubmissionResultResponse regradeSubmission(Long studentId, Long assignmentId) {
+		AssignmentEntity assignment = assignmentRepository.findById(assignmentId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.ASSIGNMENT_NOT_FOUND));
+
+		verifyStudentMembership(assignment.getClassroom().getId(), studentId);
+
+		AssignmentSubmissionEntity submission = submissionRepository
+				.findFirstByAssignment_IdAndStudent_IdOrderByAttemptNumberDesc(assignmentId, studentId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.SUBMISSION_NOT_FOUND));
+
+		// TC-08: Nếu bài nộp đã được chấm (SUBMITTED hoặc AUTO_SUBMITTED), giữ nguyên điểm gốc và không tạo điểm mới
+		if (submission.getStatus() == SubmissionStatus.SUBMITTED || submission.getStatus() == SubmissionStatus.AUTO_SUBMITTED) {
+			List<AssignmentSnapshotQuestionDto> snapshotQuestions = parseSnapshotQuestions(assignment.getSnapshotData());
+			List<StudentAnswerItemDto> scoredAnswers = parseAnswers(submission.getAnswersData());
+			Map<Long, StudentAnswerItemDto> answerMap = scoredAnswers.stream()
+					.filter(a -> a.questionId() != null)
+					.collect(Collectors.toMap(StudentAnswerItemDto::questionId, a -> a, (a1, a2) -> a1));
+
+			List<DetailedQuestionResultDto> detailedResults = buildDetailedResults(snapshotQuestions, answerMap);
+
+			return new SubmissionResultResponse(
+					submission.getId(),
+					assignment.getId(),
+					assignment.getTitle(),
+					assignment.getDescription(),
+					submission.getStatus(),
+					submission.getStartedAt(),
+					submission.getSubmittedAt(),
+					submission.getScore(), // Giữ nguyên điểm gốc tuyệt đối
+					assignment.getTotalPoints(),
+					submission.getAttemptNumber(),
+					detailedResults
+			);
+		}
+
+		throw new ApiException(ApiErrorCode.SUBMISSION_NOT_IN_PROGRESS, "Bài làm chưa được nộp nên không thể chấm lại");
+	}
+
+	/**
 	 * Xem chi tiết kết quả bài đã nộp kèm đáp án đúng và giải thích (QTN-02).
 	 */
 	@Transactional(readOnly = true)
@@ -291,7 +347,6 @@ public class AssignmentSubmissionService {
 		Long targetStudentId = userId;
 		if (isTeacherOwner || isAdmin) {
 			// Giáo viên có thể xem bài của học sinh nếu truyền vào context hoặc xem submission mặc định
-			// Ở đây phục vụ endpoint của học sinh, targetStudentId = userId
 		} else {
 			verifyStudentMembership(classroom.getId(), userId);
 		}
@@ -328,8 +383,10 @@ public class AssignmentSubmissionService {
 	}
 
 	// -------------------------------------------------------------------------
-	// Core Auto-Grading & Helpers
+	// Core Auto-Grading & Helpers (HTT-06-CN-004)
 	// -------------------------------------------------------------------------
+
+	private record GradedResult(boolean isCorrect, BigDecimal pointsEarned) {}
 
 	private List<DetailedQuestionResultDto> autoGradeAndFinalize(
 			AssignmentSubmissionEntity submission,
@@ -355,31 +412,16 @@ public class AssignmentSubmissionService {
 			BigDecimal questionPoints = q.points() != null ? q.points() : BigDecimal.ZERO;
 			StudentAnswerItemDto ans = studentAnswerMap.get(q.questionId());
 
-			boolean isCorrect = false;
-			BigDecimal pointsEarned = BigDecimal.ZERO;
-			Long selectedOptId = ans != null ? ans.selectedOptionId() : null;
+			GradedResult graded = gradeQuestion(q, ans);
 
-			if (selectedOptId != null && q.options() != null) {
-				// Tìm option được chọn xem có phải là đáp án đúng không
-				for (AssignmentSnapshotOptionDto opt : q.options()) {
-					if (opt.id().equals(selectedOptId)) {
-						if (opt.isCorrect()) {
-							isCorrect = true;
-							pointsEarned = questionPoints;
-						}
-						break;
-					}
-				}
-			}
-
-			totalScore = totalScore.add(pointsEarned);
+			totalScore = totalScore.add(graded.pointsEarned());
 
 			finalizedScoredAnswers.add(new StudentAnswerItemDto(
 					q.questionId(),
-					selectedOptId,
+					ans != null ? ans.selectedOptionId() : null,
 					ans != null ? ans.textAnswer() : null,
-					isCorrect,
-					pointsEarned
+					graded.isCorrect(),
+					graded.pointsEarned()
 			));
 
 			detailedResults.add(new DetailedQuestionResultDto(
@@ -388,12 +430,17 @@ public class AssignmentSubmissionService {
 					q.content(),
 					q.explanation(),
 					questionPoints,
-					pointsEarned,
-					isCorrect,
-					selectedOptId,
+					graded.pointsEarned(),
+					graded.isCorrect(),
+					ans != null ? ans.selectedOptionId() : null,
+					ans != null ? ans.textAnswer() : null,
+					q.payload(),
 					q.options()
 			));
 		}
+
+		// TC-07: Tổng điểm làm tròn đến 1 chữ số thập phân và lưu làm điểm gốc
+		totalScore = totalScore.setScale(1, RoundingMode.HALF_UP);
 
 		String answersJson = serializeAnswers(finalizedScoredAnswers);
 		if (finalStatus == SubmissionStatus.AUTO_SUBMITTED) {
@@ -405,6 +452,208 @@ public class AssignmentSubmissionService {
 		return detailedResults;
 	}
 
+	/**
+	 * Chấm điểm từng câu hỏi theo đúng loại câu hỏi và quy tắc chấm (TC-01 đến TC-06).
+	 */
+	private GradedResult gradeQuestion(AssignmentSnapshotQuestionDto q, StudentAnswerItemDto ans) {
+		BigDecimal questionPoints = q.points() != null ? q.points() : BigDecimal.ZERO;
+
+		// TC-06: Bỏ trống câu hỏi -> 0 điểm và đánh dấu sai/chưa trả lời
+		if (ans == null) {
+			return new GradedResult(false, BigDecimal.ZERO.setScale(1, RoundingMode.HALF_UP));
+		}
+
+		String typeStr = q.type() != null ? q.type().toUpperCase() : "MCQ";
+		QuestionType qType;
+		try {
+			qType = QuestionType.valueOf(typeStr);
+		} catch (IllegalArgumentException e) {
+			qType = QuestionType.MCQ;
+		}
+
+		switch (qType) {
+			case MCQ -> {
+				// TC-01 & TC-02: Trắc nghiệm
+				Long selectedOptId = ans.selectedOptionId();
+				if (selectedOptId != null && q.options() != null) {
+					for (AssignmentSnapshotOptionDto opt : q.options()) {
+						if (opt.id().equals(selectedOptId)) {
+							if (opt.isCorrect()) {
+								return new GradedResult(true, questionPoints.setScale(1, RoundingMode.HALF_UP));
+							}
+							break;
+						}
+					}
+				}
+				return new GradedResult(false, BigDecimal.ZERO.setScale(1, RoundingMode.HALF_UP));
+			}
+
+			case FILL -> {
+				// TC-03: Điền từ - Làm sạch khoảng trắng và đối chiếu đáp án chấp nhận được
+				String text = ans.textAnswer();
+				if (text == null || text.trim().isEmpty() || q.payload() == null || q.payload().trim().isEmpty()) {
+					return new GradedResult(false, BigDecimal.ZERO.setScale(1, RoundingMode.HALF_UP));
+				}
+				try {
+					FillBlankPayloadDto payload = objectMapper.readValue(q.payload(), FillBlankPayloadDto.class);
+					if (payload.blanks() != null && !payload.blanks().isEmpty()) {
+						BlankAnswerDto blank = payload.blanks().get(0);
+						String cleaned = text.trim();
+						boolean isMatch = false;
+
+						if (blank.correctAnswer() != null && blank.correctAnswer().trim().equalsIgnoreCase(cleaned)) {
+							isMatch = true;
+						} else if (blank.acceptableAnswers() != null) {
+							for (String acc : blank.acceptableAnswers()) {
+								if (acc != null && acc.trim().equalsIgnoreCase(cleaned)) {
+									isMatch = true;
+									break;
+								}
+							}
+						}
+
+						if (isMatch) {
+							return new GradedResult(true, questionPoints.setScale(1, RoundingMode.HALF_UP));
+						}
+					}
+				} catch (Exception ignored) {
+				}
+				return new GradedResult(false, BigDecimal.ZERO.setScale(1, RoundingMode.HALF_UP));
+			}
+
+			case MATCH -> {
+				// TC-04: Nối cặp - Tính điểm tỷ lệ theo số cặp nối đúng
+				String text = ans.textAnswer();
+				if (text == null || text.trim().isEmpty() || q.payload() == null || q.payload().trim().isEmpty()) {
+					return new GradedResult(false, BigDecimal.ZERO.setScale(1, RoundingMode.HALF_UP));
+				}
+				try {
+					MatchingPayloadDto payload = objectMapper.readValue(q.payload(), MatchingPayloadDto.class);
+					List<MatchingPairDto> pairs = payload.pairs();
+					if (pairs == null || pairs.isEmpty()) {
+						return new GradedResult(false, BigDecimal.ZERO.setScale(1, RoundingMode.HALF_UP));
+					}
+
+					int totalPairs = pairs.size();
+					Map<String, String> studentPairs = parseStudentMatchingAnswer(text);
+
+					int correctCount = 0;
+					for (MatchingPairDto p : pairs) {
+						if (p.left() == null || p.right() == null) continue;
+						String studentRight = studentPairs.get(p.left().trim());
+						if (studentRight != null && studentRight.trim().equalsIgnoreCase(p.right().trim())) {
+							correctCount++;
+						}
+					}
+
+					if (correctCount == 0) {
+						return new GradedResult(false, BigDecimal.ZERO.setScale(1, RoundingMode.HALF_UP));
+					}
+
+					BigDecimal pointsEarned = questionPoints
+							.multiply(BigDecimal.valueOf(correctCount))
+							.divide(BigDecimal.valueOf(totalPairs), 1, RoundingMode.HALF_UP);
+
+					boolean allCorrect = (correctCount == totalPairs);
+					return new GradedResult(allCorrect, pointsEarned);
+				} catch (Exception ignored) {
+				}
+				return new GradedResult(false, BigDecimal.ZERO.setScale(1, RoundingMode.HALF_UP));
+			}
+
+			case ORDER -> {
+				// TC-05: Sắp xếp câu - Đúng thứ tự 100% được tối đa điểm, sai thứ tự 0 điểm
+				String text = ans.textAnswer();
+				if (text == null || text.trim().isEmpty() || q.payload() == null || q.payload().trim().isEmpty()) {
+					return new GradedResult(false, BigDecimal.ZERO.setScale(1, RoundingMode.HALF_UP));
+				}
+				try {
+					OrderingPayloadDto payload = objectMapper.readValue(q.payload(), OrderingPayloadDto.class);
+					List<String> correctOrder = payload.correctOrder();
+					if (correctOrder == null || correctOrder.isEmpty()) {
+						return new GradedResult(false, BigDecimal.ZERO.setScale(1, RoundingMode.HALF_UP));
+					}
+
+					List<String> studentOrder = parseStudentOrderingAnswer(text);
+					if (studentOrder.size() == correctOrder.size()) {
+						boolean isSame = true;
+						for (int i = 0; i < correctOrder.size(); i++) {
+							String expected = correctOrder.get(i).trim();
+							String actual = studentOrder.get(i).trim();
+							if (!expected.equalsIgnoreCase(actual)) {
+								isSame = false;
+								break;
+							}
+						}
+						if (isSame) {
+							return new GradedResult(true, questionPoints.setScale(1, RoundingMode.HALF_UP));
+						}
+					}
+				} catch (Exception ignored) {
+				}
+				return new GradedResult(false, BigDecimal.ZERO.setScale(1, RoundingMode.HALF_UP));
+			}
+		}
+
+		return new GradedResult(false, BigDecimal.ZERO.setScale(1, RoundingMode.HALF_UP));
+	}
+
+	private Map<String, String> parseStudentMatchingAnswer(String text) {
+		Map<String, String> map = new HashMap<>();
+		if (text == null || text.trim().isEmpty()) {
+			return map;
+		}
+		String trimmed = text.trim();
+		try {
+			if (trimmed.startsWith("{")) {
+				return objectMapper.readValue(trimmed, new TypeReference<Map<String, String>>() {});
+			} else if (trimmed.startsWith("[")) {
+				try {
+					List<MatchingPairDto> list = objectMapper.readValue(trimmed, new TypeReference<List<MatchingPairDto>>() {});
+					for (MatchingPairDto pair : list) {
+						if (pair != null && pair.left() != null && pair.right() != null) {
+							map.put(pair.left().trim(), pair.right().trim());
+						}
+					}
+					return map;
+				} catch (Exception ignored) {
+				}
+			}
+		} catch (Exception ignored) {
+		}
+
+		String[] lines = trimmed.split("[\\n;,]+");
+		for (String line : lines) {
+			String[] parts = line.split("[:=-]+", 2);
+			if (parts.length == 2) {
+				map.put(parts[0].trim(), parts[1].trim());
+			}
+		}
+		return map;
+	}
+
+	private List<String> parseStudentOrderingAnswer(String text) {
+		List<String> list = new ArrayList<>();
+		if (text == null || text.trim().isEmpty()) {
+			return list;
+		}
+		String trimmed = text.trim();
+		if (trimmed.startsWith("[")) {
+			try {
+				return objectMapper.readValue(trimmed, new TypeReference<List<String>>() {});
+			} catch (Exception ignored) {
+			}
+		}
+
+		String[] parts = trimmed.split("[\\s,]+");
+		for (String p : parts) {
+			if (!p.trim().isEmpty()) {
+				list.add(p.trim());
+			}
+		}
+		return list;
+	}
+
 	private List<DetailedQuestionResultDto> buildDetailedResults(
 			List<AssignmentSnapshotQuestionDto> snapshotQuestions,
 			Map<Long, StudentAnswerItemDto> answerMap
@@ -413,9 +662,10 @@ public class AssignmentSubmissionService {
 		for (AssignmentSnapshotQuestionDto q : snapshotQuestions) {
 			BigDecimal questionPoints = q.points() != null ? q.points() : BigDecimal.ZERO;
 			StudentAnswerItemDto ans = answerMap.get(q.questionId());
-			Boolean isCorrect = ans != null ? ans.isCorrect() : false;
-			BigDecimal pointsEarned = ans != null && ans.pointsEarned() != null ? ans.pointsEarned() : BigDecimal.ZERO;
+			Boolean isCorrect = ans != null && Boolean.TRUE.equals(ans.isCorrect());
+			BigDecimal pointsEarned = ans != null && ans.pointsEarned() != null ? ans.pointsEarned() : BigDecimal.ZERO.setScale(1, RoundingMode.HALF_UP);
 			Long selectedOptId = ans != null ? ans.selectedOptionId() : null;
+			String textAns = ans != null ? ans.textAnswer() : null;
 
 			results.add(new DetailedQuestionResultDto(
 					q.questionId(),
@@ -426,6 +676,8 @@ public class AssignmentSubmissionService {
 					pointsEarned,
 					isCorrect,
 					selectedOptId,
+					textAns,
+					q.payload(),
 					q.options()
 			));
 		}

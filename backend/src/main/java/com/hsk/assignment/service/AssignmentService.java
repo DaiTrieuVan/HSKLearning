@@ -197,7 +197,7 @@ public class AssignmentService {
 		}
 
 		// Nếu là học sinh: kiểm tra quyền thành viên lớp
-		ClassMemberEntity member = classMemberRepository.findByClassIdAndStudentId(classId, userId)
+		ClassMemberEntity member = classMemberRepository.findByClassroom_IdAndStudent_Id(classId, userId)
 				.orElseThrow(() -> new ApiException(ApiErrorCode.FORBIDDEN));
 
 		if (member.getStatus() != ClassMemberStatus.ACTIVE) {
@@ -234,7 +234,7 @@ public class AssignmentService {
 
 		if (!isTeacherOwner && !isAdmin) {
 			// Kiểm tra quyền học sinh
-			ClassMemberEntity member = classMemberRepository.findByClassIdAndStudentId(classroom.getId(), userId)
+			ClassMemberEntity member = classMemberRepository.findByClassroom_IdAndStudent_Id(classroom.getId(), userId)
 					.orElseThrow(() -> new ApiException(ApiErrorCode.FORBIDDEN));
 			if (member.getStatus() != ClassMemberStatus.ACTIVE) {
 				throw new ApiException(ApiErrorCode.FORBIDDEN);

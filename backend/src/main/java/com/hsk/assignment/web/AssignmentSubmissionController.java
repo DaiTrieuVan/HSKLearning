@@ -100,15 +100,47 @@ public class AssignmentSubmissionController {
 	@GetMapping("/{id}/result")
 	@PreAuthorize("isAuthenticated()")
 	@Operation(
-			summary = "HTT-06-CN-003 — Xem kết quả bài làm và giải thích chi tiết",
-			description = "Học sinh xem lại điểm số, câu trả lời của mình, đáp án đúng và lời giải sau khi đã nộp bài (QTN-02)."
+			summary = "HTT-06-CN-003 & HTT-06-CN-005 — Xem kết quả bài làm và giải thích chi tiết",
+			description = "Học sinh xem lại điểm số, câu trả lời của mình, đáp án đúng và lời giải sau khi đã nộp bài (QTN-02). Ẩn đáp án nếu chưa hết hạn nộp."
 	)
 	public ResponseEntity<SubmissionResultResponse> getSubmissionResult(
 			@PathVariable("id") Long id,
+			@org.springframework.web.bind.annotation.RequestParam(value = "studentId", required = false) Long studentId,
 			Principal principal
 	) {
 		UserEntity user = requireUser(principal);
-		SubmissionResultResponse response = submissionService.getSubmissionResult(user.getId(), id);
+		SubmissionResultResponse response = submissionService.getSubmissionResult(user.getId(), id, studentId);
+		return ResponseEntity.ok(response);
+	}
+
+	@GetMapping("/submissions/{submissionId}")
+	@PreAuthorize("isAuthenticated()")
+	@Operation(
+			summary = "HTT-06-CN-005 — Xem chi tiết bài nộp theo mã bài nộp (Direct URL)",
+			description = "Xem kết quả bài nộp bằng mã trực tiếp. Từ chối nếu bài nộp thuộc học sinh khác (QTN-02 / TC-05)."
+	)
+	public ResponseEntity<SubmissionResultResponse> getSubmissionResultById(
+			@PathVariable("submissionId") Long submissionId,
+			Principal principal
+	) {
+		UserEntity user = requireUser(principal);
+		SubmissionResultResponse response = submissionService.getSubmissionResultById(user.getId(), submissionId);
+		return ResponseEntity.ok(response);
+	}
+
+	@PostMapping("/submissions/{submissionId}/adjust-score")
+	@PreAuthorize("isAuthenticated()")
+	@Operation(
+			summary = "HTT-06-CN-005 — Giáo viên điều chỉnh điểm bài nộp",
+			description = "Giáo viên phụ trách điều chỉnh điểm số kèm lý do (QTN-13 / TC-04)."
+	)
+	public ResponseEntity<SubmissionResultResponse> adjustScore(
+			@PathVariable("submissionId") Long submissionId,
+			@Valid @RequestBody com.hsk.assignment.dto.AdjustScoreRequest request,
+			Principal principal
+	) {
+		UserEntity user = requireUser(principal);
+		SubmissionResultResponse response = submissionService.adjustScore(user.getId(), submissionId, request);
 		return ResponseEntity.ok(response);
 	}
 

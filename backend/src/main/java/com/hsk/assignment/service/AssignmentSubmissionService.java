@@ -10,6 +10,7 @@ import com.hsk.account.repository.UserRoleRepository;
 import com.hsk.assignment.domain.AssignmentEntity;
 import com.hsk.assignment.domain.AssignmentSubmissionEntity;
 import com.hsk.assignment.domain.SubmissionStatus;
+import com.hsk.assignment.dto.AdjustScoreRequest;
 import com.hsk.assignment.dto.AssignmentSnapshotOptionDto;
 import com.hsk.assignment.dto.AssignmentSnapshotQuestionDto;
 import com.hsk.assignment.dto.DetailedQuestionResultDto;
@@ -274,6 +275,15 @@ public class AssignmentSubmissionService {
 				"Chấm điểm tự động bài tập '" + assignment.getTitle() + "' cho học sinh " + student.getEmail() + ": Điểm gốc " + saved.getScore() + "/" + assignment.getTotalPoints()
 		);
 
+		boolean isPastDue = (assignment.getDueTime() == null) || !now.isBefore(assignment.getDueTime());
+		boolean showSolutions = isPastDue; // Khi vừa nộp bài, nếu chưa hết hạn -> ẩn đáp án và giải thích (TC-02)
+
+		List<AssignmentSnapshotQuestionDto> snapshotQuestions = parseSnapshotQuestions(assignment.getSnapshotData());
+		Map<Long, StudentAnswerItemDto> answerMap = parseAnswers(saved.getAnswersData()).stream()
+				.filter(a -> a.questionId() != null)
+				.collect(Collectors.toMap(StudentAnswerItemDto::questionId, a -> a, (a1, a2) -> a1));
+		List<DetailedQuestionResultDto> maskedResults = buildDetailedResults(snapshotQuestions, answerMap, showSolutions);
+
 		return new SubmissionResultResponse(
 				saved.getId(),
 				assignment.getId(),
@@ -285,7 +295,11 @@ public class AssignmentSubmissionService {
 				saved.getScore(),
 				assignment.getTotalPoints(),
 				saved.getAttemptNumber(),
-				detailedResults
+				showSolutions,
+				assignment.getDueTime(),
+				saved.getAdjustedScore(),
+				saved.getAdjustReason(),
+				maskedResults
 		);
 	}
 
@@ -305,37 +319,22 @@ public class AssignmentSubmissionService {
 
 		// TC-08: Nếu bài nộp đã được chấm (SUBMITTED hoặc AUTO_SUBMITTED), giữ nguyên điểm gốc và không tạo điểm mới
 		if (submission.getStatus() == SubmissionStatus.SUBMITTED || submission.getStatus() == SubmissionStatus.AUTO_SUBMITTED) {
-			List<AssignmentSnapshotQuestionDto> snapshotQuestions = parseSnapshotQuestions(assignment.getSnapshotData());
-			List<StudentAnswerItemDto> scoredAnswers = parseAnswers(submission.getAnswersData());
-			Map<Long, StudentAnswerItemDto> answerMap = scoredAnswers.stream()
-					.filter(a -> a.questionId() != null)
-					.collect(Collectors.toMap(StudentAnswerItemDto::questionId, a -> a, (a1, a2) -> a1));
-
-			List<DetailedQuestionResultDto> detailedResults = buildDetailedResults(snapshotQuestions, answerMap);
-
-			return new SubmissionResultResponse(
-					submission.getId(),
-					assignment.getId(),
-					assignment.getTitle(),
-					assignment.getDescription(),
-					submission.getStatus(),
-					submission.getStartedAt(),
-					submission.getSubmittedAt(),
-					submission.getScore(), // Giữ nguyên điểm gốc tuyệt đối
-					assignment.getTotalPoints(),
-					submission.getAttemptNumber(),
-					detailedResults
-			);
+			return toSubmissionResultResponse(submission, assignment, studentId, false, false);
 		}
 
 		throw new ApiException(ApiErrorCode.SUBMISSION_NOT_IN_PROGRESS, "Bài làm chưa được nộp nên không thể chấm lại");
 	}
 
 	/**
-	 * Xem chi tiết kết quả bài đã nộp kèm đáp án đúng và giải thích (QTN-02).
+	 * Xem chi tiết kết quả bài đã nộp kèm đáp án đúng và giải thích (QTN-02, TC-01, TC-02, TC-03, TC-04, TC-05).
 	 */
 	@Transactional(readOnly = true)
 	public SubmissionResultResponse getSubmissionResult(Long userId, Long assignmentId) {
+		return getSubmissionResult(userId, assignmentId, null);
+	}
+
+	@Transactional(readOnly = true)
+	public SubmissionResultResponse getSubmissionResult(Long userId, Long assignmentId, Long targetStudentId) {
 		AssignmentEntity assignment = assignmentRepository.findById(assignmentId)
 				.orElseThrow(() -> new ApiException(ApiErrorCode.ASSIGNMENT_NOT_FOUND));
 
@@ -343,21 +342,101 @@ public class AssignmentSubmissionService {
 		boolean isAdmin = userRoleRepository.existsByUser_IdAndRole_Code(userId, RoleCode.ADMIN);
 		boolean isTeacherOwner = classroom.getTeacher().getId().equals(userId);
 
-		// Nếu không phải giáo viên phụ trách hoặc admin -> bắt buộc là học sinh sở hữu (QTN-02)
-		Long targetStudentId = userId;
-		if (isTeacherOwner || isAdmin) {
-			// Giáo viên có thể xem bài của học sinh nếu truyền vào context hoặc xem submission mặc định
-		} else {
+		Long studentIdToQuery = (targetStudentId != null) ? targetStudentId : userId;
+
+		// QTN-02 / TC-05: Nếu người gọi không phải học sinh sở hữu, không phải giáo viên phụ trách, không phải admin -> từ chối
+		if (!userId.equals(studentIdToQuery) && !isTeacherOwner && !isAdmin) {
+			throw new ApiException(ApiErrorCode.FORBIDDEN, "Bạn không có quyền xem bài nộp của học sinh khác");
+		}
+
+		if (!isTeacherOwner && !isAdmin) {
 			verifyStudentMembership(classroom.getId(), userId);
 		}
 
 		AssignmentSubmissionEntity submission = submissionRepository
-				.findFirstByAssignment_IdAndStudent_IdOrderByAttemptNumberDesc(assignmentId, targetStudentId)
+				.findFirstByAssignment_IdAndStudent_IdOrderByAttemptNumberDesc(assignmentId, studentIdToQuery)
 				.orElseThrow(() -> new ApiException(ApiErrorCode.SUBMISSION_NOT_FOUND));
 
 		if (submission.getStatus() == SubmissionStatus.IN_PROGRESS) {
 			throw new ApiException(ApiErrorCode.SUBMISSION_NOT_IN_PROGRESS, "Bài làm đang trong quá trình thực hiện, chưa có kết quả chấm điểm");
 		}
+
+		return toSubmissionResultResponse(submission, assignment, userId, isTeacherOwner, isAdmin);
+	}
+
+	/**
+	 * Xem chi tiết kết quả bài nộp theo mã bài nộp trực tiếp (TC-05 / QTN-02).
+	 */
+	@Transactional(readOnly = true)
+	public SubmissionResultResponse getSubmissionResultById(Long userId, Long submissionId) {
+		AssignmentSubmissionEntity submission = submissionRepository.findById(submissionId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.SUBMISSION_NOT_FOUND));
+
+		AssignmentEntity assignment = submission.getAssignment();
+		ClassEntity classroom = assignment.getClassroom();
+		boolean isAdmin = userRoleRepository.existsByUser_IdAndRole_Code(userId, RoleCode.ADMIN);
+		boolean isTeacherOwner = classroom.getTeacher().getId().equals(userId);
+		boolean isOwner = submission.getStudent().getId().equals(userId);
+
+		// QTN-02 / TC-05: Học sinh chỉ xem dữ liệu của mình. Mở bài thuộc học sinh khác bằng link trực tiếp -> từ chối
+		if (!isOwner && !isTeacherOwner && !isAdmin) {
+			throw new ApiException(ApiErrorCode.FORBIDDEN, "Bạn không có quyền xem bài nộp của học sinh khác");
+		}
+
+		if (submission.getStatus() == SubmissionStatus.IN_PROGRESS) {
+			throw new ApiException(ApiErrorCode.SUBMISSION_NOT_IN_PROGRESS, "Bài làm đang trong quá trình thực hiện, chưa có kết quả chấm điểm");
+		}
+
+		return toSubmissionResultResponse(submission, assignment, userId, isTeacherOwner, isAdmin);
+	}
+
+	/**
+	 * Giáo viên điều chỉnh điểm số của bài nộp kèm lý do minh bạch (TC-04, QTN-13).
+	 */
+	@Transactional
+	public SubmissionResultResponse adjustScore(Long userId, Long submissionId, AdjustScoreRequest request) {
+		AssignmentSubmissionEntity submission = submissionRepository.findById(submissionId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.SUBMISSION_NOT_FOUND));
+
+		AssignmentEntity assignment = submission.getAssignment();
+		ClassEntity classroom = assignment.getClassroom();
+		boolean isAdmin = userRoleRepository.existsByUser_IdAndRole_Code(userId, RoleCode.ADMIN);
+		boolean isTeacherOwner = classroom.getTeacher().getId().equals(userId);
+
+		if (!isTeacherOwner && !isAdmin) {
+			throw new ApiException(ApiErrorCode.FORBIDDEN, "Chỉ giáo viên phụ trách lớp hoặc Quản trị viên mới có quyền điều chỉnh điểm");
+		}
+
+		submission.adjustScore(request.adjustedScore(), request.reason());
+		AssignmentSubmissionEntity saved = submissionRepository.save(submission);
+
+		UserEntity user = userRepository.findById(userId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.UNAUTHORIZED));
+
+		auditLogService.record(
+				user,
+				"ADJUST_SUBMISSION_SCORE",
+				"ASSIGNMENT_SUBMISSION",
+				saved.getId().toString(),
+				"Giáo viên " + user.getEmail() + " đã điều chỉnh điểm bài nộp của học sinh "
+						+ submission.getStudent().getEmail() + " từ " + submission.getScore() + " thành "
+						+ request.adjustedScore() + " (Lý do: " + request.reason() + ")"
+		);
+
+		return toSubmissionResultResponse(saved, assignment, userId, isTeacherOwner, isAdmin);
+	}
+
+	private SubmissionResultResponse toSubmissionResultResponse(
+			AssignmentSubmissionEntity submission,
+			AssignmentEntity assignment,
+			Long userId,
+			boolean isTeacherOwner,
+			boolean isAdmin
+	) {
+		boolean isTeacherOrAdmin = isTeacherOwner || isAdmin;
+		Instant dueTime = assignment.getDueTime();
+		boolean isPastDue = (dueTime == null) || !Instant.now().isBefore(dueTime);
+		boolean showSolutions = isTeacherOrAdmin || isPastDue;
 
 		List<AssignmentSnapshotQuestionDto> snapshotQuestions = parseSnapshotQuestions(assignment.getSnapshotData());
 		List<StudentAnswerItemDto> scoredAnswers = parseAnswers(submission.getAnswersData());
@@ -365,7 +444,7 @@ public class AssignmentSubmissionService {
 				.filter(a -> a.questionId() != null)
 				.collect(Collectors.toMap(StudentAnswerItemDto::questionId, a -> a, (a1, a2) -> a1));
 
-		List<DetailedQuestionResultDto> detailedResults = buildDetailedResults(snapshotQuestions, answerMap);
+		List<DetailedQuestionResultDto> detailedResults = buildDetailedResults(snapshotQuestions, answerMap, showSolutions);
 
 		return new SubmissionResultResponse(
 				submission.getId(),
@@ -378,6 +457,10 @@ public class AssignmentSubmissionService {
 				submission.getScore(),
 				assignment.getTotalPoints(),
 				submission.getAttemptNumber(),
+				showSolutions,
+				dueTime,
+				submission.getAdjustedScore(),
+				submission.getAdjustReason(),
 				detailedResults
 		);
 	}
@@ -658,6 +741,14 @@ public class AssignmentSubmissionService {
 			List<AssignmentSnapshotQuestionDto> snapshotQuestions,
 			Map<Long, StudentAnswerItemDto> answerMap
 	) {
+		return buildDetailedResults(snapshotQuestions, answerMap, true);
+	}
+
+	private List<DetailedQuestionResultDto> buildDetailedResults(
+			List<AssignmentSnapshotQuestionDto> snapshotQuestions,
+			Map<Long, StudentAnswerItemDto> answerMap,
+			boolean showSolutions
+	) {
 		List<DetailedQuestionResultDto> results = new ArrayList<>();
 		for (AssignmentSnapshotQuestionDto q : snapshotQuestions) {
 			BigDecimal questionPoints = q.points() != null ? q.points() : BigDecimal.ZERO;
@@ -667,18 +758,29 @@ public class AssignmentSubmissionService {
 			Long selectedOptId = ans != null ? ans.selectedOptionId() : null;
 			String textAns = ans != null ? ans.textAnswer() : null;
 
+			// Anti-cheating (TC-02, TC-03): Khi chưa hết hạn nộp bài, che đáp án đúng và lời giải
+			String explanation = showSolutions ? q.explanation() : null;
+			String payload = showSolutions ? q.payload() : null;
+
+			List<AssignmentSnapshotOptionDto> options = q.options();
+			if (!showSolutions && options != null) {
+				options = options.stream()
+						.map(opt -> new AssignmentSnapshotOptionDto(opt.id(), opt.content(), false, opt.sortOrder()))
+						.toList();
+			}
+
 			results.add(new DetailedQuestionResultDto(
 					q.questionId(),
 					q.type(),
 					q.content(),
-					q.explanation(),
+					explanation,
 					questionPoints,
 					pointsEarned,
 					isCorrect,
 					selectedOptId,
 					textAns,
-					q.payload(),
-					q.options()
+					payload,
+					options
 			));
 		}
 		return results;

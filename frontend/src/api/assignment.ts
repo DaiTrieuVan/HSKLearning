@@ -125,3 +125,80 @@ export async function getAssignmentDetail(
 
   return data as AssignmentDetailItem
 }
+
+export type StudentAssignmentStatus = 'UPCOMING' | 'NOT_STARTED' | 'IN_PROGRESS' | 'SUBMITTED' | 'OVERDUE'
+
+export interface StudentAssignmentItem {
+  id: number
+  exerciseId: number
+  classId: number
+  className: string
+  title: string
+  description?: string
+  startTime: string
+  dueTime: string
+  totalPoints: number
+  questionCount: number
+  studentStatus: StudentAssignmentStatus
+  canStart: boolean
+  submissionId?: number | null
+  submittedAt?: string | null
+  score?: number | null
+}
+
+export interface StudentAssignmentDetailItem extends StudentAssignmentItem {
+  teacherId: number
+  teacherName: string
+  questions: AssignmentSnapshotQuestion[]
+}
+
+export async function getStudentAssignmentsForClass(
+  classId: number,
+  token: string
+): Promise<StudentAssignmentItem[]> {
+  const response = await fetch(`${API_BASE}/classes/${classId}/student`, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  const data = await response.json().catch(() => null)
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'UNKNOWN_ERROR',
+      data?.message || 'Không thể tải danh sách bài tập của bạn',
+      data?.fields
+    )
+  }
+
+  return (data || []) as StudentAssignmentItem[]
+}
+
+export async function getStudentAssignmentDetail(
+  id: number,
+  token: string
+): Promise<StudentAssignmentDetailItem> {
+  const response = await fetch(`${API_BASE}/${id}/student`, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  const data = await response.json().catch(() => null)
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'UNKNOWN_ERROR',
+      data?.message || 'Không thể tải chi tiết bài tập được giao',
+      data?.fields
+    )
+  }
+
+  return data as StudentAssignmentDetailItem
+}
+

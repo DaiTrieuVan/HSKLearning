@@ -8,6 +8,8 @@ import com.hsk.assignment.dto.AssignmentResponse;
 import com.hsk.assignment.service.AssignmentService;
 import com.hsk.common.api.ApiErrorCode;
 import com.hsk.common.api.ApiException;
+import com.hsk.assignment.dto.StudentAssignmentDetailResponse;
+import com.hsk.assignment.dto.StudentAssignmentResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -24,7 +26,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Controller xử lý các yêu cầu Giao bài tập cho lớp (HTT-06-CN-001).
+ * Controller xử lý các yêu cầu Giao bài tập cho lớp (HTT-06-CN-001)
+ * và Học sinh xem bài tập được giao (HTT-06-CN-002).
  */
 @RestController
 @RequestMapping("/api/assignments")
@@ -89,6 +92,36 @@ public class AssignmentController {
 	) {
 		UserEntity user = requireUser(principal);
 		AssignmentDetailResponse response = assignmentService.getAssignmentDetail(user.getId(), id);
+		return ResponseEntity.ok(response);
+	}
+
+	@GetMapping("/classes/{classId}/student")
+	@PreAuthorize("isAuthenticated()")
+	@Operation(
+			summary = "HTT-06-CN-002 — Học sinh xem danh sách bài tập được giao",
+			description = "Hiển thị danh sách bài tập kèm hạn nộp và trạng thái cá nhân: chưa làm, đã nộp, quá hạn, chưa mở (QTN-02, QTN-18)."
+	)
+	public ResponseEntity<List<StudentAssignmentResponse>> getStudentAssignmentsForClass(
+			@PathVariable("classId") Long classId,
+			Principal principal
+	) {
+		UserEntity user = requireUser(principal);
+		List<StudentAssignmentResponse> responses = assignmentService.getStudentAssignmentsForClass(user.getId(), classId);
+		return ResponseEntity.ok(responses);
+	}
+
+	@GetMapping("/{id}/student")
+	@PreAuthorize("isAuthenticated()")
+	@Operation(
+			summary = "HTT-06-CN-002 — Học sinh xem chi tiết bài tập được giao",
+			description = "Xem chi tiết bài tập được giao. Ẩn nội dung câu hỏi nếu bài tập chưa đến giờ mở (TC-03), từ chối nếu không thuộc lớp (TC-05)."
+	)
+	public ResponseEntity<StudentAssignmentDetailResponse> getStudentAssignmentDetail(
+			@PathVariable("id") Long id,
+			Principal principal
+	) {
+		UserEntity user = requireUser(principal);
+		StudentAssignmentDetailResponse response = assignmentService.getStudentAssignmentDetail(user.getId(), id);
 		return ResponseEntity.ok(response);
 	}
 }

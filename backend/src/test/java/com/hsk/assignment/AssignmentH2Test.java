@@ -166,6 +166,9 @@ class AssignmentH2Test {
 	private AssignmentRepository assignmentRepository;
 
 	@Autowired
+	private com.hsk.assignment.repository.AssignmentSubmissionRepository assignmentSubmissionRepository;
+
+	@Autowired
 	private AssignmentService assignmentService;
 
 	private String teacherToken;
@@ -260,6 +263,7 @@ class AssignmentH2Test {
 
 	private void cleanDatabase() {
 		questionService.clearUsedInExerciseQuestionIds();
+		assignmentSubmissionRepository.deleteAll();
 		assignmentRepository.deleteAll();
 		exerciseQuestionRepository.deleteAll();
 		exerciseRepository.deleteAll();

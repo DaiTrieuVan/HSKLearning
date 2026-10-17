@@ -209,6 +209,12 @@ public enum ApiErrorCode {
 	/** HTT-06-CN-001: Assignment not found. */
 	ASSIGNMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy lần giao bài"),
 
+	/** HTT-06-CN-009 / TC-03 & QTN-21: Cannot cancel assignment when at least one student has started/submitted. */
+	ASSIGNMENT_CANNOT_CANCEL_HAS_SUBMISSIONS(HttpStatus.BAD_REQUEST, "Không thể hủy bài tập đã có học sinh làm hoặc nộp bài"),
+
+	/** HTT-06-CN-009 / TC-06: Assignment is already cancelled. */
+	ASSIGNMENT_ALREADY_CANCELLED(HttpStatus.BAD_REQUEST, "Lần giao bài này đã bị hủy trước đó"),
+
 	/** Unexpected server side failure; the client may retry. */
 	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Hệ thống đang gặp sự cố, vui lòng thử lại sau");
 

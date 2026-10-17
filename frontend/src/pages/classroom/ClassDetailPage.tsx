@@ -30,6 +30,8 @@ import {
   AlertTriangle,
   FileText,
   Play,
+  Ban,
+  Trash2,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import {
@@ -59,6 +61,7 @@ import {
 import {
   getAssignmentsForClass,
   getStudentAssignmentsForClass,
+  cancelAssignment,
   type AssignmentItem,
   type StudentAssignmentItem,
 } from '../../api/assignment'
@@ -83,10 +86,13 @@ export const ClassDetailPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
-  // Assignments state (HTT-06-CN-001 & HTT-06-CN-002)
+  // Assignments state (HTT-06-CN-001 & HTT-06-CN-002 & HTT-06-CN-009)
   const [classAssignments, setClassAssignments] = useState<AssignmentItem[]>([])
   const [studentAssignments, setStudentAssignments] = useState<StudentAssignmentItem[]>([])
   const [assignmentsLoading, setAssignmentsLoading] = useState(false)
+  const [confirmCancelAssignmentId, setConfirmCancelAssignmentId] = useState<number | null>(null)
+  const [cancellingAssignmentId, setCancellingAssignmentId] = useState<number | null>(null)
+  const [cancelAssignmentError, setCancelAssignmentError] = useState<string | null>(null)
 
   // Vocab Sets state
   const [classVocabSets, setClassVocabSets] = useState<VocabSetItem[]>([])
@@ -177,6 +183,25 @@ export const ClassDetailPage: React.FC = () => {
       // fallback
     } finally {
       setAssignmentsLoading(false)
+    }
+  }
+
+  const handleConfirmCancelAssignment = async (assignmentId: number) => {
+    if (!user) return
+    try {
+      setCancellingAssignmentId(assignmentId)
+      setCancelAssignmentError(null)
+      await cancelAssignment(assignmentId, user.token)
+      setConfirmCancelAssignmentId(null)
+      await loadClassAssignments()
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setCancelAssignmentError(err.message)
+      } else {
+        setCancelAssignmentError('Không thể hủy lần giao bài này. Vui lòng thử lại.')
+      }
+    } finally {
+      setCancellingAssignmentId(null)
     }
   }
 
@@ -835,88 +860,232 @@ export const ClassDetailPage: React.FC = () => {
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   {classAssignments.map((a) => {
+                    const isCancelled = a.status === 'CANCELLED'
                     const isClosed = a.status === 'CLOSED'
                     const isScheduled = a.status === 'SCHEDULED'
+                    const isConfirming = confirmCancelAssignmentId === a.id
+                    const isCancelling = cancellingAssignmentId === a.id
+
                     return (
                       <div
                         key={a.id}
                         style={{
-                          padding: '18px 20px',
                           borderRadius: 'var(--radius-md)',
-                          border: '1.5px solid #e2e8f0',
-                          backgroundColor: '#ffffff',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          flexWrap: 'wrap',
-                          gap: '16px',
+                          border: isCancelled ? '1.5px dashed #cbd5e1' : '1.5px solid #e2e8f0',
+                          backgroundColor: isCancelled ? '#f8fafc' : '#ffffff',
+                          opacity: isCancelled ? 0.75 : 1,
+                          overflow: 'hidden',
                         }}
                       >
-                        <div style={{ flex: 1, minWidth: '260px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                            <span
+                        <div
+                          style={{
+                            padding: '18px 20px',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            flexWrap: 'wrap',
+                            gap: '16px',
+                          }}
+                        >
+                          <div style={{ flex: 1, minWidth: '260px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                              <span
+                                style={{
+                                  fontSize: '0.72rem',
+                                  fontWeight: 800,
+                                  padding: '2px 8px',
+                                  borderRadius: 'var(--radius-full)',
+                                  backgroundColor: isCancelled ? '#fef2f2' : isClosed ? '#f1f5f9' : isScheduled ? '#fffbeb' : '#ecfdf5',
+                                  color: isCancelled ? '#b91c1c' : isClosed ? '#64748b' : isScheduled ? '#b45309' : '#047857',
+                                  border: `1px solid ${isCancelled ? '#fecaca' : isClosed ? '#cbd5e1' : isScheduled ? '#fde68a' : '#a7f3d0'}`,
+                                }}
+                              >
+                                {isCancelled ? 'ĐÃ HỦY GIAO' : isClosed ? 'ĐÃ HẾT HẠN' : isScheduled ? 'SẮP DIỄN RA' : 'ĐANG MỞ LÀM BÀI'}
+                              </span>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                Mã đợt #{a.id}
+                              </span>
+                            </div>
+
+                            <h4
                               style={{
-                                fontSize: '0.72rem',
+                                margin: '0 0 6px',
+                                fontSize: '1.05rem',
                                 fontWeight: 800,
-                                padding: '2px 8px',
-                                borderRadius: 'var(--radius-full)',
-                                backgroundColor: isClosed ? '#f1f5f9' : isScheduled ? '#fffbeb' : '#ecfdf5',
-                                color: isClosed ? '#64748b' : isScheduled ? '#b45309' : '#047857',
-                                border: `1px solid ${isClosed ? '#cbd5e1' : isScheduled ? '#fde68a' : '#a7f3d0'}`,
+                                color: isCancelled ? 'var(--text-muted)' : 'var(--text-main)',
+                                textDecoration: isCancelled ? 'line-through' : 'none',
                               }}
                             >
-                              {isClosed ? 'ĐÃ HẾT HẠN' : isScheduled ? 'SẮP DIỄN RA' : 'ĐANG MỞ LÀM BÀI'}
-                            </span>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                              Mã đợt #{a.id}
-                            </span>
-                          </div>
+                              {a.title}
+                            </h4>
 
-                          <h4 style={{ margin: '0 0 6px', fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-main)' }}>
-                            {a.title}
-                          </h4>
+                            {a.description && (
+                              <p style={{ margin: '0 0 8px', fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                                {a.description}
+                              </p>
+                            )}
 
-                          {a.description && (
-                            <p style={{ margin: '0 0 8px', fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
-                              {a.description}
-                            </p>
-                          )}
-
-                          <div
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '16px',
-                              fontSize: '0.8rem',
-                              color: 'var(--text-muted)',
-                              flexWrap: 'wrap',
-                            }}
-                          >
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <Calendar size={14} />
-                              <span>Bắt đầu: {new Date(a.startTime).toLocaleString('vi-VN')}</span>
-                            </span>
-                            <span
+                            <div
                               style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '4px',
-                                color: isClosed ? '#ef4444' : '#b45309',
-                                fontWeight: 700,
+                                gap: '16px',
+                                fontSize: '0.8rem',
+                                color: 'var(--text-muted)',
+                                flexWrap: 'wrap',
                               }}
                             >
-                              <Clock size={14} />
-                              <span>Hạn nộp: {new Date(a.dueTime).toLocaleString('vi-VN')}</span>
-                            </span>
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <Calendar size={14} />
+                                <span>Bắt đầu: {new Date(a.startTime).toLocaleString('vi-VN')}</span>
+                              </span>
+                              <span
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  color: isCancelled ? 'var(--text-muted)' : isClosed ? '#ef4444' : '#b45309',
+                                  fontWeight: 700,
+                                }}
+                              >
+                                <Clock size={14} />
+                                <span>Hạn nộp: {new Date(a.dueTime).toLocaleString('vi-VN')}</span>
+                              </span>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                            <div style={{ textAlign: 'right' }}>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{a.questionCount} câu hỏi</div>
+                              <div style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--primary)' }}>{a.totalPoints} điểm</div>
+                            </div>
+
+                            {!isCancelled && (
+                              <button
+                                id={`btn-cancel-assignment-${a.id}`}
+                                type="button"
+                                onClick={() => {
+                                  setCancelAssignmentError(null)
+                                  setConfirmCancelAssignmentId(isConfirming ? null : a.id)
+                                }}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  padding: '7px 12px',
+                                  borderRadius: 'var(--radius-md)',
+                                  border: '1px solid #fee2e2',
+                                  backgroundColor: '#fff1f2',
+                                  color: '#e11d48',
+                                  fontSize: '0.78rem',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease',
+                                }}
+                                title="Hủy lần giao bài này"
+                              >
+                                <Ban size={14} />
+                                <span>Hủy giao bài</span>
+                              </button>
+                            )}
                           </div>
                         </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{a.questionCount} câu hỏi</div>
-                            <div style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--primary)' }}>{a.totalPoints} điểm</div>
+                        {/* Inline confirmation accordion block - Tuân thủ NO MODAL constraint */}
+                        {isConfirming && (
+                          <div
+                            id={`inline-cancel-confirm-${a.id}`}
+                            style={{
+                              padding: '14px 20px',
+                              backgroundColor: '#fff7ed',
+                              borderTop: '1px solid #ffedd5',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '10px',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', color: '#c2410c', fontSize: '0.85rem' }}>
+                              <AlertTriangle size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
+                              <div>
+                                <strong>Xác nhận hủy lần giao bài này?</strong>
+                                <div style={{ fontSize: '0.78rem', marginTop: '2px', color: '#9a3412', lineHeight: 1.4 }}>
+                                  Hệ thống sẽ chuyển trạng thái sang <strong>CANCELLED</strong> và ẩn bài khỏi danh sách của học sinh.
+                                  Lưu ý: Chỉ hủy được khi chưa có học sinh nào làm hoặc nộp bài (QTN-21).
+                                </div>
+                              </div>
+                            </div>
+
+                            {cancelAssignmentError && (
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  color: '#b91c1c',
+                                  fontSize: '0.8rem',
+                                  backgroundColor: '#fef2f2',
+                                  padding: '6px 10px',
+                                  borderRadius: 'var(--radius-sm)',
+                                  border: '1px solid #fecaca',
+                                }}
+                              >
+                                <AlertCircle size={14} />
+                                <span>{cancelAssignmentError}</span>
+                              </div>
+                            )}
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '2px' }}>
+                              <button
+                                id={`btn-confirm-cancel-${a.id}`}
+                                type="button"
+                                disabled={isCancelling}
+                                onClick={() => handleConfirmCancelAssignment(a.id)}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  padding: '6px 14px',
+                                  borderRadius: 'var(--radius-sm)',
+                                  border: 'none',
+                                  backgroundColor: '#dc2626',
+                                  color: '#ffffff',
+                                  fontSize: '0.78rem',
+                                  fontWeight: 700,
+                                  cursor: isCancelling ? 'not-allowed' : 'pointer',
+                                  opacity: isCancelling ? 0.7 : 1,
+                                }}
+                              >
+                                {isCancelling ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                                <span>{isCancelling ? 'Đang hủy...' : 'Đồng ý hủy'}</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                disabled={isCancelling}
+                                onClick={() => {
+                                  setConfirmCancelAssignmentId(null)
+                                  setCancelAssignmentError(null)
+                                }}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  padding: '6px 12px',
+                                  borderRadius: 'var(--radius-sm)',
+                                  border: '1px solid #cbd5e1',
+                                  backgroundColor: '#ffffff',
+                                  color: 'var(--text-muted)',
+                                  fontSize: '0.78rem',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                <X size={14} />
+                                <span>Giữ lại bài</span>
+                              </button>
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </div>
                     )
                   })}

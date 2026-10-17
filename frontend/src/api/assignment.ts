@@ -298,6 +298,10 @@ export interface SubmissionResultData {
   score: number
   maxScore: number
   attemptNumber: number
+  showSolutions?: boolean
+  dueTime?: string | null
+  adjustedScore?: number | null
+  adjustReason?: string | null
   questions: DetailedQuestionResult[]
 }
 
@@ -398,6 +402,31 @@ export async function getSubmissionResult(
       response.status,
       data?.code || 'UNKNOWN_ERROR',
       data?.message || 'Không thể tải kết quả bài làm',
+      data?.fields
+    )
+  }
+
+  return data as SubmissionResultData
+}
+
+export async function getSubmissionResultById(
+  submissionId: number,
+  token: string
+): Promise<SubmissionResultData> {
+  const response = await fetch(`${API_BASE}/submissions/${submissionId}`, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  const data = await response.json().catch(() => null)
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'UNKNOWN_ERROR',
+      data?.message || 'Không thể xem chi tiết bài nộp',
       data?.fields
     )
   }

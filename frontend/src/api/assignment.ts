@@ -282,6 +282,8 @@ export interface DetailedQuestionResult {
   pointsEarned: number
   isCorrect: boolean
   selectedOptionId?: number | null
+  studentTextAnswer?: string | null
+  payload?: string | null
   options: AssignmentSnapshotOption[]
 }
 

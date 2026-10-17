@@ -111,4 +111,19 @@ public class AssignmentSubmissionController {
 		SubmissionResultResponse response = submissionService.getSubmissionResult(user.getId(), id);
 		return ResponseEntity.ok(response);
 	}
+
+	@PostMapping("/{id}/regrade")
+	@PreAuthorize("isAuthenticated()")
+	@Operation(
+			summary = "HTT-06-CN-004 — Chấm lại bài nộp đã hoàn tất (Idempotent)",
+			description = "Kiểm tra và giữ nguyên điểm gốc, không tạo điểm mới nếu bài đã chấm (TC-08)."
+	)
+	public ResponseEntity<SubmissionResultResponse> regradeSubmission(
+			@PathVariable("id") Long id,
+			Principal principal
+	) {
+		UserEntity user = requireUser(principal);
+		SubmissionResultResponse response = submissionService.regradeSubmission(user.getId(), id);
+		return ResponseEntity.ok(response);
+	}
 }

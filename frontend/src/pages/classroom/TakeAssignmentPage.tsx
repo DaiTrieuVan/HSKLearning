@@ -24,7 +24,43 @@ import {
   Check,
   X,
   AlertTriangle,
+  RotateCcw,
+  Link2,
 } from 'lucide-react'
+
+interface MatchingPair {
+  left: string
+  right: string
+}
+
+function parseMatchingPayload(payload?: string | null): MatchingPair[] {
+  if (!payload) return []
+  try {
+    const parsed = JSON.parse(payload)
+    if (parsed.pairs && Array.isArray(parsed.pairs)) return parsed.pairs
+  } catch {}
+  return []
+}
+
+function parseOrderingPayload(payload?: string | null): string[] {
+  if (!payload) return []
+  try {
+    const parsed = JSON.parse(payload)
+    if (parsed.correctOrder && Array.isArray(parsed.correctOrder)) return parsed.correctOrder
+  } catch {}
+  return []
+}
+
+function parseFillBlankPayload(payload?: string | null): { correctAnswer: string; acceptableAnswers?: string[] } | null {
+  if (!payload) return null
+  try {
+    const parsed = JSON.parse(payload)
+    if (parsed.blanks && Array.isArray(parsed.blanks) && parsed.blanks.length > 0) {
+      return parsed.blanks[0]
+    }
+  } catch {}
+  return null
+}
 
 export const TakeAssignmentPage: React.FC = () => {
   const { classId, assignmentId } = useParams<{ classId: string; assignmentId: string }>()
@@ -40,8 +76,14 @@ export const TakeAssignmentPage: React.FC = () => {
   // Current active question index (0-indexed)
   const [currentIndex, setCurrentIndex] = useState(0)
 
-  // Map questionId -> selectedOptionId
-  const [answers, setAnswers] = useState<Record<number, number>>({})
+  // Lưu đáp án trắc nghiệm (MCQ): questionId -> selectedOptionId
+  const [selectedOptions, setSelectedOptions] = useState<Record<number, number>>({})
+
+  // Lưu đáp án text (FILL, MATCH, ORDER): questionId -> textAnswer
+  const [textAnswers, setTextAnswers] = useState<Record<number, string>>({})
+
+  // Trạng thái tạm thời khi thao tác nối cặp (MATCH)
+  const [selectedMatchLeft, setSelectedMatchLeft] = useState<string | null>(null)
 
   // Auto-save feedback
   const [lastSavedTime, setLastSavedTime] = useState<string | null>(null)
@@ -52,7 +94,7 @@ export const TakeAssignmentPage: React.FC = () => {
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null)
   const timerIntervalRef = useRef<number | null>(null)
 
-  // Inline submit warning (TC-03: No modals!)
+  // Inline submit warning (No modals!)
   const [showUnansweredWarning, setShowUnansweredWarning] = useState(false)
 
   // 1. Initial Load: Call takeAssignment
@@ -72,15 +114,22 @@ export const TakeAssignmentPage: React.FC = () => {
           setResultData(res)
         } else {
           // Khôi phục câu trả lời nháp đã lưu
-          const initialMap: Record<number, number> = {}
+          const initialOpts: Record<number, number> = {}
+          const initialTexts: Record<number, string> = {}
           if (data.savedAnswers && data.savedAnswers.length > 0) {
             data.savedAnswers.forEach((a) => {
-              if (a.questionId && a.selectedOptionId) {
-                initialMap[a.questionId] = a.selectedOptionId
+              if (a.questionId) {
+                if (a.selectedOptionId) {
+                  initialOpts[a.questionId] = a.selectedOptionId
+                }
+                if (a.textAnswer) {
+                  initialTexts[a.questionId] = a.textAnswer
+                }
               }
             })
           }
-          setAnswers(initialMap)
+          setSelectedOptions(initialOpts)
+          setTextAnswers(initialTexts)
 
           // Khởi tạo đếm ngược theo dueTime
           const nowMs = Date.now()
@@ -107,7 +156,6 @@ export const TakeAssignmentPage: React.FC = () => {
     if (remainingSeconds === null || assignmentData?.status !== 'IN_PROGRESS') return
 
     if (remainingSeconds <= 0) {
-      // Hết giờ -> Tự động nộp bài (TC-05 / QTN-20)
       handleAutoSubmitOnTimeout()
       return
     }
@@ -128,7 +176,19 @@ export const TakeAssignmentPage: React.FC = () => {
     }
   }, [remainingSeconds, assignmentData?.status])
 
-  // 3. Auto-Submit on Timeout
+  const buildAnswerPayload = (
+    currentOpts = selectedOptions,
+    currentTexts = textAnswers
+  ): StudentAnswerItem[] => {
+    if (!assignmentData) return []
+    return assignmentData.questions.map((q) => ({
+      questionId: q.questionId,
+      selectedOptionId: currentOpts[q.questionId] || null,
+      textAnswer: currentTexts[q.questionId] || null,
+    }))
+  }
+
+  // Auto-Submit on Timeout
   const handleAutoSubmitOnTimeout = async () => {
     if (!user || !assignmentId || submitting) return
     try {
@@ -146,34 +206,15 @@ export const TakeAssignmentPage: React.FC = () => {
     }
   }
 
-  // 4. Select Option & Trigger Debounced Auto-Save
-  const handleSelectOption = (questionId: number, optionId: number) => {
-    if (assignmentData?.status !== 'IN_PROGRESS') return
-
-    const updated = { ...answers, [questionId]: optionId }
-    setAnswers(updated)
-    setShowUnansweredWarning(false)
-
-    // Debounce save draft
-    if (saveTimeoutRef.current) window.clearTimeout(saveTimeoutRef.current)
-    saveTimeoutRef.current = window.setTimeout(() => {
-      triggerSaveDraft(updated)
-    }, 800)
-  }
-
-  const buildAnswerPayload = (currentAnswersMap = answers): StudentAnswerItem[] => {
-    if (!assignmentData) return []
-    return assignmentData.questions.map((q) => ({
-      questionId: q.questionId,
-      selectedOptionId: currentAnswersMap[q.questionId] || null,
-    }))
-  }
-
-  const triggerSaveDraft = async (answersMap: Record<number, number>) => {
+  // Debounced auto-save draft
+  const triggerSaveDraft = async (
+    opts: Record<number, number>,
+    texts: Record<number, string>
+  ) => {
     if (!user || !assignmentId || assignmentData?.status !== 'IN_PROGRESS') return
     try {
       setSavingDraft(true)
-      const payload = buildAnswerPayload(answersMap)
+      const payload = buildAnswerPayload(opts, texts)
       await saveDraftAnswers(Number(assignmentId), payload, user.token)
       const now = new Date()
       setLastSavedTime(
@@ -189,13 +230,103 @@ export const TakeAssignmentPage: React.FC = () => {
     }
   }
 
-  // 5. Submit Handler
+  const queueAutoSave = (opts: Record<number, number>, texts: Record<number, string>) => {
+    if (saveTimeoutRef.current) window.clearTimeout(saveTimeoutRef.current)
+    saveTimeoutRef.current = window.setTimeout(() => {
+      triggerSaveDraft(opts, texts)
+    }, 800)
+  }
+
+  // Handlers for Question Types
+  const handleSelectOption = (questionId: number, optionId: number) => {
+    if (assignmentData?.status !== 'IN_PROGRESS') return
+    const updated = { ...selectedOptions, [questionId]: optionId }
+    setSelectedOptions(updated)
+    setShowUnansweredWarning(false)
+    queueAutoSave(updated, textAnswers)
+  }
+
+  const handleTextAnswerChange = (questionId: number, val: string) => {
+    if (assignmentData?.status !== 'IN_PROGRESS') return
+    const updated = { ...textAnswers, [questionId]: val }
+    setTextAnswers(updated)
+    setShowUnansweredWarning(false)
+    queueAutoSave(selectedOptions, updated)
+  }
+
+  // Matching pair handler
+  const handleLinkMatchPair = (questionId: number, left: string, right: string) => {
+    if (assignmentData?.status !== 'IN_PROGRESS') return
+    const currentJson = textAnswers[questionId]
+    let pairs: MatchingPair[] = []
+    try {
+      if (currentJson) pairs = JSON.parse(currentJson)
+    } catch {}
+    // Loại bỏ liên kết cũ của left hoặc right
+    pairs = pairs.filter((p) => p.left !== left && p.right !== right)
+    pairs.push({ left, right })
+    const updated = { ...textAnswers, [questionId]: JSON.stringify(pairs) }
+    setTextAnswers(updated)
+    setSelectedMatchLeft(null)
+    setShowUnansweredWarning(false)
+    queueAutoSave(selectedOptions, updated)
+  }
+
+  const handleRemoveMatchPair = (questionId: number, left: string) => {
+    if (assignmentData?.status !== 'IN_PROGRESS') return
+    const currentJson = textAnswers[questionId]
+    let pairs: MatchingPair[] = []
+    try {
+      if (currentJson) pairs = JSON.parse(currentJson)
+    } catch {}
+    pairs = pairs.filter((p) => p.left !== left)
+    const updated = { ...textAnswers, [questionId]: pairs.length > 0 ? JSON.stringify(pairs) : '' }
+    setTextAnswers(updated)
+    queueAutoSave(selectedOptions, updated)
+  }
+
+  // Ordering handler
+  const handleToggleOrderingWord = (questionId: number, word: string) => {
+    if (assignmentData?.status !== 'IN_PROGRESS') return
+    const currentStr = textAnswers[questionId] || ''
+    const currentWords = currentStr ? currentStr.trim().split(/\s+/) : []
+
+    let updatedWords: string[]
+    const existingIndex = currentWords.indexOf(word)
+    if (existingIndex >= 0) {
+      // Remove word
+      updatedWords = currentWords.filter((_, idx) => idx !== existingIndex)
+    } else {
+      // Append word
+      updatedWords = [...currentWords, word]
+    }
+
+    const updated = { ...textAnswers, [questionId]: updatedWords.join(' ') }
+    setTextAnswers(updated)
+    setShowUnansweredWarning(false)
+    queueAutoSave(selectedOptions, updated)
+  }
+
+  const handleResetOrdering = (questionId: number) => {
+    if (assignmentData?.status !== 'IN_PROGRESS') return
+    const updated = { ...textAnswers, [questionId]: '' }
+    setTextAnswers(updated)
+    queueAutoSave(selectedOptions, updated)
+  }
+
+  // Check if a question is answered
+  const isQuestionAnswered = (qId: number) => {
+    const hasOpt = !!selectedOptions[qId]
+    const hasText = !!(textAnswers[qId] && textAnswers[qId].trim().length > 0)
+    return hasOpt || hasText
+  }
+
+  // Submit Handler
   const handleInitiateSubmit = () => {
     if (!assignmentData) return
-    // TC-03: Kiểm tra số câu chưa làm
     const totalQ = assignmentData.questions.length
-    const answeredQ = Object.values(answers).filter(Boolean).length
-    const unansweredCount = totalQ - answeredQ
+    const answeredCount = assignmentData.questions.filter((q) => isQuestionAnswered(q.questionId)).length
+    const unansweredCount = totalQ - answeredCount
 
     if (unansweredCount > 0) {
       setShowUnansweredWarning(true)
@@ -222,7 +353,7 @@ export const TakeAssignmentPage: React.FC = () => {
       if (err instanceof ApiError) {
         setError(err.message)
       } else {
-        setError('Có lỗi xảy ra khi nộp bài. Bản nháp của bạn đã được giữ an toàn. Vui lòng thử lại!')
+        setError('Không thể nộp bài. Vui lòng kiểm tra lại kết nối mạng.')
       }
     } finally {
       setSubmitting(false)
@@ -230,56 +361,63 @@ export const TakeAssignmentPage: React.FC = () => {
   }
 
   const formatTimer = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600)
-    const mins = Math.floor((seconds % 3600) / 60)
+    const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
-    if (hours > 0) {
-      return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-    }
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 
+  // =========================================================================
+  // LOADING & ERROR SCREENS
+  // =========================================================================
   if (loading) {
     return (
-      <div style={{ maxWidth: '800px', margin: '60px auto', textAlign: 'center', color: 'var(--text-muted)' }}>
-        <p style={{ fontWeight: 700, fontSize: '1rem' }}>Đang nạp bài làm, vui lòng chờ trong giây lát...</p>
+      <div style={{ maxWidth: '800px', margin: '40px auto', textAlign: 'center', padding: '60px 20px' }}>
+        <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)' }}>
+          Đang chuẩn bị đề bài và thời gian làm bài...
+        </div>
       </div>
     )
   }
 
   if (error && !assignmentData) {
     return (
-      <div style={{ maxWidth: '720px', margin: '40px auto', padding: '0 20px' }}>
+      <div style={{ maxWidth: '640px', margin: '60px auto', padding: '0 20px' }}>
         <div
           className="game-card"
           style={{
             padding: '32px',
-            backgroundColor: '#ffffff',
-            border: '2px solid #fecaca',
             textAlign: 'center',
+            backgroundColor: '#ffffff',
+            border: '1.5px solid #fecaca',
           }}
         >
-          <AlertCircle size={44} style={{ color: '#ef4444', margin: '0 auto 16px' }} />
-          <h3 style={{ margin: '0 0 8px', color: '#991b1b', fontSize: '1.2rem', fontWeight: 800 }}>
-            Không thể vào bài làm
-          </h3>
-          <p style={{ color: 'var(--text-main)', fontSize: '0.92rem', marginBottom: '24px' }}>{error}</p>
-          <button
-            type="button"
-            onClick={() => navigate(classId ? `/classes/${classId}` : '/classes')}
-            className="btn-primary"
+          <div
             style={{
-              padding: '10px 20px',
-              borderRadius: 'var(--radius-md)',
-              fontWeight: 700,
-              fontSize: '0.9rem',
-              display: 'inline-flex',
+              width: '48px',
+              height: '48px',
+              borderRadius: 'var(--radius-full)',
+              backgroundColor: '#fee2e2',
+              color: '#dc2626',
+              display: 'flex',
               alignItems: 'center',
-              gap: '6px',
+              justifyContent: 'center',
+              margin: '0 auto 16px',
             }}
           >
-            <ArrowLeft size={16} />
-            <span>Quay lại lớp học</span>
+            <AlertCircle size={24} />
+          </div>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 900, color: '#991b1b', marginBottom: '8px' }}>
+            Không thể tham gia bài tập
+          </h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem', marginBottom: '24px' }}>
+            {error}
+          </p>
+          <button
+            type="button"
+            className="game-btn game-btn-primary"
+            onClick={() => navigate(classId ? `/classes/${classId}` : '/classes')}
+          >
+            Quay lại lớp học
           </button>
         </div>
       </div>
@@ -291,105 +429,93 @@ export const TakeAssignmentPage: React.FC = () => {
   // =========================================================================
   // VIEW KẾT QUẢ ĐÃ NỘP (SUBMITTED / AUTO_SUBMITTED)
   // =========================================================================
-  if (resultData && (assignmentData.status === 'SUBMITTED' || assignmentData.status === 'AUTO_SUBMITTED')) {
-    const isAutoSubmitted = resultData.status === 'AUTO_SUBMITTED'
-    const correctCount = resultData.questions.filter((q) => q.isCorrect).length
-    const totalQ = resultData.questions.length
+  if (resultData) {
+    const isAuto = resultData.status === 'AUTO_SUBMITTED'
+    const percentage = resultData.maxScore > 0 ? Math.round((resultData.score / resultData.maxScore) * 100) : 0
 
     return (
-      <div style={{ maxWidth: '880px', margin: '0 auto', padding: '32px 20px 80px' }}>
-        {/* Banner kết quả */}
+      <div style={{ maxWidth: '920px', margin: '0 auto', padding: '32px 20px 80px' }}>
+        {/* Nút quay lại */}
+        <button
+          type="button"
+          onClick={() => navigate(classId ? `/classes/${classId}` : '/classes')}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'var(--primary)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            fontSize: '0.9rem',
+            fontWeight: 800,
+            padding: 0,
+            marginBottom: '20px',
+          }}
+        >
+          <ArrowLeft size={16} />
+          <span>Quay lại trang chi tiết lớp học</span>
+        </button>
+
+        {/* Thẻ tổng quan điểm số */}
         <div
           className="game-card"
           style={{
-            padding: '32px',
+            padding: '36px',
             backgroundColor: '#ffffff',
-            borderLeft: isAutoSubmitted ? '6px solid #f59e0b' : '6px solid var(--primary)',
+            textAlign: 'center',
             marginBottom: '28px',
+            borderTop: '6px solid var(--primary)',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                <span
-                  style={{
-                    fontSize: '0.75rem',
-                    fontWeight: 800,
-                    padding: '3px 10px',
-                    borderRadius: 'var(--radius-full)',
-                    backgroundColor: isAutoSubmitted ? '#fffbeb' : '#ecfdf5',
-                    color: isAutoSubmitted ? '#b45309' : '#047857',
-                    border: `1px solid ${isAutoSubmitted ? '#fde68a' : '#a7f3d0'}`,
-                  }}
-                >
-                  {isAutoSubmitted ? 'HỆ THỐNG TỰ ĐỘNG NỘP (HẾT GIỜ/QUÁ HẠN)' : 'ĐÃ NỘP THÀNH CÔNG'}
-                </span>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  Lượt làm #{resultData.attemptNumber}
-                </span>
-              </div>
-
-              <h1 style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--text-main)', margin: '0 0 6px' }}>
-                {resultData.title}
-              </h1>
-              {resultData.description && (
-                <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', margin: 0 }}>
-                  {resultData.description}
-                </p>
-              )}
-            </div>
-
-            {/* Khối hiển thị điểm */}
-            <div
-              style={{
-                padding: '16px 24px',
-                borderRadius: 'var(--radius-lg)',
-                backgroundColor: 'var(--primary-light)',
-                border: '2px solid var(--primary)',
-                textAlign: 'center',
-                minWidth: '140px',
-              }}
-            >
-              <div style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--primary-hover)', textTransform: 'uppercase' }}>
-                Điểm số đạt được
-              </div>
-              <div style={{ fontSize: '2.2rem', fontWeight: 900, color: 'var(--primary)', lineHeight: 1.1, margin: '4px 0' }}>
-                {resultData.score}
-              </div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 700 }}>
-                trên {resultData.maxScore} điểm ({correctCount}/{totalQ} câu đúng)
-              </div>
-            </div>
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '4px 14px',
+              borderRadius: 'var(--radius-full)',
+              fontSize: '0.8rem',
+              fontWeight: 800,
+              backgroundColor: isAuto ? '#fef3c7' : '#ecfdf5',
+              color: isAuto ? '#b45309' : '#047857',
+              marginBottom: '16px',
+            }}
+          >
+            {isAuto ? <Clock size={14} /> : <Check size={14} />}
+            <span>{isAuto ? 'ĐÃ TỰ ĐỘNG NỘP (HẾT GIỜ / QUÁ HẠN)' : 'ĐÃ NỘP BÀI THÀNH CÔNG'}</span>
           </div>
 
-          <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #f1f5f9', display: 'flex', gap: '12px' }}>
-            <button
-              type="button"
-              onClick={() => navigate(classId ? `/classes/${classId}` : '/classes')}
-              className="btn-primary"
-              style={{
-                padding: '8px 18px',
-                borderRadius: 'var(--radius-md)',
-                fontWeight: 700,
-                fontSize: '0.88rem',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-              }}
-            >
-              <ArrowLeft size={16} />
-              <span>Quay lại lớp học</span>
-            </button>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 900, color: 'var(--text-main)', marginBottom: '8px' }}>
+            {resultData.title}
+          </h1>
+
+          <div style={{ margin: '24px auto', display: 'flex', justifyContent: 'center', alignItems: 'baseline', gap: '8px' }}>
+            <span style={{ fontSize: '3.5rem', fontWeight: 900, color: 'var(--primary)', lineHeight: 1 }}>
+              {resultData.score}
+            </span>
+            <span style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+              / {resultData.maxScore} điểm ({percentage}%)
+            </span>
+          </div>
+
+          <div style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>
+            Thời điểm nộp: {new Date(resultData.submittedAt).toLocaleString('vi-VN')}
           </div>
         </div>
 
-        {/* Danh sách câu hỏi chi tiết sau chấm điểm */}
-        <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '16px' }}>
-          Chi tiết bài làm và lời giải
+        {/* Danh sách kết quả chi tiết từng câu */}
+        <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '16px' }}>
+          Chi tiết kết quả & Lời giải
         </h3>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {resultData.questions.map((q, idx) => {
+            const isMcq = !q.type || q.type === 'MCQ'
+            const isFill = q.type === 'FILL'
+            const isMatch = q.type === 'MATCH'
+            const isOrder = q.type === 'ORDER'
+
             return (
               <div
                 key={q.questionId}
@@ -397,33 +523,14 @@ export const TakeAssignmentPage: React.FC = () => {
                 style={{
                   padding: '24px',
                   backgroundColor: '#ffffff',
-                  border: q.isCorrect ? '1.5px solid #a7f3d0' : '1.5px solid #fecaca',
+                  borderLeft: `5px solid ${q.isCorrect ? '#10b981' : '#ef4444'}`,
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '28px',
-                        height: '28px',
-                        borderRadius: 'var(--radius-full)',
-                        backgroundColor: q.isCorrect ? '#d1fae5' : '#fee2e2',
-                        color: q.isCorrect ? '#047857' : '#b91c1c',
-                        fontWeight: 900,
-                        fontSize: '0.85rem',
-                      }}
-                    >
-                      {idx + 1}
-                    </span>
-                    <span style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-main)' }}>
-                      Câu hỏi {idx + 1}
-                    </span>
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--primary)' }}>
+                    Câu {idx + 1} ({q.type || 'MCQ'})
+                  </span>
+                  <div>
                     {q.isCorrect ? (
                       <span
                         style={{
@@ -456,7 +563,7 @@ export const TakeAssignmentPage: React.FC = () => {
                         }}
                       >
                         <X size={14} />
-                        <span>0 / {q.maxPoints} điểm</span>
+                        <span>{q.pointsEarned} / {q.maxPoints} điểm</span>
                       </span>
                     )}
                   </div>
@@ -475,76 +582,174 @@ export const TakeAssignmentPage: React.FC = () => {
                   {q.content}
                 </div>
 
-                {/* Các phương án */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
-                  {q.options.map((opt) => {
-                    const isSelected = q.selectedOptionId === opt.id
-                    const isCorrectOpt = opt.isCorrect
+                {/* 1. Hiển thị đáp án MCQ */}
+                {isMcq && q.options && q.options.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+                    {q.options.map((opt) => {
+                      const isSelected = q.selectedOptionId === opt.id
+                      const isCorrectOpt = opt.isCorrect
 
-                    let bgColor = '#f8fafc'
-                    let borderColor = '#e2e8f0'
-                    let textColor = 'var(--text-main)'
+                      let bgColor = '#f8fafc'
+                      let borderColor = '#e2e8f0'
+                      let textColor = 'var(--text-main)'
 
-                    if (isCorrectOpt) {
-                      bgColor = '#ecfdf5'
-                      borderColor = '#10b981'
-                      textColor = '#065f46'
-                    } else if (isSelected && !isCorrectOpt) {
-                      bgColor = '#fef2f2'
-                      borderColor = '#ef4444'
-                      textColor = '#991b1b'
-                    }
+                      if (isCorrectOpt) {
+                        bgColor = '#ecfdf5'
+                        borderColor = '#10b981'
+                        textColor = '#065f46'
+                      } else if (isSelected && !isCorrectOpt) {
+                        bgColor = '#fef2f2'
+                        borderColor = '#ef4444'
+                        textColor = '#991b1b'
+                      }
 
-                    return (
-                      <div
-                        key={opt.id}
-                        style={{
-                          padding: '12px 16px',
-                          borderRadius: 'var(--radius-md)',
-                          border: `1.5px solid ${borderColor}`,
-                          backgroundColor: bgColor,
-                          color: textColor,
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          fontSize: '0.92rem',
-                          fontWeight: isSelected || isCorrectOpt ? 700 : 500,
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <span
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              width: '20px',
-                              height: '20px',
-                              borderRadius: 'var(--radius-full)',
-                              border: `1.5px solid ${isSelected ? (isCorrectOpt ? '#10b981' : '#ef4444') : '#cbd5e1'}`,
-                              backgroundColor: isSelected ? (isCorrectOpt ? '#10b981' : '#ef4444') : '#ffffff',
-                              color: '#ffffff',
-                              fontSize: '0.72rem',
-                            }}
-                          >
-                            {isSelected && <Check size={12} />}
-                          </span>
-                          <span>{opt.content}</span>
+                      return (
+                        <div
+                          key={opt.id}
+                          style={{
+                            padding: '12px 16px',
+                            borderRadius: 'var(--radius-md)',
+                            border: `1.5px solid ${borderColor}`,
+                            backgroundColor: bgColor,
+                            color: textColor,
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            fontSize: '0.92rem',
+                            fontWeight: isSelected || isCorrectOpt ? 700 : 500,
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '20px',
+                                height: '20px',
+                                borderRadius: 'var(--radius-full)',
+                                border: `1.5px solid ${isSelected ? (isCorrectOpt ? '#10b981' : '#ef4444') : '#cbd5e1'}`,
+                                backgroundColor: isSelected ? (isCorrectOpt ? '#10b981' : '#ef4444') : '#ffffff',
+                                color: '#ffffff',
+                                fontSize: '0.72rem',
+                              }}
+                            >
+                              {isSelected && <Check size={12} />}
+                            </span>
+                            <span>{opt.content}</span>
+                          </div>
+
+                          {isCorrectOpt && (
+                            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#059669' }}>
+                              Đáp án đúng
+                            </span>
+                          )}
+                          {isSelected && !isCorrectOpt && (
+                            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#dc2626' }}>
+                              Bạn đã chọn
+                            </span>
+                          )}
                         </div>
+                      )
+                    })}
+                  </div>
+                )}
 
-                        {isCorrectOpt && (
-                          <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#059669' }}>
-                            Đáp án đúng
-                          </span>
-                        )}
-                        {isSelected && !isCorrectOpt && (
-                          <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#dc2626' }}>
-                            Bạn đã chọn
-                          </span>
-                        )}
+                {/* 2. Hiển thị đáp án FILL */}
+                {isFill && (() => {
+                  const payload = parseFillBlankPayload(q.payload)
+                  return (
+                    <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', backgroundColor: q.isCorrect ? '#ecfdf5' : '#fef2f2', border: `1px solid ${q.isCorrect ? '#86efac' : '#fca5a5'}` }}>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)' }}>Bạn đã điền: </span>
+                        <strong style={{ fontSize: '1rem', color: q.isCorrect ? '#047857' : '#b91c1c' }}>
+                          {q.studentTextAnswer ? q.studentTextAnswer : '(Chưa trả lời)'}
+                        </strong>
                       </div>
-                    )
-                  })}
-                </div>
+                      {payload && (
+                        <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#166534' }}>Đáp án đúng: </span>
+                          <strong style={{ fontSize: '1rem', color: '#15803d' }}>
+                            {payload.correctAnswer}
+                            {payload.acceptableAnswers && payload.acceptableAnswers.length > 0 && ` (chấp nhận: ${payload.acceptableAnswers.join(', ')})`}
+                          </strong>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
+
+                {/* 3. Hiển thị đáp án MATCH */}
+                {isMatch && (() => {
+                  const standardPairs = parseMatchingPayload(q.payload)
+                  let studentPairs: MatchingPair[] = []
+                  try {
+                    if (q.studentTextAnswer) studentPairs = JSON.parse(q.studentTextAnswer)
+                  } catch {}
+                  const studentMap = new Map<string, string>()
+                  studentPairs.forEach((p) => studentMap.set(p.left, p.right))
+
+                  return (
+                    <div style={{ marginBottom: '16px' }}>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '8px' }}>
+                        Kết quả đối chiếu các cặp nối:
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '10px' }}>
+                        {standardPairs.map((p) => {
+                          const studentRight = studentMap.get(p.left)
+                          const isPairCorrect = studentRight && studentRight.trim().toLowerCase() === p.right.trim().toLowerCase()
+
+                          return (
+                            <div
+                              key={p.left}
+                              style={{
+                                padding: '10px 14px',
+                                borderRadius: 'var(--radius-md)',
+                                backgroundColor: isPairCorrect ? '#ecfdf5' : '#fef2f2',
+                                border: `1.5px solid ${isPairCorrect ? '#86efac' : '#fca5a5'}`,
+                                fontSize: '0.88rem',
+                              }}
+                            >
+                              <div style={{ fontWeight: 800, color: 'var(--text-main)', marginBottom: '4px' }}>
+                                {p.left}
+                              </div>
+                              <div style={{ fontSize: '0.82rem', color: isPairCorrect ? '#047857' : '#b91c1c' }}>
+                                Bạn nối: <strong>{studentRight || '(Chưa nối)'}</strong>
+                              </div>
+                              {!isPairCorrect && (
+                                <div style={{ fontSize: '0.82rem', color: '#15803d', marginTop: '2px' }}>
+                                  Đáp án chuẩn: <strong>{p.right}</strong>
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })()}
+
+                {/* 4. Hiển thị đáp án ORDER */}
+                {isOrder && (() => {
+                  const correctOrder = parseOrderingPayload(q.payload)
+                  const studentText = q.studentTextAnswer ? q.studentTextAnswer.trim() : ''
+                  return (
+                    <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', backgroundColor: q.isCorrect ? '#ecfdf5' : '#fef2f2', border: `1px solid ${q.isCorrect ? '#86efac' : '#fca5a5'}` }}>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)' }}>Thứ tự bạn sắp xếp: </span>
+                        <strong style={{ fontSize: '1rem', color: q.isCorrect ? '#047857' : '#b91c1c' }}>
+                          {studentText || '(Chưa sắp xếp)'}
+                        </strong>
+                      </div>
+                      <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#166534' }}>Thứ tự đúng: </span>
+                        <strong style={{ fontSize: '1rem', color: '#15803d' }}>
+                          {correctOrder.join(' ')}
+                        </strong>
+                      </div>
+                    </div>
+                  )
+                })()}
 
                 {/* Giải thích chi tiết */}
                 {q.explanation && (
@@ -574,8 +779,13 @@ export const TakeAssignmentPage: React.FC = () => {
   // =========================================================================
   const currentQuestion = assignmentData.questions[currentIndex]
   const totalQuestions = assignmentData.questions.length
-  const answeredCount = Object.values(answers).filter(Boolean).length
+  const answeredCount = assignmentData.questions.filter((q) => isQuestionAnswered(q.questionId)).length
   const isTimeCritical = remainingSeconds !== null && remainingSeconds < 300 // Dưới 5 phút
+
+  const isMcq = !currentQuestion.type || currentQuestion.type === 'MCQ'
+  const isFill = currentQuestion.type === 'FILL'
+  const isMatch = currentQuestion.type === 'MATCH'
+  const isOrder = currentQuestion.type === 'ORDER'
 
   return (
     <div style={{ maxWidth: '1080px', margin: '0 auto', padding: '24px 20px 80px' }}>
@@ -703,7 +913,7 @@ export const TakeAssignmentPage: React.FC = () => {
                 borderRadius: 'var(--radius-full)',
               }}
             >
-              Câu {currentIndex + 1} / {totalQuestions}
+              Câu {currentIndex + 1} / {totalQuestions} • {currentQuestion.type || 'MCQ'}
             </span>
             <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-muted)' }}>
               {currentQuestion.points} điểm
@@ -722,53 +932,340 @@ export const TakeAssignmentPage: React.FC = () => {
             {currentQuestion.content}
           </h3>
 
-          {/* Danh sách các lựa chọn đáp án */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '32px' }}>
-            {currentQuestion.options.map((opt) => {
-              const isSelected = answers[currentQuestion.questionId] === opt.id
+          {/* 1. DẠNG TRẮC NGHIỆM (MCQ) */}
+          {isMcq && currentQuestion.options && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '32px' }}>
+              {currentQuestion.options.map((opt) => {
+                const isSelected = selectedOptions[currentQuestion.questionId] === opt.id
 
-              return (
-                <button
-                  type="button"
-                  key={opt.id}
-                  onClick={() => handleSelectOption(currentQuestion.questionId, opt.id)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '14px',
-                    padding: '16px 20px',
-                    borderRadius: 'var(--radius-md)',
-                    border: isSelected ? '2px solid var(--primary)' : '1.5px solid #e2e8f0',
-                    backgroundColor: isSelected ? 'var(--primary-light)' : '#ffffff',
-                    color: isSelected ? 'var(--primary-hover)' : 'var(--text-main)',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                    fontSize: '0.96rem',
-                    fontWeight: isSelected ? 800 : 500,
-                  }}
-                >
-                  <span
+                return (
+                  <button
+                    type="button"
+                    key={opt.id}
+                    onClick={() => handleSelectOption(currentQuestion.questionId, opt.id)}
                     style={{
-                      display: 'inline-flex',
+                      display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      width: '24px',
-                      height: '24px',
-                      borderRadius: 'var(--radius-full)',
-                      border: `2px solid ${isSelected ? 'var(--primary)' : '#cbd5e1'}`,
-                      backgroundColor: isSelected ? 'var(--primary)' : '#ffffff',
-                      color: '#ffffff',
-                      flexShrink: 0,
+                      gap: '14px',
+                      padding: '16px 20px',
+                      borderRadius: 'var(--radius-md)',
+                      border: isSelected ? '2px solid var(--primary)' : '1.5px solid #e2e8f0',
+                      backgroundColor: isSelected ? 'var(--primary-light)' : '#ffffff',
+                      color: isSelected ? 'var(--primary-hover)' : 'var(--text-main)',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      fontSize: '0.96rem',
+                      fontWeight: isSelected ? 800 : 500,
                     }}
                   >
-                    {isSelected && <Check size={14} />}
-                  </span>
-                  <span>{opt.content}</span>
-                </button>
-              )
-            })}
-          </div>
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: 'var(--radius-full)',
+                        border: `2px solid ${isSelected ? 'var(--primary)' : '#cbd5e1'}`,
+                        backgroundColor: isSelected ? 'var(--primary)' : '#ffffff',
+                        color: '#ffffff',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {isSelected && <Check size={14} />}
+                    </span>
+                    <span>{opt.content}</span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          {/* 2. DẠNG ĐIỀN TỪ (FILL) */}
+          {isFill && (
+            <div style={{ marginBottom: '32px' }}>
+              <label
+                htmlFor="fill-blank-input"
+                style={{ display: 'block', fontSize: '0.88rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '8px' }}
+              >
+                Nhập từ cần điền vào chỗ trống:
+              </label>
+              <input
+                id="fill-blank-input"
+                type="text"
+                placeholder="Nhập từ hoặc chữ Hán..."
+                value={textAnswers[currentQuestion.questionId] || ''}
+                onChange={(e) => handleTextAnswerChange(currentQuestion.questionId, e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '14px 18px',
+                  borderRadius: 'var(--radius-md)',
+                  border: '2px solid var(--primary)',
+                  fontSize: '1.1rem',
+                  fontFamily: 'inherit',
+                  outline: 'none',
+                  backgroundColor: '#ffffff',
+                  boxSizing: 'border-box',
+                }}
+              />
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '8px' }}>
+                Gợi ý: Khoảng trắng thừa ở hai đầu sẽ được hệ thống tự động làm sạch khi chấm điểm.
+              </div>
+            </div>
+          )}
+
+          {/* 3. DẠNG NỐI CẶP (MATCH) */}
+          {isMatch && (() => {
+            const pairs = parseMatchingPayload(currentQuestion.payload)
+            let studentPairs: MatchingPair[] = []
+            try {
+              if (textAnswers[currentQuestion.questionId]) {
+                studentPairs = JSON.parse(textAnswers[currentQuestion.questionId])
+              }
+            } catch {}
+
+            const connectedLefts = new Set(studentPairs.map((p) => p.left))
+            const connectedRights = new Set(studentPairs.map((p) => p.right))
+
+            return (
+              <div style={{ marginBottom: '32px' }}>
+                <div style={{ fontSize: '0.88rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '14px' }}>
+                  Nhấp vào 1 mục ở Cột A (trái) rồi nhấp tiếp 1 mục ở Cột B (phải) để tạo liên kết:
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                  {/* Cột Trái */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--primary)' }}>CỘT A (Từ vựng)</div>
+                    {pairs.map((p) => {
+                      const isLinked = connectedLefts.has(p.left)
+                      const isSelected = selectedMatchLeft === p.left
+
+                      return (
+                        <button
+                          key={p.left}
+                          type="button"
+                          onClick={() => setSelectedMatchLeft(isSelected ? null : p.left)}
+                          style={{
+                            padding: '12px 16px',
+                            borderRadius: 'var(--radius-md)',
+                            border: `2px solid ${isSelected ? 'var(--primary)' : isLinked ? '#10b981' : '#cbd5e1'}`,
+                            backgroundColor: isSelected ? 'var(--primary-light)' : isLinked ? '#ecfdf5' : '#ffffff',
+                            color: 'var(--text-main)',
+                            fontWeight: 700,
+                            textAlign: 'left',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                          }}
+                        >
+                          <span>{p.left}</span>
+                          {isLinked && <Check size={14} color="#10b981" />}
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {/* Cột Phải */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--primary)' }}>CỘT B (Ý nghĩa)</div>
+                    {pairs.map((p) => {
+                      const isLinked = connectedRights.has(p.right)
+
+                      return (
+                        <button
+                          key={p.right}
+                          type="button"
+                          disabled={!selectedMatchLeft}
+                          onClick={() => {
+                            if (selectedMatchLeft) {
+                              handleLinkMatchPair(currentQuestion.questionId, selectedMatchLeft, p.right)
+                            }
+                          }}
+                          style={{
+                            padding: '12px 16px',
+                            borderRadius: 'var(--radius-md)',
+                            border: `2px solid ${isLinked ? '#10b981' : '#cbd5e1'}`,
+                            backgroundColor: isLinked ? '#ecfdf5' : '#ffffff',
+                            color: 'var(--text-main)',
+                            fontWeight: 700,
+                            textAlign: 'left',
+                            cursor: selectedMatchLeft ? 'pointer' : 'not-allowed',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                          }}
+                        >
+                          <span>{p.right}</span>
+                          {isLinked && <Check size={14} color="#10b981" />}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Danh sách các cặp đã nối */}
+                {studentPairs.length > 0 && (
+                  <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '8px' }}>
+                      Các cặp bạn đã nối ({studentPairs.length}/{pairs.length}):
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {studentPairs.map((sp) => (
+                        <span
+                          key={sp.left}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '6px 12px',
+                            borderRadius: 'var(--radius-full)',
+                            backgroundColor: '#ffffff',
+                            border: '1.5px solid #10b981',
+                            fontSize: '0.85rem',
+                            fontWeight: 700,
+                          }}
+                        >
+                          <Link2 size={13} color="#10b981" />
+                          <span>{sp.left} ↔ {sp.right}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveMatchPair(currentQuestion.questionId, sp.left)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#ef4444',
+                              cursor: 'pointer',
+                              padding: 0,
+                              display: 'flex',
+                            }}
+                          >
+                            <X size={14} />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
+
+          {/* 4. DẠNG SẮP XẾP CÂU (ORDER) */}
+          {isOrder && (() => {
+            const correctOrder = parseOrderingPayload(currentQuestion.payload)
+            const currentStr = textAnswers[currentQuestion.questionId] || ''
+            const pickedWords = currentStr ? currentStr.trim().split(/\s+/) : []
+            const unpickedWords = [...correctOrder]
+            pickedWords.forEach((pw) => {
+              const idx = unpickedWords.indexOf(pw)
+              if (idx >= 0) unpickedWords.splice(idx, 1)
+            })
+
+            return (
+              <div style={{ marginBottom: '32px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                    Câu của bạn (nhấp từ để gỡ bỏ):
+                  </div>
+                  {pickedWords.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => handleResetOrdering(currentQuestion.questionId)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--text-muted)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
+                      }}
+                    >
+                      <RotateCcw size={12} />
+                      <span>Làm lại từ đầu</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Vùng chứa các từ đã chọn */}
+                <div
+                  style={{
+                    minHeight: '60px',
+                    padding: '12px 16px',
+                    borderRadius: 'var(--radius-md)',
+                    border: '2px dashed var(--primary)',
+                    backgroundColor: 'var(--primary-light)',
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                    gap: '10px',
+                    marginBottom: '20px',
+                  }}
+                >
+                  {pickedWords.length === 0 ? (
+                    <span style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>
+                      Chưa chọn từ nào. Nhấp vào các từ bên dưới để ghép câu theo thứ tự.
+                    </span>
+                  ) : (
+                    pickedWords.map((word, wIdx) => (
+                      <button
+                        key={`${word}-${wIdx}`}
+                        type="button"
+                        onClick={() => handleToggleOrderingWord(currentQuestion.questionId, word)}
+                        style={{
+                          padding: '8px 16px',
+                          borderRadius: 'var(--radius-md)',
+                          border: '1.5px solid var(--primary)',
+                          backgroundColor: '#ffffff',
+                          color: 'var(--primary-hover)',
+                          fontSize: '1.1rem',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                        }}
+                      >
+                        <span>{word}</span>
+                        <X size={12} />
+                      </button>
+                    ))
+                  )}
+                </div>
+
+                {/* Kho từ còn lại để chọn */}
+                <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '8px' }}>
+                  Từ vựng có sẵn (nhấp để thêm vào câu):
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                  {unpickedWords.map((word, idx) => (
+                    <button
+                      key={`${word}-${idx}`}
+                      type="button"
+                      onClick={() => handleToggleOrderingWord(currentQuestion.questionId, word)}
+                      style={{
+                        padding: '10px 18px',
+                        borderRadius: 'var(--radius-md)',
+                        border: '1.5px solid #cbd5e1',
+                        backgroundColor: '#ffffff',
+                        color: 'var(--text-main)',
+                        fontSize: '1.1rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {word}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
 
           {/* Điều hướng chuyển câu: Câu trước / Câu tiếp */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f1f5f9', paddingTop: '20px' }}>
@@ -844,34 +1341,34 @@ export const TakeAssignmentPage: React.FC = () => {
               }}
             >
               {assignmentData.questions.map((q, idx) => {
-                const isAnswered = !!answers[q.questionId]
+                const isAnswered = isQuestionAnswered(q.questionId)
                 const isCurrent = idx === currentIndex
 
                 return (
                   <button
-                    type="button"
                     key={q.questionId}
+                    type="button"
                     onClick={() => setCurrentIndex(idx)}
                     style={{
-                      height: '40px',
-                      borderRadius: 'var(--radius-md)',
+                      aspectRatio: '1',
+                      borderRadius: 'var(--radius-sm)',
                       border: isCurrent
                         ? '2px solid var(--primary)'
                         : isAnswered
-                        ? '1.5px solid #10b981'
+                        ? '1.5px solid #86efac'
                         : '1.5px solid #cbd5e1',
                       backgroundColor: isCurrent
-                        ? 'var(--primary-light)'
+                        ? 'var(--primary)'
                         : isAnswered
-                        ? '#ecfdf5'
-                        : '#f8fafc',
+                        ? '#dcfce7'
+                        : '#ffffff',
                       color: isCurrent
-                        ? 'var(--primary-hover)'
+                        ? '#ffffff'
                         : isAnswered
-                        ? '#047857'
-                        : '#64748b',
+                        ? '#15803d'
+                        : 'var(--text-muted)',
                       fontWeight: 800,
-                      fontSize: '0.88rem',
+                      fontSize: '0.85rem',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
@@ -885,73 +1382,60 @@ export const TakeAssignmentPage: React.FC = () => {
               })}
             </div>
 
-            {/* Chú thích màu sắc */}
-            <div style={{ display: 'flex', gap: '16px', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '24px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ width: '12px', height: '12px', borderRadius: '3px', backgroundColor: '#ecfdf5', border: '1px solid #10b981' }} />
-                <span>Đã trả lời</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ width: '12px', height: '12px', borderRadius: '3px', backgroundColor: '#f8fafc', border: '1px solid #cbd5e1' }} />
-                <span>Chưa làm</span>
-              </div>
-            </div>
-
-            {/* CẢNH BÁO INLINE KHI CÒN CÂU CHƯA TRẢ LỜI (TC-03: Tuyệt đối KHÔNG DÙNG MODAL) */}
+            {/* Cảnh báo nộp khi chưa làm hết (Inline, không dùng modal) */}
             {showUnansweredWarning && (
               <div
                 style={{
-                  padding: '16px',
+                  padding: '14px',
                   borderRadius: 'var(--radius-md)',
                   backgroundColor: '#fffbeb',
-                  border: '1.5px solid #f59e0b',
+                  border: '1.5px solid #fde68a',
                   marginBottom: '16px',
+                  fontSize: '0.85rem',
+                  color: '#92400e',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '12px' }}>
-                  <AlertTriangle size={20} style={{ color: '#d97706', flexShrink: 0, marginTop: '2px' }} />
-                  <div>
-                    <h5 style={{ margin: '0 0 4px', fontSize: '0.92rem', fontWeight: 800, color: '#92400e' }}>
-                      Bạn còn {totalQuestions - answeredCount} câu chưa làm!
-                    </h5>
-                    <p style={{ margin: 0, fontSize: '0.8rem', color: '#b45309', lineHeight: 1.4 }}>
-                      Các câu chưa trả lời sẽ được tính 0 điểm. Bạn muốn kiểm tra lại hay xác nhận nộp luôn?
-                    </p>
-                  </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, marginBottom: '4px' }}>
+                  <AlertTriangle size={16} />
+                  <span>Chưa hoàn thành tất cả câu</span>
                 </div>
-
-                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                  <button
-                    type="button"
-                    onClick={() => setShowUnansweredWarning(false)}
-                    style={{
-                      padding: '6px 12px',
-                      borderRadius: 'var(--radius-md)',
-                      border: '1px solid #cbd5e1',
-                      backgroundColor: '#ffffff',
-                      fontSize: '0.78rem',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Kiểm tra lại
-                  </button>
+                <p style={{ margin: '0 0 10px', fontSize: '0.8rem', lineHeight: 1.4 }}>
+                  Bạn còn {totalQuestions - answeredCount} câu chưa làm. Bạn vẫn muốn nộp bài?
+                </p>
+                <div style={{ display: 'flex', gap: '8px' }}>
                   <button
                     type="button"
                     onClick={executeFinalSubmit}
                     disabled={submitting}
-                    className="btn-primary"
                     style={{
-                      padding: '6px 14px',
-                      borderRadius: 'var(--radius-md)',
-                      fontSize: '0.78rem',
+                      flex: 1,
+                      padding: '6px 10px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: 'none',
+                      backgroundColor: '#b45309',
+                      color: '#ffffff',
                       fontWeight: 800,
-                      cursor: 'pointer',
-                      backgroundColor: '#d97706',
-                      borderColor: '#b45309',
+                      fontSize: '0.78rem',
+                      cursor: submitting ? 'not-allowed' : 'pointer',
                     }}
                   >
-                    {submitting ? 'Đang nộp...' : 'Vẫn nộp bài'}
+                    Vẫn nộp bài
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowUnansweredWarning(false)}
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid #d97706',
+                      backgroundColor: '#ffffff',
+                      color: '#b45309',
+                      fontWeight: 700,
+                      fontSize: '0.78rem',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Làm tiếp
                   </button>
                 </div>
               </div>
@@ -960,24 +1444,21 @@ export const TakeAssignmentPage: React.FC = () => {
             {/* Nút nộp bài */}
             <button
               type="button"
-              onClick={handleInitiateSubmit}
+              className="game-btn game-btn-primary"
               disabled={submitting}
-              className="btn-primary"
+              onClick={handleInitiateSubmit}
               style={{
                 width: '100%',
-                padding: '12px',
-                borderRadius: 'var(--radius-md)',
-                fontWeight: 900,
-                fontSize: '0.96rem',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '8px',
-                cursor: submitting ? 'not-allowed' : 'pointer',
+                padding: '12px 16px',
+                fontSize: '0.95rem',
               }}
             >
               <Send size={16} />
-              <span>{submitting ? 'Đang nộp bài...' : 'Nộp bài thi'}</span>
+              <span>{submitting ? 'Đang chấm điểm...' : 'Nộp bài thi'}</span>
             </button>
           </div>
         </div>

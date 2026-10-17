@@ -1,6 +1,6 @@
 import { ApiError } from './auth'
 
-export type AssignmentStatus = 'SCHEDULED' | 'ACTIVE' | 'CLOSED' | 'ARCHIVED'
+export type AssignmentStatus = 'SCHEDULED' | 'ACTIVE' | 'CLOSED' | 'ARCHIVED' | 'CANCELLED'
 
 export interface AssignExercisePayload {
   exerciseId: number
@@ -202,6 +202,31 @@ export async function getStudentAssignmentDetail(
   return data as StudentAssignmentDetailItem
 }
 
+export async function cancelAssignment(
+  id: number,
+  token: string
+): Promise<AssignmentItem> {
+  const response = await fetch(`${API_BASE}/${id}/cancel`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  const data = await response.json().catch(() => null)
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'UNKNOWN_ERROR',
+      data?.message || 'Không thể hủy lần giao bài',
+      data?.fields
+    )
+  }
+
+  return data as AssignmentItem
+}
+
 // ---------------------------------------------------------------------------
 // HTT-06-CN-003: Làm bài và nộp bài
 // ---------------------------------------------------------------------------
@@ -377,5 +402,3 @@ export async function getSubmissionResult(
 
   return data as SubmissionResultData
 }
-
-

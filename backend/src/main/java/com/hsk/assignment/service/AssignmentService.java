@@ -220,8 +220,9 @@ public class AssignmentService {
 
 		Instant now = Instant.now();
 		// Học sinh chỉ thấy các bài tập không phải trạng thái lên lịch trong tương lai (TC-02),
-		// hoặc các bài còn hạn nộp (TC-09: học sinh vào sau vẫn thấy bài còn hạn nộp)
+		// hoặc các bài còn hạn nộp (TC-09: học sinh vào sau vẫn thấy bài còn hạn nộp), loại trừ bài đã hủy hoặc lưu trữ
 		return assignments.stream()
+				.filter(a -> a.getStatus() != AssignmentStatus.ARCHIVED && a.getStatus() != AssignmentStatus.CANCELLED)
 				.filter(a -> {
 					// Nếu bài đã bắt đầu (startTime <= now) -> học sinh được thấy
 					if (!a.getStartTime().isAfter(now)) {
@@ -312,7 +313,7 @@ public class AssignmentService {
 		Instant now = Instant.now();
 
 		return assignments.stream()
-				.filter(a -> a.getStatus() != AssignmentStatus.ARCHIVED)
+				.filter(a -> a.getStatus() != AssignmentStatus.ARCHIVED && a.getStatus() != AssignmentStatus.CANCELLED)
 				.map(a -> {
 					AssignmentSubmissionEntity sub = submissionMap.get(a.getId());
 					StudentAssignmentStatus status = determineStudentStatus(a, sub, now);
@@ -361,6 +362,11 @@ public class AssignmentService {
 				.orElseThrow(() -> new ApiException(ApiErrorCode.FORBIDDEN));
 		if (member.getStatus() != ClassMemberStatus.ACTIVE) {
 			throw new ApiException(ApiErrorCode.FORBIDDEN);
+		}
+
+		// HTT-06-CN-009: Ẩn bài tập đã bị hủy hoặc lưu trữ khỏi học sinh
+		if (assignment.getStatus() == AssignmentStatus.ARCHIVED || assignment.getStatus() == AssignmentStatus.CANCELLED) {
+			throw new ApiException(ApiErrorCode.ASSIGNMENT_NOT_FOUND);
 		}
 
 		// Lấy lượt làm bài mới nhất của học sinh (QTN-02: chỉ dữ liệu của chính mình)
@@ -498,11 +504,64 @@ public class AssignmentService {
 		);
 	}
 
+	/**
+	 * HTT-06-CN-009 / TC-01 -> TC-06: Hủy một lần giao bài (chuyển sang CANCELLED).
+	 * QTN-01: Chỉ giáo viên phụ trách lớp (hoặc admin) mới được hủy bài.
+	 * QTN-21: Chỉ được hủy khi chưa có bất kỳ học sinh nào làm bài hoặc nộp bài.
+	 */
+	@Transactional
+	public AssignmentResponse cancelAssignment(Long teacherId, Long assignmentId) {
+		assertTeacherOrAdmin(teacherId);
+
+		AssignmentEntity assignment = assignmentRepository.findById(assignmentId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.ASSIGNMENT_NOT_FOUND));
+
+		ClassEntity classroom = assignment.getClassroom();
+		boolean isAdmin = userRoleRepository.existsByUser_IdAndRole_Code(teacherId, RoleCode.ADMIN);
+		boolean isClassTeacher = classroom.getTeacher().getId().equals(teacherId);
+
+		// TC-02: QTN-01 - Giáo viên không phụ trách lớp không được hủy bài của lớp khác
+		if (!isClassTeacher && !isAdmin) {
+			throw new ApiException(ApiErrorCode.FORBIDDEN, "Bạn chỉ có thể hủy lần giao bài của lớp do mình phụ trách");
+		}
+
+		// TC-06: Đã hủy trước đó
+		if (assignment.getStatus() == AssignmentStatus.CANCELLED) {
+			throw new ApiException(ApiErrorCode.ASSIGNMENT_ALREADY_CANCELLED);
+		}
+
+		// TC-03: QTN-21 - Đã có học sinh làm bài hoặc nộp bài -> chặn hủy
+		if (submissionRepository.existsByAssignment_Id(assignmentId)) {
+			throw new ApiException(ApiErrorCode.ASSIGNMENT_CANNOT_CANCEL_HAS_SUBMISSIONS);
+		}
+
+		// Chuyển trạng thái sang CANCELLED
+		assignment.setStatus(AssignmentStatus.CANCELLED);
+		AssignmentEntity saved = assignmentRepository.save(assignment);
+
+		// TC-01: Ghi nhật ký Audit Log
+		UserEntity teacher = userRepository.findById(teacherId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.UNAUTHORIZED));
+
+		auditLogService.record(
+				teacher,
+				"CANCEL_ASSIGNMENT",
+				"ASSIGNMENT",
+				saved.getId().toString(),
+				"Giáo viên " + teacher.getEmail() + " đã hủy lần giao bài '" + saved.getTitle() + "' của lớp '" + classroom.getTitle() + "'"
+		);
+
+		return mapToResponse(saved);
+	}
+
 	private AssignmentStatus resolveCurrentStatus(AssignmentEntity entity) {
-		Instant now = Instant.now();
+		if (entity.getStatus() == AssignmentStatus.CANCELLED) {
+			return AssignmentStatus.CANCELLED;
+		}
 		if (entity.getStatus() == AssignmentStatus.ARCHIVED) {
 			return AssignmentStatus.ARCHIVED;
 		}
+		Instant now = Instant.now();
 		if (entity.getStartTime().isAfter(now)) {
 			return AssignmentStatus.SCHEDULED;
 		}

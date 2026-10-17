@@ -58,6 +58,7 @@ import com.hsk.exercise.service.ExerciseService;
 import com.hsk.question.domain.QuestionType;
 import com.hsk.question.dto.CreateQuestionOptionRequest;
 import com.hsk.question.dto.CreateQuestionRequest;
+import com.hsk.question.dto.QuestionOptionResponse;
 import com.hsk.question.dto.QuestionResponse;
 import com.hsk.question.repository.QuestionOptionRepository;
 import com.hsk.question.repository.QuestionRepository;
@@ -275,7 +276,7 @@ class AssignmentSubmissionH2Test {
 		// 2. Chuẩn bị đáp án đúng cho cả 4 câu (Đáp án A là đúng theo setup)
 		List<StudentAnswerItemDto> answers = new ArrayList<>();
 		for (QuestionResponse q : questions) {
-			Long correctOptId = q.options().stream().filter(QuestionResponse.OptionDto::isCorrect).findFirst().orElseThrow().id();
+			Long correctOptId = q.options().stream().filter(QuestionOptionResponse::isCorrect).findFirst().orElseThrow().id();
 			answers.add(new StudentAnswerItemDto(q.id(), correctOptId, null));
 		}
 
@@ -351,7 +352,7 @@ class AssignmentSubmissionH2Test {
 		List<StudentAnswerItemDto> answers = new ArrayList<>();
 		for (int i = 0; i < 3; i++) {
 			QuestionResponse q = questions.get(i);
-			Long correctOpt = q.options().stream().filter(QuestionResponse.OptionDto::isCorrect).findFirst().orElseThrow().id();
+			Long correctOpt = q.options().stream().filter(QuestionOptionResponse::isCorrect).findFirst().orElseThrow().id();
 			answers.add(new StudentAnswerItemDto(q.id(), correctOpt, null));
 		}
 		// Câu 4 bỏ trống (không truyền hoặc selectedOptionId = null)
@@ -364,7 +365,7 @@ class AssignmentSubmissionH2Test {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.status", is("SUBMITTED")))
 				.andExpect(jsonPath("$.score", is(7.5))) // 3 câu đúng * 2.5 = 7.5
-				.andExpect(jsonPath("$.questions[3].pointsEarned", is(0.0)))
+				.andExpect(jsonPath("$.questions[3].pointsEarned").value(0))
 				.andExpect(jsonPath("$.questions[3].isCorrect", is(false)));
 	}
 
@@ -400,7 +401,7 @@ class AssignmentSubmissionH2Test {
 				.andExpect(status().isOk());
 
 		// 2. Lưu nháp 1 câu đúng
-		Long correctOptQ1 = questions.get(0).options().stream().filter(QuestionResponse.OptionDto::isCorrect).findFirst().orElseThrow().id();
+		Long correctOptQ1 = questions.get(0).options().stream().filter(QuestionOptionResponse::isCorrect).findFirst().orElseThrow().id();
 		mockMvc.perform(put(SAVE_DRAFT_URL, assignmentId)
 				.header("Authorization", "Bearer " + student1Token)
 				.contentType(MediaType.APPLICATION_JSON)

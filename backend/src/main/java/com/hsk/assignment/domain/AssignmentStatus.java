@@ -14,5 +14,8 @@ public enum AssignmentStatus {
 	CLOSED,
 
 	/** Lần giao bài đã được lưu trữ. */
-	ARCHIVED
+	ARCHIVED,
+
+	/** Lần giao bài đã bị giáo viên hủy (chưa có lượt làm nào) - HTT-06-CN-009. */
+	CANCELLED
 }

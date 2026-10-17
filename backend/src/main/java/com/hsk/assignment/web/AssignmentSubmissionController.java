@@ -2,6 +2,7 @@ package com.hsk.assignment.web;
 
 import com.hsk.account.domain.UserEntity;
 import com.hsk.account.repository.UserRepository;
+import com.hsk.assignment.dto.AssignmentSubmissionsOverviewResponse;
 import com.hsk.assignment.dto.SaveDraftRequest;
 import com.hsk.assignment.dto.SubmissionResultResponse;
 import com.hsk.assignment.dto.SubmitAssignmentRequest;
@@ -94,6 +95,21 @@ public class AssignmentSubmissionController {
 	) {
 		UserEntity user = requireUser(principal);
 		SubmissionResultResponse response = submissionService.submitAssignment(user.getId(), id, request);
+		return ResponseEntity.ok(response);
+	}
+
+	@GetMapping("/{id}/submissions")
+	@PreAuthorize("isAuthenticated()")
+	@Operation(
+			summary = "HTT-06-CN-006 — Xem danh sách bài nộp của lớp học",
+			description = "Giáo viên xem thống kê và danh sách học sinh kèm điểm số, trạng thái (QTN-01)."
+	)
+	public ResponseEntity<AssignmentSubmissionsOverviewResponse> getAssignmentSubmissionsOverview(
+			@PathVariable("id") Long id,
+			Principal principal
+	) {
+		UserEntity user = requireUser(principal);
+		AssignmentSubmissionsOverviewResponse response = submissionService.getAssignmentSubmissionsOverview(user.getId(), id);
 		return ResponseEntity.ok(response);
 	}
 

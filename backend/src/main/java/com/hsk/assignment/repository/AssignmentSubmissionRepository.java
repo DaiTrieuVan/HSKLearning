@@ -39,6 +39,11 @@ public interface AssignmentSubmissionRepository extends JpaRepository<Assignment
 	boolean existsByAssignment_Id(Long assignmentId);
 
 	/**
+	 * Lấy tất cả bài nộp của một lần giao bài (dùng cho thống kê giáo viên HTT-06-CN-006).
+	 */
+	List<AssignmentSubmissionEntity> findByAssignment_Id(Long assignmentId);
+
+	/**
 	 * Xóa bài nộp theo lần giao bài (phục vụ dọn dẹp hoặc test).
 	 */
 	void deleteByAssignment_Id(Long assignmentId);

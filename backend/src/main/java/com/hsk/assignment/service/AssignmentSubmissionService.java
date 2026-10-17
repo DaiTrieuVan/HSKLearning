@@ -13,11 +13,13 @@ import com.hsk.assignment.domain.SubmissionStatus;
 import com.hsk.assignment.dto.AdjustScoreRequest;
 import com.hsk.assignment.dto.AssignmentSnapshotOptionDto;
 import com.hsk.assignment.dto.AssignmentSnapshotQuestionDto;
+import com.hsk.assignment.dto.AssignmentSubmissionsOverviewResponse;
 import com.hsk.assignment.dto.DetailedQuestionResultDto;
 import com.hsk.assignment.dto.SaveDraftRequest;
 import com.hsk.assignment.dto.StudentAnswerItemDto;
 import com.hsk.assignment.dto.StudentQuestionDto;
 import com.hsk.assignment.dto.StudentQuestionOptionDto;
+import com.hsk.assignment.dto.StudentSubmissionSummaryDto;
 import com.hsk.assignment.dto.SubmissionResultResponse;
 import com.hsk.assignment.dto.SubmitAssignmentRequest;
 import com.hsk.assignment.dto.TakeAssignmentResponse;
@@ -424,6 +426,125 @@ public class AssignmentSubmissionService {
 		);
 
 		return toSubmissionResultResponse(saved, assignment, userId, isTeacherOwner, isAdmin);
+	}
+
+	/**
+	 * Giáo viên xem danh sách học sinh và trạng thái bài nộp của bài đã giao (HTT-06-CN-006, QTN-01).
+	 */
+	@Transactional(readOnly = true)
+	public AssignmentSubmissionsOverviewResponse getAssignmentSubmissionsOverview(Long teacherId, Long assignmentId) {
+		AssignmentEntity assignment = assignmentRepository.findById(assignmentId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.ASSIGNMENT_NOT_FOUND));
+
+		ClassEntity classroom = assignment.getClassroom();
+		boolean isAdmin = userRoleRepository.existsByUser_IdAndRole_Code(teacherId, RoleCode.ADMIN);
+		boolean isTeacherOwner = classroom.getTeacher().getId().equals(teacherId);
+
+		// QTN-01: Cách ly dữ liệu giữa các lớp - Giáo viên chỉ thấy và thao tác trên lớp do mình phụ trách
+		if (!isTeacherOwner && !isAdmin) {
+			throw new ApiException(ApiErrorCode.FORBIDDEN, "Bạn không có quyền truy cập dữ liệu bài nộp của lớp khác");
+		}
+
+		// Lấy danh sách thành viên ACTIVE của lớp kèm UserEntity
+		List<ClassMemberEntity> activeMembers = classMemberRepository.findByClassroomIdWithStudent(classroom.getId())
+				.stream()
+				.filter(cm -> cm.getStatus() == ClassMemberStatus.ACTIVE)
+				.toList();
+
+		// Batch fetch tất cả submission của assignment để tránh N+1
+		List<AssignmentSubmissionEntity> submissions = submissionRepository.findByAssignment_Id(assignmentId);
+
+		// Gom nhóm submission theo studentId
+		Map<Long, List<AssignmentSubmissionEntity>> submissionsByStudent = submissions.stream()
+				.filter(s -> s.getStudent() != null)
+				.collect(Collectors.groupingBy(s -> s.getStudent().getId()));
+
+		int submittedCount = 0;
+		int inProgressCount = 0;
+		int notStartedCount = 0;
+
+		List<StudentSubmissionSummaryDto> studentSummaries = new ArrayList<>();
+
+		for (ClassMemberEntity member : activeMembers) {
+			UserEntity student = member.getStudent();
+			List<AssignmentSubmissionEntity> studentSubs = new ArrayList<>(submissionsByStudent.getOrDefault(student.getId(), Collections.emptyList()));
+
+			if (studentSubs.isEmpty()) {
+				notStartedCount++;
+				studentSummaries.add(new StudentSubmissionSummaryDto(
+						student.getId(),
+						student.getFullName() != null ? student.getFullName() : student.getEmail(),
+						student.getEmail(),
+						"NOT_STARTED",
+						null,
+						null,
+						null,
+						null,
+						null,
+						0,
+						null,
+						null
+				));
+			} else {
+				// Sắp xếp theo attemptNumber giảm dần để lấy lượt mới nhất
+				studentSubs.sort((s1, s2) -> Integer.compare(s2.getAttemptNumber(), s1.getAttemptNumber()));
+				AssignmentSubmissionEntity latestSub = studentSubs.get(0);
+
+				// Tính điểm cao nhất (effectiveScore) trong các lượt hợp lệ (SUBMITTED hoặc AUTO_SUBMITTED) (QTN-13)
+				BigDecimal bestScore = null;
+				for (AssignmentSubmissionEntity sub : studentSubs) {
+					if (sub.getStatus() == SubmissionStatus.SUBMITTED || sub.getStatus() == SubmissionStatus.AUTO_SUBMITTED) {
+						BigDecimal attemptEffective = sub.getAdjustedScore() != null ? sub.getAdjustedScore() : sub.getScore();
+						if (attemptEffective != null) {
+							if (bestScore == null || attemptEffective.compareTo(bestScore) > 0) {
+								bestScore = attemptEffective;
+							}
+						}
+					}
+				}
+
+				String statusStr;
+				if (latestSub.getStatus() == SubmissionStatus.IN_PROGRESS) {
+					statusStr = "IN_PROGRESS";
+					inProgressCount++;
+				} else if (latestSub.getStatus() == SubmissionStatus.AUTO_SUBMITTED) {
+					statusStr = "AUTO_SUBMITTED";
+					submittedCount++;
+				} else {
+					statusStr = "SUBMITTED";
+					submittedCount++;
+				}
+
+				studentSummaries.add(new StudentSubmissionSummaryDto(
+						student.getId(),
+						student.getFullName() != null ? student.getFullName() : student.getEmail(),
+						student.getEmail(),
+						statusStr,
+						latestSub.getId(),
+						latestSub.getScore(),
+						latestSub.getAdjustedScore(),
+						latestSub.getAdjustReason(),
+						bestScore != null ? bestScore : latestSub.getScore(),
+						latestSub.getAttemptNumber(),
+						latestSub.getStartedAt(),
+						latestSub.getSubmittedAt()
+				));
+			}
+		}
+
+		return new AssignmentSubmissionsOverviewResponse(
+				assignment.getId(),
+				assignment.getTitle(),
+				assignment.getDescription(),
+				assignment.getTotalPoints(),
+				assignment.getDueTime(),
+				assignment.getStatus().name(),
+				activeMembers.size(),
+				submittedCount,
+				inProgressCount,
+				notStartedCount,
+				studentSummaries
+		);
 	}
 
 	private SubmissionResultResponse toSubmissionResultResponse(

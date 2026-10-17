@@ -3,11 +3,8 @@ package com.hsk.assignment;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -28,7 +25,6 @@ import com.hsk.account.repository.UserRepository;
 import com.hsk.account.repository.UserRoleRepository;
 import com.hsk.account.service.RegistrationService;
 import com.hsk.assignment.domain.AssignmentEntity;
-import com.hsk.assignment.domain.AssignmentStatus;
 import com.hsk.assignment.domain.AssignmentSubmissionEntity;
 import com.hsk.assignment.domain.SubmissionStatus;
 import com.hsk.assignment.dto.AssignExerciseRequest;
@@ -39,10 +35,8 @@ import com.hsk.assignment.dto.SubmitAssignmentRequest;
 import com.hsk.assignment.repository.AssignmentRepository;
 import com.hsk.assignment.repository.AssignmentSubmissionRepository;
 import com.hsk.assignment.service.AssignmentService;
-import com.hsk.assignment.service.AssignmentSubmissionService;
 import com.hsk.classroom.domain.ClassEntity;
 import com.hsk.classroom.domain.ClassMemberEntity;
-import com.hsk.classroom.domain.ClassMemberStatus;
 import com.hsk.classroom.dto.CreateClassCommand;
 import com.hsk.classroom.repository.ClassJoinAttemptRepository;
 import com.hsk.classroom.repository.ClassMemberEventRepository;
@@ -50,7 +44,10 @@ import com.hsk.classroom.repository.ClassMemberRepository;
 import com.hsk.classroom.repository.ClassRepository;
 import com.hsk.classroom.service.ClassroomService;
 import com.hsk.common.audit.AuditLogRepository;
-import com.hsk.exercise.domain.ExerciseEntity;
+import com.hsk.content.repository.HskLevelRepository;
+import com.hsk.content.repository.VocabSetItemRepository;
+import com.hsk.content.repository.VocabSetRepository;
+import com.hsk.content.repository.VocabularyRepository;
 import com.hsk.exercise.domain.ExerciseStatus;
 import com.hsk.exercise.dto.CreateExerciseQuestionItem;
 import com.hsk.exercise.dto.CreateExerciseRequest;
@@ -104,14 +101,13 @@ class AssignmentSubmissionH2Test {
 	private static final String PASSWORD = "Password123@";
 
 	@Autowired private MockMvc mockMvc;
-	@Autowired private ObjectMapper objectMapper;
+	private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
 
 	@Autowired private RegistrationService registrationService;
 	@Autowired private ClassroomService classroomService;
 	@Autowired private QuestionService questionService;
 	@Autowired private ExerciseService exerciseService;
 	@Autowired private AssignmentService assignmentService;
-	@Autowired private AssignmentSubmissionService submissionService;
 
 	@Autowired private UserRepository userRepository;
 	@Autowired private RoleRepository roleRepository;
@@ -129,74 +125,74 @@ class AssignmentSubmissionH2Test {
 	@Autowired private TeacherRequestRepository teacherRequestRepository;
 	@Autowired private PasswordResetTokenRepository passwordResetTokenRepository;
 	@Autowired private AuditLogRepository auditLogRepository;
+	@Autowired private VocabSetItemRepository vocabSetItemRepository;
+	@Autowired private VocabSetRepository vocabSetRepository;
+	@Autowired private VocabularyRepository vocabularyRepository;
+	@Autowired private HskLevelRepository hskLevelRepository;
 
 	private Long teacherId;
 	private Long student1Id;
+	@SuppressWarnings("unused")
 	private Long student2Id;
+	@SuppressWarnings("unused")
 	private Long outsiderId;
 
-	private String teacherToken;
 	private String student1Token;
-	private String student2Token;
 	private String outsiderToken;
 
 	private Long classId;
 	private Long exerciseId;
-	private List<QuestionResponse> questions = new ArrayList<>();
+	private final List<QuestionResponse> questions = new ArrayList<>();
 	private Long assignmentId;
 
 	@BeforeEach
 	void setUp() throws Exception {
 		tearDown();
 
-		// 1. Tạo vai trò
-		RoleEntity teacherRole = roleRepository.save(new RoleEntity(RoleCode.TEACHER, "Giáo viên"));
-		RoleEntity studentRole = roleRepository.save(new RoleEntity(RoleCode.STUDENT, "Học sinh"));
-
-		// 2. Tạo tài khoản giáo viên và học sinh
-		registrationService.register(new RegisterStudentRequest("Teacher Test", TEACHER_EMAIL, PASSWORD, PASSWORD));
-		UserEntity teacher = userRepository.findByEmail(TEACHER_EMAIL).orElseThrow();
-		userRoleRepository.save(new UserRoleEntity(teacher, teacherRole));
+		// 1. Tạo Giáo viên
+		registrationService.registerStudent(new RegisterStudentRequest("Teacher Test", TEACHER_EMAIL, PASSWORD, PASSWORD));
+		UserEntity teacher = userRepository.findByEmailIgnoreCase(TEACHER_EMAIL).orElseThrow();
 		teacherId = teacher.getId();
+		RoleEntity teacherRole = roleRepository.findByCode(RoleCode.TEACHER).orElseThrow();
+		userRoleRepository.save(UserRoleEntity.of(teacher, teacherRole, null));
 
-		registrationService.register(new RegisterStudentRequest("Student One", STUDENT_1_EMAIL, PASSWORD, PASSWORD));
-		UserEntity student1 = userRepository.findByEmail(STUDENT_1_EMAIL).orElseThrow();
+		// 2. Tạo Học sinh 1, Học sinh 2, Học sinh ngoài lớp
+		registrationService.registerStudent(new RegisterStudentRequest("Student One", STUDENT_1_EMAIL, PASSWORD, PASSWORD));
+		UserEntity student1 = userRepository.findByEmailIgnoreCase(STUDENT_1_EMAIL).orElseThrow();
 		student1Id = student1.getId();
 
-		registrationService.register(new RegisterStudentRequest("Student Two", STUDENT_2_EMAIL, PASSWORD, PASSWORD));
-		UserEntity student2 = userRepository.findByEmail(STUDENT_2_EMAIL).orElseThrow();
+		registrationService.registerStudent(new RegisterStudentRequest("Student Two", STUDENT_2_EMAIL, PASSWORD, PASSWORD));
+		UserEntity student2 = userRepository.findByEmailIgnoreCase(STUDENT_2_EMAIL).orElseThrow();
 		student2Id = student2.getId();
 
-		registrationService.register(new RegisterStudentRequest("Outsider Student", OUTSIDER_STUDENT_EMAIL, PASSWORD, PASSWORD));
-		UserEntity outsider = userRepository.findByEmail(OUTSIDER_STUDENT_EMAIL).orElseThrow();
+		registrationService.registerStudent(new RegisterStudentRequest("Outsider Student", OUTSIDER_STUDENT_EMAIL, PASSWORD, PASSWORD));
+		UserEntity outsider = userRepository.findByEmailIgnoreCase(OUTSIDER_STUDENT_EMAIL).orElseThrow();
 		outsiderId = outsider.getId();
 
-		teacherToken = loginAndGetToken(TEACHER_EMAIL, PASSWORD);
 		student1Token = loginAndGetToken(STUDENT_1_EMAIL, PASSWORD);
-		student2Token = loginAndGetToken(STUDENT_2_EMAIL, PASSWORD);
 		outsiderToken = loginAndGetToken(OUTSIDER_STUDENT_EMAIL, PASSWORD);
 
 		// 3. Tạo lớp học
-		var classResp = classroomService.createClass(teacherId, new CreateClassCommand("Lớp HSK 3 - Nộp bài", "Lớp luyện thi HSK 3"));
-		classId = classResp.id();
+		classroomService.createClass(TEACHER_EMAIL, new CreateClassCommand("Lớp HSK 3 - Nộp bài", "Lớp luyện thi HSK 3"));
+		ClassEntity classEntity = classRepository.findByTeacher_IdOrderByCreatedAtDesc(teacherId).get(0);
+		classId = classEntity.getId();
 
 		// Thêm student1 và student2 vào lớp
-		ClassEntity classEntity = classRepository.findById(classId).orElseThrow();
-		classMemberRepository.save(new ClassMemberEntity(classEntity, student1, ClassMemberStatus.ACTIVE));
-		classMemberRepository.save(new ClassMemberEntity(classEntity, student2, ClassMemberStatus.ACTIVE));
+		classMemberRepository.save(ClassMemberEntity.create(classEntity, student1));
+		classMemberRepository.save(ClassMemberEntity.create(classEntity, student2));
 
 		// 4. Tạo 4 câu hỏi trắc nghiệm (mỗi câu 2.5 điểm -> Tổng 10 điểm)
 		questions.clear();
 		for (int i = 1; i <= 4; i++) {
 			List<CreateQuestionOptionRequest> options = List.of(
-					new CreateQuestionOptionRequest("Đáp án A câu " + i, true, 1),
-					new CreateQuestionOptionRequest("Đáp án B câu " + i, false, 2),
-					new CreateQuestionOptionRequest("Đáp án C câu " + i, false, 3)
+					new CreateQuestionOptionRequest("Đáp án A câu " + i, true),
+					new CreateQuestionOptionRequest("Đáp án B câu " + i, false),
+					new CreateQuestionOptionRequest("Đáp án C câu " + i, false)
 			);
-			var qResp = questionService.createQuestion(teacherId, new CreateQuestionRequest(
-					QuestionType.MULTIPLE_CHOICE,
+			QuestionResponse qResp = questionService.createMultipleChoiceQuestion(teacherId, new CreateQuestionRequest(
 					"Nội dung câu hỏi " + i + "?",
 					"Giải thích chi tiết câu " + i,
+					QuestionType.MCQ,
 					null,
 					options
 			));
@@ -228,26 +224,30 @@ class AssignmentSubmissionH2Test {
 
 	@AfterEach
 	void tearDown() {
+		questionService.clearUsedInExerciseQuestionIds();
 		submissionRepository.deleteAll();
 		assignmentRepository.deleteAll();
 		exerciseQuestionRepository.deleteAll();
 		exerciseRepository.deleteAll();
 		questionOptionRepository.deleteAll();
 		questionRepository.deleteAll();
+		vocabSetItemRepository.deleteAll();
+		vocabSetRepository.deleteAll();
+		vocabularyRepository.deleteAll();
+		hskLevelRepository.deleteAll();
 		classMemberEventRepository.deleteAll();
-		classJoinAttemptRepository.deleteAll();
 		classMemberRepository.deleteAll();
+		classJoinAttemptRepository.deleteAll();
 		classRepository.deleteAll();
 		teacherRequestRepository.deleteAll();
 		passwordResetTokenRepository.deleteAll();
 		auditLogRepository.deleteAll();
 		userRoleRepository.deleteAll();
 		userRepository.deleteAll();
-		roleRepository.deleteAll();
 	}
 
 	private String loginAndGetToken(String email, String password) throws Exception {
-		String body = "{\"email\":\"" + email + "\",\"password\":\"" + password + "\"}";
+		String body = objectMapper.writeValueAsString(new LoginRequest(email, password));
 		MvcResult result = mockMvc.perform(post(LOGIN_URL)
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(body))
@@ -256,6 +256,8 @@ class AssignmentSubmissionH2Test {
 		JsonNode node = objectMapper.readTree(result.getResponse().getContentAsString());
 		return node.get("token").asText();
 	}
+
+	private record LoginRequest(String email, String password) {}
 
 	// -------------------------------------------------------------------------
 	// TC-01: Luồng thành công — Trả lời đủ 4 câu và nộp bài trước hạn
@@ -273,7 +275,7 @@ class AssignmentSubmissionH2Test {
 		// 2. Chuẩn bị đáp án đúng cho cả 4 câu (Đáp án A là đúng theo setup)
 		List<StudentAnswerItemDto> answers = new ArrayList<>();
 		for (QuestionResponse q : questions) {
-			Long correctOptId = q.options().stream().filter(o -> o.isCorrect()).findFirst().orElseThrow().id();
+			Long correctOptId = q.options().stream().filter(QuestionResponse.OptionDto::isCorrect).findFirst().orElseThrow().id();
 			answers.add(new StudentAnswerItemDto(q.id(), correctOptId, null));
 		}
 
@@ -349,7 +351,7 @@ class AssignmentSubmissionH2Test {
 		List<StudentAnswerItemDto> answers = new ArrayList<>();
 		for (int i = 0; i < 3; i++) {
 			QuestionResponse q = questions.get(i);
-			Long correctOpt = q.options().stream().filter(o -> o.isCorrect()).findFirst().orElseThrow().id();
+			Long correctOpt = q.options().stream().filter(QuestionResponse.OptionDto::isCorrect).findFirst().orElseThrow().id();
 			answers.add(new StudentAnswerItemDto(q.id(), correctOpt, null));
 		}
 		// Câu 4 bỏ trống (không truyền hoặc selectedOptionId = null)
@@ -398,7 +400,7 @@ class AssignmentSubmissionH2Test {
 				.andExpect(status().isOk());
 
 		// 2. Lưu nháp 1 câu đúng
-		Long correctOptQ1 = questions.get(0).options().stream().filter(o -> o.isCorrect()).findFirst().orElseThrow().id();
+		Long correctOptQ1 = questions.get(0).options().stream().filter(QuestionResponse.OptionDto::isCorrect).findFirst().orElseThrow().id();
 		mockMvc.perform(put(SAVE_DRAFT_URL, assignmentId)
 				.header("Authorization", "Bearer " + student1Token)
 				.contentType(MediaType.APPLICATION_JSON)

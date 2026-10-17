@@ -28,22 +28,33 @@ import com.hsk.exercise.domain.ExerciseQuestionEntity;
 import com.hsk.exercise.repository.ExerciseRepository;
 import com.hsk.question.domain.QuestionEntity;
 import com.hsk.question.domain.QuestionOptionEntity;
+import com.hsk.assignment.domain.AssignmentSubmissionEntity;
+import com.hsk.assignment.domain.StudentAssignmentStatus;
+import com.hsk.assignment.domain.SubmissionStatus;
+import com.hsk.assignment.dto.StudentAssignmentDetailResponse;
+import com.hsk.assignment.dto.StudentAssignmentResponse;
+import com.hsk.assignment.repository.AssignmentSubmissionRepository;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Dịch vụ xử lý giao bài cho lớp (HTT-06-CN-001).
- * Tuân thủ nghiêm ngặt các quy tắc QTN-01 (cách ly theo lớp), QTN-09 (điều kiện bài tập),
- * QTN-10 (bản chụp snapshot bất biến) và QTN-19 (quyền sở hữu).
+ * Dịch vụ xử lý giao bài cho lớp (HTT-06-CN-001) và xem bài được giao cho học sinh (HTT-06-CN-002).
+ * Tuân thủ nghiêm ngặt các quy tắc QTN-01 (cách ly theo lớp), QTN-02 (học sinh chỉ xem dữ liệu của mình),
+ * QTN-09 (điều kiện bài tập), QTN-10 (bản chụp snapshot bất biến), QTN-18 (học sinh chỉ xem bài của lớp mình),
+ * và QTN-19 (quyền sở hữu).
  */
 @Service
 public class AssignmentService {
 
 	private final AssignmentRepository assignmentRepository;
+	private final AssignmentSubmissionRepository submissionRepository;
 	private final ExerciseRepository exerciseRepository;
 	private final ClassRepository classRepository;
 	private final ClassMemberRepository classMemberRepository;
@@ -54,6 +65,7 @@ public class AssignmentService {
 
 	public AssignmentService(
 			AssignmentRepository assignmentRepository,
+			AssignmentSubmissionRepository submissionRepository,
 			ExerciseRepository exerciseRepository,
 			ClassRepository classRepository,
 			ClassMemberRepository classMemberRepository,
@@ -62,6 +74,7 @@ public class AssignmentService {
 			AuditLogService auditLogService
 	) {
 		this.assignmentRepository = assignmentRepository;
+		this.submissionRepository = submissionRepository;
 		this.exerciseRepository = exerciseRepository;
 		this.classRepository = classRepository;
 		this.classMemberRepository = classMemberRepository;
@@ -264,6 +277,149 @@ public class AssignmentService {
 				questions,
 				assignment.getCreatedAt()
 		);
+	}
+
+	/**
+	 * HTT-06-CN-002: Lấy danh sách bài tập của lớp kèm trạng thái cá nhân hóa cho học sinh.
+	 * Tuân thủ QTN-18 (chỉ học sinh trong lớp mới xem được) và QTN-02 (học sinh chỉ thấy bài nộp và điểm của mình).
+	 * Tránh N+1 query bằng batch fetching danh sách submissions của học sinh trong lớp.
+	 */
+	@Transactional(readOnly = true)
+	public List<StudentAssignmentResponse> getStudentAssignmentsForClass(Long studentId, Long classId) {
+		ClassEntity classroom = classRepository.findById(classId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.CLASS_NOT_FOUND));
+
+		// QTN-18: Học sinh bắt buộc phải là thành viên đang hoạt động của lớp
+		ClassMemberEntity member = classMemberRepository.findByClassroom_IdAndStudent_Id(classId, studentId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.FORBIDDEN));
+		if (member.getStatus() != ClassMemberStatus.ACTIVE) {
+			throw new ApiException(ApiErrorCode.FORBIDDEN);
+		}
+
+		// Lấy tất cả bài tập của lớp (loại trừ các bài đã lưu trữ ARCHIVED)
+		List<AssignmentEntity> assignments = assignmentRepository.findByClassroom_IdOrderByCreatedAtDesc(classId);
+
+		// Batch fetch tất cả submission của học sinh này trong lớp để chống N+1 query
+		List<AssignmentSubmissionEntity> submissions = submissionRepository.findByAssignment_Classroom_IdAndStudent_Id(classId, studentId);
+		Map<Long, AssignmentSubmissionEntity> submissionMap = submissions.stream()
+				.collect(Collectors.toMap(
+						s -> s.getAssignment().getId(),
+						s -> s,
+						(s1, s2) -> s1.getAttemptNumber() > s2.getAttemptNumber() ? s1 : s2
+				));
+
+		Instant now = Instant.now();
+
+		return assignments.stream()
+				.filter(a -> a.getStatus() != AssignmentStatus.ARCHIVED)
+				.map(a -> {
+					AssignmentSubmissionEntity sub = submissionMap.get(a.getId());
+					StudentAssignmentStatus status = determineStudentStatus(a, sub, now);
+					boolean canStart = (status == StudentAssignmentStatus.NOT_STARTED || status == StudentAssignmentStatus.IN_PROGRESS);
+
+					Long submissionId = sub != null ? sub.getId() : null;
+					Instant submittedAt = sub != null ? sub.getSubmittedAt() : null;
+					BigDecimal score = sub != null ? sub.getScore() : null;
+					int qCount = parseSnapshotQuestions(a.getSnapshotData()).size();
+
+					return new StudentAssignmentResponse(
+							a.getId(),
+							a.getExercise().getId(),
+							classroom.getId(),
+							classroom.getTitle(),
+							a.getTitle(),
+							a.getDescription(),
+							a.getStartTime(),
+							a.getDueTime(),
+							a.getTotalPoints(),
+							qCount,
+							status,
+							canStart,
+							submissionId,
+							submittedAt,
+							score
+					);
+				})
+				.toList();
+	}
+
+	/**
+	 * HTT-06-CN-002: Xem chi tiết bài tập dưới góc nhìn học sinh.
+	 * Chặn rò rỉ đề thi nếu bài chưa đến thời gian mở (UPCOMING) theo TC-03.
+	 * Chặn truy cập nếu học sinh không thuộc lớp (QTN-18 / TC-05).
+	 */
+	@Transactional(readOnly = true)
+	public StudentAssignmentDetailResponse getStudentAssignmentDetail(Long studentId, Long assignmentId) {
+		AssignmentEntity assignment = assignmentRepository.findById(assignmentId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.ASSIGNMENT_NOT_FOUND));
+
+		ClassEntity classroom = assignment.getClassroom();
+
+		// QTN-18: Học sinh bắt buộc phải là thành viên đang hoạt động của lớp chứa bài tập
+		ClassMemberEntity member = classMemberRepository.findByClassroom_IdAndStudent_Id(classroom.getId(), studentId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.FORBIDDEN));
+		if (member.getStatus() != ClassMemberStatus.ACTIVE) {
+			throw new ApiException(ApiErrorCode.FORBIDDEN);
+		}
+
+		// Lấy lượt làm bài mới nhất của học sinh (QTN-02: chỉ dữ liệu của chính mình)
+		Optional<AssignmentSubmissionEntity> subOpt = submissionRepository.findFirstByAssignment_IdAndStudent_IdOrderByAttemptNumberDesc(assignmentId, studentId);
+		AssignmentSubmissionEntity sub = subOpt.orElse(null);
+
+		Instant now = Instant.now();
+		StudentAssignmentStatus status = determineStudentStatus(assignment, sub, now);
+		boolean canStart = (status == StudentAssignmentStatus.NOT_STARTED || status == StudentAssignmentStatus.IN_PROGRESS);
+
+		// TC-03: Nếu bài chưa đến thời gian mở (UPCOMING) -> ẩn hoàn toàn danh sách câu hỏi để chống lộ đề
+		List<AssignmentSnapshotQuestionDto> questions = (status == StudentAssignmentStatus.UPCOMING)
+				? Collections.emptyList()
+				: parseSnapshotQuestions(assignment.getSnapshotData());
+
+		return new StudentAssignmentDetailResponse(
+				assignment.getId(),
+				assignment.getExercise().getId(),
+				classroom.getId(),
+				classroom.getTitle(),
+				assignment.getTeacher().getId(),
+				assignment.getTeacher().getFullName(),
+				assignment.getTitle(),
+				assignment.getDescription(),
+				assignment.getStartTime(),
+				assignment.getDueTime(),
+				assignment.getTotalPoints(),
+				questions.size(),
+				status,
+				canStart,
+				sub != null ? sub.getId() : null,
+				sub != null ? sub.getSubmittedAt() : null,
+				sub != null ? sub.getScore() : null,
+				questions
+		);
+	}
+
+	private StudentAssignmentStatus determineStudentStatus(AssignmentEntity assignment, AssignmentSubmissionEntity sub, Instant now) {
+		// 1. Nếu chưa đến thời gian bắt đầu
+		if (assignment.getStartTime().isAfter(now)) {
+			return StudentAssignmentStatus.UPCOMING;
+		}
+
+		// 2. Nếu đã hoàn tất nộp bài
+		if (sub != null && sub.getStatus().isCompleted()) {
+			return StudentAssignmentStatus.SUBMITTED;
+		}
+
+		// 3. Nếu đã hết hạn nộp
+		if (now.isAfter(assignment.getDueTime())) {
+			return StudentAssignmentStatus.OVERDUE;
+		}
+
+		// 4. Nếu đang làm dở và còn trong hạn
+		if (sub != null && sub.getStatus() == SubmissionStatus.IN_PROGRESS) {
+			return StudentAssignmentStatus.IN_PROGRESS;
+		}
+
+		// 5. Đang mở và chưa bắt đầu
+		return StudentAssignmentStatus.NOT_STARTED;
 	}
 
 	// -------------------------------------------------------------------------

@@ -7,12 +7,15 @@
 ---
 
 ## 2. QUY TRÌNH TIẾP NHẬN & THỰC THI USER STORY
-1. **Tiếp nhận Story & Lập Kế hoạch (Plan First):**
-   - Khi nhận story/yêu cầu từ người dùng, AI **BẮT BUỘC** phải lên kế hoạch thực hiện chi tiết (Implementation Plan).
+1. **Kiểm tra Phụ thuộc (Check Dependencies First):**
+   - Rà soát trường `Phụ thuộc:` trong tài liệu User Story tương ứng (`hsk_agent_automation/docs/user-stories/<Mã_Story>.md`).
+   - Nếu còn story phụ thuộc chưa hoàn thành (đang ở trạng thái `Chưa thực hiện` hoặc chưa được merge vào `origin/develop`), **BẮT BUỘC PHẢI DỪNG LẠI**, thông báo rõ cho Người dùng danh sách các story phụ thuộc chưa xong và không được phép triển khai trước.
+2. **Tiếp nhận Story & Lập Kế hoạch (Plan First):**
+   - Khi các phụ thuộc đã được hoàn thành đầy đủ, AI **BẮT BUỘC** phải lên kế hoạch thực hiện chi tiết (Implementation Plan).
    - **TUYỆT ĐỐI KHÔNG CODE NGAY LẬP TỨC** khi chưa được duyệt kế hoạch.
-2. **Phê duyệt Kế hoạch (User Approval):**
+3. **Phê duyệt Kế hoạch (User Approval):**
    - Chỉ khi người dùng bấm **Proceed** hoặc xác nhận đồng ý với kế hoạch, AI mới được chuyển sang bước code.
-3. **Chuẩn bị Nhánh làm việc (Git Branching):**
+4. **Chuẩn bị Nhánh làm việc (Git Branching):**
    - Bước 1: Pull code mới nhất từ `origin/develop`:
      ```bash
      git checkout develop
@@ -60,3 +63,15 @@
 - **Khi hoàn thành và kiểm thử xong story:**
   - Cập nhật trường `Trạng thái: Đã thực hiện` trong file tài liệu user story (`hsk_agent_automation/docs/user-stories/<Mã_Story>.md`).
   - Đánh dấu trạng thái `ĐÃ HOÀN THÀNH (COMPLETED)` trong Implementation Plan tương ứng (`hsk_agent_automation/docs/implementation-plans/<Mã_Story>.md`).
+
+---
+
+## 7. QUY TẮC RÀ SOÁT PHỤ THUỘC STORY (DEPENDENCY CHECKING)
+- **Bắt buộc rà soát trường "Phụ thuộc" trước khi tiếp nhận:**
+  - Trước khi lập kế hoạch hay nhận làm bất kỳ User Story nào, AI **BẮT BUỘC** phải đọc kỹ mục `Phụ thuộc:` trong file tài liệu tương ứng (`hsk_agent_automation/docs/user-stories/<Mã_Story>.md`).
+  - Kiểm tra trạng thái của toàn bộ các story phụ thuộc đó trong thư mục `hsk_agent_automation/docs/user-stories/` và trên nhánh `develop`.
+- **Hành vi xử lý khi có phụ thuộc chưa hoàn thành:**
+  - Nếu có bất kỳ story phụ thuộc nào chưa hoàn tất (`Chưa thực hiện`, `Đang thực hiện` hoặc chưa có code trên `develop`):
+    - **TUYỆT ĐỐI KHÔNG** chuyển trạng thái story sang `Đang thực hiện`.
+    - **TUYỆT ĐỐI KHÔNG** tự ý bắt tay vào code hoặc tiến hành triển khai.
+    - Báo cáo rõ ràng cho Người dùng danh sách các story phụ thuộc còn thiếu để chờ đồng đội hoàn thành hoặc chuyển sang làm story phụ thuộc trước.

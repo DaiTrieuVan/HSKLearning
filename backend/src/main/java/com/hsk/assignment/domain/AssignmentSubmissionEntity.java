@@ -196,6 +196,10 @@ public class AssignmentSubmissionEntity {
 		this.adjustedAt = adjustedAt;
 	}
 
+	public BigDecimal getEffectiveScore() {
+		return adjustedScore != null ? adjustedScore : score;
+	}
+
 	public void adjustScore(BigDecimal newScore, String reason) {
 		this.adjustedScore = newScore;
 		this.adjustReason = reason;

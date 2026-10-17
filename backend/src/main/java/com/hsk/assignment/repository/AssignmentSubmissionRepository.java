@@ -29,6 +29,11 @@ public interface AssignmentSubmissionRepository extends JpaRepository<Assignment
 	List<AssignmentSubmissionEntity> findByAssignment_IdAndStudent_Id(Long assignmentId, Long studentId);
 
 	/**
+	 * Lấy tất cả lượt làm bài của học sinh đối với một lần giao bài sắp xếp theo lượt giảm dần.
+	 */
+	List<AssignmentSubmissionEntity> findByAssignment_IdAndStudent_IdOrderByAttemptNumberDesc(Long assignmentId, Long studentId);
+
+	/**
 	 * Kiểm tra xem học sinh đã có bất kỳ lượt làm bài nào cho lần giao hay chưa.
 	 */
 	boolean existsByAssignment_IdAndStudent_Id(Long assignmentId, Long studentId);

@@ -26,6 +26,9 @@ import {
   AlertTriangle,
   RotateCcw,
   Link2,
+  Lock,
+  Unlock,
+  Award,
 } from 'lucide-react'
 
 interface MatchingPair {
@@ -490,19 +493,96 @@ export const TakeAssignmentPage: React.FC = () => {
             {resultData.title}
           </h1>
 
-          <div style={{ margin: '24px auto', display: 'flex', justifyContent: 'center', alignItems: 'baseline', gap: '8px' }}>
-            <span style={{ fontSize: '3.5rem', fontWeight: 900, color: 'var(--primary)', lineHeight: 1 }}>
-              {resultData.score}
-            </span>
-            <span style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-muted)' }}>
-              / {resultData.maxScore} điểm ({percentage}%)
-            </span>
-          </div>
+          {resultData.adjustedScore !== undefined && resultData.adjustedScore !== null ? (
+            <div style={{ margin: '20px auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 16px',
+                  borderRadius: 'var(--radius-lg)',
+                  backgroundColor: '#fffbeb',
+                  border: '1.5px solid #fcd34d',
+                  color: '#92400e',
+                }}
+              >
+                <Award size={20} color="#d97706" />
+                <span style={{ fontWeight: 800, fontSize: '0.95rem' }}>
+                  Điểm giáo viên đã điều chỉnh: <strong style={{ fontSize: '1.25rem', color: '#b45309' }}>{resultData.adjustedScore}</strong> / {resultData.maxScore} điểm
+                </span>
+              </div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                Điểm gốc tự động: <strong>{resultData.score}</strong> / {resultData.maxScore} điểm
+                {resultData.adjustReason && ` • Lý do điều chỉnh: "${resultData.adjustReason}"`}
+              </div>
+            </div>
+          ) : (
+            <div style={{ margin: '24px auto', display: 'flex', justifyContent: 'center', alignItems: 'baseline', gap: '8px' }}>
+              <span style={{ fontSize: '3.5rem', fontWeight: 900, color: 'var(--primary)', lineHeight: 1 }}>
+                {resultData.score}
+              </span>
+              <span style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+                / {resultData.maxScore} điểm ({percentage}%)
+              </span>
+            </div>
+          )}
 
           <div style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>
             Thời điểm nộp: {new Date(resultData.submittedAt).toLocaleString('vi-VN')}
           </div>
         </div>
+
+        {/* Banner kiểm soát hiển thị đáp án chống lộ đề (Anti-Cheating Policy - HTT-06-CN-005) */}
+        {resultData.showSolutions === false ? (
+          <div
+            style={{
+              padding: '16px 20px',
+              borderRadius: 'var(--radius-lg)',
+              backgroundColor: '#fffbeb',
+              border: '1.5px solid #fde68a',
+              color: '#92400e',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '12px',
+              marginBottom: '24px',
+            }}
+          >
+            <Lock size={20} style={{ flexShrink: 0, marginTop: '2px', color: '#b45309' }} />
+            <div>
+              <div style={{ fontWeight: 800, fontSize: '0.95rem', marginBottom: '4px', color: '#b45309' }}>
+                Chưa hết hạn nộp bài {resultData.dueTime ? `(Hạn nộp: ${new Date(resultData.dueTime).toLocaleString('vi-VN')})` : ''}
+              </div>
+              <div style={{ fontSize: '0.85rem', lineHeight: 1.5, color: '#78350f' }}>
+                Để đảm bảo tính bảo mật và công bằng cho toàn lớp, hệ thống tạm thời ẩn đáp án đúng và lời giải chi tiết. Bạn vẫn xem được câu trả lời và điểm số từng câu của mình. Toàn bộ đáp án chuẩn sẽ được tự động mở khóa sau khi hết hạn nộp.
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div
+            style={{
+              padding: '16px 20px',
+              borderRadius: 'var(--radius-lg)',
+              backgroundColor: '#ecfdf5',
+              border: '1.5px solid #a7f3d0',
+              color: '#065f46',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '12px',
+              marginBottom: '24px',
+            }}
+          >
+            <Unlock size={20} style={{ flexShrink: 0, marginTop: '2px', color: '#059669' }} />
+            <div>
+              <div style={{ fontWeight: 800, fontSize: '0.95rem', marginBottom: '4px', color: '#047857' }}>
+                Đã mở khóa toàn bộ đáp án chuẩn & lời giải chi tiết
+              </div>
+              <div style={{ fontSize: '0.85rem', lineHeight: 1.5, color: '#065f46' }}>
+                Đã kết thúc thời gian nộp bài của cả lớp. Bạn có thể đối chiếu câu trả lời của mình với đáp án chuẩn và đọc phần giải thích chi tiết bên dưới để nắm vững kiến thức.
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Danh sách kết quả chi tiết từng câu */}
         <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '16px' }}>
@@ -587,7 +667,7 @@ export const TakeAssignmentPage: React.FC = () => {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
                     {q.options.map((opt) => {
                       const isSelected = q.selectedOptionId === opt.id
-                      const isCorrectOpt = opt.isCorrect
+                      const isCorrectOpt = Boolean(resultData.showSolutions && opt.isCorrect)
 
                       let bgColor = '#f8fafc'
                       let borderColor = '#e2e8f0'
@@ -597,10 +677,14 @@ export const TakeAssignmentPage: React.FC = () => {
                         bgColor = '#ecfdf5'
                         borderColor = '#10b981'
                         textColor = '#065f46'
-                      } else if (isSelected && !isCorrectOpt) {
+                      } else if (isSelected && resultData.showSolutions) {
                         bgColor = '#fef2f2'
                         borderColor = '#ef4444'
                         textColor = '#991b1b'
+                      } else if (isSelected && !resultData.showSolutions) {
+                        bgColor = '#eff6ff'
+                        borderColor = '#3b82f6'
+                        textColor = '#1e40af'
                       }
 
                       return (
@@ -628,8 +712,8 @@ export const TakeAssignmentPage: React.FC = () => {
                                 width: '20px',
                                 height: '20px',
                                 borderRadius: 'var(--radius-full)',
-                                border: `1.5px solid ${isSelected ? (isCorrectOpt ? '#10b981' : '#ef4444') : '#cbd5e1'}`,
-                                backgroundColor: isSelected ? (isCorrectOpt ? '#10b981' : '#ef4444') : '#ffffff',
+                                border: `1.5px solid ${isSelected ? (isCorrectOpt ? '#10b981' : (resultData.showSolutions ? '#ef4444' : '#3b82f6')) : '#cbd5e1'}`,
+                                backgroundColor: isSelected ? (isCorrectOpt ? '#10b981' : (resultData.showSolutions ? '#ef4444' : '#3b82f6')) : '#ffffff',
                                 color: '#ffffff',
                                 fontSize: '0.72rem',
                               }}
@@ -644,8 +728,13 @@ export const TakeAssignmentPage: React.FC = () => {
                               Đáp án đúng
                             </span>
                           )}
-                          {isSelected && !isCorrectOpt && (
+                          {isSelected && !isCorrectOpt && resultData.showSolutions && (
                             <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#dc2626' }}>
+                              Bạn đã chọn
+                            </span>
+                          )}
+                          {isSelected && !resultData.showSolutions && (
+                            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#2563eb' }}>
                               Bạn đã chọn
                             </span>
                           )}
@@ -694,37 +783,61 @@ export const TakeAssignmentPage: React.FC = () => {
                       <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '8px' }}>
                         Kết quả đối chiếu các cặp nối:
                       </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '10px' }}>
-                        {standardPairs.map((p) => {
-                          const studentRight = studentMap.get(p.left)
-                          const isPairCorrect = studentRight && studentRight.trim().toLowerCase() === p.right.trim().toLowerCase()
+                      {standardPairs.length > 0 ? (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '10px' }}>
+                          {standardPairs.map((p) => {
+                            const studentRight = studentMap.get(p.left)
+                            const isPairCorrect = studentRight && studentRight.trim().toLowerCase() === p.right.trim().toLowerCase()
 
-                          return (
+                            return (
+                              <div
+                                key={p.left}
+                                style={{
+                                  padding: '10px 14px',
+                                  borderRadius: 'var(--radius-md)',
+                                  backgroundColor: isPairCorrect ? '#ecfdf5' : '#fef2f2',
+                                  border: `1.5px solid ${isPairCorrect ? '#86efac' : '#fca5a5'}`,
+                                  fontSize: '0.88rem',
+                                }}
+                              >
+                                <div style={{ fontWeight: 800, color: 'var(--text-main)', marginBottom: '4px' }}>
+                                  {p.left}
+                                </div>
+                                <div style={{ fontSize: '0.82rem', color: isPairCorrect ? '#047857' : '#b91c1c' }}>
+                                  Bạn nối: <strong>{studentRight || '(Chưa nối)'}</strong>
+                                </div>
+                                {!isPairCorrect && (
+                                  <div style={{ fontSize: '0.82rem', color: '#15803d', marginTop: '2px' }}>
+                                    Đáp án chuẩn: <strong>{p.right}</strong>
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '10px' }}>
+                          {studentPairs.map((p, pIdx) => (
                             <div
-                              key={p.left}
+                              key={pIdx}
                               style={{
                                 padding: '10px 14px',
                                 borderRadius: 'var(--radius-md)',
-                                backgroundColor: isPairCorrect ? '#ecfdf5' : '#fef2f2',
-                                border: `1.5px solid ${isPairCorrect ? '#86efac' : '#fca5a5'}`,
+                                backgroundColor: '#f8fafc',
+                                border: '1.5px solid #cbd5e1',
                                 fontSize: '0.88rem',
                               }}
                             >
                               <div style={{ fontWeight: 800, color: 'var(--text-main)', marginBottom: '4px' }}>
                                 {p.left}
                               </div>
-                              <div style={{ fontSize: '0.82rem', color: isPairCorrect ? '#047857' : '#b91c1c' }}>
-                                Bạn nối: <strong>{studentRight || '(Chưa nối)'}</strong>
+                              <div style={{ fontSize: '0.82rem', color: 'var(--primary)' }}>
+                                Bạn đã nối với: <strong>{p.right}</strong>
                               </div>
-                              {!isPairCorrect && (
-                                <div style={{ fontSize: '0.82rem', color: '#15803d', marginTop: '2px' }}>
-                                  Đáp án chuẩn: <strong>{p.right}</strong>
-                                </div>
-                              )}
                             </div>
-                          )
-                        })}
-                      </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )
                 })()}
@@ -741,12 +854,14 @@ export const TakeAssignmentPage: React.FC = () => {
                           {studentText || '(Chưa sắp xếp)'}
                         </strong>
                       </div>
-                      <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0' }}>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#166534' }}>Thứ tự đúng: </span>
-                        <strong style={{ fontSize: '1rem', color: '#15803d' }}>
-                          {correctOrder.join(' ')}
-                        </strong>
-                      </div>
+                      {correctOrder.length > 0 && (
+                        <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#166534' }}>Thứ tự đúng: </span>
+                          <strong style={{ fontSize: '1rem', color: '#15803d' }}>
+                            {correctOrder.join(' ')}
+                          </strong>
+                        </div>
+                      )}
                     </div>
                   )
                 })()}

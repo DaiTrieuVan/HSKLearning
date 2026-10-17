@@ -393,7 +393,7 @@ public class AssignmentSubmissionService {
 	}
 
 	/**
-	 * Giáo viên điều chỉnh điểm số của bài nộp kèm lý do minh bạch (TC-04, QTN-13).
+	 * Giáo viên điều chỉnh điểm số của bài nộp kèm lý do minh bạch (HTT-06-CN-007, TC-01..TC-06, QTN-13).
 	 */
 	@Transactional
 	public SubmissionResultResponse adjustScore(Long userId, Long submissionId, AdjustScoreRequest request) {
@@ -405,16 +405,36 @@ public class AssignmentSubmissionService {
 		boolean isAdmin = userRoleRepository.existsByUser_IdAndRole_Code(userId, RoleCode.ADMIN);
 		boolean isTeacherOwner = classroom.getTeacher().getId().equals(userId);
 
+		// TC-04 & QTN-01: Không có quyền nếu không phải giáo viên phụ trách lớp hoặc admin
 		if (!isTeacherOwner && !isAdmin) {
 			throw new ApiException(ApiErrorCode.FORBIDDEN, "Chỉ giáo viên phụ trách lớp hoặc Quản trị viên mới có quyền điều chỉnh điểm");
 		}
 
-		submission.adjustScore(request.adjustedScore(), request.reason());
+		// Điều kiện bắt đầu: Bài nộp đã được chấm tự động (SUBMITTED hoặc AUTO_SUBMITTED)
+		if (submission.getStatus() == SubmissionStatus.IN_PROGRESS) {
+			throw new ApiException(ApiErrorCode.SUBMISSION_NOT_IN_PROGRESS, "Chỉ có thể điều chỉnh điểm khi học sinh đã hoàn tất bài nộp");
+		}
+
+		// TC-02: Lý do điều chỉnh điểm bắt buộc không được bỏ trống
+		if (request.reason() == null || request.reason().trim().isEmpty()) {
+			throw new ApiException(ApiErrorCode.ADJUST_REASON_REQUIRED, "Lý do điều chỉnh điểm không được để trống");
+		}
+
+		// TC-03: Điểm điều chỉnh phải nằm trong khoảng từ 0 đến tổng điểm bài tập
+		if (request.adjustedScore() == null
+				|| request.adjustedScore().compareTo(BigDecimal.ZERO) < 0
+				|| request.adjustedScore().compareTo(assignment.getTotalPoints()) > 0) {
+			throw new ApiException(ApiErrorCode.INVALID_ADJUSTED_SCORE,
+					"Điểm điều chỉnh không hợp lệ: phải nằm trong khoảng 0 đến " + assignment.getTotalPoints());
+		}
+
+		submission.adjustScore(request.adjustedScore(), request.reason().trim());
 		AssignmentSubmissionEntity saved = submissionRepository.save(submission);
 
 		UserEntity user = userRepository.findById(userId)
 				.orElseThrow(() -> new ApiException(ApiErrorCode.UNAUTHORIZED));
 
+		// TC-05: Lưu nhật ký Audit Log đầy đủ
 		auditLogService.record(
 				user,
 				"ADJUST_SUBMISSION_SCORE",
@@ -422,7 +442,7 @@ public class AssignmentSubmissionService {
 				saved.getId().toString(),
 				"Giáo viên " + user.getEmail() + " đã điều chỉnh điểm bài nộp của học sinh "
 						+ submission.getStudent().getEmail() + " từ " + submission.getScore() + " thành "
-						+ request.adjustedScore() + " (Lý do: " + request.reason() + ")"
+						+ request.adjustedScore() + " (Lý do: " + request.reason().trim() + ")"
 		);
 
 		return toSubmissionResultResponse(saved, assignment, userId, isTeacherOwner, isAdmin);

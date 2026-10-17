@@ -230,6 +230,12 @@ public enum ApiErrorCode {
 	/** HTT-06-CN-009 / TC-06: Assignment is already cancelled. */
 	ASSIGNMENT_ALREADY_CANCELLED(HttpStatus.BAD_REQUEST, "Lần giao bài này đã bị hủy trước đó"),
 
+	/** HTT-06-CN-007 / TC-03: Adjusted score must be between 0 and total points. */
+	INVALID_ADJUSTED_SCORE(HttpStatus.BAD_REQUEST, "Điểm điều chỉnh không hợp lệ"),
+
+	/** HTT-06-CN-007 / TC-02: Adjust reason is required. */
+	ADJUST_REASON_REQUIRED(HttpStatus.BAD_REQUEST, "Lý do điều chỉnh điểm không được để trống"),
+
 	/** Unexpected server side failure; the client may retry. */
 	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Hệ thống đang gặp sự cố, vui lòng thử lại sau");
 

@@ -209,6 +209,21 @@ public enum ApiErrorCode {
 	/** HTT-06-CN-001: Assignment not found. */
 	ASSIGNMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy lần giao bài"),
 
+	/** HTT-06-CN-003 / TC-04 & QTN-11: Assignment has expired, cannot start or submit manually. */
+	ASSIGNMENT_ALREADY_EXPIRED(HttpStatus.BAD_REQUEST, "Bài tập đã quá hạn nộp, không thể bắt đầu hoặc nộp bài"),
+
+	/** HTT-06-CN-003 / TC-10: Assignment has not yet started. */
+	ASSIGNMENT_NOT_YET_STARTED(HttpStatus.BAD_REQUEST, "Bài tập chưa đến thời gian mở làm bài"),
+
+	/** HTT-06-CN-003 / TC-06 & QTN-12: Assignment already submitted. */
+	ASSIGNMENT_ALREADY_SUBMITTED(HttpStatus.BAD_REQUEST, "Bài tập đã được nộp trước đó"),
+
+	/** HTT-06-CN-003: Submission not found. */
+	SUBMISSION_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy lượt làm bài tập"),
+
+	/** HTT-06-CN-003: Submission is not in progress. */
+	SUBMISSION_NOT_IN_PROGRESS(HttpStatus.BAD_REQUEST, "Lượt làm bài đã kết thúc hoặc không ở trạng thái đang làm"),
+
 	/** HTT-06-CN-009 / TC-03 & QTN-21: Cannot cancel assignment when at least one student has started/submitted. */
 	ASSIGNMENT_CANNOT_CANCEL_HAS_SUBMISSIONS(HttpStatus.BAD_REQUEST, "Không thể hủy bài tập đã có học sinh làm hoặc nộp bài"),
 

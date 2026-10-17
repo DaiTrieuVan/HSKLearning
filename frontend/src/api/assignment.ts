@@ -227,3 +227,178 @@ export async function cancelAssignment(
   return data as AssignmentItem
 }
 
+// ---------------------------------------------------------------------------
+// HTT-06-CN-003: Làm bài và nộp bài
+// ---------------------------------------------------------------------------
+
+export interface StudentTakingQuestionOption {
+  id: number
+  content: string
+  sortOrder: number
+}
+
+export interface StudentTakingQuestion {
+  questionId: number
+  type: string
+  content: string
+  payload?: string
+  points: number
+  sortOrder: number
+  options: StudentTakingQuestionOption[]
+}
+
+export interface StudentAnswerItem {
+  questionId: number
+  selectedOptionId?: number | null
+  textAnswer?: string | null
+  isCorrect?: boolean | null
+  pointsEarned?: number | null
+}
+
+export interface TakeAssignmentData {
+  submissionId: number
+  assignmentId: number
+  title: string
+  description?: string
+  startTime: string
+  dueTime: string
+  totalPoints: number
+  status: 'IN_PROGRESS' | 'SUBMITTED' | 'AUTO_SUBMITTED'
+  startedAt: string
+  submittedAt?: string | null
+  score?: number | null
+  attemptNumber: number
+  questions: StudentTakingQuestion[]
+  savedAnswers: StudentAnswerItem[]
+  serverTimeMillis: number
+}
+
+export interface DetailedQuestionResult {
+  questionId: number
+  type: string
+  content: string
+  explanation?: string
+  maxPoints: number
+  pointsEarned: number
+  isCorrect: boolean
+  selectedOptionId?: number | null
+  options: AssignmentSnapshotOption[]
+}
+
+export interface SubmissionResultData {
+  submissionId: number
+  assignmentId: number
+  title: string
+  description?: string
+  status: 'SUBMITTED' | 'AUTO_SUBMITTED'
+  startedAt: string
+  submittedAt: string
+  score: number
+  maxScore: number
+  attemptNumber: number
+  questions: DetailedQuestionResult[]
+}
+
+export async function takeAssignment(
+  id: number,
+  token: string
+): Promise<TakeAssignmentData> {
+  const response = await fetch(`${API_BASE}/${id}/take`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  const data = await response.json().catch(() => null)
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'UNKNOWN_ERROR',
+      data?.message || 'Không thể mở bài làm',
+      data?.fields
+    )
+  }
+
+  return data as TakeAssignmentData
+}
+
+export async function saveDraftAnswers(
+  id: number,
+  answers: StudentAnswerItem[],
+  token: string
+): Promise<void> {
+  const response = await fetch(`${API_BASE}/${id}/draft`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ answers }),
+  })
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => null)
+    throw new ApiError(
+      response.status,
+      data?.code || 'UNKNOWN_ERROR',
+      data?.message || 'Không thể lưu nháp câu trả lời',
+      data?.fields
+    )
+  }
+}
+
+export async function submitAssignment(
+  id: number,
+  answers: StudentAnswerItem[],
+  token: string
+): Promise<SubmissionResultData> {
+  const response = await fetch(`${API_BASE}/${id}/submit`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ answers }),
+  })
+
+  const data = await response.json().catch(() => null)
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'UNKNOWN_ERROR',
+      data?.message || 'Không thể nộp bài tập',
+      data?.fields
+    )
+  }
+
+  return data as SubmissionResultData
+}
+
+export async function getSubmissionResult(
+  id: number,
+  token: string
+): Promise<SubmissionResultData> {
+  const response = await fetch(`${API_BASE}/${id}/result`, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  const data = await response.json().catch(() => null)
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'UNKNOWN_ERROR',
+      data?.message || 'Không thể tải kết quả bài làm',
+      data?.fields
+    )
+  }
+
+  return data as SubmissionResultData
+}

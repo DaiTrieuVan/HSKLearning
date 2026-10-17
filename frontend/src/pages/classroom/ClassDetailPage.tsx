@@ -1261,7 +1261,7 @@ export const ClassDetailPage: React.FC = () => {
                           {isSubmitted ? (
                             <button
                               type="button"
-                              disabled
+                              onClick={() => navigate(`/classes/${classroom.id}/assignments/${a.id}/take`)}
                               style={{
                                 padding: '8px 16px',
                                 borderRadius: 'var(--radius-md)',
@@ -1270,14 +1270,14 @@ export const ClassDetailPage: React.FC = () => {
                                 color: '#047857',
                                 fontWeight: 800,
                                 fontSize: '0.85rem',
-                                cursor: 'default',
+                                cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '6px',
                               }}
                             >
                               <CheckCircle2 size={15} />
-                              <span>Đã hoàn thành</span>
+                              <span>Xem kết quả</span>
                             </button>
                           ) : isUpcoming ? (
                             <button
@@ -1324,6 +1324,7 @@ export const ClassDetailPage: React.FC = () => {
                           ) : (
                             <button
                               type="button"
+                              onClick={() => navigate(`/classes/${classroom.id}/assignments/${a.id}/take`)}
                               className="btn-primary"
                               style={{
                                 padding: '8px 20px',

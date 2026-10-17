@@ -26,6 +26,10 @@ import {
   Calendar,
   Clock,
   Send,
+  CheckCircle2,
+  AlertTriangle,
+  FileText,
+  Play,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import {
@@ -54,7 +58,9 @@ import {
 } from '../../api/flashcard'
 import {
   getAssignmentsForClass,
+  getStudentAssignmentsForClass,
   type AssignmentItem,
+  type StudentAssignmentItem,
 } from '../../api/assignment'
 import { ApiError } from '../../api/auth'
 
@@ -77,8 +83,9 @@ export const ClassDetailPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
-  // Assignments state (HTT-06-CN-001)
+  // Assignments state (HTT-06-CN-001 & HTT-06-CN-002)
   const [classAssignments, setClassAssignments] = useState<AssignmentItem[]>([])
+  const [studentAssignments, setStudentAssignments] = useState<StudentAssignmentItem[]>([])
   const [assignmentsLoading, setAssignmentsLoading] = useState(false)
 
   // Vocab Sets state
@@ -159,8 +166,13 @@ export const ClassDetailPage: React.FC = () => {
     if (!classroom || !user) return
     try {
       setAssignmentsLoading(true)
-      const data = await getAssignmentsForClass(classroom.id, user.token)
-      setClassAssignments(data)
+      if (isTeacher) {
+        const data = await getAssignmentsForClass(classroom.id, user.token)
+        setClassAssignments(data)
+      } else {
+        const data = await getStudentAssignmentsForClass(classroom.id, user.token)
+        setStudentAssignments(data)
+      }
     } catch {
       // fallback
     } finally {
@@ -682,7 +694,7 @@ export const ClassDetailPage: React.FC = () => {
             }}
           >
             <FileCheck size={16} />
-            <span>Bài tập ({classAssignments.length})</span>
+            <span>Bài tập ({isTeacher ? classAssignments.length : studentAssignments.length})</span>
           </button>
 
           {isTeacher && (
@@ -801,137 +813,371 @@ export const ClassDetailPage: React.FC = () => {
               <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
                 Đang tải danh sách bài tập...
               </div>
-            ) : classAssignments.length === 0 ? (
-              <div
-                style={{
-                  textAlign: 'center',
-                  padding: '48px 20px',
-                  backgroundColor: '#f8fafc',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px dashed #cbd5e1',
-                }}
-              >
-                <FileCheck size={36} style={{ color: '#94a3b8', margin: '0 auto 12px', display: 'block' }} />
-                <h4 style={{ margin: '0 0 6px', fontSize: '1rem', fontWeight: 800, color: 'var(--text-main)' }}>
-                  Chưa có bài tập nào được giao cho lớp
-                </h4>
-                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                  {isTeacher
-                    ? 'Bạn có thể vào trang Quản lý bài tập để chọn bài và giao ngay cho lớp này.'
-                    : 'Giáo viên chưa giao bài tập nào. Hãy quay lại kiểm tra sau nhé!'}
-                </p>
-              </div>
+            ) : isTeacher ? (
+              classAssignments.length === 0 ? (
+                <div
+                  style={{
+                    textAlign: 'center',
+                    padding: '48px 20px',
+                    backgroundColor: '#f8fafc',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px dashed #cbd5e1',
+                  }}
+                >
+                  <FileCheck size={36} style={{ color: '#94a3b8', margin: '0 auto 12px', display: 'block' }} />
+                  <h4 style={{ margin: '0 0 6px', fontSize: '1rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                    Chưa có bài tập nào được giao cho lớp
+                  </h4>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    Bạn có thể vào trang Quản lý bài tập để chọn bài và giao ngay cho lớp này.
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  {classAssignments.map((a) => {
+                    const isClosed = a.status === 'CLOSED'
+                    const isScheduled = a.status === 'SCHEDULED'
+                    return (
+                      <div
+                        key={a.id}
+                        style={{
+                          padding: '18px 20px',
+                          borderRadius: 'var(--radius-md)',
+                          border: '1.5px solid #e2e8f0',
+                          backgroundColor: '#ffffff',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          flexWrap: 'wrap',
+                          gap: '16px',
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: '260px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                            <span
+                              style={{
+                                fontSize: '0.72rem',
+                                fontWeight: 800,
+                                padding: '2px 8px',
+                                borderRadius: 'var(--radius-full)',
+                                backgroundColor: isClosed ? '#f1f5f9' : isScheduled ? '#fffbeb' : '#ecfdf5',
+                                color: isClosed ? '#64748b' : isScheduled ? '#b45309' : '#047857',
+                                border: `1px solid ${isClosed ? '#cbd5e1' : isScheduled ? '#fde68a' : '#a7f3d0'}`,
+                              }}
+                            >
+                              {isClosed ? 'ĐÃ HẾT HẠN' : isScheduled ? 'SẮP DIỄN RA' : 'ĐANG MỞ LÀM BÀI'}
+                            </span>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                              Mã đợt #{a.id}
+                            </span>
+                          </div>
+
+                          <h4 style={{ margin: '0 0 6px', fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                            {a.title}
+                          </h4>
+
+                          {a.description && (
+                            <p style={{ margin: '0 0 8px', fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                              {a.description}
+                            </p>
+                          )}
+
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '16px',
+                              fontSize: '0.8rem',
+                              color: 'var(--text-muted)',
+                              flexWrap: 'wrap',
+                            }}
+                          >
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <Calendar size={14} />
+                              <span>Bắt đầu: {new Date(a.startTime).toLocaleString('vi-VN')}</span>
+                            </span>
+                            <span
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                color: isClosed ? '#ef4444' : '#b45309',
+                                fontWeight: 700,
+                              }}
+                            >
+                              <Clock size={14} />
+                              <span>Hạn nộp: {new Date(a.dueTime).toLocaleString('vi-VN')}</span>
+                            </span>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{a.questionCount} câu hỏi</div>
+                            <div style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--primary)' }}>{a.totalPoints} điểm</div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                {classAssignments.map((a) => {
-                  const isClosed = a.status === 'CLOSED'
-                  const isScheduled = a.status === 'SCHEDULED'
-                  return (
-                    <div
-                      key={a.id}
-                      style={{
-                        padding: '18px 20px',
-                        borderRadius: 'var(--radius-md)',
-                        border: '1.5px solid #e2e8f0',
-                        backgroundColor: '#ffffff',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        flexWrap: 'wrap',
-                        gap: '16px',
-                      }}
-                    >
-                      <div style={{ flex: 1, minWidth: '260px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                          <span
-                            style={{
-                              fontSize: '0.72rem',
-                              fontWeight: 800,
-                              padding: '2px 8px',
-                              borderRadius: 'var(--radius-full)',
-                              backgroundColor: isClosed ? '#f1f5f9' : isScheduled ? '#fffbeb' : '#ecfdf5',
-                              color: isClosed ? '#64748b' : isScheduled ? '#b45309' : '#047857',
-                              border: `1px solid ${isClosed ? '#cbd5e1' : isScheduled ? '#fde68a' : '#a7f3d0'}`,
-                            }}
-                          >
-                            {isClosed ? 'ĐÃ HẾT HẠN' : isScheduled ? 'SẮP DIỄN RA' : 'ĐANG MỞ LÀM BÀI'}
-                          </span>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                            Mã đợt #{a.id}
-                          </span>
-                        </div>
+              /* Student View (HTT-06-CN-002) */
+              studentAssignments.length === 0 ? (
+                <div
+                  style={{
+                    textAlign: 'center',
+                    padding: '48px 20px',
+                    backgroundColor: '#f8fafc',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px dashed #cbd5e1',
+                  }}
+                >
+                  <FileCheck size={36} style={{ color: '#94a3b8', margin: '0 auto 12px', display: 'block' }} />
+                  <h4 style={{ margin: '0 0 6px', fontSize: '1rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                    Chưa có bài tập nào được giao cho lớp
+                  </h4>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    Giáo viên chưa giao bài tập nào. Hãy quay lại kiểm tra sau nhé!
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  {studentAssignments.map((a) => {
+                    const isSubmitted = a.studentStatus === 'SUBMITTED'
+                    const isOverdue = a.studentStatus === 'OVERDUE'
+                    const isUpcoming = a.studentStatus === 'UPCOMING'
+                    const isInProgress = a.studentStatus === 'IN_PROGRESS'
 
-                        <h4 style={{ margin: '0 0 6px', fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-main)' }}>
-                          {a.title}
-                        </h4>
+                    let badgeBg = '#eff6ff'
+                    let badgeColor = '#1d4ed8'
+                    let badgeBorder = '#bfdbfe'
+                    let badgeText = 'CHƯA LÀM'
+                    let BadgeIcon = FileText
 
-                        {a.description && (
-                          <p style={{ margin: '0 0 8px', fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
-                            {a.description}
-                          </p>
-                        )}
+                    if (isSubmitted) {
+                      badgeBg = '#ecfdf5'
+                      badgeColor = '#047857'
+                      badgeBorder = '#a7f3d0'
+                      badgeText = 'ĐÃ NỘP'
+                      BadgeIcon = CheckCircle2
+                    } else if (isOverdue) {
+                      badgeBg = '#fef2f2'
+                      badgeColor = '#b91c1c'
+                      badgeBorder = '#fecaca'
+                      badgeText = 'QUÁ HẠN'
+                      BadgeIcon = AlertTriangle
+                    } else if (isUpcoming) {
+                      badgeBg = '#fffbeb'
+                      badgeColor = '#b45309'
+                      badgeBorder = '#fde68a'
+                      badgeText = 'CHƯA MỞ'
+                      BadgeIcon = Clock
+                    } else if (isInProgress) {
+                      badgeBg = '#fef3c7'
+                      badgeColor = '#92400e'
+                      badgeBorder = '#fde68a'
+                      badgeText = 'ĐANG LÀM DỞ'
+                      BadgeIcon = Clock
+                    }
 
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '16px',
-                            fontSize: '0.8rem',
-                            color: 'var(--text-muted)',
-                            flexWrap: 'wrap',
-                          }}
-                        >
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <Calendar size={14} />
-                            <span>Bắt đầu: {new Date(a.startTime).toLocaleString('vi-VN')}</span>
-                          </span>
-                          <span
+                    return (
+                      <div
+                        key={a.id}
+                        style={{
+                          padding: '18px 20px',
+                          borderRadius: 'var(--radius-md)',
+                          border: '1.5px solid #e2e8f0',
+                          backgroundColor: '#ffffff',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          flexWrap: 'wrap',
+                          gap: '16px',
+                          transition: 'all 0.2s',
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: '260px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                fontSize: '0.72rem',
+                                fontWeight: 800,
+                                padding: '3px 9px',
+                                borderRadius: 'var(--radius-full)',
+                                backgroundColor: badgeBg,
+                                color: badgeColor,
+                                border: `1px solid ${badgeBorder}`,
+                              }}
+                            >
+                              <BadgeIcon size={12} />
+                              <span>{badgeText}</span>
+                            </span>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                              Mã đợt #{a.id}
+                            </span>
+                          </div>
+
+                          <h4 style={{ margin: '0 0 6px', fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                            {a.title}
+                          </h4>
+
+                          {a.description && (
+                            <p style={{ margin: '0 0 8px', fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                              {a.description}
+                            </p>
+                          )}
+
+                          <div
                             style={{
                               display: 'flex',
                               alignItems: 'center',
-                              gap: '4px',
-                              color: isClosed ? '#ef4444' : '#b45309',
-                              fontWeight: 700,
+                              gap: '16px',
+                              fontSize: '0.8rem',
+                              color: 'var(--text-muted)',
+                              flexWrap: 'wrap',
                             }}
                           >
-                            <Clock size={14} />
-                            <span>Hạn nộp: {new Date(a.dueTime).toLocaleString('vi-VN')}</span>
-                          </span>
+                            {isUpcoming ? (
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#b45309', fontWeight: 700 }}>
+                                <Clock size={14} />
+                                <span>Mở lúc: {new Date(a.startTime).toLocaleString('vi-VN')}</span>
+                              </span>
+                            ) : (
+                              <span
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  color: isOverdue ? '#ef4444' : '#64748b',
+                                  fontWeight: isOverdue ? 700 : 500,
+                                }}
+                              >
+                                <Clock size={14} />
+                                <span>
+                                  {isOverdue
+                                    ? `Đã hết hạn: ${new Date(a.dueTime).toLocaleString('vi-VN')}`
+                                    : `Hạn nộp: ${new Date(a.dueTime).toLocaleString('vi-VN')}`}
+                                </span>
+                              </span>
+                            )}
+
+                            {isSubmitted && a.submittedAt && (
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#047857', fontWeight: 700 }}>
+                                <CheckCircle2 size={14} />
+                                <span>Đã nộp: {new Date(a.submittedAt).toLocaleString('vi-VN')}</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{a.questionCount} câu hỏi</div>
+                            {isSubmitted && a.score !== null && a.score !== undefined ? (
+                              <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#047857' }}>
+                                {a.score} / {a.totalPoints} <span style={{ fontSize: '0.75rem' }}>điểm</span>
+                              </div>
+                            ) : (
+                              <div style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--primary)' }}>
+                                {a.totalPoints} điểm
+                              </div>
+                            )}
+                          </div>
+
+                          {isSubmitted ? (
+                            <button
+                              type="button"
+                              disabled
+                              style={{
+                                padding: '8px 16px',
+                                borderRadius: 'var(--radius-md)',
+                                border: '1px solid #cbd5e1',
+                                backgroundColor: '#f8fafc',
+                                color: '#047857',
+                                fontWeight: 800,
+                                fontSize: '0.85rem',
+                                cursor: 'default',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                              }}
+                            >
+                              <CheckCircle2 size={15} />
+                              <span>Đã hoàn thành</span>
+                            </button>
+                          ) : isUpcoming ? (
+                            <button
+                              type="button"
+                              disabled
+                              style={{
+                                padding: '8px 16px',
+                                borderRadius: 'var(--radius-md)',
+                                border: '1px solid #e2e8f0',
+                                backgroundColor: '#f1f5f9',
+                                color: '#94a3b8',
+                                fontWeight: 800,
+                                fontSize: '0.85rem',
+                                cursor: 'not-allowed',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                              }}
+                            >
+                              <Clock size={15} />
+                              <span>Chưa mở</span>
+                            </button>
+                          ) : isOverdue ? (
+                            <button
+                              type="button"
+                              disabled
+                              style={{
+                                padding: '8px 16px',
+                                borderRadius: 'var(--radius-md)',
+                                border: '1px solid #fee2e2',
+                                backgroundColor: '#fef2f2',
+                                color: '#b91c1c',
+                                fontWeight: 800,
+                                fontSize: '0.85rem',
+                                cursor: 'not-allowed',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                              }}
+                            >
+                              <AlertTriangle size={15} />
+                              <span>Đã hết hạn</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn-primary"
+                              style={{
+                                padding: '8px 20px',
+                                borderRadius: 'var(--radius-md)',
+                                fontWeight: 800,
+                                fontSize: '0.85rem',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.06)',
+                              }}
+                            >
+                              <Play size={15} />
+                              <span>{isInProgress ? 'Tiếp tục làm' : 'Làm bài'}</span>
+                            </button>
+                          )}
                         </div>
                       </div>
-
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{a.questionCount} câu hỏi</div>
-                          <div style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--primary)' }}>{a.totalPoints} điểm</div>
-                        </div>
-
-                        {!isTeacher && (
-                          <button
-                            type="button"
-                            disabled={isScheduled || isClosed}
-                            style={{
-                              padding: '8px 18px',
-                              borderRadius: 'var(--radius-md)',
-                              border: 'none',
-                              backgroundColor: isScheduled || isClosed ? '#cbd5e1' : 'var(--primary)',
-                              color: '#ffffff',
-                              fontWeight: 800,
-                              fontSize: '0.85rem',
-                              cursor: isScheduled || isClosed ? 'not-allowed' : 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                            }}
-                          >
-                            <span>{isClosed ? 'Đã đóng' : isScheduled ? 'Chưa mở' : 'Làm bài'}</span>
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+                    )
+                  })}
+                </div>
+              )
             )}
           </div>
         )}

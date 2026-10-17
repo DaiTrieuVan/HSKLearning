@@ -433,3 +433,62 @@ export async function getSubmissionResultById(
 
   return data as SubmissionResultData
 }
+
+// ---------------------------------------------------------------------------
+// HTT-06-CN-006: Danh sách bài nộp của học sinh dành cho Giáo viên
+// ---------------------------------------------------------------------------
+
+export interface StudentSubmissionSummary {
+  studentId: number
+  studentName: string
+  studentEmail: string
+  status: 'NOT_STARTED' | 'IN_PROGRESS' | 'SUBMITTED' | 'AUTO_SUBMITTED'
+  submissionId?: number | null
+  score?: number | null
+  adjustedScore?: number | null
+  adjustReason?: string | null
+  effectiveScore?: number | null
+  attemptNumber?: number | null
+  startedAt?: string | null
+  submittedAt?: string | null
+}
+
+export interface AssignmentSubmissionsOverviewData {
+  assignmentId: number
+  assignmentTitle: string
+  assignmentDescription?: string | null
+  totalPoints: number
+  dueTime: string
+  status: string
+  totalStudents: number
+  submittedCount: number
+  inProgressCount: number
+  notStartedCount: number
+  students: StudentSubmissionSummary[]
+}
+
+export async function getAssignmentSubmissionsOverview(
+  assignmentId: number,
+  token: string
+): Promise<AssignmentSubmissionsOverviewData> {
+  const response = await fetch(`${API_BASE}/${assignmentId}/submissions`, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  const data = await response.json().catch(() => null)
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'UNKNOWN_ERROR',
+      data?.message || 'Không thể tải danh sách bài nộp của học sinh',
+      data?.fields
+    )
+  }
+
+  return data as AssignmentSubmissionsOverviewData
+}
+

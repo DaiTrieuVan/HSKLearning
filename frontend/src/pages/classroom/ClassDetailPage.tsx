@@ -12,6 +12,7 @@ import {
   LogOut,
   BookMarked,
   ChevronDown,
+  ChevronUp,
   ChevronRight,
   Plus,
   Users,
@@ -66,6 +67,7 @@ import {
   type StudentAssignmentItem,
 } from '../../api/assignment'
 import { ApiError } from '../../api/auth'
+import { AssignmentSubmissionsPanel } from '../../components/classroom/AssignmentSubmissionsPanel'
 
 export const ClassDetailPage: React.FC = () => {
   const { classId } = useParams<{ classId: string }>()
@@ -86,13 +88,14 @@ export const ClassDetailPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
-  // Assignments state (HTT-06-CN-001 & HTT-06-CN-002 & HTT-06-CN-009)
+  // Assignments state (HTT-06-CN-001 & HTT-06-CN-002 & HTT-06-CN-009 & HTT-06-CN-006)
   const [classAssignments, setClassAssignments] = useState<AssignmentItem[]>([])
   const [studentAssignments, setStudentAssignments] = useState<StudentAssignmentItem[]>([])
   const [assignmentsLoading, setAssignmentsLoading] = useState(false)
   const [confirmCancelAssignmentId, setConfirmCancelAssignmentId] = useState<number | null>(null)
   const [cancellingAssignmentId, setCancellingAssignmentId] = useState<number | null>(null)
   const [cancelAssignmentError, setCancelAssignmentError] = useState<string | null>(null)
+  const [expandedSubmissionsAssignmentId, setExpandedSubmissionsAssignmentId] = useState<number | null>(null)
 
   // Vocab Sets state
   const [classVocabSets, setClassVocabSets] = useState<VocabSetItem[]>([])
@@ -960,13 +963,14 @@ export const ClassDetailPage: React.FC = () => {
                               <div style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--primary)' }}>{a.totalPoints} điểm</div>
                             </div>
 
-                            {!isCancelled && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               <button
-                                id={`btn-cancel-assignment-${a.id}`}
+                                id={`btn-view-submissions-${a.id}`}
                                 type="button"
                                 onClick={() => {
-                                  setCancelAssignmentError(null)
-                                  setConfirmCancelAssignmentId(isConfirming ? null : a.id)
+                                  setExpandedSubmissionsAssignmentId(
+                                    expandedSubmissionsAssignmentId === a.id ? null : a.id
+                                  )
                                 }}
                                 style={{
                                   display: 'inline-flex',
@@ -974,20 +978,50 @@ export const ClassDetailPage: React.FC = () => {
                                   gap: '6px',
                                   padding: '7px 12px',
                                   borderRadius: 'var(--radius-md)',
-                                  border: '1px solid #fee2e2',
-                                  backgroundColor: '#fff1f2',
-                                  color: '#e11d48',
+                                  border: '1px solid #cbd5e1',
+                                  backgroundColor: expandedSubmissionsAssignmentId === a.id ? '#f1f5f9' : '#ffffff',
+                                  color: 'var(--text-main)',
                                   fontSize: '0.78rem',
                                   fontWeight: 700,
                                   cursor: 'pointer',
                                   transition: 'all 0.2s ease',
                                 }}
-                                title="Hủy lần giao bài này"
+                                title="Xem danh sách bài nộp của học sinh"
                               >
-                                <Ban size={14} />
-                                <span>Hủy giao bài</span>
+                                <Users size={14} />
+                                <span>{expandedSubmissionsAssignmentId === a.id ? 'Đóng bài nộp' : 'Xem bài nộp'}</span>
+                                {expandedSubmissionsAssignmentId === a.id ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
                               </button>
-                            )}
+
+                              {!isCancelled && (
+                                <button
+                                  id={`btn-cancel-assignment-${a.id}`}
+                                  type="button"
+                                  onClick={() => {
+                                    setCancelAssignmentError(null)
+                                    setConfirmCancelAssignmentId(isConfirming ? null : a.id)
+                                  }}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    padding: '7px 12px',
+                                    borderRadius: 'var(--radius-md)',
+                                    border: '1px solid #fee2e2',
+                                    backgroundColor: '#fff1f2',
+                                    color: '#e11d48',
+                                    fontSize: '0.78rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease',
+                                  }}
+                                  title="Hủy lần giao bài này"
+                                >
+                                  <Ban size={14} />
+                                  <span>Hủy giao bài</span>
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
 
@@ -1084,6 +1118,17 @@ export const ClassDetailPage: React.FC = () => {
                                 <span>Giữ lại bài</span>
                               </button>
                             </div>
+                          </div>
+                        )}
+
+                        {/* Inline Student Submissions Panel (HTT-06-CN-006 - Tuân thủ NO MODAL constraint) */}
+                        {expandedSubmissionsAssignmentId === a.id && user && (
+                          <div style={{ padding: '0 20px 20px 20px' }}>
+                            <AssignmentSubmissionsPanel
+                              assignmentId={a.id}
+                              token={user.token}
+                              onClose={() => setExpandedSubmissionsAssignmentId(null)}
+                            />
                           </div>
                         )}
                       </div>

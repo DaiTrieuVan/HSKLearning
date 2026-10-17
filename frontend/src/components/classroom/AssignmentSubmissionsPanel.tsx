@@ -14,11 +14,15 @@ import {
   AlertCircle,
   Edit3,
   Check,
+  CalendarPlus,
+  RotateCcw,
 } from 'lucide-react'
 import {
   getAssignmentSubmissionsOverview,
   getSubmissionResultById,
   adjustSubmissionScore,
+  grantStudentExtension,
+  grantStudentRetake,
   type AssignmentSubmissionsOverviewData,
   type StudentSubmissionSummary,
   type SubmissionResultData,
@@ -29,14 +33,12 @@ interface AssignmentSubmissionsPanelProps {
   assignmentId: number
   token: string
   onClose?: () => void
-  onGrantOverride?: (student: StudentSubmissionSummary) => void
 }
 
 export const AssignmentSubmissionsPanel: React.FC<AssignmentSubmissionsPanelProps> = ({
   assignmentId,
   token,
   onClose,
-  onGrantOverride,
 }) => {
   const [data, setData] = useState<AssignmentSubmissionsOverviewData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -54,6 +56,20 @@ export const AssignmentSubmissionsPanel: React.FC<AssignmentSubmissionsPanelProp
   const [adjustReasonValue, setAdjustReasonValue] = useState<string>('')
   const [adjustSubmitting, setAdjustSubmitting] = useState<boolean>(false)
   const [adjustError, setAdjustError] = useState<string | null>(null)
+
+  // HTT-06-CN-008: Gia hạn nộp bài inline (No Modal)
+  const [extendingStudentId, setExtendingStudentId] = useState<number | null>(null)
+  const [extensionDueTime, setExtensionDueTime] = useState<string>('')
+  const [extensionReason, setExtensionReason] = useState<string>('')
+  const [extensionSubmitting, setExtensionSubmitting] = useState<boolean>(false)
+  const [extensionError, setExtensionError] = useState<string | null>(null)
+
+  // HTT-06-CN-008: Cho phép làm lại bài tập inline (No Modal)
+  const [retakingStudentId, setRetakingStudentId] = useState<number | null>(null)
+  const [retakeAttempts, setRetakeAttempts] = useState<number>(2)
+  const [retakeReason, setRetakeReason] = useState<string>('')
+  const [retakeSubmitting, setRetakeSubmitting] = useState<boolean>(false)
+  const [retakeError, setRetakeError] = useState<string | null>(null)
 
   const loadOverview = async () => {
     try {
@@ -152,6 +168,118 @@ export const AssignmentSubmissionsPanel: React.FC<AssignmentSubmissionsPanelProp
       }
     } finally {
       setAdjustSubmitting(false)
+    }
+  }
+
+  // HTT-06-CN-008: Xử lý gia hạn nộp bài cho học sinh
+  const handleStartExtension = (st: StudentSubmissionSummary) => {
+    if (extendingStudentId === st.studentId) {
+      setExtendingStudentId(null)
+      setExtensionError(null)
+      return
+    }
+    setExtendingStudentId(st.studentId)
+    setRetakingStudentId(null)
+    setAdjustingStudentId(null)
+
+    // Khởi tạo hạn nộp mặc định: 1 ngày sau hoặc hạn hiện tại + 1 ngày
+    const baseDate = st.extendedDueTime
+      ? new Date(st.extendedDueTime)
+      : data?.dueTime
+      ? new Date(data.dueTime)
+      : new Date()
+    const nextDay = new Date(baseDate.getTime() + 24 * 60 * 60 * 1000)
+    const localIso = new Date(nextDay.getTime() - nextDay.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16)
+
+    setExtensionDueTime(localIso)
+    setExtensionReason('')
+    setExtensionError(null)
+  }
+
+  const handleSaveExtension = async (st: StudentSubmissionSummary) => {
+    if (!extensionDueTime) {
+      setExtensionError('Vui lòng chọn thời gian gia hạn')
+      return
+    }
+    const chosenTime = new Date(extensionDueTime).getTime()
+    if (isNaN(chosenTime) || chosenTime <= Date.now()) {
+      setExtensionError('Hạn nộp mới phải sau thời điểm hiện tại')
+      return
+    }
+
+    try {
+      setExtensionSubmitting(true)
+      setExtensionError(null)
+      await grantStudentExtension(
+        assignmentId,
+        st.studentId,
+        {
+          extendedDueTime: new Date(extensionDueTime).toISOString(),
+          reason: extensionReason.trim() || undefined,
+        },
+        token
+      )
+      setExtendingStudentId(null)
+      await loadOverview()
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setExtensionError(err.message)
+      } else {
+        setExtensionError('Không thể gia hạn bài tập. Vui lòng thử lại.')
+      }
+    } finally {
+      setExtensionSubmitting(false)
+    }
+  }
+
+  // HTT-06-CN-008: Xử lý cấp quyền làm lại bài tập cho học sinh
+  const handleStartRetake = (st: StudentSubmissionSummary) => {
+    if (retakingStudentId === st.studentId) {
+      setRetakingStudentId(null)
+      setRetakeError(null)
+      return
+    }
+    setRetakingStudentId(st.studentId)
+    setExtendingStudentId(null)
+    setAdjustingStudentId(null)
+
+    const currentAttempts = st.attemptNumber || 1
+    const allowed = st.allowedAttempts || 1
+    setRetakeAttempts(Math.max(allowed + 1, currentAttempts + 1))
+    setRetakeReason('')
+    setRetakeError(null)
+  }
+
+  const handleSaveRetake = async (st: StudentSubmissionSummary) => {
+    if (retakeAttempts < 2) {
+      setRetakeError('Số lượt làm bài tối đa phải ít nhất là 2')
+      return
+    }
+
+    try {
+      setRetakeSubmitting(true)
+      setRetakeError(null)
+      await grantStudentRetake(
+        assignmentId,
+        st.studentId,
+        {
+          allowedAttempts: retakeAttempts,
+          reason: retakeReason.trim() || undefined,
+        },
+        token
+      )
+      setRetakingStudentId(null)
+      await loadOverview()
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setRetakeError(err.message)
+      } else {
+        setRetakeError('Không thể cấp quyền làm lại bài tập. Vui lòng thử lại.')
+      }
+    } finally {
+      setRetakeSubmitting(false)
     }
   }
 
@@ -498,11 +626,53 @@ export const AssignmentSubmissionsPanel: React.FC<AssignmentSubmissionsPanelProp
                           <td style={{ padding: '12px 14px' }}>{renderStatusBadge(st.status)}</td>
 
                           <td style={{ padding: '12px 14px', color: 'var(--text-muted)' }}>
-                            {st.attemptNumber ? `Lần ${st.attemptNumber}` : '—'}
+                            <div>{st.attemptNumber ? `Lần ${st.attemptNumber}` : '—'}</div>
+                            {st.allowedAttempts && st.allowedAttempts > 1 && (
+                              <span
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '3px',
+                                  padding: '2px 6px',
+                                  borderRadius: 'var(--radius-full)',
+                                  backgroundColor: '#f3e8ff',
+                                  color: '#7e22ce',
+                                  border: '1px solid #d8b4fe',
+                                  fontSize: '0.68rem',
+                                  fontWeight: 700,
+                                  marginTop: '3px',
+                                }}
+                                title={`Học sinh được cấp tối đa ${st.allowedAttempts} lượt làm bài`}
+                              >
+                                <RotateCcw size={10} />
+                                Max: {st.allowedAttempts} lượt
+                              </span>
+                            )}
                           </td>
 
                           <td style={{ padding: '12px 14px', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
-                            {st.submittedAt ? new Date(st.submittedAt).toLocaleString('vi-VN') : '—'}
+                            <div>{st.submittedAt ? new Date(st.submittedAt).toLocaleString('vi-VN') : '—'}</div>
+                            {st.extendedDueTime && (
+                              <span
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '3px',
+                                  padding: '2px 6px',
+                                  borderRadius: 'var(--radius-full)',
+                                  backgroundColor: '#eff6ff',
+                                  color: '#1d4ed8',
+                                  border: '1px solid #bfdbfe',
+                                  fontSize: '0.68rem',
+                                  fontWeight: 700,
+                                  marginTop: '3px',
+                                }}
+                                title="Hạn nộp riêng đã được giáo viên gia hạn"
+                              >
+                                <Clock size={10} />
+                                Hạn riêng: {new Date(st.extendedDueTime).toLocaleString('vi-VN')}
+                              </span>
+                            )}
                           </td>
 
                           <td style={{ padding: '12px 14px' }}>
@@ -590,31 +760,324 @@ export const AssignmentSubmissionsPanel: React.FC<AssignmentSubmissionsPanelProp
                                 </button>
                               )}
 
-                              {onGrantOverride && (
-                                <button
-                                  type="button"
-                                  onClick={() => onGrantOverride(st)}
-                                  style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '3px',
-                                    padding: '5px 8px',
-                                    borderRadius: 'var(--radius-sm)',
-                                    border: '1px solid #bfdbfe',
-                                    backgroundColor: '#eff6ff',
-                                    color: '#1d4ed8',
-                                    fontSize: '0.75rem',
-                                    fontWeight: 600,
-                                    cursor: 'pointer',
-                                  }}
-                                  title="Gia hạn hoặc cho làm lại"
-                                >
-                                  <span>Gia hạn/Làm lại</span>
-                                </button>
-                              )}
+                              {/* Nút Gia hạn (HTT-06-CN-008) */}
+                              <button
+                                type="button"
+                                onClick={() => handleStartExtension(st)}
+                                disabled={st.status === 'AUTO_SUBMITTED'}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  padding: '5px 8px',
+                                  borderRadius: 'var(--radius-sm)',
+                                  border: '1px solid #bfdbfe',
+                                  backgroundColor: extendingStudentId === st.studentId ? '#dbeafe' : '#eff6ff',
+                                  color: st.status === 'AUTO_SUBMITTED' ? '#94a3b8' : '#1d4ed8',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 600,
+                                  cursor: st.status === 'AUTO_SUBMITTED' ? 'not-allowed' : 'pointer',
+                                  opacity: st.status === 'AUTO_SUBMITTED' ? 0.6 : 1,
+                                }}
+                                title={
+                                  st.status === 'AUTO_SUBMITTED'
+                                    ? 'Học sinh đã bị tự nộp khi hết hạn, vui lòng chọn Cho làm lại (TC-08)'
+                                    : 'Gia hạn nộp bài cho học sinh (HTT-06-CN-008)'
+                                }
+                              >
+                                <CalendarPlus size={12} />
+                                <span>{extendingStudentId === st.studentId ? 'Đóng hạn' : 'Gia hạn'}</span>
+                              </button>
+
+                              {/* Nút Cho làm lại (HTT-06-CN-008) */}
+                              <button
+                                type="button"
+                                onClick={() => handleStartRetake(st)}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  padding: '5px 8px',
+                                  borderRadius: 'var(--radius-sm)',
+                                  border: '1px solid #d8b4fe',
+                                  backgroundColor: retakingStudentId === st.studentId ? '#f3e8ff' : '#faf5ff',
+                                  color: '#7e22ce',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                }}
+                                title="Cho phép học sinh làm lại bài tập (cấp thêm lượt, giữ điểm cao nhất)"
+                              >
+                                <RotateCcw size={12} />
+                                <span>{retakingStudentId === st.studentId ? 'Đóng lại' : 'Cho làm lại'}</span>
+                              </button>
                             </div>
                           </td>
                         </tr>
+
+                        {/* Inline Extension Form (HTT-06-CN-008 - No Modal!) */}
+                        {extendingStudentId === st.studentId && (
+                          <tr>
+                            <td colSpan={6} style={{ padding: '14px 20px', backgroundColor: '#eff6ff', borderBottom: '1px solid #bfdbfe' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, fontSize: '0.85rem', color: '#1d4ed8' }}>
+                                    <CalendarPlus size={15} />
+                                    <span>Gia hạn nộp bài cho {st.studentName}</span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => setExtendingStudentId(null)}
+                                    style={{ background: 'none', border: 'none', color: '#1e40af', cursor: 'pointer', padding: '2px' }}
+                                  >
+                                    <X size={15} />
+                                  </button>
+                                </div>
+
+                                {extensionError && (
+                                  <div
+                                    style={{
+                                      padding: '8px 12px',
+                                      borderRadius: 'var(--radius-sm)',
+                                      backgroundColor: '#fef2f2',
+                                      border: '1px solid #fecaca',
+                                      color: '#b91c1c',
+                                      fontSize: '0.78rem',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '6px',
+                                    }}
+                                  >
+                                    <AlertCircle size={14} />
+                                    <span>{extensionError}</span>
+                                  </div>
+                                )}
+
+                                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                                  <div style={{ minWidth: '220px' }}>
+                                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: '#1e40af', marginBottom: '4px' }}>
+                                      Hạn nộp mới (phải sau thời điểm hiện tại)
+                                    </label>
+                                    <input
+                                      type="datetime-local"
+                                      value={extensionDueTime}
+                                      onChange={(e) => setExtensionDueTime(e.target.value)}
+                                      disabled={extensionSubmitting}
+                                      style={{
+                                        width: '100%',
+                                        padding: '7px 10px',
+                                        borderRadius: 'var(--radius-sm)',
+                                        border: '1px solid #cbd5e1',
+                                        backgroundColor: '#ffffff',
+                                        fontSize: '0.85rem',
+                                        fontWeight: 600,
+                                      }}
+                                    />
+                                  </div>
+
+                                  <div style={{ flex: 1, minWidth: '240px' }}>
+                                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: '#1e40af', marginBottom: '4px' }}>
+                                      Lý do gia hạn (tùy chọn)
+                                    </label>
+                                    <input
+                                      type="text"
+                                      maxLength={255}
+                                      placeholder="Ví dụ: Học sinh xin thêm thời gian ôn tập/bị lỗi mạng..."
+                                      value={extensionReason}
+                                      onChange={(e) => setExtensionReason(e.target.value)}
+                                      disabled={extensionSubmitting}
+                                      style={{
+                                        width: '100%',
+                                        padding: '7px 10px',
+                                        borderRadius: 'var(--radius-sm)',
+                                        border: '1px solid #cbd5e1',
+                                        backgroundColor: '#ffffff',
+                                        fontSize: '0.85rem',
+                                      }}
+                                    />
+                                  </div>
+
+                                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px', height: '100%', paddingTop: '18px' }}>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSaveExtension(st)}
+                                      disabled={extensionSubmitting}
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        padding: '7px 14px',
+                                        borderRadius: 'var(--radius-sm)',
+                                        border: 'none',
+                                        backgroundColor: '#2563eb',
+                                        color: '#ffffff',
+                                        fontSize: '0.78rem',
+                                        fontWeight: 700,
+                                        cursor: extensionSubmitting ? 'not-allowed' : 'pointer',
+                                      }}
+                                    >
+                                      {extensionSubmitting ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+                                      <span>{extensionSubmitting ? 'Đang lưu...' : 'Lưu gia hạn'}</span>
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => setExtendingStudentId(null)}
+                                      disabled={extensionSubmitting}
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        padding: '7px 12px',
+                                        borderRadius: 'var(--radius-sm)',
+                                        border: '1px solid #cbd5e1',
+                                        backgroundColor: '#ffffff',
+                                        color: 'var(--text-muted)',
+                                        fontSize: '0.78rem',
+                                        cursor: 'pointer',
+                                      }}
+                                    >
+                                      <span>Hủy</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+
+                        {/* Inline Retake Form (HTT-06-CN-008 - No Modal!) */}
+                        {retakingStudentId === st.studentId && (
+                          <tr>
+                            <td colSpan={6} style={{ padding: '14px 20px', backgroundColor: '#faf5ff', borderBottom: '1px solid #d8b4fe' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, fontSize: '0.85rem', color: '#7e22ce' }}>
+                                    <RotateCcw size={15} />
+                                    <span>Cấp quyền làm lại bài tập cho {st.studentName} (Lượt hiện tại: {st.attemptNumber || 1})</span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => setRetakingStudentId(null)}
+                                    style={{ background: 'none', border: 'none', color: '#6b21a8', cursor: 'pointer', padding: '2px' }}
+                                  >
+                                    <X size={15} />
+                                  </button>
+                                </div>
+
+                                {retakeError && (
+                                  <div
+                                    style={{
+                                      padding: '8px 12px',
+                                      borderRadius: 'var(--radius-sm)',
+                                      backgroundColor: '#fef2f2',
+                                      border: '1px solid #fecaca',
+                                      color: '#b91c1c',
+                                      fontSize: '0.78rem',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '6px',
+                                    }}
+                                  >
+                                    <AlertCircle size={14} />
+                                    <span>{retakeError}</span>
+                                  </div>
+                                )}
+
+                                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                                  <div style={{ width: '150px' }}>
+                                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: '#6b21a8', marginBottom: '4px' }}>
+                                      Tổng số lượt tối đa
+                                    </label>
+                                    <input
+                                      type="number"
+                                      min={Math.max(2, (st.attemptNumber || 1) + 1)}
+                                      max={10}
+                                      value={retakeAttempts}
+                                      onChange={(e) => setRetakeAttempts(parseInt(e.target.value) || 2)}
+                                      disabled={retakeSubmitting}
+                                      style={{
+                                        width: '100%',
+                                        padding: '7px 10px',
+                                        borderRadius: 'var(--radius-sm)',
+                                        border: '1px solid #cbd5e1',
+                                        backgroundColor: '#ffffff',
+                                        fontSize: '0.85rem',
+                                        fontWeight: 700,
+                                      }}
+                                    />
+                                  </div>
+
+                                  <div style={{ flex: 1, minWidth: '240px' }}>
+                                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: '#6b21a8', marginBottom: '4px' }}>
+                                      Lý do cho làm lại (tùy chọn)
+                                    </label>
+                                    <input
+                                      type="text"
+                                      maxLength={255}
+                                      placeholder="Ví dụ: Học sinh xin làm lại cải thiện điểm số..."
+                                      value={retakeReason}
+                                      onChange={(e) => setRetakeReason(e.target.value)}
+                                      disabled={retakeSubmitting}
+                                      style={{
+                                        width: '100%',
+                                        padding: '7px 10px',
+                                        borderRadius: 'var(--radius-sm)',
+                                        border: '1px solid #cbd5e1',
+                                        backgroundColor: '#ffffff',
+                                        fontSize: '0.85rem',
+                                      }}
+                                    />
+                                  </div>
+
+                                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px', height: '100%', paddingTop: '18px' }}>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSaveRetake(st)}
+                                      disabled={retakeSubmitting}
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        padding: '7px 14px',
+                                        borderRadius: 'var(--radius-sm)',
+                                        border: 'none',
+                                        backgroundColor: '#9333ea',
+                                        color: '#ffffff',
+                                        fontSize: '0.78rem',
+                                        fontWeight: 700,
+                                        cursor: retakeSubmitting ? 'not-allowed' : 'pointer',
+                                      }}
+                                    >
+                                      {retakeSubmitting ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+                                      <span>{retakeSubmitting ? 'Đang cấp...' : 'Cấp quyền làm lại'}</span>
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => setRetakingStudentId(null)}
+                                      disabled={retakeSubmitting}
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        padding: '7px 12px',
+                                        borderRadius: 'var(--radius-sm)',
+                                        border: '1px solid #cbd5e1',
+                                        backgroundColor: '#ffffff',
+                                        color: 'var(--text-muted)',
+                                        fontSize: '0.78rem',
+                                        cursor: 'pointer',
+                                      }}
+                                    >
+                                      <span>Hủy</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
 
                         {/* Inline Adjust Score Form (HTT-06-CN-007 - No Modal!) */}
                         {adjustingStudentId === st.studentId && (

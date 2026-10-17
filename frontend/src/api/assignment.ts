@@ -451,6 +451,8 @@ export interface StudentSubmissionSummary {
   attemptNumber?: number | null
   startedAt?: string | null
   submittedAt?: string | null
+  extendedDueTime?: string | null
+  allowedAttempts?: number | null
 }
 
 export interface AssignmentSubmissionsOverviewData {
@@ -527,6 +529,87 @@ export async function adjustSubmissionScore(
   }
 
   return data as SubmissionResultData
+}
+
+// ---------------------------------------------------------------------------
+// HTT-06-CN-008: Gia hạn nộp bài và Cho phép làm lại bài tập
+// ---------------------------------------------------------------------------
+
+export interface GrantExtensionPayload {
+  extendedDueTime: string
+  reason?: string
+}
+
+export interface GrantRetakePayload {
+  allowedAttempts?: number
+  reason?: string
+}
+
+export interface StudentOverrideData {
+  assignmentId: number
+  studentId: number
+  extendedDueTime?: string | null
+  allowedAttempts?: number | null
+  reason?: string | null
+  updatedAt: string
+}
+
+export async function grantStudentExtension(
+  assignmentId: number,
+  studentId: number,
+  payload: GrantExtensionPayload,
+  token: string
+): Promise<StudentOverrideData> {
+  const response = await fetch(`${API_BASE}/${assignmentId}/students/${studentId}/extension`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  const data = await response.json().catch(() => null)
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'UNKNOWN_ERROR',
+      data?.message || 'Không thể gia hạn bài tập cho học sinh',
+      data?.fields
+    )
+  }
+
+  return data as StudentOverrideData
+}
+
+export async function grantStudentRetake(
+  assignmentId: number,
+  studentId: number,
+  payload: GrantRetakePayload,
+  token: string
+): Promise<StudentOverrideData> {
+  const response = await fetch(`${API_BASE}/${assignmentId}/students/${studentId}/retake`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  const data = await response.json().catch(() => null)
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'UNKNOWN_ERROR',
+      data?.message || 'Không thể cấp quyền làm lại bài tập cho học sinh',
+      data?.fields
+    )
+  }
+
+  return data as StudentOverrideData
 }
 
 

@@ -12,10 +12,13 @@ import {
   Award,
   FileText,
   AlertCircle,
+  Edit3,
+  Check,
 } from 'lucide-react'
 import {
   getAssignmentSubmissionsOverview,
   getSubmissionResultById,
+  adjustSubmissionScore,
   type AssignmentSubmissionsOverviewData,
   type StudentSubmissionSummary,
   type SubmissionResultData,
@@ -26,7 +29,6 @@ interface AssignmentSubmissionsPanelProps {
   assignmentId: number
   token: string
   onClose?: () => void
-  onAdjustScore?: (student: StudentSubmissionSummary) => void
   onGrantOverride?: (student: StudentSubmissionSummary) => void
 }
 
@@ -34,7 +36,6 @@ export const AssignmentSubmissionsPanel: React.FC<AssignmentSubmissionsPanelProp
   assignmentId,
   token,
   onClose,
-  onAdjustScore,
   onGrantOverride,
 }) => {
   const [data, setData] = useState<AssignmentSubmissionsOverviewData | null>(null)
@@ -46,6 +47,13 @@ export const AssignmentSubmissionsPanel: React.FC<AssignmentSubmissionsPanelProp
   const [loadingDetailStudentId, setLoadingDetailStudentId] = useState<number | null>(null)
   const [studentDetails, setStudentDetails] = useState<Record<number, SubmissionResultData>>({})
   const [detailErrors, setDetailErrors] = useState<Record<number, string>>({})
+
+  // HTT-06-CN-007: Điều chỉnh điểm inline (No Modal)
+  const [adjustingStudentId, setAdjustingStudentId] = useState<number | null>(null)
+  const [adjustScoreValue, setAdjustScoreValue] = useState<string>('')
+  const [adjustReasonValue, setAdjustReasonValue] = useState<string>('')
+  const [adjustSubmitting, setAdjustSubmitting] = useState<boolean>(false)
+  const [adjustError, setAdjustError] = useState<string | null>(null)
 
   const loadOverview = async () => {
     try {
@@ -90,6 +98,60 @@ export const AssignmentSubmissionsPanel: React.FC<AssignmentSubmissionsPanelProp
       setDetailErrors((prev) => ({ ...prev, [student.studentId]: msg }))
     } finally {
       setLoadingDetailStudentId(null)
+    }
+  }
+
+  const handleStartAdjust = (st: StudentSubmissionSummary) => {
+    if (adjustingStudentId === st.studentId) {
+      setAdjustingStudentId(null)
+      setAdjustError(null)
+      return
+    }
+    setAdjustingStudentId(st.studentId)
+    setAdjustScoreValue(
+      st.adjustedScore != null
+        ? st.adjustedScore.toString()
+        : st.score != null
+        ? st.score.toString()
+        : ''
+    )
+    setAdjustReasonValue(st.adjustReason || '')
+    setAdjustError(null)
+  }
+
+  const handleSaveAdjust = async (st: StudentSubmissionSummary) => {
+    if (!st.submissionId) return
+    if (!adjustReasonValue.trim()) {
+      setAdjustError('Lý do điều chỉnh điểm không được để trống (bắt buộc theo QTN-13)')
+      return
+    }
+    const parsed = parseFloat(adjustScoreValue)
+    if (isNaN(parsed) || parsed < 0 || (data && parsed > data.totalPoints)) {
+      setAdjustError(`Điểm điều chỉnh phải là số hợp lệ từ 0 đến ${data?.totalPoints || 10}`)
+      return
+    }
+
+    try {
+      setAdjustSubmitting(true)
+      setAdjustError(null)
+      await adjustSubmissionScore(
+        st.submissionId,
+        {
+          adjustedScore: parsed,
+          reason: adjustReasonValue.trim(),
+        },
+        token
+      )
+      setAdjustingStudentId(null)
+      await loadOverview()
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setAdjustError(err.message)
+      } else {
+        setAdjustError('Không thể điều chỉnh điểm. Vui lòng thử lại.')
+      }
+    } finally {
+      setAdjustSubmitting(false)
     }
   }
 
@@ -504,26 +566,27 @@ export const AssignmentSubmissionsPanel: React.FC<AssignmentSubmissionsPanelProp
                                 </button>
                               )}
 
-                              {onAdjustScore && hasSubmitted && (
+                              {hasSubmitted && st.submissionId && (
                                 <button
                                   type="button"
-                                  onClick={() => onAdjustScore(st)}
+                                  onClick={() => handleStartAdjust(st)}
                                   style={{
                                     display: 'inline-flex',
                                     alignItems: 'center',
-                                    gap: '3px',
+                                    gap: '4px',
                                     padding: '5px 8px',
                                     borderRadius: 'var(--radius-sm)',
                                     border: '1px solid #fde68a',
-                                    backgroundColor: '#fffbeb',
+                                    backgroundColor: adjustingStudentId === st.studentId ? '#fef3c7' : '#fffbeb',
                                     color: '#b45309',
                                     fontSize: '0.75rem',
                                     fontWeight: 600,
                                     cursor: 'pointer',
                                   }}
-                                  title="Điều chỉnh điểm số"
+                                  title="Điều chỉnh điểm số kèm lý do (QTN-13)"
                                 >
-                                  <span>Sửa điểm</span>
+                                  <Edit3 size={12} />
+                                  <span>{adjustingStudentId === st.studentId ? 'Đóng sửa' : 'Sửa điểm'}</span>
                                 </button>
                               )}
 
@@ -552,6 +615,146 @@ export const AssignmentSubmissionsPanel: React.FC<AssignmentSubmissionsPanelProp
                             </div>
                           </td>
                         </tr>
+
+                        {/* Inline Adjust Score Form (HTT-06-CN-007 - No Modal!) */}
+                        {adjustingStudentId === st.studentId && (
+                          <tr>
+                            <td colSpan={6} style={{ padding: '14px 20px', backgroundColor: '#fffbeb', borderBottom: '1px solid #fde68a' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, fontSize: '0.85rem', color: '#b45309' }}>
+                                    <Edit3 size={15} />
+                                    <span>Điều chỉnh điểm cho {st.studentName} (Điểm gốc: {st.score ?? 0} / {data.totalPoints})</span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => setAdjustingStudentId(null)}
+                                    style={{
+                                      background: 'none',
+                                      border: 'none',
+                                      color: '#92400e',
+                                      cursor: 'pointer',
+                                      padding: '2px',
+                                    }}
+                                  >
+                                    <X size={15} />
+                                  </button>
+                                </div>
+
+                                {adjustError && (
+                                  <div
+                                    style={{
+                                      padding: '8px 12px',
+                                      borderRadius: 'var(--radius-sm)',
+                                      backgroundColor: '#fef2f2',
+                                      border: '1px solid #fecaca',
+                                      color: '#b91c1c',
+                                      fontSize: '0.78rem',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '6px',
+                                    }}
+                                  >
+                                    <AlertCircle size={14} />
+                                    <span>{adjustError}</span>
+                                  </div>
+                                )}
+
+                                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                                  <div style={{ width: '130px' }}>
+                                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: '#92400e', marginBottom: '4px' }}>
+                                      Điểm mới (Max: {data.totalPoints})
+                                    </label>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      max={data.totalPoints}
+                                      step="0.1"
+                                      value={adjustScoreValue}
+                                      onChange={(e) => setAdjustScoreValue(e.target.value)}
+                                      disabled={adjustSubmitting}
+                                      style={{
+                                        width: '100%',
+                                        padding: '7px 10px',
+                                        borderRadius: 'var(--radius-sm)',
+                                        border: '1px solid #cbd5e1',
+                                        backgroundColor: '#ffffff',
+                                        fontSize: '0.85rem',
+                                        fontWeight: 700,
+                                      }}
+                                    />
+                                  </div>
+
+                                  <div style={{ flex: 1, minWidth: '240px' }}>
+                                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: '#92400e', marginBottom: '4px' }}>
+                                      Lý do điều chỉnh (bắt buộc)
+                                    </label>
+                                    <input
+                                      type="text"
+                                      maxLength={255}
+                                      placeholder="Ví dụ: Chấm bổ sung phần bài tập tự luận/phúc khảo..."
+                                      value={adjustReasonValue}
+                                      onChange={(e) => setAdjustReasonValue(e.target.value)}
+                                      disabled={adjustSubmitting}
+                                      style={{
+                                        width: '100%',
+                                        padding: '7px 10px',
+                                        borderRadius: 'var(--radius-sm)',
+                                        border: '1px solid #cbd5e1',
+                                        backgroundColor: '#ffffff',
+                                        fontSize: '0.85rem',
+                                      }}
+                                    />
+                                  </div>
+
+                                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px', height: '100%', paddingTop: '18px' }}>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSaveAdjust(st)}
+                                      disabled={adjustSubmitting}
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        padding: '7px 14px',
+                                        borderRadius: 'var(--radius-sm)',
+                                        border: 'none',
+                                        backgroundColor: '#d97706',
+                                        color: '#ffffff',
+                                        fontSize: '0.78rem',
+                                        fontWeight: 700,
+                                        cursor: adjustSubmitting ? 'not-allowed' : 'pointer',
+                                      }}
+                                    >
+                                      {adjustSubmitting ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+                                      <span>{adjustSubmitting ? 'Đang lưu...' : 'Lưu điểm'}</span>
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => setAdjustingStudentId(null)}
+                                      disabled={adjustSubmitting}
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        padding: '7px 12px',
+                                        borderRadius: 'var(--radius-sm)',
+                                        border: '1px solid #cbd5e1',
+                                        backgroundColor: '#ffffff',
+                                        color: 'var(--text-muted)',
+                                        fontSize: '0.78rem',
+                                        cursor: 'pointer',
+                                      }}
+                                    >
+                                      <span>Hủy</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
 
                         {/* Inline Student Submission Detail (No Modal!) */}
                         {isExpanded && (

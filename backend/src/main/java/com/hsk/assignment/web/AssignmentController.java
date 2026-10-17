@@ -18,6 +18,7 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -122,6 +123,36 @@ public class AssignmentController {
 	) {
 		UserEntity user = requireUser(principal);
 		StudentAssignmentDetailResponse response = assignmentService.getStudentAssignmentDetail(user.getId(), id);
+		return ResponseEntity.ok(response);
+	}
+
+	@PostMapping("/{id}/cancel")
+	@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
+	@Operation(
+			summary = "HTT-06-CN-009 — Hủy lần giao bài",
+			description = "Giáo viên phụ trách lớp hủy lần giao bài giao nhầm (chuyển sang CANCELLED). Chỉ hủy được khi chưa có học sinh nào làm/nộp bài (QTN-01, QTN-21)."
+	)
+	public ResponseEntity<AssignmentResponse> cancelAssignment(
+			@PathVariable("id") Long id,
+			Principal principal
+	) {
+		UserEntity user = requireUser(principal);
+		AssignmentResponse response = assignmentService.cancelAssignment(user.getId(), id);
+		return ResponseEntity.ok(response);
+	}
+
+	@DeleteMapping("/{id}")
+	@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
+	@Operation(
+			summary = "HTT-06-CN-009 — Hủy lần giao bài (RESTful delete alias)",
+			description = "Bí danh RESTful để hủy lần giao bài mà không xóa vật lý khỏi cơ sở dữ liệu."
+	)
+	public ResponseEntity<AssignmentResponse> deleteAssignment(
+			@PathVariable("id") Long id,
+			Principal principal
+	) {
+		UserEntity user = requireUser(principal);
+		AssignmentResponse response = assignmentService.cancelAssignment(user.getId(), id);
 		return ResponseEntity.ok(response);
 	}
 }

@@ -22,6 +22,10 @@ import {
   Sparkles,
   BookOpen,
   Layers,
+  FileCheck,
+  Calendar,
+  Clock,
+  Send,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import {
@@ -48,6 +52,10 @@ import {
   reviewFlashcard,
   type FlashcardItem,
 } from '../../api/flashcard'
+import {
+  getAssignmentsForClass,
+  type AssignmentItem,
+} from '../../api/assignment'
 import { ApiError } from '../../api/auth'
 
 export const ClassDetailPage: React.FC = () => {
@@ -60,14 +68,18 @@ export const ClassDetailPage: React.FC = () => {
 
   const isTeacher = user?.activeMode === 'TEACHER'
 
-  const [activeTab, setActiveTab] = useState<'MEMBERS' | 'REMOVED' | 'VOCAB_SETS'>(
-    isTeacher ? 'MEMBERS' : 'VOCAB_SETS'
+  const [activeTab, setActiveTab] = useState<'MEMBERS' | 'REMOVED' | 'VOCAB_SETS' | 'ASSIGNMENTS'>(
+    'ASSIGNMENTS'
   )
   const [members, setMembers] = useState<ClassMemberItem[]>([])
   const [loading, setLoading] = useState(false)
   const [actionLoading, setActionLoading] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+
+  // Assignments state (HTT-06-CN-001)
+  const [classAssignments, setClassAssignments] = useState<AssignmentItem[]>([])
+  const [assignmentsLoading, setAssignmentsLoading] = useState(false)
 
   // Vocab Sets state
   const [classVocabSets, setClassVocabSets] = useState<VocabSetItem[]>([])
@@ -135,11 +147,26 @@ export const ClassDetailPage: React.FC = () => {
     if (classroom && user) {
       if (activeTab === 'VOCAB_SETS') {
         loadClassVocabSets()
+      } else if (activeTab === 'ASSIGNMENTS') {
+        loadClassAssignments()
       } else {
         loadMembers()
       }
     }
   }, [classroom, activeTab])
+
+  const loadClassAssignments = async () => {
+    if (!classroom || !user) return
+    try {
+      setAssignmentsLoading(true)
+      const data = await getAssignmentsForClass(classroom.id, user.token)
+      setClassAssignments(data)
+    } catch {
+      // fallback
+    } finally {
+      setAssignmentsLoading(false)
+    }
+  }
 
   const loadMembers = async () => {
     if (!classroom || !user) return
@@ -637,6 +664,27 @@ export const ClassDetailPage: React.FC = () => {
 
         {/* Navigation Tabs */}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '2px solid var(--border-card)', paddingBottom: '8px' }}>
+          <button
+            type="button"
+            onClick={() => setActiveTab('ASSIGNMENTS')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 16px',
+              borderRadius: 'var(--radius-md)',
+              border: 'none',
+              fontWeight: 800,
+              fontSize: '0.88rem',
+              cursor: 'pointer',
+              backgroundColor: activeTab === 'ASSIGNMENTS' ? 'var(--primary)' : '#f1f5f9',
+              color: activeTab === 'ASSIGNMENTS' ? '#ffffff' : 'var(--text-muted)',
+            }}
+          >
+            <FileCheck size={16} />
+            <span>Bài tập ({classAssignments.length})</span>
+          </button>
+
           {isTeacher && (
             <button
               type="button"
@@ -704,6 +752,189 @@ export const ClassDetailPage: React.FC = () => {
             </button>
           )}
         </div>
+
+        {/* Tab 0: Class Assignments (HTT-06-CN-001) */}
+        {activeTab === 'ASSIGNMENTS' && (
+          <div className="game-card" style={{ padding: '24px', backgroundColor: '#ffffff' }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '20px',
+                flexWrap: 'wrap',
+                gap: '12px',
+              }}
+            >
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                  Bài tập đã giao cho lớp
+                </h3>
+                <p style={{ margin: '4px 0 0', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                  Danh sách bài tập và hạn nộp (QTN-01, QTN-09, QTN-10)
+                </p>
+              </div>
+
+              {isTeacher && classroom.status === 'ACTIVE' && (
+                <button
+                  type="button"
+                  onClick={() => navigate('/exercises')}
+                  className="btn-primary"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 16px',
+                    borderRadius: 'var(--radius-md)',
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <Send size={15} />
+                  <span>Giao bài tập mới</span>
+                </button>
+              )}
+            </div>
+
+            {assignmentsLoading ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                Đang tải danh sách bài tập...
+              </div>
+            ) : classAssignments.length === 0 ? (
+              <div
+                style={{
+                  textAlign: 'center',
+                  padding: '48px 20px',
+                  backgroundColor: '#f8fafc',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px dashed #cbd5e1',
+                }}
+              >
+                <FileCheck size={36} style={{ color: '#94a3b8', margin: '0 auto 12px', display: 'block' }} />
+                <h4 style={{ margin: '0 0 6px', fontSize: '1rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                  Chưa có bài tập nào được giao cho lớp
+                </h4>
+                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                  {isTeacher
+                    ? 'Bạn có thể vào trang Quản lý bài tập để chọn bài và giao ngay cho lớp này.'
+                    : 'Giáo viên chưa giao bài tập nào. Hãy quay lại kiểm tra sau nhé!'}
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {classAssignments.map((a) => {
+                  const isClosed = a.status === 'CLOSED'
+                  const isScheduled = a.status === 'SCHEDULED'
+                  return (
+                    <div
+                      key={a.id}
+                      style={{
+                        padding: '18px 20px',
+                        borderRadius: 'var(--radius-md)',
+                        border: '1.5px solid #e2e8f0',
+                        backgroundColor: '#ffffff',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        gap: '16px',
+                      }}
+                    >
+                      <div style={{ flex: 1, minWidth: '260px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                          <span
+                            style={{
+                              fontSize: '0.72rem',
+                              fontWeight: 800,
+                              padding: '2px 8px',
+                              borderRadius: 'var(--radius-full)',
+                              backgroundColor: isClosed ? '#f1f5f9' : isScheduled ? '#fffbeb' : '#ecfdf5',
+                              color: isClosed ? '#64748b' : isScheduled ? '#b45309' : '#047857',
+                              border: `1px solid ${isClosed ? '#cbd5e1' : isScheduled ? '#fde68a' : '#a7f3d0'}`,
+                            }}
+                          >
+                            {isClosed ? 'ĐÃ HẾT HẠN' : isScheduled ? 'SẮP DIỄN RA' : 'ĐANG MỞ LÀM BÀI'}
+                          </span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                            Mã đợt #{a.id}
+                          </span>
+                        </div>
+
+                        <h4 style={{ margin: '0 0 6px', fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                          {a.title}
+                        </h4>
+
+                        {a.description && (
+                          <p style={{ margin: '0 0 8px', fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                            {a.description}
+                          </p>
+                        )}
+
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '16px',
+                            fontSize: '0.8rem',
+                            color: 'var(--text-muted)',
+                            flexWrap: 'wrap',
+                          }}
+                        >
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <Calendar size={14} />
+                            <span>Bắt đầu: {new Date(a.startTime).toLocaleString('vi-VN')}</span>
+                          </span>
+                          <span
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              color: isClosed ? '#ef4444' : '#b45309',
+                              fontWeight: 700,
+                            }}
+                          >
+                            <Clock size={14} />
+                            <span>Hạn nộp: {new Date(a.dueTime).toLocaleString('vi-VN')}</span>
+                          </span>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{a.questionCount} câu hỏi</div>
+                          <div style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--primary)' }}>{a.totalPoints} điểm</div>
+                        </div>
+
+                        {!isTeacher && (
+                          <button
+                            type="button"
+                            disabled={isScheduled || isClosed}
+                            style={{
+                              padding: '8px 18px',
+                              borderRadius: 'var(--radius-md)',
+                              border: 'none',
+                              backgroundColor: isScheduled || isClosed ? '#cbd5e1' : 'var(--primary)',
+                              color: '#ffffff',
+                              fontWeight: 800,
+                              fontSize: '0.85rem',
+                              cursor: isScheduled || isClosed ? 'not-allowed' : 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                            }}
+                          >
+                            <span>{isClosed ? 'Đã đóng' : isScheduled ? 'Chưa mở' : 'Làm bài'}</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Tab 1: Active Members */}
         {activeTab === 'MEMBERS' && (

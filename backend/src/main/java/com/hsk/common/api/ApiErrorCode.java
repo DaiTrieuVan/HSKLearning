@@ -194,6 +194,21 @@ public enum ApiErrorCode {
 	/** HTT-05-CN-006 / QTN-19: Access denied to exercise of another teacher. */
 	ACCESS_DENIED_EXERCISE(HttpStatus.FORBIDDEN, "Bạn không có quyền thao tác với bài tập này"),
 
+	/** HTT-06-CN-001 / TC-03: Assignment due time must be after start/assign time (QTN-09). */
+	ASSIGNMENT_DUE_DATE_INVALID(HttpStatus.BAD_REQUEST, "Hạn nộp bài phải sau thời gian bắt đầu hoặc thời điểm giao bài"),
+
+	/** HTT-06-CN-001 / TC-04 & QTN-09: Exercise must have at least one question to assign. */
+	ASSIGNMENT_EXERCISE_EMPTY(HttpStatus.BAD_REQUEST, "Bài tập chưa có câu hỏi nào, không thể giao bài cho lớp"),
+
+	/** HTT-06-CN-001 / TC-05: Classroom is required to assign exercise. */
+	ASSIGNMENT_CLASS_REQUIRED(HttpStatus.BAD_REQUEST, "Vui lòng chọn lớp học để giao bài"),
+
+	/** HTT-06-CN-001 / TC-05: Due date is required to assign exercise. */
+	ASSIGNMENT_DUE_DATE_REQUIRED(HttpStatus.BAD_REQUEST, "Hạn nộp bài không được để trống"),
+
+	/** HTT-06-CN-001: Assignment not found. */
+	ASSIGNMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy lần giao bài"),
+
 	/** Unexpected server side failure; the client may retry. */
 	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Hệ thống đang gặp sự cố, vui lòng thử lại sau");
 

@@ -1,0 +1,94 @@
+package com.hsk.assignment.web;
+
+import com.hsk.account.domain.UserEntity;
+import com.hsk.account.repository.UserRepository;
+import com.hsk.assignment.dto.AssignExerciseRequest;
+import com.hsk.assignment.dto.AssignmentDetailResponse;
+import com.hsk.assignment.dto.AssignmentResponse;
+import com.hsk.assignment.service.AssignmentService;
+import com.hsk.common.api.ApiErrorCode;
+import com.hsk.common.api.ApiException;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import java.security.Principal;
+import java.util.List;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ * Controller xử lý các yêu cầu Giao bài tập cho lớp (HTT-06-CN-001).
+ */
+@RestController
+@RequestMapping("/api/assignments")
+@Tag(name = "Assignments", description = "HTT-06 — Giao bài, làm bài và chấm điểm")
+public class AssignmentController {
+
+	private final AssignmentService assignmentService;
+	private final UserRepository userRepository;
+
+	public AssignmentController(AssignmentService assignmentService, UserRepository userRepository) {
+		this.assignmentService = assignmentService;
+		this.userRepository = userRepository;
+	}
+
+	private UserEntity requireUser(Principal principal) {
+		if (principal == null || principal.getName() == null) {
+			throw new ApiException(ApiErrorCode.UNAUTHORIZED);
+		}
+		return userRepository.findByEmail(principal.getName())
+				.orElseThrow(() -> new ApiException(ApiErrorCode.UNAUTHORIZED));
+	}
+
+	@PostMapping
+	@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
+	@Operation(
+			summary = "HTT-06-CN-001 — Giao bài tập cho lớp",
+			description = "Giáo viên chọn bài tập, lớp học, thời gian bắt đầu và hạn nộp để giao bài. Chụp lại snapshot toàn bộ câu hỏi đáp án theo QTN-10."
+	)
+	public ResponseEntity<AssignmentResponse> assignExercise(
+			@Valid @RequestBody AssignExerciseRequest request,
+			Principal principal
+	) {
+		UserEntity user = requireUser(principal);
+		AssignmentResponse response = assignmentService.assignExercise(user.getId(), request);
+		return ResponseEntity.status(HttpStatus.CREATED).body(response);
+	}
+
+	@GetMapping("/classes/{classId}")
+	@PreAuthorize("isAuthenticated()")
+	@Operation(
+			summary = "HTT-06-CN-001 — Lấy danh sách bài tập đã giao cho một lớp",
+			description = "Giáo viên phụ trách xem toàn bộ; học sinh chỉ thấy bài đã đến giờ bắt đầu hoặc bài còn hạn nộp."
+	)
+	public ResponseEntity<List<AssignmentResponse>> getAssignmentsForClass(
+			@PathVariable("classId") Long classId,
+			Principal principal
+	) {
+		UserEntity user = requireUser(principal);
+		List<AssignmentResponse> responses = assignmentService.getAssignmentsForClass(user.getId(), classId);
+		return ResponseEntity.ok(responses);
+	}
+
+	@GetMapping("/{id}")
+	@PreAuthorize("isAuthenticated()")
+	@Operation(
+			summary = "HTT-06-CN-001 — Xem chi tiết lần giao bài",
+			description = "Xem thông tin phiên giao bài kèm bản chụp nội dung câu hỏi snapshot."
+	)
+	public ResponseEntity<AssignmentDetailResponse> getAssignmentDetail(
+			@PathVariable("id") Long id,
+			Principal principal
+	) {
+		UserEntity user = requireUser(principal);
+		AssignmentDetailResponse response = assignmentService.getAssignmentDetail(user.getId(), id);
+		return ResponseEntity.ok(response);
+	}
+}

@@ -55,6 +55,15 @@ public class AssignmentSubmissionEntity {
 	@Column(name = "answers_data", columnDefinition = "LONGTEXT")
 	private String answersData;
 
+	@Column(name = "adjusted_score", precision = 6, scale = 2)
+	private BigDecimal adjustedScore;
+
+	@Column(name = "adjust_reason", length = 255)
+	private String adjustReason;
+
+	@Column(name = "adjusted_at")
+	private Instant adjustedAt;
+
 	@CreationTimestamp
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private Instant createdAt;
@@ -161,6 +170,36 @@ public class AssignmentSubmissionEntity {
 
 	public void setAnswersData(String answersData) {
 		this.answersData = answersData;
+	}
+
+	public BigDecimal getAdjustedScore() {
+		return adjustedScore;
+	}
+
+	public void setAdjustedScore(BigDecimal adjustedScore) {
+		this.adjustedScore = adjustedScore;
+	}
+
+	public String getAdjustReason() {
+		return adjustReason;
+	}
+
+	public void setAdjustReason(String adjustReason) {
+		this.adjustReason = adjustReason;
+	}
+
+	public Instant getAdjustedAt() {
+		return adjustedAt;
+	}
+
+	public void setAdjustedAt(Instant adjustedAt) {
+		this.adjustedAt = adjustedAt;
+	}
+
+	public void adjustScore(BigDecimal newScore, String reason) {
+		this.adjustedScore = newScore;
+		this.adjustReason = reason;
+		this.adjustedAt = Instant.now();
 	}
 
 	public Instant getCreatedAt() {

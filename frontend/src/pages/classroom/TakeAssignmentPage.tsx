@@ -100,9 +100,16 @@ export const TakeAssignmentPage: React.FC = () => {
   // Inline submit warning (No modals!)
   const [showUnansweredWarning, setShowUnansweredWarning] = useState(false)
 
+  // Guard duplicate fetch in StrictMode / rapid re-renders
+  const hasFetchedKeyRef = useRef<string | null>(null)
+
   // 1. Initial Load: Call takeAssignment
   useEffect(() => {
     if (!user || !assignmentId) return
+
+    const fetchKey = `${user.id}_${assignmentId}`
+    if (hasFetchedKeyRef.current === fetchKey) return
+    hasFetchedKeyRef.current = fetchKey
 
     const loadData = async () => {
       try {
@@ -152,7 +159,7 @@ export const TakeAssignmentPage: React.FC = () => {
     }
 
     loadData()
-  }, [user, assignmentId])
+  }, [user?.id, user?.token, assignmentId])
 
   // 2. Countdown Timer
   useEffect(() => {

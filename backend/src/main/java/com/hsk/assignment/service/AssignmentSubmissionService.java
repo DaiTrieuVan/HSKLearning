@@ -128,10 +128,8 @@ public class AssignmentSubmissionService {
 				.filter(a -> a != null)
 				.orElse(1);
 
-		List<AssignmentSubmissionEntity> existingSubs = submissionRepository.findByAssignment_Id(assignmentId).stream()
-				.filter(s -> s.getStudent() != null && s.getStudent().getId().equals(studentId))
-				.sorted((s1, s2) -> Integer.compare(s2.getAttemptNumber(), s1.getAttemptNumber()))
-				.toList();
+		List<AssignmentSubmissionEntity> existingSubs = submissionRepository
+				.findByAssignment_IdAndStudent_IdOrderByAttemptNumberDesc(assignmentId, studentId);
 
 		AssignmentSubmissionEntity submission;
 		if (existingSubs.isEmpty()) {

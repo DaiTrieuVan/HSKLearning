@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.security.Principal;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -62,8 +63,15 @@ public class AssignmentSubmissionController {
 			Principal principal
 	) {
 		UserEntity user = requireUser(principal);
-		TakeAssignmentResponse response = submissionService.takeAssignment(user.getId(), id);
-		return ResponseEntity.ok(response);
+		try {
+			TakeAssignmentResponse response = submissionService.takeAssignment(user.getId(), id);
+			return ResponseEntity.ok(response);
+		} catch (DataIntegrityViolationException ex) {
+			// Idempotent: Nếu 2 request concurrent từ cùng 1 học sinh cố tạo submission (React StrictMode hoặc double-click),
+			// request thứ 2 gặp Duplicate entry sẽ retry lấy lại chính submission vừa được tạo bởi request thứ 1.
+			TakeAssignmentResponse response = submissionService.takeAssignment(user.getId(), id);
+			return ResponseEntity.ok(response);
+		}
 	}
 
 	@PutMapping("/{id}/draft")

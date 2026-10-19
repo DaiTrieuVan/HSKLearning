@@ -15,6 +15,7 @@ import { VocabSearchPage } from './pages/content/VocabSearchPage'
 import { QuestionBankPage } from './pages/teacher/QuestionBankPage'
 import { ExerciseManagementPage } from './pages/teacher/ExerciseManagementPage'
 import { TakeAssignmentPage } from './pages/classroom/TakeAssignmentPage'
+import { AssignmentSubmissionsPage } from './pages/classroom/AssignmentSubmissionsPage'
 
 function AppRoutes() {
   const { isLoggedIn } = useAuth()
@@ -36,6 +37,7 @@ function AppRoutes() {
       <Route path="/classes/join" element={<JoinClassPage />} />
       <Route path="/classes/:classId" element={<ClassDetailPage />} />
       <Route path="/classes/:classId/assignments/:assignmentId/take" element={<TakeAssignmentPage />} />
+      <Route path="/classes/:classId/assignments/:assignmentId/submissions" element={<AssignmentSubmissionsPage />} />
       <Route path="/profile" element={<UserProfilePage />} />
       <Route path="/teacher-request" element={<TeacherRequestPage />} />
       <Route path="/vocab-search" element={<VocabSearchPage />} />

@@ -965,6 +965,30 @@ export const ClassDetailPage: React.FC = () => {
 
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               <button
+                                id={`btn-manage-submissions-${a.id}`}
+                                type="button"
+                                onClick={() => navigate(`/classes/${classId}/assignments/${a.id}/submissions`)}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  padding: '7px 14px',
+                                  borderRadius: 'var(--radius-md)',
+                                  border: '1.5px solid var(--primary)',
+                                  backgroundColor: 'var(--primary-light)',
+                                  color: 'var(--primary-hover)',
+                                  fontSize: '0.8rem',
+                                  fontWeight: 800,
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease',
+                                }}
+                                title="Mở trang Quản lý bài nộp & Chấm điểm riêng biệt toàn màn hình"
+                              >
+                                <Users size={14} />
+                                <span>Quản lý bài nộp & Chấm điểm →</span>
+                              </button>
+
+                              <button
                                 id={`btn-view-submissions-${a.id}`}
                                 type="button"
                                 onClick={() => {
@@ -975,21 +999,20 @@ export const ClassDetailPage: React.FC = () => {
                                 style={{
                                   display: 'inline-flex',
                                   alignItems: 'center',
-                                  gap: '6px',
-                                  padding: '7px 12px',
+                                  gap: '4px',
+                                  padding: '7px 10px',
                                   borderRadius: 'var(--radius-md)',
                                   border: '1px solid #cbd5e1',
                                   backgroundColor: expandedSubmissionsAssignmentId === a.id ? '#f1f5f9' : '#ffffff',
-                                  color: 'var(--text-main)',
+                                  color: 'var(--text-muted)',
                                   fontSize: '0.78rem',
-                                  fontWeight: 700,
+                                  fontWeight: 600,
                                   cursor: 'pointer',
                                   transition: 'all 0.2s ease',
                                 }}
-                                title="Xem danh sách bài nộp của học sinh"
+                                title="Xem nhanh tại chỗ"
                               >
-                                <Users size={14} />
-                                <span>{expandedSubmissionsAssignmentId === a.id ? 'Đóng bài nộp' : 'Xem bài nộp'}</span>
+                                <span>{expandedSubmissionsAssignmentId === a.id ? 'Đóng xem nhanh' : 'Xem nhanh'}</span>
                                 {expandedSubmissionsAssignmentId === a.id ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
                               </button>
 

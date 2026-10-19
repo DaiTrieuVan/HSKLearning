@@ -433,3 +433,183 @@ export async function getSubmissionResultById(
 
   return data as SubmissionResultData
 }
+
+// ---------------------------------------------------------------------------
+// HTT-06-CN-006: Danh sách bài nộp của học sinh dành cho Giáo viên
+// ---------------------------------------------------------------------------
+
+export interface StudentSubmissionSummary {
+  studentId: number
+  studentName: string
+  studentEmail: string
+  status: 'NOT_STARTED' | 'IN_PROGRESS' | 'SUBMITTED' | 'AUTO_SUBMITTED'
+  submissionId?: number | null
+  score?: number | null
+  adjustedScore?: number | null
+  adjustReason?: string | null
+  effectiveScore?: number | null
+  attemptNumber?: number | null
+  startedAt?: string | null
+  submittedAt?: string | null
+  extendedDueTime?: string | null
+  allowedAttempts?: number | null
+}
+
+export interface AssignmentSubmissionsOverviewData {
+  assignmentId: number
+  assignmentTitle: string
+  assignmentDescription?: string | null
+  totalPoints: number
+  dueTime: string
+  status: string
+  totalStudents: number
+  submittedCount: number
+  inProgressCount: number
+  notStartedCount: number
+  students: StudentSubmissionSummary[]
+}
+
+export async function getAssignmentSubmissionsOverview(
+  assignmentId: number,
+  token: string
+): Promise<AssignmentSubmissionsOverviewData> {
+  const response = await fetch(`${API_BASE}/${assignmentId}/submissions`, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  const data = await response.json().catch(() => null)
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'UNKNOWN_ERROR',
+      data?.message || 'Không thể tải danh sách bài nộp của học sinh',
+      data?.fields
+    )
+  }
+
+  return data as AssignmentSubmissionsOverviewData
+}
+
+// ---------------------------------------------------------------------------
+// HTT-06-CN-007: Giáo viên điều chỉnh điểm bài nộp
+// ---------------------------------------------------------------------------
+
+export interface AdjustScorePayload {
+  adjustedScore: number
+  reason: string
+}
+
+export async function adjustSubmissionScore(
+  submissionId: number,
+  payload: AdjustScorePayload,
+  token: string
+): Promise<SubmissionResultData> {
+  const response = await fetch(`${API_BASE}/submissions/${submissionId}/adjust-score`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  const data = await response.json().catch(() => null)
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'UNKNOWN_ERROR',
+      data?.message || 'Không thể điều chỉnh điểm cho bài nộp',
+      data?.fields
+    )
+  }
+
+  return data as SubmissionResultData
+}
+
+// ---------------------------------------------------------------------------
+// HTT-06-CN-008: Gia hạn nộp bài và Cho phép làm lại bài tập
+// ---------------------------------------------------------------------------
+
+export interface GrantExtensionPayload {
+  extendedDueTime: string
+  reason?: string
+}
+
+export interface GrantRetakePayload {
+  allowedAttempts?: number
+  reason?: string
+}
+
+export interface StudentOverrideData {
+  assignmentId: number
+  studentId: number
+  extendedDueTime?: string | null
+  allowedAttempts?: number | null
+  reason?: string | null
+  updatedAt: string
+}
+
+export async function grantStudentExtension(
+  assignmentId: number,
+  studentId: number,
+  payload: GrantExtensionPayload,
+  token: string
+): Promise<StudentOverrideData> {
+  const response = await fetch(`${API_BASE}/${assignmentId}/students/${studentId}/extension`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  const data = await response.json().catch(() => null)
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'UNKNOWN_ERROR',
+      data?.message || 'Không thể gia hạn bài tập cho học sinh',
+      data?.fields
+    )
+  }
+
+  return data as StudentOverrideData
+}
+
+export async function grantStudentRetake(
+  assignmentId: number,
+  studentId: number,
+  payload: GrantRetakePayload,
+  token: string
+): Promise<StudentOverrideData> {
+  const response = await fetch(`${API_BASE}/${assignmentId}/students/${studentId}/retake`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  const data = await response.json().catch(() => null)
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'UNKNOWN_ERROR',
+      data?.message || 'Không thể cấp quyền làm lại bài tập cho học sinh',
+      data?.fields
+    )
+  }
+
+  return data as StudentOverrideData
+}
+
+

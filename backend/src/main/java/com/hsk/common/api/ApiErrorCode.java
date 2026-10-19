@@ -230,6 +230,21 @@ public enum ApiErrorCode {
 	/** HTT-06-CN-009 / TC-06: Assignment is already cancelled. */
 	ASSIGNMENT_ALREADY_CANCELLED(HttpStatus.BAD_REQUEST, "Lần giao bài này đã bị hủy trước đó"),
 
+	/** HTT-06-CN-007 / TC-03: Adjusted score must be between 0 and total points. */
+	INVALID_ADJUSTED_SCORE(HttpStatus.BAD_REQUEST, "Điểm điều chỉnh không hợp lệ"),
+
+	/** HTT-06-CN-007 / TC-02: Adjust reason is required. */
+	ADJUST_REASON_REQUIRED(HttpStatus.BAD_REQUEST, "Lý do điều chỉnh điểm không được để trống"),
+
+	/** HTT-06-CN-008 / TC-02 & QTN-11: Extended due time must be after now. */
+	EXTENSION_DUE_TIME_INVALID(HttpStatus.BAD_REQUEST, "Thời gian gia hạn phải sau thời điểm hiện tại"),
+
+	/** HTT-06-CN-008 / TC-08: Cannot extend when already auto-submitted; suggest retake. */
+	CANNOT_EXTEND_AUTO_SUBMITTED(HttpStatus.BAD_REQUEST, "Bài nộp đã bị hệ thống tự động nộp khi hết hạn. Vui lòng cấp lượt làm lại thay vì gia hạn"),
+
+	/** HTT-06-CN-008: Student already submitted. */
+	CANNOT_EXTEND_ALREADY_SUBMITTED(HttpStatus.BAD_REQUEST, "Học sinh đã nộp bài. Vui lòng cấp lượt làm lại thay vì gia hạn"),
+
 	/** Unexpected server side failure; the client may retry. */
 	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Hệ thống đang gặp sự cố, vui lòng thử lại sau");
 

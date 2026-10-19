@@ -100,9 +100,16 @@ export const TakeAssignmentPage: React.FC = () => {
   // Inline submit warning (No modals!)
   const [showUnansweredWarning, setShowUnansweredWarning] = useState(false)
 
+  // Guard duplicate fetch in StrictMode / rapid re-renders
+  const hasFetchedKeyRef = useRef<string | null>(null)
+
   // 1. Initial Load: Call takeAssignment
   useEffect(() => {
     if (!user || !assignmentId) return
+
+    const fetchKey = `${user.id}_${assignmentId}`
+    if (hasFetchedKeyRef.current === fetchKey) return
+    hasFetchedKeyRef.current = fetchKey
 
     const loadData = async () => {
       try {
@@ -152,7 +159,7 @@ export const TakeAssignmentPage: React.FC = () => {
     }
 
     loadData()
-  }, [user, assignmentId])
+  }, [user?.id, user?.token, assignmentId])
 
   // 2. Countdown Timer
   useEffect(() => {
@@ -288,22 +295,23 @@ export const TakeAssignmentPage: React.FC = () => {
     queueAutoSave(selectedOptions, updated)
   }
 
-  // Ordering handler
-  const handleToggleOrderingWord = (questionId: number, word: string) => {
+  // Ordering handlers
+  const handleAddOrderingWord = (questionId: number, word: string) => {
     if (assignmentData?.status !== 'IN_PROGRESS') return
     const currentStr = textAnswers[questionId] || ''
     const currentWords = currentStr ? currentStr.trim().split(/\s+/) : []
+    const updatedWords = [...currentWords, word]
+    const updated = { ...textAnswers, [questionId]: updatedWords.join(' ') }
+    setTextAnswers(updated)
+    setShowUnansweredWarning(false)
+    queueAutoSave(selectedOptions, updated)
+  }
 
-    let updatedWords: string[]
-    const existingIndex = currentWords.indexOf(word)
-    if (existingIndex >= 0) {
-      // Remove word
-      updatedWords = currentWords.filter((_, idx) => idx !== existingIndex)
-    } else {
-      // Append word
-      updatedWords = [...currentWords, word]
-    }
-
+  const handleRemoveOrderingWord = (questionId: number, removeIndex: number) => {
+    if (assignmentData?.status !== 'IN_PROGRESS') return
+    const currentStr = textAnswers[questionId] || ''
+    const currentWords = currentStr ? currentStr.trim().split(/\s+/) : []
+    const updatedWords = currentWords.filter((_, idx) => idx !== removeIndex)
     const updated = { ...textAnswers, [questionId]: updatedWords.join(' ') }
     setTextAnswers(updated)
     setShowUnansweredWarning(false)
@@ -1331,7 +1339,7 @@ export const TakeAssignmentPage: React.FC = () => {
                       <button
                         key={`${word}-${wIdx}`}
                         type="button"
-                        onClick={() => handleToggleOrderingWord(currentQuestion.questionId, word)}
+                        onClick={() => handleRemoveOrderingWord(currentQuestion.questionId, wIdx)}
                         style={{
                           padding: '8px 16px',
                           borderRadius: 'var(--radius-md)',
@@ -1362,7 +1370,7 @@ export const TakeAssignmentPage: React.FC = () => {
                     <button
                       key={`${word}-${idx}`}
                       type="button"
-                      onClick={() => handleToggleOrderingWord(currentQuestion.questionId, word)}
+                      onClick={() => handleAddOrderingWord(currentQuestion.questionId, word)}
                       style={{
                         padding: '10px 18px',
                         borderRadius: 'var(--radius-md)',

@@ -29,6 +29,11 @@ public interface AssignmentSubmissionRepository extends JpaRepository<Assignment
 	List<AssignmentSubmissionEntity> findByAssignment_IdAndStudent_Id(Long assignmentId, Long studentId);
 
 	/**
+	 * Lấy tất cả lượt làm bài của học sinh đối với một lần giao bài sắp xếp theo lượt giảm dần.
+	 */
+	List<AssignmentSubmissionEntity> findByAssignment_IdAndStudent_IdOrderByAttemptNumberDesc(Long assignmentId, Long studentId);
+
+	/**
 	 * Kiểm tra xem học sinh đã có bất kỳ lượt làm bài nào cho lần giao hay chưa.
 	 */
 	boolean existsByAssignment_IdAndStudent_Id(Long assignmentId, Long studentId);
@@ -37,6 +42,11 @@ public interface AssignmentSubmissionRepository extends JpaRepository<Assignment
 	 * Kiểm tra xem Lần giao bài đã có bất kỳ học sinh nào bắt đầu làm hoặc nộp bài chưa (HTT-06-CN-009 / QTN-21).
 	 */
 	boolean existsByAssignment_Id(Long assignmentId);
+
+	/**
+	 * Lấy tất cả bài nộp của một lần giao bài (dùng cho thống kê giáo viên HTT-06-CN-006).
+	 */
+	List<AssignmentSubmissionEntity> findByAssignment_Id(Long assignmentId);
 
 	/**
 	 * Xóa bài nộp theo lần giao bài (phục vụ dọn dẹp hoặc test).

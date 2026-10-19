@@ -49,6 +49,16 @@ public interface AssignmentSubmissionRepository extends JpaRepository<Assignment
 	List<AssignmentSubmissionEntity> findByAssignment_Id(Long assignmentId);
 
 	/**
+	 * Lấy tất cả bài nộp của học sinh theo trạng thái (dùng cho tiến độ cá nhân HTT-07-CN-001).
+	 */
+	List<AssignmentSubmissionEntity> findByStudent_IdAndStatusIn(Long studentId, java.util.Collection<com.hsk.assignment.domain.SubmissionStatus> statuses);
+
+	/**
+	 * Lấy tất cả bài nộp của một học sinh.
+	 */
+	List<AssignmentSubmissionEntity> findByStudent_Id(Long studentId);
+
+	/**
 	 * Xóa bài nộp theo lần giao bài (phục vụ dọn dẹp hoặc test).
 	 */
 	void deleteByAssignment_Id(Long assignmentId);

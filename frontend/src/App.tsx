@@ -17,6 +17,7 @@ import { ExerciseManagementPage } from './pages/teacher/ExerciseManagementPage'
 import { TakeAssignmentPage } from './pages/classroom/TakeAssignmentPage'
 import { AssignmentSubmissionsPage } from './pages/classroom/AssignmentSubmissionsPage'
 import { StudentSubmissionDetailPage } from './pages/classroom/StudentSubmissionDetailPage'
+import { PersonalProgressPage } from './pages/progress/PersonalProgressPage'
 
 function AppRoutes() {
   const { isLoggedIn } = useAuth()
@@ -28,6 +29,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<MainWorkspace />} />
+      <Route path="/progress" element={<PersonalProgressPage />} />
       <Route path="/roadmap" element={<HskRoadmapPage />} />
       <Route path="/curriculum" element={<HskCurriculumPage />} />
       <Route path="/lessons/:lessonId" element={<LessonStudyPage />} />

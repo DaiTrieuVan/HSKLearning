@@ -19,6 +19,7 @@ import {
   Search,
   HelpCircle,
   FileCheck,
+  TrendingUp,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { PandaMascot } from '../../components/common/PandaMascot'
@@ -193,6 +194,31 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
             <Search size={16} color="var(--primary)" />
             <span>Tra từ vựng</span>
           </button>
+
+          {/* Personal Progress Link (HTT-07-CN-001) */}
+          {!isAdmin && !isTeacher && (
+            <button
+              type="button"
+              id="nav-personal-progress-btn"
+              onClick={() => navigate('/progress')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 14px',
+                borderRadius: 'var(--radius-md)',
+                border: '1.5px solid var(--border-card)',
+                backgroundColor: '#ffffff',
+                color: 'var(--text-main)',
+                fontSize: '0.82rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+              }}
+            >
+              <TrendingUp size={16} color="var(--primary)" />
+              <span>Tiến độ cá nhân</span>
+            </button>
+          )}
 
           {/* Admin Navigation Tabs */}
           {isAdmin && (
@@ -653,6 +679,62 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
                   <ArrowRight size={18} />
                 </button>
               </div>
+
+              {/* Card 1.5: Personal Progress (HTT-07-CN-001) */}
+              {!isTeacher && !isAdmin && (
+                <div
+                  className="game-card"
+                  style={{
+                    padding: '24px',
+                    backgroundColor: '#ffffff',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <div>
+                    <div
+                      style={{
+                        width: '44px',
+                        height: '44px',
+                        borderRadius: 'var(--radius-md)',
+                        backgroundColor: '#ede9fe',
+                        color: '#6366f1',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginBottom: '16px',
+                      }}
+                    >
+                      <TrendingUp size={24} />
+                    </div>
+                    <h3 style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: '6px' }}>
+                      Tiến độ học cá nhân
+                    </h3>
+                    <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '16px' }}>
+                      Theo dõi thống kê số bài học đã hoàn thành theo từng cấp độ HSK, số từ vựng tích lũy và điểm trung bình bài tập.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    id="btn-view-personal-progress"
+                    onClick={() => navigate('/progress')}
+                    className="btn-gamified"
+                    style={{
+                      width: '100%',
+                      fontSize: '0.92rem',
+                      padding: '10px',
+                      backgroundColor: '#6366f1',
+                      color: '#ffffff',
+                      border: 'none',
+                    }}
+                  >
+                    <span>Xem tiến độ cá nhân</span>
+                    <ArrowRight size={18} />
+                  </button>
+                </div>
+              )}
 
               {/* Card 2: HSK Curriculum / Giáo trình */}
               <div

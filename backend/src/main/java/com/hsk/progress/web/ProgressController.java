@@ -5,6 +5,7 @@ import com.hsk.account.repository.UserRepository;
 import com.hsk.common.api.ApiErrorCode;
 import com.hsk.common.api.ApiException;
 import com.hsk.progress.dto.PersonalProgressResponse;
+import com.hsk.progress.dto.SubmissionHistoryResponse;
 import com.hsk.progress.service.ProgressService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -17,11 +18,11 @@ import org.springframework.web.bind.annotation.RestController;
 import java.security.Principal;
 
 /**
- * Controller phục vụ theo dõi tiến độ học tập cá nhân (HTT-07-CN-001).
+ * Controller phục vụ theo dõi tiến độ học tập cá nhân & lịch sử làm bài (HTT-07-CN-001, HTT-07-CN-002).
  */
 @RestController
 @RequestMapping("/api/progress")
-@Tag(name = "Personal Learning Progress", description = "HTT-07-CN-001 — Theo dõi tiến độ học cá nhân")
+@Tag(name = "Personal Learning Progress", description = "HTT-07 — Theo dõi tiến độ và báo cáo")
 public class ProgressController {
 
 	private final ProgressService progressService;
@@ -50,5 +51,17 @@ public class ProgressController {
 		UserEntity user = requireUser(principal);
 		PersonalProgressResponse progress = progressService.getPersonalProgress(user.getId());
 		return ResponseEntity.ok(progress);
+	}
+
+	@GetMapping("/history")
+	@PreAuthorize("isAuthenticated()")
+	@Operation(
+			summary = "HTT-07-CN-002 — Xem lịch sử bài làm và điểm số",
+			description = "Học sinh xem danh sách các bài tập đã nộp, điểm số theo từng lượt (điểm cao nhất theo QTN-13), sắp xếp bài nộp mới nhất lên đầu (TC-01, TC-03, TC-04, TC-05)."
+	)
+	public ResponseEntity<SubmissionHistoryResponse> getSubmissionHistory(Principal principal) {
+		UserEntity user = requireUser(principal);
+		SubmissionHistoryResponse history = progressService.getSubmissionHistory(user.getId());
+		return ResponseEntity.ok(history);
 	}
 }

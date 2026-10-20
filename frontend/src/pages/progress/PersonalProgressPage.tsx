@@ -14,6 +14,7 @@ import {
   Layers,
   AlertCircle,
   RefreshCw,
+  History,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { getPersonalProgress, type PersonalProgressResponse } from '../../api/progress'
@@ -84,15 +85,25 @@ export const PersonalProgressPage: React.FC = () => {
             </div>
           </div>
 
-          <button
-            onClick={loadData}
-            disabled={loading}
-            className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-slate-200 disabled:opacity-50"
-            title="Làm mới dữ liệu"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">Làm mới</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/history')}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+            >
+              <History className="w-4 h-4" />
+              <span className="hidden sm:inline">Lịch sử bài làm</span>
+            </button>
+
+            <button
+              onClick={loadData}
+              disabled={loading}
+              className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-slate-200 disabled:opacity-50"
+              title="Làm mới dữ liệu"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Làm mới</span>
+            </button>
+          </div>
         </div>
       </header>
 

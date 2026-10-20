@@ -54,6 +54,20 @@ public interface AssignmentSubmissionRepository extends JpaRepository<Assignment
 	List<AssignmentSubmissionEntity> findByStudent_IdAndStatusIn(Long studentId, java.util.Collection<com.hsk.assignment.domain.SubmissionStatus> statuses);
 
 	/**
+	 * Lấy lịch sử bài nộp của học sinh (kèm join fetch assignment và classroom) sắp xếp theo thời gian nộp giảm dần (HTT-07-CN-002).
+	 * Tránh N+1 query khi hiển thị lịch sử bài làm (Senior Backend Mode).
+	 */
+	@org.springframework.data.jpa.repository.Query("SELECT s FROM AssignmentSubmissionEntity s " +
+			"JOIN FETCH s.assignment a " +
+			"JOIN FETCH a.classroom c " +
+			"WHERE s.student.id = :studentId AND s.status IN :statuses " +
+			"ORDER BY s.submittedAt DESC")
+	List<AssignmentSubmissionEntity> findStudentSubmissionHistory(
+			@org.springframework.data.repository.query.Param("studentId") Long studentId,
+			@org.springframework.data.repository.query.Param("statuses") java.util.Collection<com.hsk.assignment.domain.SubmissionStatus> statuses
+	);
+
+	/**
 	 * Lấy tất cả bài nộp của một học sinh.
 	 */
 	List<AssignmentSubmissionEntity> findByStudent_Id(Long studentId);

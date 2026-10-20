@@ -1,8 +1,10 @@
 package com.hsk.progress.service;
 
+import com.hsk.assignment.domain.AssignmentEntity;
 import com.hsk.assignment.domain.AssignmentSubmissionEntity;
 import com.hsk.assignment.domain.SubmissionStatus;
 import com.hsk.assignment.repository.AssignmentSubmissionRepository;
+import com.hsk.classroom.domain.ClassEntity;
 import com.hsk.account.domain.UserEntity;
 import com.hsk.account.repository.UserRepository;
 import com.hsk.common.api.ApiErrorCode;
@@ -14,10 +16,14 @@ import com.hsk.content.repository.LessonRepository;
 import com.hsk.content.repository.LessonVocabularyRepository;
 import com.hsk.learning.domain.LessonProgressEntity;
 import com.hsk.learning.repository.LessonProgressRepository;
+import com.hsk.progress.dto.AssignmentHistoryItemDto;
 import com.hsk.progress.dto.HskLevelProgressDto;
 import com.hsk.progress.dto.PersonalProgressResponse;
 import com.hsk.progress.dto.RecentActivityDto;
+import com.hsk.progress.dto.SubmissionAttemptItemDto;
+import com.hsk.progress.dto.SubmissionHistoryResponse;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -202,6 +208,139 @@ public class ProgressService {
 				totalAssignmentsSubmitted,
 				levelProgressList,
 				recentActivities
+		);
+	}
+
+	/**
+	 * Lấy lịch sử làm bài và điểm số của học sinh (HTT-07-CN-002, TC-01..TC-05).
+	 */
+	@Transactional(readOnly = true)
+	public SubmissionHistoryResponse getSubmissionHistory(Long userId) {
+		// QTN-02 & TC-05: Bảo mật dữ liệu, học sinh chỉ xem lịch sử của chính mình
+		userRepository.findById(userId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.UNAUTHORIZED));
+
+		// TC-01: Lấy tất cả bài nộp hợp lệ của học sinh kèm assignment và classroom đã fetch join
+		List<AssignmentSubmissionEntity> submissions = assignmentSubmissionRepository.findStudentSubmissionHistory(
+				userId,
+				List.of(SubmissionStatus.SUBMITTED, SubmissionStatus.AUTO_SUBMITTED)
+		);
+
+		// TC-04: Dữ liệu rỗng khi học sinh chưa nộp bài nào
+		if (submissions.isEmpty()) {
+			return new SubmissionHistoryResponse(0, 0, null, Collections.emptyList());
+		}
+
+		// Nhóm theo AssignmentId (duy trì thứ tự xuất hiện của assignment dựa theo bài nộp mới nhất)
+		Map<Long, List<AssignmentSubmissionEntity>> groupedByAssignment = new LinkedHashMap<>();
+		for (AssignmentSubmissionEntity sub : submissions) {
+			if (sub.getAssignment() == null) continue;
+			groupedByAssignment.computeIfAbsent(sub.getAssignment().getId(), k -> new ArrayList<>()).add(sub);
+		}
+
+		List<AssignmentHistoryItemDto> assignmentHistoryItems = new ArrayList<>();
+		List<Double> assignmentPercentages = new ArrayList<>();
+		int totalSubmissionsCount = 0;
+
+		for (Map.Entry<Long, List<AssignmentSubmissionEntity>> entry : groupedByAssignment.entrySet()) {
+			List<AssignmentSubmissionEntity> subList = entry.getValue();
+			if (subList.isEmpty()) continue;
+
+			AssignmentEntity assignment = subList.get(0).getAssignment();
+			ClassEntity classroom = assignment.getClassroom();
+			BigDecimal totalPoints = assignment.getTotalPoints() != null ? assignment.getTotalPoints() : BigDecimal.ZERO;
+
+			// TC-03 & QTN-13: Tìm điểm cao nhất trong các lượt hợp lệ (tính theo adjustedScore nếu có)
+			BigDecimal maxEffectiveScore = null;
+			Long bestSubmissionId = null;
+
+			for (AssignmentSubmissionEntity sub : subList) {
+				BigDecimal effectiveScore = sub.getAdjustedScore() != null ? sub.getAdjustedScore() : sub.getScore();
+				if (effectiveScore != null) {
+					if (maxEffectiveScore == null || effectiveScore.compareTo(maxEffectiveScore) > 0) {
+						maxEffectiveScore = effectiveScore;
+						bestSubmissionId = sub.getId();
+					}
+				}
+			}
+
+			// Tạo danh sách attempt items
+			List<SubmissionAttemptItemDto> attemptDtos = new ArrayList<>();
+			Instant latestSubmittedAt = null;
+
+			// Sắp xếp các lượt làm bài của assignment theo attemptNumber giảm dần (lượt mới nhất trước)
+			subList.sort((a, b) -> Integer.compare(
+					b.getAttemptNumber() != null ? b.getAttemptNumber() : 0,
+					a.getAttemptNumber() != null ? a.getAttemptNumber() : 0
+			));
+
+			for (AssignmentSubmissionEntity sub : subList) {
+				totalSubmissionsCount++;
+				if (latestSubmittedAt == null || (sub.getSubmittedAt() != null && sub.getSubmittedAt().isAfter(latestSubmittedAt))) {
+					latestSubmittedAt = sub.getSubmittedAt();
+				}
+
+				BigDecimal effectiveScore = sub.getAdjustedScore() != null ? sub.getAdjustedScore() : sub.getScore();
+				Double percentage = null;
+				if (totalPoints.compareTo(BigDecimal.ZERO) > 0 && effectiveScore != null) {
+					percentage = Math.round((effectiveScore.doubleValue() / totalPoints.doubleValue() * 100.0) * 10.0) / 10.0;
+				}
+
+				boolean isBest = sub.getId().equals(bestSubmissionId);
+
+				attemptDtos.add(new SubmissionAttemptItemDto(
+						sub.getId(),
+						sub.getAttemptNumber(),
+						sub.getStatus(),
+						sub.getScore(),
+						sub.getAdjustedScore(),
+						sub.getAdjustReason(),
+						effectiveScore,
+						percentage,
+						isBest,
+						sub.getSubmittedAt(),
+						sub.getStartedAt()
+				));
+			}
+
+			Double bestPercentage = null;
+			if (totalPoints.compareTo(BigDecimal.ZERO) > 0 && maxEffectiveScore != null) {
+				bestPercentage = Math.round((maxEffectiveScore.doubleValue() / totalPoints.doubleValue() * 100.0) * 10.0) / 10.0;
+				assignmentPercentages.add(bestPercentage);
+			}
+
+			assignmentHistoryItems.add(new AssignmentHistoryItemDto(
+					assignment.getId(),
+					assignment.getTitle(),
+					classroom != null ? classroom.getId() : null,
+					classroom != null ? classroom.getTitle() : null,
+					totalPoints,
+					maxEffectiveScore,
+					bestPercentage,
+					latestSubmittedAt,
+					attemptDtos.size(),
+					attemptDtos
+			));
+		}
+
+		// TC-01: Bài mới nhất ở trên cùng
+		assignmentHistoryItems.sort((a, b) -> {
+			if (a.latestSubmittedAt() == null) return 1;
+			if (b.latestSubmittedAt() == null) return -1;
+			return b.latestSubmittedAt().compareTo(a.latestSubmittedAt());
+		});
+
+		Double averageScorePercentage = null;
+		if (!assignmentPercentages.isEmpty()) {
+			double sum = assignmentPercentages.stream().mapToDouble(Double::doubleValue).sum();
+			averageScorePercentage = Math.round((sum / assignmentPercentages.size()) * 10.0) / 10.0;
+		}
+
+		return new SubmissionHistoryResponse(
+				assignmentHistoryItems.size(),
+				totalSubmissionsCount,
+				averageScorePercentage,
+				assignmentHistoryItems
 		);
 	}
 }

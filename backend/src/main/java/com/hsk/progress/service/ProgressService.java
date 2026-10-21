@@ -31,7 +31,9 @@ import org.springframework.transaction.annotation.Transactional;
 import com.hsk.account.domain.RoleCode;
 import com.hsk.account.repository.UserRoleRepository;
 import com.hsk.assignment.domain.AssignmentStatus;
+import com.hsk.assignment.domain.AssignmentStudentOverrideEntity;
 import com.hsk.assignment.repository.AssignmentRepository;
+import com.hsk.assignment.repository.AssignmentStudentOverrideRepository;
 import com.hsk.classroom.domain.ClassMemberEntity;
 import com.hsk.classroom.domain.ClassMemberStatus;
 import com.hsk.classroom.repository.ClassMemberRepository;
@@ -40,10 +42,15 @@ import com.hsk.progress.dto.AssignmentColumnHeaderDto;
 import com.hsk.progress.dto.CellGradeDto;
 import com.hsk.progress.dto.ClassGradebookResponse;
 import com.hsk.progress.dto.GradeAttemptDetailDto;
+import com.hsk.progress.dto.LateSubmissionItemDto;
 import com.hsk.progress.dto.StudentGradeRowDto;
+import com.hsk.progress.dto.UnsubmittedStudentItemDto;
+import com.hsk.progress.dto.UnsubmittedStudentsResponse;
+import java.util.stream.Collectors;
 
 /**
- * Service xử lý tính toán tiến độ học cá nhân (HTT-07-CN-001, QTN-02) và bảng điểm lớp (HTT-07-CN-003, QTN-01, QTN-13).
+ * Service xử lý tính toán tiến độ học cá nhân (HTT-07-CN-001, QTN-02), bảng điểm lớp (HTT-07-CN-003, QTN-01, QTN-13)
+ * và danh sách học sinh chưa nộp bài & nộp trễ (HTT-07-CN-004, QTN-01).
  */
 @Service
 public class ProgressService {
@@ -58,6 +65,7 @@ public class ProgressService {
 	private final ClassMemberRepository classMemberRepository;
 	private final AssignmentRepository assignmentRepository;
 	private final UserRoleRepository userRoleRepository;
+	private final AssignmentStudentOverrideRepository assignmentStudentOverrideRepository;
 
 	public ProgressService(
 			UserRepository userRepository,
@@ -69,7 +77,8 @@ public class ProgressService {
 			ClassRepository classRepository,
 			ClassMemberRepository classMemberRepository,
 			AssignmentRepository assignmentRepository,
-			UserRoleRepository userRoleRepository
+			UserRoleRepository userRoleRepository,
+			AssignmentStudentOverrideRepository assignmentStudentOverrideRepository
 	) {
 		this.userRepository = userRepository;
 		this.hskLevelRepository = hskLevelRepository;
@@ -81,6 +90,7 @@ public class ProgressService {
 		this.classMemberRepository = classMemberRepository;
 		this.assignmentRepository = assignmentRepository;
 		this.userRoleRepository = userRoleRepository;
+		this.assignmentStudentOverrideRepository = assignmentStudentOverrideRepository;
 	}
 
 	/**
@@ -596,6 +606,148 @@ public class ProgressService {
 				sub.getStatus().name(),
 				sub.getSubmittedAt(),
 				isBestAttempt
+		);
+	}
+
+	/**
+	 * Xem danh sách học sinh chưa nộp bài và học sinh nộp trễ (HTT-07-CN-004, QTN-01).
+	 * Batch query tối ưu, chống N+1 query (Senior Backend Mode).
+	 */
+	@Transactional(readOnly = true)
+	public UnsubmittedStudentsResponse getUnsubmittedStudents(Long teacherId, Long assignmentId) {
+		AssignmentEntity assignment = assignmentRepository.findById(assignmentId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.ASSIGNMENT_NOT_FOUND));
+
+		ClassEntity classroom = assignment.getClassroom();
+		boolean isAdmin = userRoleRepository.existsByUser_IdAndRole_Code(teacherId, RoleCode.ADMIN);
+		boolean isTeacherOwner = classroom != null && classroom.getTeacher() != null && classroom.getTeacher().getId().equals(teacherId);
+
+		// QTN-01, TC-05: Chỉ giáo viên phụ trách lớp hoặc Admin mới có quyền xem danh sách chưa nộp của bài tập
+		if (!isTeacherOwner && !isAdmin) {
+			throw new ApiException(ApiErrorCode.FORBIDDEN, "Bạn không có quyền truy cập dữ liệu bài nộp của lớp khác");
+		}
+
+		// Lấy danh sách thành viên ACTIVE của lớp (kèm Student)
+		List<ClassMemberEntity> activeMembers = classMemberRepository.findByClassroomIdWithStudent(classroom.getId())
+				.stream()
+				.filter(cm -> cm.getStatus() == ClassMemberStatus.ACTIVE)
+				.toList();
+
+		// Batch fetch tất cả submission của assignment để tránh N+1
+		List<AssignmentSubmissionEntity> submissions = assignmentSubmissionRepository.findByAssignment_Id(assignmentId);
+
+		// Batch fetch tất cả overrides của assignment
+		List<AssignmentStudentOverrideEntity> overrides = assignmentStudentOverrideRepository.findByAssignment_Id(assignmentId);
+		Map<Long, AssignmentStudentOverrideEntity> overrideMap = overrides.stream()
+				.filter(o -> o.getStudent() != null)
+				.collect(Collectors.toMap(o -> o.getStudent().getId(), o -> o, (o1, o2) -> o1));
+
+		// Gom nhóm submission theo studentId
+		Map<Long, List<AssignmentSubmissionEntity>> submissionsByStudent = submissions.stream()
+				.filter(s -> s.getStudent() != null)
+				.collect(Collectors.groupingBy(s -> s.getStudent().getId()));
+
+		Instant now = Instant.now();
+		Instant originalDueTime = assignment.getDueTime();
+		boolean isAssignmentOverdue = originalDueTime != null && now.isAfter(originalDueTime);
+
+		List<UnsubmittedStudentItemDto> unsubmittedList = new ArrayList<>();
+		List<LateSubmissionItemDto> lateList = new ArrayList<>();
+		int submittedCount = 0;
+
+		for (ClassMemberEntity member : activeMembers) {
+			UserEntity student = member.getStudent();
+			Long studentId = student.getId();
+
+			List<AssignmentSubmissionEntity> studentSubs = submissionsByStudent.getOrDefault(studentId, Collections.emptyList());
+			AssignmentStudentOverrideEntity studentOverride = overrideMap.get(studentId);
+			Instant extendedDueTime = studentOverride != null ? studentOverride.getExtendedDueTime() : null;
+			Instant effectiveDueTime = extendedDueTime != null ? extendedDueTime : originalDueTime;
+
+			// Lọc các lượt nộp hợp lệ (SUBMITTED hoặc AUTO_SUBMITTED)
+			List<AssignmentSubmissionEntity> validSubs = studentSubs.stream()
+					.filter(s -> s.getStatus() == SubmissionStatus.SUBMITTED || s.getStatus() == SubmissionStatus.AUTO_SUBMITTED)
+					.toList();
+
+			if (validSubs.isEmpty()) {
+				// Học sinh chưa nộp bài
+				boolean inProgress = studentSubs.stream().anyMatch(s -> s.getStatus() == SubmissionStatus.IN_PROGRESS);
+				String statusStr = inProgress ? "IN_PROGRESS" : "NOT_STARTED";
+				Instant startedAt = inProgress ? studentSubs.get(0).getStartedAt() : null;
+
+				// TC-03: Bài đã quá hạn thì gắn nhãn quá hạn (isOverdue = true), chưa đến hạn thì isOverdue = false
+				boolean isOverdue = effectiveDueTime != null && now.isAfter(effectiveDueTime);
+
+				unsubmittedList.add(new UnsubmittedStudentItemDto(
+						studentId,
+						student.getFullName() != null ? student.getFullName() : student.getEmail(),
+						student.getEmail(),
+						student.getAvatarUrl(),
+						statusStr,
+						startedAt,
+						extendedDueTime != null,
+						effectiveDueTime,
+						isOverdue
+				));
+			} else {
+				submittedCount++;
+				// Học sinh đã nộp bài. Kiểm tra xem có nộp sau hạn gốc không (TC-02)
+				AssignmentSubmissionEntity bestOrLatest = validSubs.stream()
+						.max(Comparator.comparing((AssignmentSubmissionEntity s) -> s.getEffectiveScore() != null ? s.getEffectiveScore() : BigDecimal.ZERO)
+								.thenComparing(AssignmentSubmissionEntity::getAttemptNumber))
+						.orElse(validSubs.get(0));
+
+				Instant submittedAt = bestOrLatest.getSubmittedAt();
+				boolean isLate = originalDueTime != null && submittedAt != null && submittedAt.isAfter(originalDueTime);
+
+				if (isLate) {
+					// TC-02: Học sinh nộp sau hạn gốc hiển thị riêng với nhãn nộp trễ
+					lateList.add(new LateSubmissionItemDto(
+							studentId,
+							student.getFullName() != null ? student.getFullName() : student.getEmail(),
+							student.getEmail(),
+							student.getAvatarUrl(),
+							bestOrLatest.getId(),
+							submittedAt,
+							originalDueTime,
+							extendedDueTime,
+							bestOrLatest.getScore(),
+							bestOrLatest.getEffectiveScore(),
+							bestOrLatest.getStatus().name(),
+							true
+					));
+				}
+			}
+		}
+
+		// Sắp xếp: học sinh quá hạn lên trước, sau đó theo tên
+		unsubmittedList.sort((a, b) -> {
+			if (a.isOverdue() != b.isOverdue()) {
+				return a.isOverdue() ? -1 : 1;
+			}
+			return a.fullName().compareToIgnoreCase(b.fullName());
+		});
+
+		// Sắp xếp danh sách nộp trễ theo submittedAt mới nhất
+		lateList.sort((a, b) -> {
+			if (a.submittedAt() == null) return 1;
+			if (b.submittedAt() == null) return -1;
+			return b.submittedAt().compareTo(a.submittedAt());
+		});
+
+		return new UnsubmittedStudentsResponse(
+				assignment.getId(),
+				assignment.getTitle(),
+				classroom.getId(),
+				classroom.getTitle(),
+				originalDueTime,
+				isAssignmentOverdue,
+				activeMembers.size(),
+				submittedCount,
+				unsubmittedList.size(),
+				lateList.size(),
+				unsubmittedList,
+				lateList
 		);
 	}
 }

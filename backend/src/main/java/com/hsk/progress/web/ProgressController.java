@@ -7,6 +7,7 @@ import com.hsk.common.api.ApiException;
 import com.hsk.progress.dto.ClassGradebookResponse;
 import com.hsk.progress.dto.PersonalProgressResponse;
 import com.hsk.progress.dto.SubmissionHistoryResponse;
+import com.hsk.progress.dto.UnsubmittedStudentsResponse;
 import com.hsk.progress.service.ProgressService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -80,5 +81,20 @@ public class ProgressController {
 		UserEntity user = requireUser(principal);
 		ClassGradebookResponse gradebook = progressService.getClassGradebook(user.getId(), classId);
 		return ResponseEntity.ok(gradebook);
+	}
+
+	@GetMapping("/assignments/{assignmentId}/unsubmitted")
+	@PreAuthorize("isAuthenticated()")
+	@Operation(
+			summary = "HTT-07-CN-004 — Xem danh sách học sinh chưa nộp bài và học sinh nộp trễ",
+			description = "Giáo viên xem danh sách học sinh chưa nộp bài (gắn nhãn quá hạn nếu đã qua hạn nộp) và học sinh nộp trễ so với hạn gốc (QTN-01, TC-01..TC-05)."
+	)
+	public ResponseEntity<UnsubmittedStudentsResponse> getUnsubmittedStudents(
+			@PathVariable("assignmentId") Long assignmentId,
+			Principal principal
+	) {
+		UserEntity user = requireUser(principal);
+		UnsubmittedStudentsResponse response = progressService.getUnsubmittedStudents(user.getId(), assignmentId);
+		return ResponseEntity.ok(response);
 	}
 }

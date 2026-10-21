@@ -28,8 +28,22 @@ import java.util.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.hsk.account.domain.RoleCode;
+import com.hsk.account.repository.UserRoleRepository;
+import com.hsk.assignment.domain.AssignmentStatus;
+import com.hsk.assignment.repository.AssignmentRepository;
+import com.hsk.classroom.domain.ClassMemberEntity;
+import com.hsk.classroom.domain.ClassMemberStatus;
+import com.hsk.classroom.repository.ClassMemberRepository;
+import com.hsk.classroom.repository.ClassRepository;
+import com.hsk.progress.dto.AssignmentColumnHeaderDto;
+import com.hsk.progress.dto.CellGradeDto;
+import com.hsk.progress.dto.ClassGradebookResponse;
+import com.hsk.progress.dto.GradeAttemptDetailDto;
+import com.hsk.progress.dto.StudentGradeRowDto;
+
 /**
- * Service xử lý tính toán tiến độ học cá nhân (HTT-07-CN-001, QTN-02).
+ * Service xử lý tính toán tiến độ học cá nhân (HTT-07-CN-001, QTN-02) và bảng điểm lớp (HTT-07-CN-003, QTN-01, QTN-13).
  */
 @Service
 public class ProgressService {
@@ -40,6 +54,10 @@ public class ProgressService {
 	private final LessonProgressRepository lessonProgressRepository;
 	private final LessonVocabularyRepository lessonVocabularyRepository;
 	private final AssignmentSubmissionRepository assignmentSubmissionRepository;
+	private final ClassRepository classRepository;
+	private final ClassMemberRepository classMemberRepository;
+	private final AssignmentRepository assignmentRepository;
+	private final UserRoleRepository userRoleRepository;
 
 	public ProgressService(
 			UserRepository userRepository,
@@ -47,7 +65,11 @@ public class ProgressService {
 			LessonRepository lessonRepository,
 			LessonProgressRepository lessonProgressRepository,
 			LessonVocabularyRepository lessonVocabularyRepository,
-			AssignmentSubmissionRepository assignmentSubmissionRepository
+			AssignmentSubmissionRepository assignmentSubmissionRepository,
+			ClassRepository classRepository,
+			ClassMemberRepository classMemberRepository,
+			AssignmentRepository assignmentRepository,
+			UserRoleRepository userRoleRepository
 	) {
 		this.userRepository = userRepository;
 		this.hskLevelRepository = hskLevelRepository;
@@ -55,6 +77,10 @@ public class ProgressService {
 		this.lessonProgressRepository = lessonProgressRepository;
 		this.lessonVocabularyRepository = lessonVocabularyRepository;
 		this.assignmentSubmissionRepository = assignmentSubmissionRepository;
+		this.classRepository = classRepository;
+		this.classMemberRepository = classMemberRepository;
+		this.assignmentRepository = assignmentRepository;
+		this.userRoleRepository = userRoleRepository;
 	}
 
 	/**
@@ -341,6 +367,235 @@ public class ProgressService {
 				totalSubmissionsCount,
 				averageScorePercentage,
 				assignmentHistoryItems
+		);
+	}
+
+	/**
+	 * Xem bảng điểm của cả lớp theo từng bài tập (HTT-07-CN-003, QTN-01, QTN-13).
+	 * Truy vấn tối ưu chống N+1 query (Senior Backend Mode).
+	 */
+	@Transactional(readOnly = true)
+	public ClassGradebookResponse getClassGradebook(Long userId, Long classId) {
+		ClassEntity classroom = classRepository.findById(classId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.CLASS_NOT_FOUND));
+
+		boolean isAdmin = userRoleRepository.existsByUser_IdAndRole_Code(userId, RoleCode.ADMIN);
+		boolean isTeacherOwner = classroom.getTeacher() != null && classroom.getTeacher().getId().equals(userId);
+
+		// QTN-01, TC-07, TC-08: Chỉ giáo viên phụ trách lớp hoặc Admin mới có quyền xem bảng điểm của lớp
+		if (!isTeacherOwner && !isAdmin) {
+			throw new ApiException(ApiErrorCode.FORBIDDEN, "Bạn không có quyền xem bảng điểm của lớp học này");
+		}
+
+		// 1. Lấy danh sách bài tập của lớp (loại bỏ CANCELLED)
+		List<AssignmentEntity> assignments = assignmentRepository
+				.findByClassroom_IdAndStatusNotOrderByCreatedAtAsc(classId, AssignmentStatus.CANCELLED);
+
+		// 2. Lấy toàn bộ thành viên lớp (bao gồm cả ACTIVE, LEFT, REMOVED - TC-04)
+		List<ClassMemberEntity> members = classMemberRepository.findByClassroomIdWithStudent(classId);
+
+		// Deduplicate theo studentId (ưu tiên ACTIVE nếu có nhiều bản ghi)
+		Map<Long, ClassMemberEntity> uniqueMembersMap = new LinkedHashMap<>();
+		for (ClassMemberEntity cm : members) {
+			if (cm.getStudent() != null) {
+				Long stuId = cm.getStudent().getId();
+				ClassMemberEntity existing = uniqueMembersMap.get(stuId);
+				if (existing == null || (existing.getStatus() != ClassMemberStatus.ACTIVE && cm.getStatus() == ClassMemberStatus.ACTIVE)) {
+					uniqueMembersMap.put(stuId, cm);
+				}
+			}
+		}
+
+		// Sắp xếp: Học sinh ACTIVE lên trước, sau đó theo họ tên/email
+		List<ClassMemberEntity> sortedMembers = uniqueMembersMap.values().stream()
+				.sorted(Comparator.comparing((ClassMemberEntity m) -> m.getStatus() == ClassMemberStatus.ACTIVE ? 0 : 1)
+						.thenComparing(m -> m.getStudent().getFullName() != null ? m.getStudent().getFullName().toLowerCase() : "")
+						.thenComparing(m -> m.getStudent().getEmail().toLowerCase()))
+				.toList();
+
+		// 3. Batch fetch toàn bộ submissions của lớp trong 1 câu SQL (tránh N+1 query)
+		List<AssignmentSubmissionEntity> submissions = assignmentSubmissionRepository.findSubmissionsByClassroomId(classId);
+
+		// Map: studentId -> (assignmentId -> List<AssignmentSubmissionEntity>)
+		Map<Long, Map<Long, List<AssignmentSubmissionEntity>>> submissionMap = new HashMap<>();
+		for (AssignmentSubmissionEntity sub : submissions) {
+			if (sub.getStudent() != null && sub.getAssignment() != null) {
+				Long stuId = sub.getStudent().getId();
+				Long asgId = sub.getAssignment().getId();
+				submissionMap.computeIfAbsent(stuId, k -> new HashMap<>())
+						.computeIfAbsent(asgId, k -> new ArrayList<>())
+						.add(sub);
+			}
+		}
+
+		// Lưu trữ danh sách điểm của từng bài tập để tính assignmentAverageScore
+		Map<Long, List<BigDecimal>> assignmentScores = new HashMap<>();
+
+		// 4. Xây dựng từng hàng học sinh (StudentGradeRowDto)
+		List<StudentGradeRowDto> studentRows = new ArrayList<>();
+		int activeCount = 0;
+
+		for (ClassMemberEntity member : sortedMembers) {
+			UserEntity student = member.getStudent();
+			Long studentId = student.getId();
+			boolean isEnrolled = member.getStatus() == ClassMemberStatus.ACTIVE;
+			if (isEnrolled) {
+				activeCount++;
+			}
+
+			List<CellGradeDto> studentGrades = new ArrayList<>();
+			int submittedCountForStudent = 0;
+			BigDecimal totalScoreForStudent = BigDecimal.ZERO;
+
+			for (AssignmentEntity assignment : assignments) {
+				Long asgId = assignment.getId();
+				List<AssignmentSubmissionEntity> studentSubs = submissionMap
+						.getOrDefault(studentId, Collections.emptyMap())
+						.getOrDefault(asgId, Collections.emptyList());
+
+				// Chỉ xét các lượt hợp lệ (SUBMITTED hoặc AUTO_SUBMITTED) theo QTN-13
+				List<AssignmentSubmissionEntity> validSubs = studentSubs.stream()
+						.filter(s -> s.getStatus() == SubmissionStatus.SUBMITTED || s.getStatus() == SubmissionStatus.AUTO_SUBMITTED)
+						.toList();
+
+				if (validSubs.isEmpty()) {
+					boolean inProgress = studentSubs.stream().anyMatch(s -> s.getStatus() == SubmissionStatus.IN_PROGRESS);
+					String cellStatus = inProgress ? "IN_PROGRESS" : "NOT_SUBMITTED";
+					studentGrades.add(new CellGradeDto(
+							asgId,
+							false,
+							null,
+							assignment.getTotalPoints(),
+							null,
+							false,
+							cellStatus,
+							studentSubs.size(),
+							studentSubs.stream().map(s -> toGradeAttemptDetailDto(s, false, classroom)).toList()
+					));
+				} else {
+					// QTN-13: Điểm trên bảng điểm là điểm cao nhất trong các lượt hợp lệ, tính theo điểm sau điều chỉnh nếu có
+					AssignmentSubmissionEntity bestAttempt = validSubs.stream()
+							.max(Comparator.comparing((AssignmentSubmissionEntity s) -> s.getEffectiveScore() != null ? s.getEffectiveScore() : BigDecimal.ZERO)
+									.thenComparing(AssignmentSubmissionEntity::getAttemptNumber))
+							.orElse(validSubs.get(0));
+
+					BigDecimal bestScore = bestAttempt.getEffectiveScore() != null ? bestAttempt.getEffectiveScore() : BigDecimal.ZERO;
+					BigDecimal totalPoints = assignment.getTotalPoints() != null && assignment.getTotalPoints().compareTo(BigDecimal.ZERO) > 0
+							? assignment.getTotalPoints() : BigDecimal.valueOf(10);
+					BigDecimal scorePercentage = bestScore.multiply(BigDecimal.valueOf(100))
+							.divide(totalPoints, 2, java.math.RoundingMode.HALF_UP);
+					boolean isAdjusted = bestAttempt.getAdjustedScore() != null;
+
+					submittedCountForStudent++;
+					totalScoreForStudent = totalScoreForStudent.add(bestScore);
+					assignmentScores.computeIfAbsent(asgId, k -> new ArrayList<>()).add(bestScore);
+
+					Long bestAttemptId = bestAttempt.getId();
+					List<GradeAttemptDetailDto> attemptDtos = studentSubs.stream()
+							.map(s -> toGradeAttemptDetailDto(s, Objects.equals(s.getId(), bestAttemptId), classroom))
+							.toList();
+
+					studentGrades.add(new CellGradeDto(
+							asgId,
+							true,
+							bestScore,
+							assignment.getTotalPoints(),
+							scorePercentage,
+							isAdjusted,
+							bestAttempt.getStatus().name(),
+							studentSubs.size(),
+							attemptDtos
+					));
+				}
+			}
+
+			BigDecimal studentAvg = null;
+			if (submittedCountForStudent > 0) {
+				studentAvg = totalScoreForStudent.divide(BigDecimal.valueOf(submittedCountForStudent), 2, java.math.RoundingMode.HALF_UP);
+			}
+
+			studentRows.add(new StudentGradeRowDto(
+					studentId,
+					student.getFullName(),
+					student.getEmail(),
+					student.getAvatarUrl(),
+					member.getStatus().name(),
+					isEnrolled,
+					submittedCountForStudent,
+					studentAvg,
+					studentGrades
+			));
+		}
+
+		// 5. Xây dựng tiêu đề cột bài tập (AssignmentColumnHeaderDto)
+		List<AssignmentColumnHeaderDto> assignmentHeaders = new ArrayList<>();
+		for (AssignmentEntity assignment : assignments) {
+			List<BigDecimal> scoresForAsg = assignmentScores.getOrDefault(assignment.getId(), Collections.emptyList());
+			int subCount = scoresForAsg.size();
+			BigDecimal avgScore = null;
+			if (subCount > 0) {
+				BigDecimal sum = scoresForAsg.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+				avgScore = sum.divide(BigDecimal.valueOf(subCount), 2, java.math.RoundingMode.HALF_UP);
+			}
+			assignmentHeaders.add(new AssignmentColumnHeaderDto(
+					assignment.getId(),
+					assignment.getTitle(),
+					assignment.getTotalPoints(),
+					assignment.getDueTime(),
+					assignment.getCreatedAt(),
+					subCount,
+					avgScore
+			));
+		}
+
+		// 6. Tính điểm trung bình của toàn lớp
+		BigDecimal classAverageScore = null;
+		List<BigDecimal> validStudentAverages = studentRows.stream()
+				.map(StudentGradeRowDto::studentAverageScore)
+				.filter(Objects::nonNull)
+				.toList();
+		if (!validStudentAverages.isEmpty()) {
+			BigDecimal sum = validStudentAverages.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+			classAverageScore = sum.divide(BigDecimal.valueOf(validStudentAverages.size()), 2, java.math.RoundingMode.HALF_UP);
+		}
+
+		String teacherName = classroom.getTeacher() != null ? classroom.getTeacher().getFullName() : null;
+		Long teacherId = classroom.getTeacher() != null ? classroom.getTeacher().getId() : null;
+
+		return new ClassGradebookResponse(
+				classroom.getId(),
+				classroom.getTitle(),
+				classroom.getJoinCode(),
+				teacherId,
+				teacherName,
+				sortedMembers.size(),
+				activeCount,
+				assignments.size(),
+				classAverageScore,
+				assignmentHeaders,
+				studentRows
+		);
+	}
+
+	private GradeAttemptDetailDto toGradeAttemptDetailDto(AssignmentSubmissionEntity sub, boolean isBestAttempt, ClassEntity classroom) {
+		String adjustedByName = null;
+		if (sub.getAdjustedScore() != null) {
+			if (classroom != null && classroom.getTeacher() != null) {
+				adjustedByName = classroom.getTeacher().getFullName();
+			}
+		}
+		return new GradeAttemptDetailDto(
+				sub.getId(),
+				sub.getAttemptNumber(),
+				sub.getScore(),
+				sub.getAdjustedScore(),
+				sub.getAdjustReason(),
+				sub.getAdjustedAt(),
+				adjustedByName,
+				sub.getEffectiveScore(),
+				sub.getStatus().name(),
+				sub.getSubmittedAt(),
+				isBestAttempt
 		);
 	}
 }

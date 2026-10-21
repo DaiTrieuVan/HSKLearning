@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 public interface AssignmentRepository extends JpaRepository<AssignmentEntity, Long> {
 
 	List<AssignmentEntity> findByClassroom_IdOrderByCreatedAtDesc(Long classId);
+	List<AssignmentEntity> findByClassroom_IdAndStatusNotOrderByCreatedAtAsc(Long classId, com.hsk.assignment.domain.AssignmentStatus status);
 
 	List<AssignmentEntity> findByTeacher_IdOrderByCreatedAtDesc(Long teacherId);
 

@@ -73,6 +73,19 @@ public interface AssignmentSubmissionRepository extends JpaRepository<Assignment
 	List<AssignmentSubmissionEntity> findByStudent_Id(Long studentId);
 
 	/**
+	 * Lấy tất cả bài nộp của cả lớp học (kèm join fetch student và assignment) phục vụ bảng điểm ma trận lớp (HTT-07-CN-003).
+	 * Tránh triệt để N+1 query (Senior Backend Mode).
+	 */
+	@org.springframework.data.jpa.repository.Query("SELECT s FROM AssignmentSubmissionEntity s " +
+			"JOIN FETCH s.student stu " +
+			"JOIN FETCH s.assignment a " +
+			"WHERE a.classroom.id = :classId " +
+			"ORDER BY s.attemptNumber ASC")
+	List<AssignmentSubmissionEntity> findSubmissionsByClassroomId(
+			@org.springframework.data.repository.query.Param("classId") Long classId
+	);
+
+	/**
 	 * Xóa bài nộp theo lần giao bài (phục vụ dọn dẹp hoặc test).
 	 */
 	void deleteByAssignment_Id(Long assignmentId);

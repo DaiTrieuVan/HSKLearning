@@ -33,6 +33,8 @@ import {
   Play,
   Ban,
   Trash2,
+  FileSpreadsheet,
+  ExternalLink,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import {
@@ -68,10 +70,12 @@ import {
 } from '../../api/assignment'
 import { ApiError } from '../../api/auth'
 import { AssignmentSubmissionsPanel } from '../../components/classroom/AssignmentSubmissionsPanel'
+import { getClassGradebook, type ClassGradebookResponse } from '../../api/progress'
+import { ClassGradebookView } from '../../components/classroom/ClassGradebookView'
 
 export const ClassDetailPage: React.FC = () => {
   const { classId } = useParams<{ classId: string }>()
-  const { user } = useAuth()
+  const { token, user } = useAuth()
   const navigate = useNavigate()
 
   const [classroom, setClassroom] = useState<ClassItem | null>(null)
@@ -79,9 +83,26 @@ export const ClassDetailPage: React.FC = () => {
 
   const isTeacher = user?.activeMode === 'TEACHER'
 
-  const [activeTab, setActiveTab] = useState<'MEMBERS' | 'REMOVED' | 'VOCAB_SETS' | 'ASSIGNMENTS'>(
+  const [activeTab, setActiveTab] = useState<'MEMBERS' | 'REMOVED' | 'VOCAB_SETS' | 'ASSIGNMENTS' | 'GRADEBOOK'>(
     'ASSIGNMENTS'
   )
+  const [gradebook, setGradebook] = useState<ClassGradebookResponse | null>(null)
+  const [gradebookLoading, setGradebookLoading] = useState(false)
+  const [gradebookError, setGradebookError] = useState<string | null>(null)
+
+  const loadGradebook = async () => {
+    if (!token || !classId) return
+    setGradebookLoading(true)
+    setGradebookError(null)
+    try {
+      const data = await getClassGradebook(token, parseInt(classId, 10))
+      setGradebook(data)
+    } catch (err: any) {
+      setGradebookError(err.message || 'Không thể tải bảng điểm lớp học')
+    } finally {
+      setGradebookLoading(false)
+    }
+  }
   const [members, setMembers] = useState<ClassMemberItem[]>([])
   const [loading, setLoading] = useState(false)
   const [actionLoading, setActionLoading] = useState<number | null>(null)
@@ -789,6 +810,34 @@ export const ClassDetailPage: React.FC = () => {
             >
               <UserMinus size={16} />
               <span>Đã xóa / Đã rời ({removedMembers.length})</span>
+            </button>
+          )}
+
+          {isTeacher && (
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('GRADEBOOK')
+                if (!gradebook) {
+                  loadGradebook()
+                }
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 16px',
+                borderRadius: 'var(--radius-md)',
+                border: 'none',
+                fontWeight: 800,
+                fontSize: '0.88rem',
+                cursor: 'pointer',
+                backgroundColor: activeTab === 'GRADEBOOK' ? 'var(--primary)' : '#f1f5f9',
+                color: activeTab === 'GRADEBOOK' ? '#ffffff' : 'var(--text-muted)',
+              }}
+            >
+              <FileSpreadsheet size={16} />
+              <span>Bảng điểm</span>
             </button>
           )}
         </div>
@@ -2223,6 +2272,76 @@ export const ClassDetailPage: React.FC = () => {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Tab 4: Class Gradebook (HTT-07-CN-003) */}
+        {activeTab === 'GRADEBOOK' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '12px 18px',
+                backgroundColor: '#eff6ff',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid #bfdbfe',
+                flexWrap: 'wrap',
+                gap: '10px',
+              }}
+            >
+              <div style={{ fontSize: '0.86rem', color: '#1e40af', fontWeight: 600 }}>
+                💡 Mẹo: Bạn có thể mở bảng điểm ở chế độ toàn màn hình để dễ dàng quan sát và thao tác khi lớp có nhiều bài tập.
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate(`/classes/${classId}/gradebook`)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 14px',
+                  borderRadius: 'var(--radius-sm)',
+                  backgroundColor: '#ffffff',
+                  color: 'var(--primary)',
+                  border: '1.5px solid var(--primary)',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <ExternalLink size={14} />
+                <span>Mở toàn màn hình</span>
+              </button>
+            </div>
+
+            {gradebookLoading ? (
+              <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+                <Loader2 size={36} className="animate-spin" style={{ color: 'var(--primary)', margin: '0 auto 12px' }} />
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem' }}>Đang tải bảng điểm lớp...</p>
+              </div>
+            ) : gradebookError ? (
+              <div
+                style={{
+                  padding: '24px',
+                  textAlign: 'center',
+                  backgroundColor: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  borderRadius: 'var(--radius-md)',
+                }}
+              >
+                <AlertCircle size={36} style={{ color: '#ef4444', margin: '0 auto 8px' }} />
+                <p style={{ color: '#b91c1c', fontSize: '0.88rem', marginBottom: '12px' }}>{gradebookError}</p>
+                <button type="button" onClick={loadGradebook} className="btn-gamified btn-primary">
+                  Thử lại
+                </button>
+              </div>
+            ) : gradebook ? (
+              <ClassGradebookView gradebook={gradebook} classId={parseInt(classId!, 10)} onRefresh={loadGradebook} />
+            ) : null}
           </div>
         )}
 

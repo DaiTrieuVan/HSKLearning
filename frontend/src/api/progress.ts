@@ -92,4 +92,88 @@ export async function getSubmissionHistory(token: string): Promise<SubmissionHis
 
   return response.json()
 }
+export interface GradeAttemptDetailItem {
+  submissionId: number
+  attemptNumber: number
+  score: number | null
+  adjustedScore: number | null
+  adjustReason: string | null
+  adjustedAt: string | null
+  adjustedByName: string | null
+  effectiveScore: number | null
+  status: string
+  submittedAt: string | null
+  isBestAttempt: boolean
+}
 
+export interface CellGradeItem {
+  assignmentId: number
+  hasSubmitted: boolean
+  bestScore: number | null
+  totalPoints: number
+  scorePercentage: number | null
+  isAdjusted: boolean
+  status: string
+  totalAttempts: number
+  attempts: GradeAttemptDetailItem[]
+}
+
+export interface StudentGradeRowItem {
+  studentId: number
+  fullName: string
+  email: string
+  avatarUrl: string | null
+  membershipStatus: 'ACTIVE' | 'LEFT' | 'REMOVED' | string
+  isEnrolled: boolean
+  submittedAssignmentsCount: number
+  studentAverageScore: number | null
+  grades: CellGradeItem[]
+}
+
+export interface AssignmentColumnHeaderItem {
+  assignmentId: number
+  title: string
+  totalPoints: number
+  dueTime: string | null
+  createdAt: string | null
+  submittedCount: number
+  assignmentAverageScore: number | null
+}
+
+export interface ClassGradebookResponse {
+  classId: number
+  className: string
+  classCode: string
+  teacherId: number
+  teacherName: string
+  totalStudents: number
+  activeStudentsCount: number
+  totalAssignments: number
+  classAverageScore: number | null
+  assignments: AssignmentColumnHeaderItem[]
+  students: StudentGradeRowItem[]
+}
+
+export async function getClassGradebook(token: string, classId: number): Promise<ClassGradebookResponse> {
+  const response = await fetch(`${API_BASE}/classes/${classId}/gradebook`, {
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  if (!response.ok) {
+    let errorDetail = 'Không thể tải bảng điểm lớp học'
+    try {
+      const errorJson = await response.json()
+      if (errorJson.message) {
+        errorDetail = errorJson.message
+      }
+    } catch {
+      // ignore
+    }
+    throw new ApiError(response.status, 'FETCH_GRADEBOOK_FAILED', errorDetail)
+  }
+
+  return response.json()
+}

@@ -4,6 +4,7 @@ import com.hsk.account.domain.UserEntity;
 import com.hsk.account.repository.UserRepository;
 import com.hsk.common.api.ApiErrorCode;
 import com.hsk.common.api.ApiException;
+import com.hsk.progress.dto.AssignmentStatisticsResponse;
 import com.hsk.progress.dto.ClassGradebookResponse;
 import com.hsk.progress.dto.PersonalProgressResponse;
 import com.hsk.progress.dto.SubmissionHistoryResponse;
@@ -95,6 +96,21 @@ public class ProgressController {
 	) {
 		UserEntity user = requireUser(principal);
 		UnsubmittedStudentsResponse response = progressService.getUnsubmittedStudents(user.getId(), assignmentId);
+		return ResponseEntity.ok(response);
+	}
+
+	@GetMapping("/assignments/{assignmentId}/statistics")
+	@PreAuthorize("isAuthenticated()")
+	@Operation(
+			summary = "HTT-07-CN-005 — Xem thống kê điểm và tỷ lệ câu sai theo bài tập",
+			description = "Giáo viên xem điểm trung bình, cao nhất, thấp nhất, phân bố phổ điểm và tỷ lệ câu sai của bài tập (QTN-01, QTN-13, TC-01..TC-05)."
+	)
+	public ResponseEntity<AssignmentStatisticsResponse> getAssignmentStatistics(
+			@PathVariable("assignmentId") Long assignmentId,
+			Principal principal
+	) {
+		UserEntity user = requireUser(principal);
+		AssignmentStatisticsResponse response = progressService.getAssignmentStatistics(user.getId(), assignmentId);
 		return ResponseEntity.ok(response);
 	}
 }

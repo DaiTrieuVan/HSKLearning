@@ -39,13 +39,22 @@ import com.hsk.classroom.domain.ClassMemberStatus;
 import com.hsk.classroom.repository.ClassMemberRepository;
 import com.hsk.classroom.repository.ClassRepository;
 import com.hsk.progress.dto.AssignmentColumnHeaderDto;
+import com.hsk.progress.dto.AssignmentStatisticsResponse;
 import com.hsk.progress.dto.CellGradeDto;
 import com.hsk.progress.dto.ClassGradebookResponse;
 import com.hsk.progress.dto.GradeAttemptDetailDto;
 import com.hsk.progress.dto.LateSubmissionItemDto;
+import com.hsk.progress.dto.QuestionStatItemDto;
+import com.hsk.progress.dto.ScoreDistributionItemDto;
 import com.hsk.progress.dto.StudentGradeRowDto;
 import com.hsk.progress.dto.UnsubmittedStudentItemDto;
 import com.hsk.progress.dto.UnsubmittedStudentsResponse;
+import com.hsk.assignment.dto.AssignmentSnapshotQuestionDto;
+import com.hsk.assignment.dto.StudentAnswerItemDto;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.math.RoundingMode;
 import java.util.stream.Collectors;
 
 /**
@@ -66,6 +75,7 @@ public class ProgressService {
 	private final AssignmentRepository assignmentRepository;
 	private final UserRoleRepository userRoleRepository;
 	private final AssignmentStudentOverrideRepository assignmentStudentOverrideRepository;
+	private final ObjectMapper objectMapper = new ObjectMapper();
 
 	public ProgressService(
 			UserRepository userRepository,
@@ -749,5 +759,193 @@ public class ProgressService {
 				unsubmittedList,
 				lateList
 		);
+	}
+
+	/**
+	 * HTT-07-CN-005: Xem thống kê theo bài tập (điểm TB, phân bố điểm, tỷ lệ câu sai).
+	 */
+	@Transactional(readOnly = true)
+	public AssignmentStatisticsResponse getAssignmentStatistics(Long teacherId, Long assignmentId) {
+		AssignmentEntity assignment = assignmentRepository.findById(assignmentId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.ASSIGNMENT_NOT_FOUND));
+
+		ClassEntity classroom = assignment.getClassroom();
+
+		// TC-05: QTN-01 - Giáo viên chỉ xem được bài tập của lớp do mình phụ trách
+		boolean isClassTeacher = classroom.getTeacher().getId().equals(teacherId)
+				|| assignment.getTeacher().getId().equals(teacherId);
+		boolean isAdmin = userRoleRepository.existsByUser_IdAndRole_Code(teacherId, RoleCode.ADMIN);
+		if (!isClassTeacher && !isAdmin) {
+			throw new ApiException(ApiErrorCode.FORBIDDEN);
+		}
+
+		// Lấy danh sách thành viên active của lớp
+		List<ClassMemberEntity> activeMembers = classMemberRepository.findByClassroomIdWithStudent(classroom.getId())
+				.stream()
+				.filter(m -> m.getStatus() == ClassMemberStatus.ACTIVE)
+				.toList();
+		int totalStudents = activeMembers.size();
+
+		// Lấy tất cả submissions của bài tập
+		List<AssignmentSubmissionEntity> submissions = assignmentSubmissionRepository.findByAssignment_Id(assignmentId);
+
+		// Gom nhóm theo học sinh và chọn Best Attempt (QTN-13, TC-03)
+		Map<Long, List<AssignmentSubmissionEntity>> studentSubmissionsMap = submissions.stream()
+				.filter(s -> s.getStatus() == SubmissionStatus.SUBMITTED || s.getStatus() == SubmissionStatus.AUTO_SUBMITTED)
+				.collect(Collectors.groupingBy(s -> s.getStudent().getId()));
+
+		List<AssignmentSubmissionEntity> bestSubmissions = new ArrayList<>();
+		for (List<AssignmentSubmissionEntity> studentSubs : studentSubmissionsMap.values()) {
+			AssignmentSubmissionEntity best = studentSubs.stream().max((s1, s2) -> {
+				BigDecimal score1 = s1.getAdjustedScore() != null ? s1.getAdjustedScore() : (s1.getScore() != null ? s1.getScore() : BigDecimal.ZERO);
+				BigDecimal score2 = s2.getAdjustedScore() != null ? s2.getAdjustedScore() : (s2.getScore() != null ? s2.getScore() : BigDecimal.ZERO);
+				int cmp = score1.compareTo(score2);
+				if (cmp != 0) return cmp;
+				if (s1.getSubmittedAt() != null && s2.getSubmittedAt() != null) {
+					return s1.getSubmittedAt().compareTo(s2.getSubmittedAt());
+				}
+				return Integer.compare(s1.getAttemptNumber(), s2.getAttemptNumber());
+			}).orElse(null);
+
+			if (best != null) {
+				bestSubmissions.add(best);
+			}
+		}
+
+		int submittedCount = bestSubmissions.size();
+
+		// TC-04: Dữ liệu rỗng khi bài tập chưa có bài nộp nào
+		if (submittedCount == 0) {
+			return new AssignmentStatisticsResponse(
+					assignment.getId(),
+					assignment.getTitle(),
+					classroom.getId(),
+					classroom.getTitle(),
+					totalStudents,
+					0,
+					false,
+					assignment.getTotalPoints(),
+					null,
+					null,
+					null,
+					Collections.emptyList(),
+					Collections.emptyList()
+			);
+		}
+
+		// TC-01: Tính điểm trung bình, cao nhất, thấp nhất (dựa trên Best Attempt của mỗi học sinh)
+		List<BigDecimal> effectiveScores = bestSubmissions.stream()
+				.map(s -> s.getAdjustedScore() != null ? s.getAdjustedScore() : (s.getScore() != null ? s.getScore() : BigDecimal.ZERO))
+				.toList();
+
+		BigDecimal maxScore = effectiveScores.stream().max(BigDecimal::compareTo).orElse(BigDecimal.ZERO);
+		BigDecimal minScore = effectiveScores.stream().min(BigDecimal::compareTo).orElse(BigDecimal.ZERO);
+		BigDecimal sumScore = effectiveScores.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+		BigDecimal averageScore = sumScore.divide(BigDecimal.valueOf(submittedCount), 1, RoundingMode.HALF_UP);
+
+		// Phân bố phổ điểm theo các khoảng chuẩn (Dưới 5.0, 5.0 - 6.4, 6.5 - 7.9, 8.0 - 10.0)
+		BigDecimal t5 = BigDecimal.valueOf(5.0);
+		BigDecimal t65 = BigDecimal.valueOf(6.5);
+		BigDecimal t8 = BigDecimal.valueOf(8.0);
+
+		long countBelow5 = effectiveScores.stream().filter(s -> s.compareTo(t5) < 0).count();
+		long count5To65 = effectiveScores.stream().filter(s -> s.compareTo(t5) >= 0 && s.compareTo(t65) < 0).count();
+		long count65To8 = effectiveScores.stream().filter(s -> s.compareTo(t65) >= 0 && s.compareTo(t8) < 0).count();
+		long count8To10 = effectiveScores.stream().filter(s -> s.compareTo(t8) >= 0).count();
+
+		List<ScoreDistributionItemDto> distribution = List.of(
+				new ScoreDistributionItemDto("BELOW_5", "Dưới 5.0 (Cần cố gắng)", BigDecimal.ZERO, BigDecimal.valueOf(4.9), countBelow5, calcPercentage(countBelow5, submittedCount)),
+				new ScoreDistributionItemDto("FROM_5_TO_6_5", "5.0 - 6.4 (Trung bình)", BigDecimal.valueOf(5.0), BigDecimal.valueOf(6.4), count5To65, calcPercentage(count5To65, submittedCount)),
+				new ScoreDistributionItemDto("FROM_6_5_TO_8", "6.5 - 7.9 (Khá)", BigDecimal.valueOf(6.5), BigDecimal.valueOf(7.9), count65To8, calcPercentage(count65To8, submittedCount)),
+				new ScoreDistributionItemDto("FROM_8_TO_10", "8.0 - 10.0 (Giỏi / Xuất sắc)", BigDecimal.valueOf(8.0), BigDecimal.valueOf(10.0), count8To10, calcPercentage(count8To10, submittedCount))
+		);
+
+		// TC-02 & TC-03: Thống kê tỷ lệ câu sai từ snapshotData và câu trả lời trong Best Attempt
+		List<AssignmentSnapshotQuestionDto> snapshotQuestions = parseSnapshotQuestions(assignment.getSnapshotData());
+		List<List<StudentAnswerItemDto>> studentAnswersList = bestSubmissions.stream()
+				.map(s -> parseAnswers(s.getAnswersData()))
+				.toList();
+
+		List<QuestionStatItemDto> questionStats = new ArrayList<>();
+		for (AssignmentSnapshotQuestionDto q : snapshotQuestions) {
+			long correctCount = 0;
+			long wrongCount = 0;
+
+			for (List<StudentAnswerItemDto> answers : studentAnswersList) {
+				Optional<StudentAnswerItemDto> answerOpt = answers.stream()
+						.filter(a -> a.questionId() != null && a.questionId().equals(q.questionId()))
+						.findFirst();
+
+				if (answerOpt.isPresent() && Boolean.TRUE.equals(answerOpt.get().isCorrect())) {
+					correctCount++;
+				} else {
+					wrongCount++;
+				}
+			}
+
+			long totalAnswersForQuestion = correctCount + wrongCount;
+			double wrongPercentage = totalAnswersForQuestion > 0
+					? Math.round((wrongCount * 100.0 / totalAnswersForQuestion) * 10.0) / 10.0
+					: 0.0;
+
+			questionStats.add(new QuestionStatItemDto(
+					q.questionId(),
+					q.sortOrder(),
+					q.type(),
+					q.content(),
+					q.points(),
+					totalAnswersForQuestion,
+					correctCount,
+					wrongCount,
+					wrongPercentage
+			));
+		}
+
+		// TC-02: Bắt buộc sắp xếp câu có tỷ lệ sai nhiều nhất lên đầu
+		questionStats.sort(Comparator.comparingDouble(QuestionStatItemDto::wrongPercentage).reversed()
+				.thenComparingInt(QuestionStatItemDto::sortOrder));
+
+		return new AssignmentStatisticsResponse(
+				assignment.getId(),
+				assignment.getTitle(),
+				classroom.getId(),
+				classroom.getTitle(),
+				totalStudents,
+				submittedCount,
+				true,
+				assignment.getTotalPoints(),
+				averageScore,
+				maxScore,
+				minScore,
+				distribution,
+				questionStats
+		);
+	}
+
+	private double calcPercentage(long count, int total) {
+		if (total <= 0) return 0.0;
+		return Math.round((count * 100.0 / total) * 10.0) / 10.0;
+	}
+
+	private List<AssignmentSnapshotQuestionDto> parseSnapshotQuestions(String json) {
+		if (json == null || json.trim().isEmpty()) {
+			return Collections.emptyList();
+		}
+		try {
+			return objectMapper.readValue(json, new TypeReference<List<AssignmentSnapshotQuestionDto>>() {});
+		} catch (JsonProcessingException e) {
+			return Collections.emptyList();
+		}
+	}
+
+	private List<StudentAnswerItemDto> parseAnswers(String json) {
+		if (json == null || json.trim().isEmpty()) {
+			return Collections.emptyList();
+		}
+		try {
+			return objectMapper.readValue(json, new TypeReference<List<StudentAnswerItemDto>>() {});
+		} catch (JsonProcessingException e) {
+			return Collections.emptyList();
+		}
 	}
 }

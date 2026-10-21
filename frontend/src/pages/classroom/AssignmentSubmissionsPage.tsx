@@ -19,7 +19,9 @@ import {
   SlidersHorizontal,
   ChevronDown,
   ChevronUp,
+  UserX,
 } from 'lucide-react'
+import { UnsubmittedStudentsDrawer } from '../../components/classroom/UnsubmittedStudentsDrawer'
 import { useAuth } from '../../context/AuthContext'
 import {
   getAssignmentSubmissionsOverview,
@@ -48,6 +50,7 @@ export const AssignmentSubmissionsPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [activeTab, setActiveTab] = useState<FilterTab>('ALL')
   const [sortBy, setSortBy] = useState<SortOption>('SUBMITTED_DESC')
+  const [unsubmittedDrawerOpen, setUnsubmittedDrawerOpen] = useState<boolean>(false)
 
   // Inline Quick Actions per row
   const [activeRowStudentId, setActiveRowStudentId] = useState<number | null>(null)
@@ -441,6 +444,27 @@ export const AssignmentSubmissionsPage: React.FC = () => {
           <div style={{ display: 'flex', gap: '10px' }}>
             <button
               type="button"
+              onClick={() => setUnsubmittedDrawerOpen(true)}
+              className="btn btn-secondary"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 16px',
+                fontSize: '0.85rem',
+                fontWeight: 700,
+                color: '#dc2626',
+                borderColor: '#fecaca',
+                backgroundColor: '#fff5f5',
+                cursor: 'pointer',
+              }}
+            >
+              <UserX size={15} />
+              <span>Chưa nộp ({data?.notStartedCount ?? 0})</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => loadOverview()}
               disabled={loading}
               className="btn btn-secondary"
@@ -512,14 +536,36 @@ export const AssignmentSubmissionsPage: React.FC = () => {
         </div>
 
         {/* Chưa nộp */}
-        <div className="game-card" style={{ padding: '16px 20px', backgroundColor: '#ffffff' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-            <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <AlertCircle size={20} color="#94a3b8" />
+        <div
+          className="game-card"
+          onClick={() => setUnsubmittedDrawerOpen(true)}
+          style={{
+            padding: '16px 20px',
+            backgroundColor: '#ffffff',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            border: '1px solid transparent',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = '#fca5a5'
+            e.currentTarget.style.transform = 'translateY(-2px)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = 'transparent'
+            e.currentTarget.style.transform = 'translateY(0)'
+          }}
+          title="Nhấp để xem danh sách học sinh chưa nộp bài"
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <UserX size={20} color="#dc2626" />
+              </div>
+              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-muted)' }}>Chưa nộp</span>
             </div>
-            <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-muted)' }}>Chưa nộp</span>
+            <span style={{ fontSize: '0.74rem', color: '#dc2626', fontWeight: 700 }}>Xem danh sách</span>
           </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#64748b' }}>
+          <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#dc2626' }}>
             {data?.notStartedCount || 0} <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-muted)' }}>học sinh</span>
           </div>
         </div>
@@ -1109,6 +1155,15 @@ export const AssignmentSubmissionsPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Slide-over Drawer for Unsubmitted Students (HTT-07-CN-004) */}
+      <UnsubmittedStudentsDrawer
+        isOpen={unsubmittedDrawerOpen}
+        onClose={() => setUnsubmittedDrawerOpen(false)}
+        assignmentId={assignmentId ? Number(assignmentId) : null}
+        assignmentTitle={data?.assignmentTitle}
+        classId={classId ? Number(classId) : undefined}
+      />
     </div>
   )
 }

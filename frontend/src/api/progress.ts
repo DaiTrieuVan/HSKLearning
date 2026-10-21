@@ -177,3 +177,67 @@ export async function getClassGradebook(token: string, classId: number): Promise
 
   return response.json()
 }
+
+export interface UnsubmittedStudentItem {
+  studentId: number
+  fullName: string
+  email: string
+  avatarUrl: string | null
+  originalDueTime: string | null
+  effectiveDueTime: string | null
+  isExtended: boolean
+  isOverdue: boolean
+}
+
+export interface LateSubmissionItem {
+  submissionId: number
+  studentId: number
+  fullName: string
+  email: string
+  avatarUrl: string | null
+  originalDueTime: string | null
+  effectiveDueTime: string | null
+  isExtended: boolean
+  submittedAt: string | null
+  isLate: boolean
+}
+
+export interface UnsubmittedStudentsResponse {
+  assignmentId: number
+  assignmentTitle: string
+  classId: number
+  className: string
+  originalDueTime: string | null
+  isAssignmentOverdue: boolean
+  totalStudents: number
+  submittedCount: number
+  unsubmittedCount: number
+  lateSubmittedCount: number
+  unsubmittedStudents: UnsubmittedStudentItem[]
+  lateSubmissions: LateSubmissionItem[]
+}
+
+export async function getUnsubmittedStudents(token: string, assignmentId: number): Promise<UnsubmittedStudentsResponse> {
+  const response = await fetch(`${API_BASE}/assignments/${assignmentId}/unsubmitted`, {
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  if (!response.ok) {
+    let errorDetail = 'Không thể tải danh sách học sinh chưa nộp bài'
+    try {
+      const errorJson = await response.json()
+      if (errorJson.message) {
+        errorDetail = errorJson.message
+      }
+    } catch {
+      // ignore
+    }
+    throw new ApiError(response.status, 'FETCH_UNSUBMITTED_FAILED', errorDetail)
+  }
+
+  return response.json()
+}
+

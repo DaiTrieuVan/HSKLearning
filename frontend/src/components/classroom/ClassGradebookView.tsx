@@ -17,6 +17,7 @@ import type {
   CellGradeItem,
 } from '../../api/progress'
 import { GradebookAttemptDrawer } from './GradebookAttemptDrawer'
+import { UnsubmittedStudentsDrawer } from './UnsubmittedStudentsDrawer'
 
 interface ClassGradebookViewProps {
   gradebook: ClassGradebookResponse
@@ -33,6 +34,10 @@ export const ClassGradebookView: React.FC<ClassGradebookViewProps> = ({ gradeboo
   const [selectedStudent, setSelectedStudent] = useState<StudentGradeRowItem | null>(null)
   const [selectedAssignment, setSelectedAssignment] = useState<AssignmentColumnHeaderItem | null>(null)
   const [selectedGrade, setSelectedGrade] = useState<CellGradeItem | null>(null)
+
+  // State for Unsubmitted Drawer (HTT-07-CN-004)
+  const [unsubmittedDrawerOpen, setUnsubmittedDrawerOpen] = useState(false)
+  const [selectedUnsubmittedAssignment, setSelectedUnsubmittedAssignment] = useState<AssignmentColumnHeaderItem | null>(null)
 
   const handleCellClick = (
     student: StudentGradeRowItem,
@@ -456,9 +461,31 @@ export const ClassGradebookView: React.FC<ClassGradebookViewProps> = ({ gradeboo
                             marginTop: '2px',
                           }}
                         >
-                          <span style={{ color: '#0369a1', fontWeight: 700 }}>
-                            Nộp: {assignment.submittedCount}/{gradebook.totalStudents}
-                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setSelectedUnsubmittedAssignment(assignment)
+                              setUnsubmittedDrawerOpen(true)
+                            }}
+                            title="Nhấp để xem danh sách học sinh chưa nộp bài"
+                            style={{
+                              background: assignment.submittedCount < gradebook.totalStudents ? '#fef2f2' : 'transparent',
+                              border: assignment.submittedCount < gradebook.totalStudents ? '1px solid #fecaca' : '1px solid transparent',
+                              padding: '1px 5px',
+                              margin: 0,
+                              cursor: 'pointer',
+                              color: assignment.submittedCount < gradebook.totalStudents ? '#dc2626' : '#0369a1',
+                              fontWeight: 800,
+                              borderRadius: '4px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px',
+                            }}
+                          >
+                            {assignment.submittedCount < gradebook.totalStudents && <UserX size={11} />}
+                            <span>Nộp: {assignment.submittedCount}/{gradebook.totalStudents}</span>
+                          </button>
                           <span style={{ color: '#b45309', fontWeight: 700 }}>
                             TB: {assignment.assignmentAverageScore !== null ? assignment.assignmentAverageScore : '-'}
                           </span>
@@ -881,6 +908,15 @@ export const ClassGradebookView: React.FC<ClassGradebookViewProps> = ({ gradeboo
         student={selectedStudent}
         assignment={selectedAssignment}
         grade={selectedGrade}
+      />
+
+      {/* Slide-over Drawer for unsubmitted students (HTT-07-CN-004) */}
+      <UnsubmittedStudentsDrawer
+        isOpen={unsubmittedDrawerOpen}
+        onClose={() => setUnsubmittedDrawerOpen(false)}
+        assignmentId={selectedUnsubmittedAssignment?.assignmentId ?? null}
+        assignmentTitle={selectedUnsubmittedAssignment?.title}
+        classId={classId}
       />
     </div>
   )

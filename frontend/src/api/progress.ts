@@ -241,3 +241,65 @@ export async function getUnsubmittedStudents(token: string, assignmentId: number
   return response.json()
 }
 
+export interface ScoreDistributionItem {
+  rangeKey: string
+  label: string
+  minScore: number
+  maxScore: number
+  count: number
+  percentage: number
+}
+
+export interface QuestionStatItem {
+  questionId: number
+  sortOrder: number
+  type: string
+  content: string
+  points: number
+  totalAnswers: number
+  correctCount: number
+  wrongCount: number
+  wrongPercentage: number
+}
+
+export interface AssignmentStatisticsResponse {
+  assignmentId: number
+  assignmentTitle: string
+  classId: number
+  className: string
+  totalStudents: number
+  submittedCount: number
+  hasData: boolean
+  totalPoints: number | null
+  averageScore: number | null
+  maxScore: number | null
+  minScore: number | null
+  scoreDistribution: ScoreDistributionItem[]
+  questionStats: QuestionStatItem[]
+}
+
+export async function getAssignmentStatistics(token: string, assignmentId: number): Promise<AssignmentStatisticsResponse> {
+  const response = await fetch(`${API_BASE}/assignments/${assignmentId}/statistics`, {
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  if (!response.ok) {
+    let errorDetail = 'Không thể tải thống kê bài tập'
+    try {
+      const errorJson = await response.json()
+      if (errorJson.message) {
+        errorDetail = errorJson.message
+      }
+    } catch {
+      // ignore
+    }
+    throw new ApiError(response.status, 'FETCH_STATISTICS_FAILED', errorDetail)
+  }
+
+  return response.json()
+}
+
+

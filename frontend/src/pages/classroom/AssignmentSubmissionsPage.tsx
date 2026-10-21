@@ -20,8 +20,10 @@ import {
   ChevronDown,
   ChevronUp,
   UserX,
+  BarChart3,
 } from 'lucide-react'
 import { UnsubmittedStudentsDrawer } from '../../components/classroom/UnsubmittedStudentsDrawer'
+import { AssignmentStatisticsView } from '../../components/classroom/AssignmentStatisticsView'
 import { useAuth } from '../../context/AuthContext'
 import {
   getAssignmentSubmissionsOverview,
@@ -51,6 +53,7 @@ export const AssignmentSubmissionsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<FilterTab>('ALL')
   const [sortBy, setSortBy] = useState<SortOption>('SUBMITTED_DESC')
   const [unsubmittedDrawerOpen, setUnsubmittedDrawerOpen] = useState<boolean>(false)
+  const [mainView, setMainView] = useState<'SUBMISSIONS' | 'STATISTICS'>('SUBMISSIONS')
 
   // Inline Quick Actions per row
   const [activeRowStudentId, setActiveRowStudentId] = useState<number | null>(null)
@@ -484,15 +487,78 @@ export const AssignmentSubmissionsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. KPI SUMMARY CARDS */}
+      {/* MAIN VIEW SWITCHER: Submissions vs Statistics (HTT-07-CN-005) */}
       <div
         style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '16px',
-          marginBottom: '24px',
+          display: 'flex',
+          gap: '12px',
+          marginBottom: '20px',
+          borderBottom: '2px solid #e2e8f0',
         }}
       >
+        <button
+          type="button"
+          onClick={() => setMainView('SUBMISSIONS')}
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: '10px 16px',
+            fontSize: '0.92rem',
+            fontWeight: 800,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            color: mainView === 'SUBMISSIONS' ? 'var(--primary)' : 'var(--text-muted)',
+            borderBottom: mainView === 'SUBMISSIONS' ? '3px solid var(--primary)' : '3px solid transparent',
+            marginBottom: '-2px',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          <Users size={18} />
+          <span>Danh sách nộp bài & Chấm điểm</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setMainView('STATISTICS')}
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: '10px 16px',
+            fontSize: '0.92rem',
+            fontWeight: 800,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            color: mainView === 'STATISTICS' ? 'var(--primary)' : 'var(--text-muted)',
+            borderBottom: mainView === 'STATISTICS' ? '3px solid var(--primary)' : '3px solid transparent',
+            marginBottom: '-2px',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          <BarChart3 size={18} />
+          <span>Thống kê bài tập & Phổ điểm</span>
+        </button>
+      </div>
+
+      {mainView === 'STATISTICS' ? (
+        <AssignmentStatisticsView
+          assignmentId={Number(assignmentId)}
+          onBackToSubmissions={() => setMainView('SUBMISSIONS')}
+        />
+      ) : (
+        <>
+          {/* 2. KPI SUMMARY CARDS */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: '16px',
+              marginBottom: '24px',
+            }}
+          >
         {/* Sĩ số lớp */}
         <div className="game-card" style={{ padding: '16px 20px', backgroundColor: '#ffffff' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
@@ -1155,6 +1221,8 @@ export const AssignmentSubmissionsPage: React.FC = () => {
           </div>
         )}
       </div>
+        </>
+      )}
 
       {/* Slide-over Drawer for Unsubmitted Students (HTT-07-CN-004) */}
       <UnsubmittedStudentsDrawer

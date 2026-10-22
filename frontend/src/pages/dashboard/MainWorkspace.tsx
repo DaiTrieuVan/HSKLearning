@@ -74,6 +74,14 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
     }
   }
 
+  const loadSrsSummary = () => {
+    if (user && !user.roles.includes('ADMIN')) {
+      getSrsSummary(user.token)
+        .then((res) => setSrsSummary(res))
+        .catch(() => {})
+    }
+  }
+
   useEffect(() => {
     if (user) {
       setCurrentUserName(user.fullName)
@@ -82,12 +90,18 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
           .then((res) => setMyTeacherRequest(res))
           .catch(() => {})
       }
-      if (!user.roles.includes('ADMIN')) {
-        getSrsSummary(user.token)
-          .then((res) => setSrsSummary(res))
-          .catch(() => {})
-      }
+      loadSrsSummary()
       loadClasses()
+
+      // HTT-08-CN-002-TC-02: Tự động cập nhật số từ cần ôn khi học sinh quay lại trang chính
+      const handleFocus = () => loadSrsSummary()
+      window.addEventListener('focus', handleFocus)
+      document.addEventListener('visibilitychange', handleFocus)
+
+      return () => {
+        window.removeEventListener('focus', handleFocus)
+        document.removeEventListener('visibilitychange', handleFocus)
+      }
     }
   }, [user, user?.activeMode])
 
@@ -840,41 +854,46 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
                     >
                       <BrainCircuit size={24} />
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                       <h3 style={{ fontSize: '1.15rem', fontWeight: 800 }}>
                         Ôn từ theo lịch (SRS)
                       </h3>
                       {srsSummary && srsSummary.dueTodayCount > 0 ? (
                         <span
+                          id="badge-srs-due-count"
                           style={{
-                            fontSize: '0.75rem',
+                            fontSize: '0.78rem',
                             fontWeight: 800,
-                            padding: '2px 8px',
+                            padding: '3px 10px',
                             backgroundColor: '#fee2e2',
                             color: '#b91c1c',
                             borderRadius: 'var(--radius-full)',
+                            border: '1px solid #fca5a5',
                           }}
                         >
                           Cần ôn: {srsSummary.dueTodayCount} từ
                         </span>
                       ) : (
                         <span
+                          id="badge-srs-completed"
                           style={{
-                            fontSize: '0.75rem',
+                            fontSize: '0.78rem',
                             fontWeight: 800,
-                            padding: '2px 8px',
+                            padding: '3px 10px',
                             backgroundColor: 'var(--jade-green-light)',
                             color: 'var(--jade-green-shadow)',
                             borderRadius: 'var(--radius-full)',
                           }}
                         >
-                          Đã hoàn thành hôm nay
+                          Đã ôn xong hôm nay
                         </span>
                       )}
                     </div>
                     <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '16px' }}>
-                      Thuật toán ngắt quãng SuperMemo SM-2 tự động nhắc lại từ vựng trước khi bạn chuẩn bị quên.
-                      {srsSummary && ` Đã ghi nhớ vững chắc ${srsSummary.masteredCount} từ.`}
+                      {srsSummary && srsSummary.dueTodayCount > 0
+                        ? `Bạn có ${srsSummary.dueTodayCount} từ vựng đến hạn cần ôn hôm nay theo thuật toán ngắt quãng SM-2. Hãy ôn ngay để ghi nhớ bền vững!`
+                        : 'Tuyệt vời! Bạn đã hoàn thành toàn bộ bài ôn hôm nay. Thuật toán SRS đã lên lịch cho các ngày tiếp theo.'}
+                      {srsSummary && srsSummary.masteredCount > 0 && ` (Đã thuộc vững: ${srsSummary.masteredCount} từ)`}
                     </p>
                   </div>
 
@@ -882,13 +901,20 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
                     type="button"
                     id="btn-start-srs-review"
                     onClick={() => navigate('/srs/review')}
-                    className="btn-gamified btn-green"
-                    style={{ width: '100%', fontSize: '0.92rem', padding: '10px' }}
+                    className={`btn-gamified ${srsSummary && srsSummary.dueTodayCount > 0 ? 'btn-green' : ''}`}
+                    style={{
+                      width: '100%',
+                      fontSize: '0.92rem',
+                      padding: '10px',
+                      backgroundColor: srsSummary && srsSummary.dueTodayCount > 0 ? undefined : '#f1f5f9',
+                      color: srsSummary && srsSummary.dueTodayCount > 0 ? undefined : '#64748b',
+                      border: srsSummary && srsSummary.dueTodayCount > 0 ? undefined : '1px solid #cbd5e1',
+                    }}
                   >
                     <span>
                       {srsSummary && srsSummary.dueTodayCount > 0
                         ? `Bắt đầu ôn tập (${srsSummary.dueTodayCount} từ)`
-                        : 'Xem lịch ôn tập SRS'}
+                        : 'Xem lại lịch ôn tập SRS'}
                     </span>
                     <ArrowRight size={18} />
                   </button>

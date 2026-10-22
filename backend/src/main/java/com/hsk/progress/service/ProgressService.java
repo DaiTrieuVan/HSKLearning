@@ -1203,4 +1203,280 @@ public class ProgressService {
 				levelProgressList
 		);
 	}
+
+	/**
+	 * Xuất bảng điểm của lớp ra tệp Excel định dạng .xlsx (HTT-07-CN-007, QTN-01).
+	 *
+	 * @param userId id giáo viên gọi API
+	 * @param classId id lớp học
+	 * @param startDate mốc thời gian bắt đầu lọc bài tập (optional)
+	 * @param endDate mốc thời gian kết thúc lọc bài tập (optional)
+	 * @return byte[] nội dung file Excel .xlsx
+	 */
+	@Transactional(readOnly = true)
+	public byte[] exportClassGradebookToExcel(Long userId, Long classId, Instant startDate, Instant endDate) {
+		// 1. Kiểm tra ngày bắt đầu không được sau ngày kết thúc (TC-03)
+		if (startDate != null && endDate != null && startDate.isAfter(endDate)) {
+			throw new ApiException(ApiErrorCode.INVALID_DATE_RANGE);
+		}
+
+		// 2. Kiểm tra tồn tại lớp học
+		ClassEntity classroom = classRepository.findById(classId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.CLASS_NOT_FOUND));
+
+		// 3. Phân quyền QTN-01: Chỉ giáo viên phụ trách lớp hoặc Admin (TC-06)
+		boolean isAdmin = userRoleRepository.existsByUser_IdAndRole_Code(userId, RoleCode.ADMIN);
+		boolean isTeacherOwner = classroom.getTeacher() != null && classroom.getTeacher().getId().equals(userId);
+		if (!isTeacherOwner && !isAdmin) {
+			throw new ApiException(ApiErrorCode.FORBIDDEN);
+		}
+
+		// 4. Lấy danh sách bài tập của lớp (loại bỏ CANCELLED)
+		List<AssignmentEntity> allAssignments = assignmentRepository
+				.findByClassroom_IdAndStatusNotOrderByCreatedAtAsc(classId, AssignmentStatus.CANCELLED);
+
+		// Lọc bài tập theo khoảng thời gian nếu có truyền
+		List<AssignmentEntity> filteredAssignments = allAssignments.stream()
+				.filter(a -> {
+					Instant time = a.getStartTime() != null ? a.getStartTime() : a.getCreatedAt();
+					if (startDate != null && time != null && time.isBefore(startDate)) {
+						return false;
+					}
+					if (endDate != null && time != null && time.isAfter(endDate)) {
+						return false;
+					}
+					return true;
+				})
+				.toList();
+
+		// TC-02: Khoảng thời gian không có bài tập nào -> Báo lỗi, không tạo file rỗng
+		if (filteredAssignments.isEmpty()) {
+			throw new ApiException(ApiErrorCode.NO_DATA_FOR_PERIOD);
+		}
+
+		// 5. Lấy danh sách thành viên lớp
+		List<ClassMemberEntity> members = classMemberRepository.findByClassroomIdWithStudent(classId);
+		Map<Long, ClassMemberEntity> uniqueMembersMap = new LinkedHashMap<>();
+		for (ClassMemberEntity cm : members) {
+			if (cm.getStudent() != null) {
+				Long stuId = cm.getStudent().getId();
+				ClassMemberEntity existing = uniqueMembersMap.get(stuId);
+				if (existing == null || (existing.getStatus() != ClassMemberStatus.ACTIVE && cm.getStatus() == ClassMemberStatus.ACTIVE)) {
+					uniqueMembersMap.put(stuId, cm);
+				}
+			}
+		}
+
+		List<ClassMemberEntity> sortedMembers = uniqueMembersMap.values().stream()
+				.sorted(Comparator.comparing((ClassMemberEntity m) -> m.getStatus() == ClassMemberStatus.ACTIVE ? 0 : 1)
+						.thenComparing(m -> m.getStudent().getFullName() != null ? m.getStudent().getFullName().toLowerCase() : "")
+						.thenComparing(m -> m.getStudent().getEmail().toLowerCase()))
+				.toList();
+
+		// 6. Batch fetch bài nộp của cả lớp
+		List<AssignmentSubmissionEntity> submissions = assignmentSubmissionRepository.findSubmissionsByClassroomId(classId);
+
+		// Map: studentId -> (assignmentId -> List<AssignmentSubmissionEntity>)
+		Map<Long, Map<Long, List<AssignmentSubmissionEntity>>> studentAssignmentSubs = new HashMap<>();
+		for (AssignmentSubmissionEntity sub : submissions) {
+			if (sub.getStudent() != null && sub.getAssignment() != null) {
+				studentAssignmentSubs
+						.computeIfAbsent(sub.getStudent().getId(), k -> new HashMap<>())
+						.computeIfAbsent(sub.getAssignment().getId(), k -> new ArrayList<>())
+						.add(sub);
+			}
+		}
+
+		// 7. Tạo Workbook bằng Apache POI
+		try (org.apache.poi.xssf.usermodel.XSSFWorkbook workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook()) {
+			org.apache.poi.xssf.usermodel.XSSFSheet sheet = workbook.createSheet("Bảng điểm lớp");
+
+			// Font styles
+			org.apache.poi.ss.usermodel.Font titleFont = workbook.createFont();
+			titleFont.setFontName("Arial");
+			titleFont.setFontHeightInPoints((short) 14);
+			titleFont.setBold(true);
+
+			org.apache.poi.ss.usermodel.Font headerFont = workbook.createFont();
+			headerFont.setFontName("Arial");
+			headerFont.setFontHeightInPoints((short) 10);
+			headerFont.setBold(true);
+			headerFont.setColor(org.apache.poi.ss.usermodel.IndexedColors.WHITE.getIndex());
+
+			org.apache.poi.ss.usermodel.Font regularFont = workbook.createFont();
+			regularFont.setFontName("Arial");
+			regularFont.setFontHeightInPoints((short) 10);
+
+			// Cell styles
+			org.apache.poi.ss.usermodel.CellStyle titleStyle = workbook.createCellStyle();
+			titleStyle.setFont(titleFont);
+
+			org.apache.poi.ss.usermodel.CellStyle headerStyle = workbook.createCellStyle();
+			headerStyle.setFont(headerFont);
+			headerStyle.setFillForegroundColor(org.apache.poi.ss.usermodel.IndexedColors.ROYAL_BLUE.getIndex());
+			headerStyle.setFillPattern(org.apache.poi.ss.usermodel.FillPatternType.SOLID_FOREGROUND);
+			headerStyle.setAlignment(org.apache.poi.ss.usermodel.HorizontalAlignment.CENTER);
+			headerStyle.setVerticalAlignment(org.apache.poi.ss.usermodel.VerticalAlignment.CENTER);
+			headerStyle.setBorderTop(org.apache.poi.ss.usermodel.BorderStyle.THIN);
+			headerStyle.setBorderBottom(org.apache.poi.ss.usermodel.BorderStyle.THIN);
+			headerStyle.setBorderLeft(org.apache.poi.ss.usermodel.BorderStyle.THIN);
+			headerStyle.setBorderRight(org.apache.poi.ss.usermodel.BorderStyle.THIN);
+
+			org.apache.poi.ss.usermodel.CellStyle dataTextStyle = workbook.createCellStyle();
+			dataTextStyle.setFont(regularFont);
+			dataTextStyle.setBorderTop(org.apache.poi.ss.usermodel.BorderStyle.THIN);
+			dataTextStyle.setBorderBottom(org.apache.poi.ss.usermodel.BorderStyle.THIN);
+			dataTextStyle.setBorderLeft(org.apache.poi.ss.usermodel.BorderStyle.THIN);
+			dataTextStyle.setBorderRight(org.apache.poi.ss.usermodel.BorderStyle.THIN);
+
+			org.apache.poi.ss.usermodel.CellStyle numericStyle = workbook.createCellStyle();
+			numericStyle.setFont(regularFont);
+			numericStyle.setDataFormat(workbook.createDataFormat().getFormat("#,##0.0"));
+			numericStyle.setAlignment(org.apache.poi.ss.usermodel.HorizontalAlignment.RIGHT);
+			numericStyle.setBorderTop(org.apache.poi.ss.usermodel.BorderStyle.THIN);
+			numericStyle.setBorderBottom(org.apache.poi.ss.usermodel.BorderStyle.THIN);
+			numericStyle.setBorderLeft(org.apache.poi.ss.usermodel.BorderStyle.THIN);
+			numericStyle.setBorderRight(org.apache.poi.ss.usermodel.BorderStyle.THIN);
+
+			int rowIdx = 0;
+
+			// Row 0: Tiêu đề
+			org.apache.poi.ss.usermodel.Row titleRow = sheet.createRow(rowIdx++);
+			org.apache.poi.ss.usermodel.Cell titleCell = titleRow.createCell(0);
+			titleCell.setCellValue("BẢNG ĐIỂM LỚP HỌC: " + sanitizeForExcel(classroom.getTitle()) + " (" + classroom.getJoinCode() + ")");
+			titleCell.setCellStyle(titleStyle);
+
+			// Row 1: Thông tin giáo viên & ngày xuất
+			org.apache.poi.ss.usermodel.Row metaRow = sheet.createRow(rowIdx++);
+			String teacherName = classroom.getTeacher() != null ? sanitizeForExcel(classroom.getTeacher().getFullName()) : "N/A";
+			metaRow.createCell(0).setCellValue("Giáo viên phụ trách: " + teacherName + " | Thời gian xuất: " + Instant.now().toString());
+
+			// Dòng trống
+			rowIdx++;
+
+			// Row Header
+			org.apache.poi.ss.usermodel.Row headerRow = sheet.createRow(rowIdx++);
+			headerRow.setHeightInPoints(24);
+
+			int colIdx = 0;
+			createCellWithStyle(headerRow, colIdx++, "STT", headerStyle);
+			createCellWithStyle(headerRow, colIdx++, "HỌ VÀ TÊN", headerStyle);
+			createCellWithStyle(headerRow, colIdx++, "EMAIL", headerStyle);
+			createCellWithStyle(headerRow, colIdx++, "TRẠNG THÁI", headerStyle);
+
+			for (AssignmentEntity a : filteredAssignments) {
+				String aHeader = sanitizeForExcel(a.getTitle()) + " (" + a.getTotalPoints() + "đ)";
+				createCellWithStyle(headerRow, colIdx++, aHeader, headerStyle);
+			}
+			createCellWithStyle(headerRow, colIdx++, "ĐIỂM TRUNG BÌNH (%)", headerStyle);
+
+			// Fill data
+			int stt = 1;
+			for (ClassMemberEntity member : sortedMembers) {
+				org.apache.poi.ss.usermodel.Row dataRow = sheet.createRow(rowIdx++);
+				colIdx = 0;
+
+				// STT
+				org.apache.poi.ss.usermodel.Cell sttCell = dataRow.createCell(colIdx++);
+				sttCell.setCellValue(stt++);
+				sttCell.setCellStyle(dataTextStyle);
+
+				// Họ và tên (TC-04, TC-05: Hỗ trợ tiếng Việt có dấu, chống Formula Injection)
+				String studentName = member.getStudent() != null ? member.getStudent().getFullName() : "N/A";
+				createCellWithStyle(dataRow, colIdx++, sanitizeForExcel(studentName), dataTextStyle);
+
+				// Email
+				String studentEmail = member.getStudent() != null ? member.getStudent().getEmail() : "N/A";
+				createCellWithStyle(dataRow, colIdx++, sanitizeForExcel(studentEmail), dataTextStyle);
+
+				// Trạng thái
+				String statusText = member.getStatus() == ClassMemberStatus.ACTIVE ? "Đang học"
+						: member.getStatus() == ClassMemberStatus.LEFT ? "Tự rời lớp" : "Đã bị xóa";
+				createCellWithStyle(dataRow, colIdx++, statusText, dataTextStyle);
+
+				// Điểm các bài tập (TC-04: Ô điểm là số NUMERIC)
+				Long studentId = member.getStudent() != null ? member.getStudent().getId() : null;
+				Map<Long, List<AssignmentSubmissionEntity>> studentSubs = studentId != null
+						? studentAssignmentSubs.getOrDefault(studentId, Collections.emptyMap())
+						: Collections.emptyMap();
+
+				List<Double> percentages = new ArrayList<>();
+
+				for (AssignmentEntity a : filteredAssignments) {
+					List<AssignmentSubmissionEntity> aSubs = studentSubs.getOrDefault(a.getId(), Collections.emptyList());
+					List<AssignmentSubmissionEntity> submittedList = aSubs.stream()
+							.filter(s -> s.getStatus() == SubmissionStatus.SUBMITTED || s.getStatus() == SubmissionStatus.AUTO_SUBMITTED)
+							.toList();
+
+					org.apache.poi.ss.usermodel.Cell scoreCell = dataRow.createCell(colIdx++);
+
+					if (submittedList.isEmpty()) {
+						scoreCell.setCellValue("-");
+						scoreCell.setCellStyle(dataTextStyle);
+					} else {
+						// QTN-13: Lấy Best Attempt
+						BigDecimal bestScore = null;
+						for (AssignmentSubmissionEntity s : submittedList) {
+							BigDecimal cur = s.getAdjustedScore() != null ? s.getAdjustedScore() : s.getScore();
+							if (bestScore == null || (cur != null && cur.compareTo(bestScore) > 0)) {
+								bestScore = cur;
+							}
+						}
+
+						if (bestScore != null) {
+							scoreCell.setCellValue(bestScore.doubleValue());
+							scoreCell.setCellStyle(numericStyle);
+
+							if (a.getTotalPoints() != null && a.getTotalPoints().compareTo(BigDecimal.ZERO) > 0) {
+								double pct = (bestScore.doubleValue() / a.getTotalPoints().doubleValue()) * 100.0;
+								percentages.add(pct);
+							}
+						} else {
+							scoreCell.setCellValue("-");
+							scoreCell.setCellStyle(dataTextStyle);
+						}
+					}
+				}
+
+				// Điểm trung bình % (TC-04: Ô là NUMERIC)
+				org.apache.poi.ss.usermodel.Cell avgCell = dataRow.createCell(colIdx++);
+				if (!percentages.isEmpty()) {
+					double avg = percentages.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+					double roundedAvg = Math.round(avg * 10.0) / 10.0;
+					avgCell.setCellValue(roundedAvg);
+					avgCell.setCellStyle(numericStyle);
+				} else {
+					avgCell.setCellValue("-");
+					avgCell.setCellStyle(dataTextStyle);
+				}
+			}
+
+			// Tự động căn chỉnh độ rộng cột
+			for (int c = 0; c < colIdx; c++) {
+				sheet.autoSizeColumn(c);
+				sheet.setColumnWidth(c, Math.min(sheet.getColumnWidth(c) + 1200, 15000));
+			}
+
+			java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+			workbook.write(out);
+			return out.toByteArray();
+		} catch (java.io.IOException e) {
+			throw new ApiException(ApiErrorCode.INTERNAL_ERROR, "Lỗi khi tạo tệp Excel: " + e.getMessage());
+		}
+	}
+
+	private void createCellWithStyle(org.apache.poi.ss.usermodel.Row row, int col, String value, org.apache.poi.ss.usermodel.CellStyle style) {
+		org.apache.poi.ss.usermodel.Cell cell = row.createCell(col);
+		cell.setCellValue(value);
+		cell.setCellStyle(style);
+	}
+
+	private String sanitizeForExcel(String value) {
+		if (value == null) return "";
+		String trimmed = value.trim();
+		if (!trimmed.isEmpty() && (trimmed.startsWith("=") || trimmed.startsWith("+") || trimmed.startsWith("-") || trimmed.startsWith("@"))) {
+			return "'" + value;
+		}
+		return value;
+	}
 }

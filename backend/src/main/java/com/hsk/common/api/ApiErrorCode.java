@@ -245,6 +245,12 @@ public enum ApiErrorCode {
 	/** HTT-06-CN-008: Student already submitted. */
 	CANNOT_EXTEND_ALREADY_SUBMITTED(HttpStatus.BAD_REQUEST, "Học sinh đã nộp bài. Vui lòng cấp lượt làm lại thay vì gia hạn"),
 
+	/** HTT-07-CN-007: Start date is after end date. */
+	INVALID_DATE_RANGE(HttpStatus.BAD_REQUEST, "Khoảng thời gian không hợp lệ: Ngày bắt đầu không được sau ngày kết thúc"),
+
+	/** HTT-07-CN-007: No assignment data found for the selected period. */
+	NO_DATA_FOR_PERIOD(HttpStatus.BAD_REQUEST, "Khoảng thời gian đã chọn không có bài tập nào"),
+
 	/** Unexpected server side failure; the client may retry. */
 	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Hệ thống đang gặp sự cố, vui lòng thử lại sau");
 

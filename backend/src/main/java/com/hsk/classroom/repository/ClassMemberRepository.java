@@ -22,4 +22,10 @@ public interface ClassMemberRepository extends JpaRepository<ClassMemberEntity, 
 
 	@Query("SELECT cm FROM ClassMemberEntity cm JOIN FETCH cm.student WHERE cm.classroom.id = :classId")
 	List<ClassMemberEntity> findByClassroomIdWithStudent(@Param("classId") Long classId);
+
+	@Query("SELECT cm FROM ClassMemberEntity cm JOIN FETCH cm.student WHERE cm.classroom.id = :classId AND cm.status = :status")
+	List<ClassMemberEntity> findByClassroomIdAndStatusWithStudent(
+			@Param("classId") Long classId,
+			@Param("status") ClassMemberStatus status
+	);
 }

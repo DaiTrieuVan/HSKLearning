@@ -35,6 +35,7 @@ import {
   Trash2,
   FileSpreadsheet,
   ExternalLink,
+  TrendingUp,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import {
@@ -1505,26 +1506,50 @@ export const ClassDetailPage: React.FC = () => {
                     </div>
 
                     {isTeacher && (
-                      <button
-                        type="button"
-                        onClick={() => setRemovingStudent(member)}
-                        className="btn-danger"
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          padding: '6px 12px',
-                          borderRadius: 'var(--radius-md)',
-                          border: '1px solid #fecaca',
-                          backgroundColor: '#ffffff',
-                          fontSize: '0.8rem',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <UserMinus size={14} />
-                        <span>Khai trừ</span>
-                      </button>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/classes/${classroom.id}/students/${member.studentId}`)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '6px 12px',
+                            borderRadius: 'var(--radius-md)',
+                            border: '1.5px solid #c7d2fe',
+                            backgroundColor: '#eef2ff',
+                            color: '#4f46e5',
+                            fontSize: '0.8rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                          }}
+                        >
+                          <TrendingUp size={14} />
+                          <span>Xem tiến độ</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setRemovingStudent(member)}
+                          className="btn-danger"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '6px 12px',
+                            borderRadius: 'var(--radius-md)',
+                            border: '1px solid #fecaca',
+                            backgroundColor: '#ffffff',
+                            fontSize: '0.8rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <UserMinus size={14} />
+                          <span>Khai trừ</span>
+                        </button>
+                      </div>
                     )}
                   </div>
                 ))}
@@ -2247,27 +2272,51 @@ export const ClassDetailPage: React.FC = () => {
                       </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => handleRestoreStudent(member.studentId)}
-                      disabled={actionLoading === member.studentId}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        padding: '6px 12px',
-                        borderRadius: 'var(--radius-md)',
-                        border: '1.5px solid var(--primary)',
-                        backgroundColor: 'var(--primary-light)',
-                        color: 'var(--primary)',
-                        fontSize: '0.8rem',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <RotateCcw size={14} />
-                      <span>Khôi phục lại</span>
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/classes/${classroom.id}/students/${member.studentId}`)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '6px 12px',
+                          borderRadius: 'var(--radius-md)',
+                          border: '1.5px solid #c7d2fe',
+                          backgroundColor: '#eef2ff',
+                          color: '#4f46e5',
+                          fontSize: '0.8rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                        }}
+                      >
+                        <TrendingUp size={14} />
+                        <span>Xem tiến độ</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleRestoreStudent(member.studentId)}
+                        disabled={actionLoading === member.studentId}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '6px 12px',
+                          borderRadius: 'var(--radius-md)',
+                          border: '1.5px solid var(--primary)',
+                          backgroundColor: 'var(--primary-light)',
+                          color: 'var(--primary)',
+                          fontSize: '0.8rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <RotateCcw size={14} />
+                        <span>Khôi phục lại</span>
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

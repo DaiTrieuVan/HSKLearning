@@ -302,4 +302,78 @@ export async function getAssignmentStatistics(token: string, assignmentId: numbe
   return response.json()
 }
 
+export interface ClassStudentProgressSummary {
+  totalAssignments: number
+  submittedAssignments: number
+  overdueAssignments: number
+  averageScorePercentage: number | null
+  completedLessonsCount: number
+}
+
+export interface ClassStudentAssignmentItem {
+  assignmentId: number
+  title: string
+  dueDate: string | null
+  totalPoints: number | null
+  status: 'SUBMITTED' | 'NOT_SUBMITTED' | 'OVERDUE' | 'LATE' | string
+  attemptCount: number
+  score: number | null
+  adjustedScore: number | null
+  effectiveScore: number | null
+  percentage: number | null
+  submittedAt: string | null
+  isLate: boolean
+  feedback: string | null
+}
+
+export interface CompletedLessonItem {
+  lessonId: number
+  lessonTitle: string
+  levelCode: string
+  levelName: string
+  levelNumber: number
+  completedAt: string
+}
+
+export interface ClassStudentProgressResponse {
+  classId: number
+  className: string
+  classCode: string
+  studentId: number
+  studentName: string
+  studentEmail: string
+  membershipStatus: string
+  joinedAt: string
+  hasActivity: boolean
+  summary: ClassStudentProgressSummary
+  assignments: ClassStudentAssignmentItem[]
+  completedLessons: CompletedLessonItem[]
+  levelProgressList: HskLevelProgressDto[]
+}
+
+export async function getClassStudentProgress(token: string, classId: number, studentId: number): Promise<ClassStudentProgressResponse> {
+  const response = await fetch(`${API_BASE}/classes/${classId}/students/${studentId}`, {
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  if (!response.ok) {
+    let errorDetail = 'Không thể tải tiến độ của học sinh'
+    try {
+      const errorJson = await response.json()
+      if (errorJson.message) {
+        errorDetail = errorJson.message
+      }
+    } catch {
+      // ignore
+    }
+    throw new ApiError(response.status, 'FETCH_STUDENT_PROGRESS_FAILED', errorDetail)
+  }
+
+  return response.json()
+}
+
+
 

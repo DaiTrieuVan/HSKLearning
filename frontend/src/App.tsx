@@ -21,6 +21,7 @@ import { PersonalProgressPage } from './pages/progress/PersonalProgressPage'
 import { SubmissionHistoryPage } from './pages/progress/SubmissionHistoryPage'
 
 import { ClassGradebookPage } from './pages/classroom/ClassGradebookPage'
+import { ClassStudentProgressPage } from './pages/classroom/ClassStudentProgressPage'
 
 function AppRoutes() {
   const { isLoggedIn } = useAuth()
@@ -44,6 +45,7 @@ function AppRoutes() {
       <Route path="/classes/join" element={<JoinClassPage />} />
       <Route path="/classes/:classId" element={<ClassDetailPage />} />
       <Route path="/classes/:classId/gradebook" element={<ClassGradebookPage />} />
+      <Route path="/classes/:classId/students/:studentId" element={<ClassStudentProgressPage />} />
       <Route path="/classes/:classId/assignments/:assignmentId/take" element={<TakeAssignmentPage />} />
       <Route path="/classes/:classId/assignments/:assignmentId/submissions" element={<AssignmentSubmissionsPage />} />
       <Route path="/classes/:classId/assignments/:assignmentId/submissions/:submissionId" element={<StudentSubmissionDetailPage />} />

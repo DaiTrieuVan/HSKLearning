@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   FileSpreadsheet,
   Search,
@@ -9,6 +10,7 @@ import {
   UserX,
   FileCheck,
   Filter,
+  TrendingUp,
 } from 'lucide-react'
 import type {
   ClassGradebookResponse,
@@ -26,6 +28,7 @@ interface ClassGradebookViewProps {
 }
 
 export const ClassGradebookView: React.FC<ClassGradebookViewProps> = ({ gradebook, classId }) => {
+  const navigate = useNavigate()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL')
 
@@ -551,14 +554,35 @@ export const ClassGradebookView: React.FC<ClassGradebookViewProps> = ({ gradeboo
                                 flexWrap: 'wrap',
                               }}
                             >
-                              <strong
+                              <button
+                                type="button"
+                                onClick={() => navigate(`/classes/${classId}/students/${student.studentId}`)}
+                                title="Xem tiến độ chi tiết của học sinh này"
                                 style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  background: 'none',
+                                  border: 'none',
+                                  padding: 0,
+                                  cursor: 'pointer',
+                                  textAlign: 'left',
                                   color: student.isEnrolled ? 'var(--text-main)' : '#64748b',
                                   fontSize: '0.88rem',
+                                  fontWeight: 800,
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.color = '#4f46e5'
+                                  e.currentTarget.style.textDecoration = 'underline'
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.color = student.isEnrolled ? 'var(--text-main)' : '#64748b'
+                                  e.currentTarget.style.textDecoration = 'none'
                                 }}
                               >
-                                {student.fullName}
-                              </strong>
+                                <span>{student.fullName}</span>
+                                <TrendingUp size={13} style={{ opacity: 0.6 }} />
+                              </button>
 
                               {/* TC-04: Đánh dấu học sinh đã rời lớp */}
                               {!student.isEnrolled && (

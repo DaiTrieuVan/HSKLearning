@@ -36,6 +36,7 @@ import {
   FileSpreadsheet,
   ExternalLink,
   TrendingUp,
+  Trophy,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import {
@@ -73,6 +74,8 @@ import { ApiError } from '../../api/auth'
 import { AssignmentSubmissionsPanel } from '../../components/classroom/AssignmentSubmissionsPanel'
 import { getClassGradebook, type ClassGradebookResponse } from '../../api/progress'
 import { ClassGradebookView } from '../../components/classroom/ClassGradebookView'
+import { getClassLeaderboard, type ClassLeaderboardResponse } from '../../api/leaderboard'
+import { ClassLeaderboardView } from '../../components/classroom/ClassLeaderboardView'
 
 export const ClassDetailPage: React.FC = () => {
   const { classId } = useParams<{ classId: string }>()
@@ -84,7 +87,7 @@ export const ClassDetailPage: React.FC = () => {
 
   const isTeacher = user?.activeMode === 'TEACHER'
 
-  const [activeTab, setActiveTab] = useState<'MEMBERS' | 'REMOVED' | 'VOCAB_SETS' | 'ASSIGNMENTS' | 'GRADEBOOK'>(
+  const [activeTab, setActiveTab] = useState<'MEMBERS' | 'REMOVED' | 'VOCAB_SETS' | 'ASSIGNMENTS' | 'GRADEBOOK' | 'LEADERBOARD'>(
     'ASSIGNMENTS'
   )
   const [gradebook, setGradebook] = useState<ClassGradebookResponse | null>(null)
@@ -102,6 +105,24 @@ export const ClassDetailPage: React.FC = () => {
       setGradebookError(err.message || 'Không thể tải bảng điểm lớp học')
     } finally {
       setGradebookLoading(false)
+    }
+  }
+
+  const [leaderboardData, setLeaderboardData] = useState<ClassLeaderboardResponse | null>(null)
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false)
+  const [leaderboardError, setLeaderboardError] = useState<string | null>(null)
+
+  const loadLeaderboard = async () => {
+    if (!token || !classId) return
+    setLeaderboardLoading(true)
+    setLeaderboardError(null)
+    try {
+      const data = await getClassLeaderboard(token, parseInt(classId, 10))
+      setLeaderboardData(data)
+    } catch (err: any) {
+      setLeaderboardError(err.message || 'Không thể tải bảng xếp hạng lớp học')
+    } finally {
+      setLeaderboardLoading(false)
     }
   }
   const [members, setMembers] = useState<ClassMemberItem[]>([])
@@ -841,6 +862,32 @@ export const ClassDetailPage: React.FC = () => {
               <span>Bảng điểm</span>
             </button>
           )}
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('LEADERBOARD')
+              if (!leaderboardData) {
+                loadLeaderboard()
+              }
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 16px',
+              borderRadius: 'var(--radius-md)',
+              border: 'none',
+              fontWeight: 800,
+              fontSize: '0.88rem',
+              cursor: 'pointer',
+              backgroundColor: activeTab === 'LEADERBOARD' ? 'var(--primary)' : '#f1f5f9',
+              color: activeTab === 'LEADERBOARD' ? '#ffffff' : 'var(--text-muted)',
+            }}
+          >
+            <Trophy size={16} />
+            <span>Bảng xếp hạng</span>
+          </button>
         </div>
 
         {/* Tab 0: Class Assignments (HTT-06-CN-001) */}
@@ -2390,6 +2437,39 @@ export const ClassDetailPage: React.FC = () => {
               </div>
             ) : gradebook ? (
               <ClassGradebookView gradebook={gradebook} classId={parseInt(classId!, 10)} onRefresh={loadGradebook} />
+            ) : null}
+          </div>
+        )}
+
+        {/* Tab 5: Class Leaderboard (HTT-08-CN-006) */}
+        {activeTab === 'LEADERBOARD' && (
+          <div>
+            {leaderboardLoading ? (
+              <div
+                className="game-card"
+                style={{ textAlign: 'center', padding: '60px 20px', backgroundColor: '#ffffff' }}
+              >
+                <Loader2 size={36} className="animate-spin" style={{ color: 'var(--primary)', margin: '0 auto 12px' }} />
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem' }}>Đang tải bảng xếp hạng lớp...</p>
+              </div>
+            ) : leaderboardError ? (
+              <div
+                className="game-card"
+                style={{
+                  padding: '32px 20px',
+                  textAlign: 'center',
+                  backgroundColor: '#fef2f2',
+                  border: '1px solid #fecaca',
+                }}
+              >
+                <AlertCircle size={36} style={{ color: '#ef4444', margin: '0 auto 8px' }} />
+                <p style={{ color: '#b91c1c', fontSize: '0.88rem', marginBottom: '16px' }}>{leaderboardError}</p>
+                <button type="button" onClick={loadLeaderboard} className="btn-gamified btn-primary">
+                  Thử lại
+                </button>
+              </div>
+            ) : leaderboardData ? (
+              <ClassLeaderboardView data={leaderboardData} onRefresh={loadLeaderboard} />
             ) : null}
           </div>
         )}

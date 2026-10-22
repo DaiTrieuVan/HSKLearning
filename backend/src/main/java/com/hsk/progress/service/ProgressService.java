@@ -49,6 +49,10 @@ import com.hsk.progress.dto.ScoreDistributionItemDto;
 import com.hsk.progress.dto.StudentGradeRowDto;
 import com.hsk.progress.dto.UnsubmittedStudentItemDto;
 import com.hsk.progress.dto.UnsubmittedStudentsResponse;
+import com.hsk.progress.dto.ClassStudentProgressResponse;
+import com.hsk.progress.dto.ClassStudentProgressSummaryDto;
+import com.hsk.progress.dto.ClassStudentAssignmentItemDto;
+import com.hsk.progress.dto.CompletedLessonItemDto;
 import com.hsk.assignment.dto.AssignmentSnapshotQuestionDto;
 import com.hsk.assignment.dto.StudentAnswerItemDto;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -947,5 +951,256 @@ public class ProgressService {
 		} catch (JsonProcessingException e) {
 			return Collections.emptyList();
 		}
+	}
+
+	/**
+	 * Xem tiến độ của từng học sinh trong lớp (HTT-07-CN-006, QTN-01, QTN-13).
+	 *
+	 * @param teacherId id giáo viên gọi API
+	 * @param classId id lớp học
+	 * @param studentId id học sinh trong lớp
+	 * @return ClassStudentProgressResponse chứa tiến độ bài học HSK, bài tập và điểm số trong lớp
+	 */
+	@Transactional(readOnly = true)
+	public ClassStudentProgressResponse getClassStudentProgress(Long teacherId, Long classId, Long studentId) {
+		// 1. Kiểm tra tồn tại lớp học
+		ClassEntity classroom = classRepository.findById(classId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.CLASS_NOT_FOUND));
+
+		// 2. QTN-01: Kiểm tra quyền giáo viên phụ trách lớp hoặc ADMIN (TC-04)
+		boolean isAdmin = userRoleRepository.existsByUser_IdAndRole_Code(teacherId, RoleCode.ADMIN);
+		boolean isTeacherOwner = classroom.getTeacher() != null && classroom.getTeacher().getId().equals(teacherId);
+		if (!isAdmin && !isTeacherOwner) {
+			throw new ApiException(ApiErrorCode.FORBIDDEN);
+		}
+
+		// 3. QTN-01 & TC-04: Kiểm tra học sinh có thuộc lớp của giáo viên hay không
+		ClassMemberEntity member = classMemberRepository.findByClassroom_IdAndStudent_Id(classId, studentId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.FORBIDDEN));
+
+		UserEntity student = member.getStudent();
+		String studentName = student != null ? student.getFullName() : "N/A";
+		String studentEmail = student != null ? student.getEmail() : "N/A";
+		String membershipStatus = member.getStatus() != null ? member.getStatus().name() : "ACTIVE";
+		Instant joinedAt = member.getJoinedAt();
+
+		// 4. Lấy danh sách bài tập đã công bố của lớp (QTN-01: Chỉ bài tập của lớp này, TC-02)
+		List<AssignmentEntity> classAssignments = assignmentRepository
+				.findByClassroom_IdAndStatusNotOrderByCreatedAtAsc(classId, AssignmentStatus.CANCELLED);
+
+		// 5. Lấy các bài nộp của học sinh đối với lớp này (tránh N+1)
+		List<AssignmentSubmissionEntity> submissions = assignmentSubmissionRepository
+				.findByAssignment_Classroom_IdAndStudent_Id(classId, studentId);
+
+		// 6. Lấy các cấu hình override hạn nộp / làm lại của học sinh trong lớp này
+		List<AssignmentStudentOverrideEntity> overrides = assignmentStudentOverrideRepository
+				.findByAssignment_Classroom_IdAndStudent_Id(classId, studentId);
+		Map<Long, AssignmentStudentOverrideEntity> overrideMap = overrides.stream()
+				.filter(o -> o.getAssignment() != null)
+				.collect(Collectors.toMap(o -> o.getAssignment().getId(), o -> o, (a, b) -> a));
+
+		// Gom nhóm submissions theo assignmentId
+		Map<Long, List<AssignmentSubmissionEntity>> submissionsByAssignment = submissions.stream()
+				.filter(s -> s.getAssignment() != null)
+				.collect(Collectors.groupingBy(s -> s.getAssignment().getId()));
+
+		Instant now = Instant.now();
+		List<ClassStudentAssignmentItemDto> assignmentItems = new ArrayList<>();
+		List<Double> validPercentages = new ArrayList<>();
+		int submittedAssignmentsCount = 0;
+		int overdueAssignmentsCount = 0;
+
+		for (AssignmentEntity assignment : classAssignments) {
+			Long aId = assignment.getId();
+			AssignmentStudentOverrideEntity override = overrideMap.get(aId);
+			Instant effectiveDueDate = (override != null && override.getExtendedDueTime() != null)
+					? override.getExtendedDueTime()
+					: assignment.getDueTime();
+
+			List<AssignmentSubmissionEntity> aSubs = submissionsByAssignment.getOrDefault(aId, Collections.emptyList());
+			List<AssignmentSubmissionEntity> submittedList = aSubs.stream()
+					.filter(s -> s.getStatus() == SubmissionStatus.SUBMITTED || s.getStatus() == SubmissionStatus.AUTO_SUBMITTED)
+					.toList();
+
+			int attemptCount = submittedList.size();
+
+			if (submittedList.isEmpty()) {
+				boolean isOverdue = effectiveDueDate != null && now.isAfter(effectiveDueDate);
+				if (isOverdue) {
+					overdueAssignmentsCount++;
+				}
+				String status = isOverdue ? "OVERDUE" : "NOT_SUBMITTED";
+
+				assignmentItems.add(new ClassStudentAssignmentItemDto(
+						aId,
+						assignment.getTitle(),
+						effectiveDueDate,
+						assignment.getTotalPoints(),
+						status,
+						0,
+						null,
+						null,
+						null,
+						null,
+						null,
+						false,
+						null
+				));
+			} else {
+				submittedAssignmentsCount++;
+
+				// Lọc Best Attempt theo QTN-13
+				AssignmentSubmissionEntity bestSub = null;
+				BigDecimal bestEffectiveScore = null;
+
+				for (AssignmentSubmissionEntity sub : submittedList) {
+					BigDecimal currentEffectiveScore = sub.getAdjustedScore() != null ? sub.getAdjustedScore() : sub.getScore();
+					if (bestSub == null) {
+						bestSub = sub;
+						bestEffectiveScore = currentEffectiveScore;
+					} else {
+						if (currentEffectiveScore != null && bestEffectiveScore != null) {
+							if (currentEffectiveScore.compareTo(bestEffectiveScore) > 0) {
+								bestSub = sub;
+								bestEffectiveScore = currentEffectiveScore;
+							} else if (currentEffectiveScore.compareTo(bestEffectiveScore) == 0) {
+								if (sub.getAttemptNumber() > bestSub.getAttemptNumber()) {
+									bestSub = sub;
+									bestEffectiveScore = currentEffectiveScore;
+								}
+							}
+						} else if (currentEffectiveScore != null) {
+							bestSub = sub;
+							bestEffectiveScore = currentEffectiveScore;
+						}
+					}
+				}
+
+				boolean isLate = bestSub.getSubmittedAt() != null && effectiveDueDate != null
+						&& bestSub.getSubmittedAt().isAfter(effectiveDueDate);
+
+				BigDecimal percentage = null;
+				if (bestEffectiveScore != null && assignment.getTotalPoints() != null
+						&& assignment.getTotalPoints().compareTo(BigDecimal.ZERO) > 0) {
+					double pct = (bestEffectiveScore.doubleValue() / assignment.getTotalPoints().doubleValue()) * 100.0;
+					percentage = BigDecimal.valueOf(Math.round(pct * 10.0) / 10.0);
+					validPercentages.add(percentage.doubleValue());
+				}
+
+				String feedback = bestSub.getAdjustReason();
+				String status = isLate ? "LATE" : "SUBMITTED";
+
+				assignmentItems.add(new ClassStudentAssignmentItemDto(
+						aId,
+						assignment.getTitle(),
+						effectiveDueDate,
+						assignment.getTotalPoints(),
+						status,
+						attemptCount,
+						bestSub.getScore(),
+						bestSub.getAdjustedScore(),
+						bestEffectiveScore,
+						percentage,
+						bestSub.getSubmittedAt(),
+						isLate,
+						feedback
+				));
+			}
+		}
+
+		// 7. Lấy danh sách bài học HSK đã hoàn thành
+		List<LessonProgressEntity> lessonProgresses = lessonProgressRepository.findAllByUserId(studentId);
+		List<CompletedLessonItemDto> completedLessons = new ArrayList<>();
+		Set<Long> completedLessonIds = new HashSet<>();
+
+		for (LessonProgressEntity lp : lessonProgresses) {
+			LessonEntity lesson = lp.getLesson();
+			if (lesson != null && !lesson.isHidden()) {
+				completedLessonIds.add(lesson.getId());
+				String levelCode = lesson.getHskLevel() != null ? lesson.getHskLevel().getCode() : "HSK";
+				String levelName = lesson.getHskLevel() != null ? lesson.getHskLevel().getTitle() : "HSK";
+				int levelNumber = lesson.getHskLevel() != null ? lesson.getHskLevel().getLevelNumber() : 1;
+				completedLessons.add(new CompletedLessonItemDto(
+						lesson.getId(),
+						lesson.getTitle(),
+						levelCode,
+						levelName,
+						levelNumber,
+						lp.getCompletedAt()
+				));
+			}
+		}
+		completedLessons.sort(Comparator.comparing(CompletedLessonItemDto::completedAt, Comparator.nullsLast(Comparator.reverseOrder())));
+
+		// 8. Tính tiến độ theo từng cấp độ HSK
+		List<HskLevelEntity> visibleLevels = hskLevelRepository.findAllByHiddenFalseOrderByLevelNumberAsc();
+		List<HskLevelProgressDto> levelProgressList = new ArrayList<>();
+
+		for (HskLevelEntity level : visibleLevels) {
+			List<LessonEntity> visibleLessons = lessonRepository
+					.findAllByHskLevelIdAndHiddenFalseOrderBySortOrderAsc(level.getId());
+			int totalLessonsInLevel = visibleLessons.size();
+			int completedInLevel = 0;
+			int totalVocabInLevel = 0;
+			int vocabLearnedInLevel = 0;
+
+			for (LessonEntity lesson : visibleLessons) {
+				int vocabCount = lessonVocabularyRepository.findAllByLessonIdOrderBySortOrderAsc(lesson.getId()).size();
+				totalVocabInLevel += vocabCount;
+				if (completedLessonIds.contains(lesson.getId())) {
+					completedInLevel++;
+					vocabLearnedInLevel += vocabCount;
+				}
+			}
+
+			double progressPercent = totalLessonsInLevel == 0 ? 0.0
+					: Math.round(((completedInLevel * 100.0) / totalLessonsInLevel) * 10.0) / 10.0;
+
+			levelProgressList.add(new HskLevelProgressDto(
+					level.getId(),
+					level.getCode(),
+					level.getTitle(),
+					level.getLevelNumber(),
+					completedInLevel,
+					totalLessonsInLevel,
+					progressPercent,
+					vocabLearnedInLevel,
+					totalVocabInLevel
+			));
+		}
+
+		// 9. Tính điểm trung bình phần trăm & chỉ số tổng quan
+		BigDecimal averageScorePercentage = null;
+		if (!validPercentages.isEmpty()) {
+			double avg = validPercentages.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+			averageScorePercentage = BigDecimal.valueOf(Math.round(avg * 10.0) / 10.0);
+		}
+
+		// TC-03: Dữ liệu rỗng khi học sinh chưa nộp bài nào và chưa học bài nào
+		boolean hasActivity = (submittedAssignmentsCount > 0) || (!completedLessons.isEmpty());
+
+		ClassStudentProgressSummaryDto summary = new ClassStudentProgressSummaryDto(
+				classAssignments.size(),
+				submittedAssignmentsCount,
+				overdueAssignmentsCount,
+				averageScorePercentage,
+				completedLessons.size()
+		);
+
+		return new ClassStudentProgressResponse(
+				classroom.getId(),
+				classroom.getTitle(),
+				classroom.getJoinCode(),
+				studentId,
+				studentName,
+				studentEmail,
+				membershipStatus,
+				joinedAt,
+				hasActivity,
+				summary,
+				assignmentItems,
+				completedLessons,
+				levelProgressList
+		);
 	}
 }

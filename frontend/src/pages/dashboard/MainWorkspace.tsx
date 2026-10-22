@@ -32,6 +32,7 @@ import { getMyTeacherRequest, type TeacherRequestItem } from '../../api/teacherR
 import { getTeachingClasses, getEnrolledClasses, type ClassItem } from '../../api/classroom'
 import { getSrsSummary, type SrsSummary } from '../../api/srs'
 import { getDailyChallenge, type DailyChallengeData } from '../../api/gamification'
+import { getStreak, type StreakData } from '../../api/streak'
 import { DailyChallengeWidget } from '../../components/gamification/DailyChallengeWidget'
 
 interface MainWorkspaceProps {
@@ -55,6 +56,7 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
   const [srsSummary, setSrsSummary] = useState<SrsSummary | null>(null)
   const [dailyChallenge, setDailyChallenge] = useState<DailyChallengeData | null>(null)
   const [loadingChallenge, setLoadingChallenge] = useState(false)
+  const [streak, setStreak] = useState<StreakData | null>(null)
 
   const isTeacher = user?.activeMode === 'TEACHER'
   const isAdmin = user?.roles.includes('ADMIN')
@@ -96,6 +98,14 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
     }
   }
 
+  const loadStreak = () => {
+    if (user && !user.roles.includes('ADMIN') && user.activeMode !== 'TEACHER') {
+      getStreak(user.token)
+        .then((res) => setStreak(res))
+        .catch(() => {})
+    }
+  }
+
   useEffect(() => {
     if (user) {
       setCurrentUserName(user.fullName)
@@ -106,12 +116,14 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
       }
       loadSrsSummary()
       loadDailyChallenge()
+      loadStreak()
       loadClasses()
 
-      // HTT-08-CN-002 & HTT-08-CN-003: Tự động cập nhật số từ cần ôn & thử thách hằng ngày khi học sinh quay lại trang chính
+      // HTT-08-CN-002, 003, 004: Tự động cập nhật số từ cần ôn, thử thách hằng ngày & streak khi học sinh quay lại trang chính
       const handleFocus = () => {
         loadSrsSummary()
         loadDailyChallenge()
+        loadStreak()
       }
       window.addEventListener('focus', handleFocus)
       document.addEventListener('visibilitychange', handleFocus)
@@ -413,6 +425,28 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
             >
               <Award size={18} style={{ color: '#ca8a04' }} />
               <span>{dailyChallenge.currentTotalXp} XP</span>
+            </div>
+          )}
+
+          {/* Streak Badge for Student (HTT-08-CN-004) */}
+          {!isTeacher && !isAdmin && streak && (
+            <div
+              title={streak.message || `Chuỗi ngày học: ${streak.currentStreak} ngày liên tiếp (Kỷ lục: ${streak.longestStreak} ngày)`}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                backgroundColor: streak.completedToday ? '#ffedd5' : '#f8fafc',
+                border: streak.completedToday ? '1.5px solid #fb923c' : '1.5px solid var(--border-card)',
+                padding: '6px 14px',
+                borderRadius: 'var(--radius-full)',
+                color: streak.completedToday ? '#c2410c' : 'var(--text-muted)',
+                fontWeight: 800,
+                fontSize: '0.85rem',
+              }}
+            >
+              <Flame size={18} style={{ color: streak.completedToday ? '#ea580c' : '#94a3b8' }} />
+              <span>{streak.currentStreak} ngày</span>
             </div>
           )}
 
@@ -762,12 +796,16 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
               </div>
             </div>
 
-            {/* HTT-08-CN-003: Daily Challenge Widget */}
+            {/* HTT-08-CN-003 & HTT-08-CN-004: Daily Challenge Widget & Streak */}
             {!isTeacher && !isAdmin && (
               <DailyChallengeWidget
                 data={dailyChallenge}
+                streak={streak}
                 loading={loadingChallenge}
-                onRefresh={loadDailyChallenge}
+                onRefresh={() => {
+                  loadDailyChallenge()
+                  loadStreak()
+                }}
               />
             )}
 

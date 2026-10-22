@@ -47,6 +47,7 @@ import com.hsk.learning.domain.LessonProgressEntity;
 import com.hsk.learning.domain.VocabLearningEntity;
 import com.hsk.learning.repository.DailyChallengeHistoryRepository;
 import com.hsk.learning.repository.LessonProgressRepository;
+import com.hsk.learning.repository.UserStreakRepository;
 import com.hsk.learning.repository.VocabLearningRepository;
 import com.hsk.learning.service.DailyChallengeService;
 import java.math.BigDecimal;
@@ -117,6 +118,9 @@ class DailyChallengeH2Test {
 
 	@Autowired
 	private DailyChallengeHistoryRepository dailyChallengeHistoryRepository;
+
+	@Autowired
+	private UserStreakRepository userStreakRepository;
 
 	@Autowired
 	private AssignmentSubmissionRepository assignmentSubmissionRepository;
@@ -222,6 +226,7 @@ class DailyChallengeH2Test {
 	}
 
 	private void cleanupData() {
+		userStreakRepository.deleteAll();
 		dailyChallengeHistoryRepository.deleteAll();
 		assignmentSubmissionRepository.deleteAll();
 		assignmentRepository.deleteAll();

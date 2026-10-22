@@ -375,5 +375,42 @@ export async function getClassStudentProgress(token: string, classId: number, st
   return response.json()
 }
 
+export async function exportClassGradebookExcel(
+  token: string,
+  classId: number,
+  startDate?: string,
+  endDate?: string
+): Promise<Blob> {
+  const params = new URLSearchParams()
+  if (startDate) {
+    params.set('startDate', startDate)
+  }
+  if (endDate) {
+    params.set('endDate', endDate)
+  }
+  const queryString = params.toString() ? `?${params.toString()}` : ''
+
+  const response = await fetch(`${API_BASE}/classes/${classId}/gradebook/export${queryString}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  if (!response.ok) {
+    let errorDetail = 'Không thể xuất bảng điểm ra file Excel'
+    try {
+      const errorJson = await response.json()
+      if (errorJson.message) {
+        errorDetail = errorJson.message
+      }
+    } catch {
+      // ignore
+    }
+    throw new ApiError(response.status, 'EXPORT_GRADEBOOK_FAILED', errorDetail)
+  }
+
+  return response.blob()
+}
+
 
 

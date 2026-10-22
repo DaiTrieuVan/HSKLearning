@@ -11,12 +11,18 @@ import {
   FileCheck,
   Filter,
   TrendingUp,
+  Calendar,
+  Loader2,
+  CheckCircle2,
+  X,
 } from 'lucide-react'
-import type {
-  ClassGradebookResponse,
-  StudentGradeRowItem,
-  AssignmentColumnHeaderItem,
-  CellGradeItem,
+import { useAuth } from '../../context/AuthContext'
+import {
+  exportClassGradebookExcel,
+  type ClassGradebookResponse,
+  type StudentGradeRowItem,
+  type AssignmentColumnHeaderItem,
+  type CellGradeItem,
 } from '../../api/progress'
 import { GradebookAttemptDrawer } from './GradebookAttemptDrawer'
 import { UnsubmittedStudentsDrawer } from './UnsubmittedStudentsDrawer'
@@ -41,6 +47,53 @@ export const ClassGradebookView: React.FC<ClassGradebookViewProps> = ({ gradeboo
   // State for Unsubmitted Drawer (HTT-07-CN-004)
   const [unsubmittedDrawerOpen, setUnsubmittedDrawerOpen] = useState(false)
   const [selectedUnsubmittedAssignment, setSelectedUnsubmittedAssignment] = useState<AssignmentColumnHeaderItem | null>(null)
+
+  // HTT-07-CN-007: Xuất bảng điểm Excel
+  const { user } = useAuth()
+  const [exportStartDate, setExportStartDate] = useState('')
+  const [exportEndDate, setExportEndDate] = useState('')
+  const [isExporting, setIsExporting] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
+  const [exportSuccessMessage, setExportSuccessMessage] = useState<string | null>(null)
+
+  const handleExportExcel = async () => {
+    if (!user?.token) return
+    setExportError(null)
+    setExportSuccessMessage(null)
+
+    if (exportStartDate && exportEndDate && exportStartDate > exportEndDate) {
+      setExportError('Ngày bắt đầu không được sau ngày kết thúc.')
+      return
+    }
+
+    try {
+      setIsExporting(true)
+      const startIso = exportStartDate ? new Date(`${exportStartDate}T00:00:00Z`).toISOString() : undefined
+      const endIso = exportEndDate ? new Date(`${exportEndDate}T23:59:59Z`).toISOString() : undefined
+
+      const blob = await exportClassGradebookExcel(user.token, classId, startIso, endIso)
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      const dateSuffix = new Date().toISOString().slice(0, 10)
+      a.download = `bang_diem_${gradebook.classCode || classId}_${dateSuffix}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+      setExportSuccessMessage('Xuất bảng điểm thành công! File Excel đang được tải về.')
+      setTimeout(() => setExportSuccessMessage(null), 5000)
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setExportError(err.message)
+      } else {
+        setExportError('Không thể xuất file Excel. Vui lòng kiểm tra lại khoảng thời gian.')
+      }
+    } finally {
+      setIsExporting(false)
+    }
+  }
 
   const handleCellClick = (
     student: StudentGradeRowItem,
@@ -208,7 +261,7 @@ export const ClassGradebookView: React.FC<ClassGradebookViewProps> = ({ gradeboo
         </div>
       </div>
 
-      {/* 2. Search & Filter Bar */}
+      {/* 2. Search & Filter Bar & Excel Export (HTT-07-CN-007) */}
       <div
         style={{
           display: 'flex',
@@ -216,13 +269,18 @@ export const ClassGradebookView: React.FC<ClassGradebookViewProps> = ({ gradeboo
           alignItems: 'center',
           gap: '16px',
           flexWrap: 'wrap',
+          backgroundColor: '#ffffff',
+          padding: '16px 20px',
+          borderRadius: 'var(--radius-lg)',
+          border: '1.5px solid var(--border-card)',
+          boxShadow: 'var(--shadow-sm)',
         }}
       >
         <div
           style={{
             position: 'relative',
-            flex: '1 1 300px',
-            maxWidth: '420px',
+            flex: '1 1 240px',
+            maxWidth: '340px',
           }}
         >
           <Search
@@ -243,13 +301,12 @@ export const ClassGradebookView: React.FC<ClassGradebookViewProps> = ({ gradeboo
             onChange={(e) => setSearchTerm(e.target.value)}
             style={{
               width: '100%',
-              padding: '10px 16px 10px 42px',
+              padding: '9px 16px 9px 40px',
               borderRadius: 'var(--radius-md)',
               border: '1.5px solid var(--border-card)',
-              backgroundColor: '#ffffff',
-              fontSize: '0.88rem',
+              backgroundColor: '#f8fafc',
+              fontSize: '0.86rem',
               outline: 'none',
-              boxShadow: 'var(--shadow-sm)',
             }}
           />
         </div>
@@ -261,10 +318,10 @@ export const ClassGradebookView: React.FC<ClassGradebookViewProps> = ({ gradeboo
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as 'ALL' | 'ACTIVE' | 'INACTIVE')}
             style={{
-              padding: '8px 14px',
+              padding: '8px 12px',
               borderRadius: 'var(--radius-md)',
               border: '1.5px solid var(--border-card)',
-              backgroundColor: '#ffffff',
+              backgroundColor: '#f8fafc',
               fontSize: '0.84rem',
               fontWeight: 700,
               color: 'var(--text-main)',
@@ -272,14 +329,162 @@ export const ClassGradebookView: React.FC<ClassGradebookViewProps> = ({ gradeboo
               outline: 'none',
             }}
           >
-            <option value="ALL">Tất cả học sinh ({gradebook.totalStudents})</option>
+            <option value="ALL">Tất cả ({gradebook.totalStudents})</option>
             <option value="ACTIVE">Đang học ({gradebook.activeStudentsCount})</option>
             <option value="INACTIVE">
-              Đã rời lớp ({gradebook.totalStudents - gradebook.activeStudentsCount})
+              Đã rời ({gradebook.totalStudents - gradebook.activeStudentsCount})
             </option>
           </select>
         </div>
+
+        {/* Date Filter & Export to Excel */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Calendar size={15} style={{ color: 'var(--text-muted)' }} />
+            <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)' }}>Từ:</span>
+            <input
+              type="date"
+              value={exportStartDate}
+              onChange={(e) => {
+                setExportStartDate(e.target.value)
+                setExportError(null)
+              }}
+              style={{
+                padding: '6px 10px',
+                borderRadius: 'var(--radius-md)',
+                border: '1.5px solid var(--border-card)',
+                backgroundColor: '#f8fafc',
+                fontSize: '0.82rem',
+                color: 'var(--text-main)',
+                outline: 'none',
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)' }}>Đến:</span>
+            <input
+              type="date"
+              value={exportEndDate}
+              onChange={(e) => {
+                setExportEndDate(e.target.value)
+                setExportError(null)
+              }}
+              style={{
+                padding: '6px 10px',
+                borderRadius: 'var(--radius-md)',
+                border: '1.5px solid var(--border-card)',
+                backgroundColor: '#f8fafc',
+                fontSize: '0.82rem',
+                color: 'var(--text-main)',
+                outline: 'none',
+              }}
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            disabled={isExporting}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 16px',
+              backgroundColor: isExporting ? '#94a3b8' : '#059669',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: 'var(--radius-md)',
+              fontSize: '0.84rem',
+              fontWeight: 700,
+              cursor: isExporting ? 'not-allowed' : 'pointer',
+              transition: 'background-color 0.2s',
+              boxShadow: '0 2px 4px rgba(5, 150, 105, 0.25)',
+            }}
+            title="Xuất bảng điểm ra file Excel (.xlsx)"
+          >
+            {isExporting ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <FileSpreadsheet size={16} />
+            )}
+            <span>{isExporting ? 'Đang xuất...' : 'Xuất Excel'}</span>
+          </button>
+        </div>
       </div>
+
+      {/* Notifications: Export error or success */}
+      {exportError && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '12px 16px',
+            backgroundColor: '#fef2f2',
+            border: '1.5px solid #fecaca',
+            borderRadius: 'var(--radius-md)',
+            color: '#dc2626',
+            fontSize: '0.88rem',
+            fontWeight: 600,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <AlertCircle size={18} style={{ flexShrink: 0 }} />
+            <span>{exportError}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setExportError(null)}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: '#dc2626',
+              padding: '2px',
+              display: 'flex',
+            }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
+      {exportSuccessMessage && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '12px 16px',
+            backgroundColor: '#f0fdf4',
+            border: '1.5px solid #bbf7d0',
+            borderRadius: 'var(--radius-md)',
+            color: '#16a34a',
+            fontSize: '0.88rem',
+            fontWeight: 600,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <CheckCircle2 size={18} style={{ flexShrink: 0 }} />
+            <span>{exportSuccessMessage}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setExportSuccessMessage(null)}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: '#16a34a',
+              padding: '2px',
+              display: 'flex',
+            }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
 
       {/* 3. Empty State: No Assignments (TC-05) */}
       {gradebook.totalAssignments === 0 ? (

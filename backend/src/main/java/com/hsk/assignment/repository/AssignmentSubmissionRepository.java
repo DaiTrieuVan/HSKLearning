@@ -91,4 +91,17 @@ public interface AssignmentSubmissionRepository extends JpaRepository<Assignment
 	 * Xóa bài nộp theo lần giao bài (phục vụ dọn dẹp hoặc test).
 	 */
 	void deleteByAssignment_Id(Long assignmentId);
+
+	@org.springframework.data.jpa.repository.Query("""
+		SELECT COUNT(s) FROM AssignmentSubmissionEntity s
+		WHERE s.student.id = :studentId
+		  AND s.status IN ('SUBMITTED', 'GRADED')
+		  AND s.submittedAt >= :startOfDay
+		  AND s.submittedAt <= :endOfDay
+	""")
+	long countCompletedSubmissionsInRange(
+			@org.springframework.data.repository.query.Param("studentId") Long studentId,
+			@org.springframework.data.repository.query.Param("startOfDay") java.time.Instant startOfDay,
+			@org.springframework.data.repository.query.Param("endOfDay") java.time.Instant endOfDay
+	);
 }

@@ -18,4 +18,11 @@ public interface UserXpTransactionRepository extends JpaRepository<UserXpTransac
 	Page<UserXpTransactionEntity> findByUserIdOrderByIdDesc(Long userId, Pageable pageable);
 
 	List<UserXpTransactionEntity> findTop10ByUserIdOrderByIdDesc(Long userId);
+
+	@org.springframework.data.jpa.repository.Query("SELECT tx.user.id, COALESCE(SUM(tx.xpAmount), 0) FROM UserXpTransactionEntity tx WHERE tx.user.id IN :userIds AND tx.createdAt >= :startDate AND tx.createdAt <= :endDate GROUP BY tx.user.id")
+	List<Object[]> sumXpByUserIdsBetweenDates(
+			@org.springframework.data.repository.query.Param("userIds") java.util.Collection<Long> userIds,
+			@org.springframework.data.repository.query.Param("startDate") java.time.Instant startDate,
+			@org.springframework.data.repository.query.Param("endDate") java.time.Instant endDate
+	);
 }

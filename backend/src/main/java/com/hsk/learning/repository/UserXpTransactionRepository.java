@@ -15,7 +15,7 @@ public interface UserXpTransactionRepository extends JpaRepository<UserXpTransac
 
 	Optional<UserXpTransactionEntity> findByUserIdAndSourceTypeAndSourceId(Long userId, String sourceType, String sourceId);
 
-	Page<UserXpTransactionEntity> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
+	Page<UserXpTransactionEntity> findByUserIdOrderByIdDesc(Long userId, Pageable pageable);
 
-	List<UserXpTransactionEntity> findTop10ByUserIdOrderByCreatedAtDesc(Long userId);
+	List<UserXpTransactionEntity> findTop10ByUserIdOrderByIdDesc(Long userId);
 }

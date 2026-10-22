@@ -333,7 +333,7 @@ class UserXpLevelH2Test {
 				.andExpect(jsonPath("$.totalXp", is(10)));
 
 		// Kiểm tra trong bảng transactions chỉ có duy nhất 1 bản ghi cho Bài 1
-		List<UserXpTransactionEntity> txs = userXpTransactionRepository.findTop10ByUserIdOrderByCreatedAtDesc(testStudent.getId());
+		List<UserXpTransactionEntity> txs = userXpTransactionRepository.findTop10ByUserIdOrderByIdDesc(testStudent.getId());
 		assertEquals(1, txs.size());
 	}
 

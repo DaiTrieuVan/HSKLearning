@@ -107,7 +107,7 @@ public class XpLevelService {
 
 	@Transactional(readOnly = true)
 	public Page<XpTransactionResponse> getXpHistory(Long userId, Pageable pageable) {
-		return userXpTransactionRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable)
+		return userXpTransactionRepository.findByUserIdOrderByIdDesc(userId, pageable)
 				.map(tx -> new XpTransactionResponse(
 						tx.getId(),
 						tx.getXpAmount(),
@@ -120,7 +120,7 @@ public class XpLevelService {
 
 	@Transactional(readOnly = true)
 	public List<XpTransactionResponse> getRecentXpHistory(Long userId) {
-		return userXpTransactionRepository.findTop10ByUserIdOrderByCreatedAtDesc(userId)
+		return userXpTransactionRepository.findTop10ByUserIdOrderByIdDesc(userId)
 				.stream()
 				.map(tx -> new XpTransactionResponse(
 						tx.getId(),

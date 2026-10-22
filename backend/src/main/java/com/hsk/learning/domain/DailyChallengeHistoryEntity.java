@@ -37,6 +37,7 @@ public class DailyChallengeHistoryEntity {
 
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "user_id", nullable = false)
+	@org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
 	private UserEntity user;
 
 	@Column(name = "challenge_date", nullable = false)

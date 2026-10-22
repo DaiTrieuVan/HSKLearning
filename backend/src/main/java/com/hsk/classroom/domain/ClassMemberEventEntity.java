@@ -41,14 +41,17 @@ public class ClassMemberEventEntity {
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "class_id", nullable = false)
+	@org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
 	private ClassEntity classroom;
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "student_id", nullable = false)
+	@org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
 	private UserEntity student;
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "actor_id", nullable = false)
+	@org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
 	private UserEntity actor;
 
 	@Enumerated(EnumType.STRING)

@@ -25,11 +25,13 @@ public class VocabLearningEntity {
 	@ManyToOne(fetch = FetchType.LAZY)
 	@MapsId("userId")
 	@JoinColumn(name = "user_id")
+	@org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
 	private UserEntity user;
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@MapsId("vocabularyId")
 	@JoinColumn(name = "vocabulary_id")
+	@org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
 	private VocabularyEntity vocabulary;
 
 	@Enumerated(EnumType.STRING)

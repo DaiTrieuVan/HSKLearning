@@ -33,6 +33,7 @@ public class PasswordResetTokenEntity {
 
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "user_id", nullable = false)
+	@org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
 	private UserEntity user;
 
 	@Column(name = "token_hash", nullable = false, length = 100)

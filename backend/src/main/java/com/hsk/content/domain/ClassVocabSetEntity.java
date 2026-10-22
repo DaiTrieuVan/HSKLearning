@@ -22,11 +22,13 @@ public class ClassVocabSetEntity {
 	@ManyToOne(fetch = FetchType.LAZY)
 	@MapsId("classId")
 	@JoinColumn(name = "class_id")
+	@org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
 	private ClassEntity classroom;
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@MapsId("vocabSetId")
 	@JoinColumn(name = "vocab_set_id")
+	@org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
 	private VocabSetEntity vocabSet;
 
 	@CreationTimestamp

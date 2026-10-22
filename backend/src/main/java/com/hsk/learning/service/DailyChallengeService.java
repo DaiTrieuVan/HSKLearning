@@ -31,19 +31,22 @@ public class DailyChallengeService {
 	private final VocabLearningRepository vocabLearningRepository;
 	private final AssignmentSubmissionRepository assignmentSubmissionRepository;
 	private final UserRepository userRepository;
+	private final StreakService streakService;
 
 	public DailyChallengeService(
 			DailyChallengeHistoryRepository dailyChallengeHistoryRepository,
 			LessonProgressRepository lessonProgressRepository,
 			VocabLearningRepository vocabLearningRepository,
 			AssignmentSubmissionRepository assignmentSubmissionRepository,
-			UserRepository userRepository
+			UserRepository userRepository,
+			StreakService streakService
 	) {
 		this.dailyChallengeHistoryRepository = dailyChallengeHistoryRepository;
 		this.lessonProgressRepository = lessonProgressRepository;
 		this.vocabLearningRepository = vocabLearningRepository;
 		this.assignmentSubmissionRepository = assignmentSubmissionRepository;
 		this.userRepository = userRepository;
+		this.streakService = streakService;
 	}
 
 	@Transactional
@@ -79,6 +82,8 @@ public class DailyChallengeService {
 				user.addXp(REWARD_XP);
 				userRepository.save(user);
 			}
+			// HTT-08-CN-004: Tự động ghi nhận chuỗi ngày học streak khi hoàn thành mục tiêu ngày
+			streakService.recordDailyGoalCompletion(user, date);
 		}
 
 		history = dailyChallengeHistoryRepository.save(history);

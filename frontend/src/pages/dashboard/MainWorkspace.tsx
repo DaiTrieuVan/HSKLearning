@@ -21,6 +21,7 @@ import {
   FileCheck,
   TrendingUp,
   BarChart3,
+  BrainCircuit,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { PandaMascot } from '../../components/common/PandaMascot'
@@ -29,6 +30,7 @@ import { AdminUserManagementPanel } from '../../components/admin/AdminUserManage
 import { AdminSystemStatsPanel } from '../../components/admin/AdminSystemStatsPanel'
 import { getMyTeacherRequest, type TeacherRequestItem } from '../../api/teacherRequest'
 import { getTeachingClasses, getEnrolledClasses, type ClassItem } from '../../api/classroom'
+import { getSrsSummary, type SrsSummary } from '../../api/srs'
 
 interface MainWorkspaceProps {
   onJoinClassClick?: () => void
@@ -48,6 +50,7 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
   // Classroom States
   const [classesList, setClassesList] = useState<ClassItem[]>([])
   const [loadingClasses, setLoadingClasses] = useState(false)
+  const [srsSummary, setSrsSummary] = useState<SrsSummary | null>(null)
 
   const isTeacher = user?.activeMode === 'TEACHER'
   const isAdmin = user?.roles.includes('ADMIN')
@@ -77,6 +80,11 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
       if (!user.roles.includes('TEACHER')) {
         getMyTeacherRequest(user.token)
           .then((res) => setMyTeacherRequest(res))
+          .catch(() => {})
+      }
+      if (!user.roles.includes('ADMIN')) {
+        getSrsSummary(user.token)
+          .then((res) => setSrsSummary(res))
           .catch(() => {})
       }
       loadClasses()
@@ -221,6 +229,46 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
             >
               <TrendingUp size={16} color="var(--primary)" />
               <span>Tiến độ cá nhân</span>
+            </button>
+          )}
+
+          {/* SRS Spaced Repetition Link (HTT-08-CN-001) */}
+          {!isAdmin && !isTeacher && (
+            <button
+              type="button"
+              id="nav-srs-review-btn"
+              onClick={() => navigate('/srs/review')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 14px',
+                borderRadius: 'var(--radius-md)',
+                border: '1.5px solid var(--border-card)',
+                backgroundColor: '#ffffff',
+                color: 'var(--text-main)',
+                fontSize: '0.82rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+              }}
+            >
+              <BrainCircuit size={16} color="var(--jade-green)" />
+              <span>Ôn từ SRS</span>
+              {srsSummary && srsSummary.dueTodayCount > 0 && (
+                <span
+                  style={{
+                    backgroundColor: '#ef4444',
+                    color: '#ffffff',
+                    borderRadius: '10px',
+                    padding: '1px 6px',
+                    fontSize: '0.7rem',
+                    fontWeight: 800,
+                    marginLeft: '2px',
+                  }}
+                >
+                  {srsSummary.dueTodayCount}
+                </span>
+              )}
             </button>
           )}
 
@@ -759,6 +807,89 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
                     }}
                   >
                     <span>Xem tiến độ cá nhân</span>
+                    <ArrowRight size={18} />
+                  </button>
+                </div>
+              )}
+
+              {/* Card 1.6: SRS Spaced Repetition (HTT-08-CN-001) */}
+              {!isTeacher && !isAdmin && (
+                <div
+                  className="game-card"
+                  style={{
+                    padding: '24px',
+                    backgroundColor: '#ffffff',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <div>
+                    <div
+                      style={{
+                        width: '44px',
+                        height: '44px',
+                        borderRadius: 'var(--radius-md)',
+                        backgroundColor: 'var(--jade-green-light)',
+                        color: 'var(--jade-green-shadow)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginBottom: '16px',
+                      }}
+                    >
+                      <BrainCircuit size={24} />
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <h3 style={{ fontSize: '1.15rem', fontWeight: 800 }}>
+                        Ôn từ theo lịch (SRS)
+                      </h3>
+                      {srsSummary && srsSummary.dueTodayCount > 0 ? (
+                        <span
+                          style={{
+                            fontSize: '0.75rem',
+                            fontWeight: 800,
+                            padding: '2px 8px',
+                            backgroundColor: '#fee2e2',
+                            color: '#b91c1c',
+                            borderRadius: 'var(--radius-full)',
+                          }}
+                        >
+                          Cần ôn: {srsSummary.dueTodayCount} từ
+                        </span>
+                      ) : (
+                        <span
+                          style={{
+                            fontSize: '0.75rem',
+                            fontWeight: 800,
+                            padding: '2px 8px',
+                            backgroundColor: 'var(--jade-green-light)',
+                            color: 'var(--jade-green-shadow)',
+                            borderRadius: 'var(--radius-full)',
+                          }}
+                        >
+                          Đã hoàn thành hôm nay
+                        </span>
+                      )}
+                    </div>
+                    <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '16px' }}>
+                      Thuật toán ngắt quãng SuperMemo SM-2 tự động nhắc lại từ vựng trước khi bạn chuẩn bị quên.
+                      {srsSummary && ` Đã ghi nhớ vững chắc ${srsSummary.masteredCount} từ.`}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    id="btn-start-srs-review"
+                    onClick={() => navigate('/srs/review')}
+                    className="btn-gamified btn-green"
+                    style={{ width: '100%', fontSize: '0.92rem', padding: '10px' }}
+                  >
+                    <span>
+                      {srsSummary && srsSummary.dueTodayCount > 0
+                        ? `Bắt đầu ôn tập (${srsSummary.dueTodayCount} từ)`
+                        : 'Xem lịch ôn tập SRS'}
+                    </span>
                     <ArrowRight size={18} />
                   </button>
                 </div>

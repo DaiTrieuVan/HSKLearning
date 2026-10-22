@@ -34,10 +34,20 @@ public class SrsReviewService {
 		this.userRepository = userRepository;
 	}
 
+	public static final java.time.ZoneId VN_ZONE = java.time.ZoneId.of("Asia/Ho_Chi_Minh");
+
+	public Instant getEndOfTodayVn() {
+		return java.time.LocalDate.now(VN_ZONE).atTime(java.time.LocalTime.MAX).atZone(VN_ZONE).toInstant();
+	}
+
+	public Instant getEndOfDayVn(Instant instant) {
+		return instant.atZone(VN_ZONE).toLocalDate().atTime(java.time.LocalTime.MAX).atZone(VN_ZONE).toInstant();
+	}
+
 	@Transactional(readOnly = true)
 	public List<SrsCardResponse> getDueCards(Long currentUserId) {
-		Instant now = Instant.now();
-		List<VocabLearningEntity> dueCards = vocabLearningRepository.findDueReviewCards(currentUserId, now);
+		Instant deadline = getEndOfTodayVn();
+		List<VocabLearningEntity> dueCards = vocabLearningRepository.findDueReviewCards(currentUserId, deadline);
 
 		return dueCards.stream().map(learning -> {
 			VocabularyEntity vocab = learning.getVocabulary();
@@ -60,8 +70,8 @@ public class SrsReviewService {
 
 	@Transactional(readOnly = true)
 	public SrsSummaryResponse getSummary(Long currentUserId) {
-		Instant now = Instant.now();
-		long dueToday = vocabLearningRepository.countDueReviewCards(currentUserId, now);
+		Instant deadline = getEndOfTodayVn();
+		long dueToday = vocabLearningRepository.countDueReviewCards(currentUserId, deadline);
 		long mastered = vocabLearningRepository.countMasteredCards(currentUserId);
 		long total = vocabLearningRepository.countById_UserId(currentUserId);
 		long learning = Math.max(0, total - mastered);

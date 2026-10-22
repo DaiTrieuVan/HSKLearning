@@ -15,15 +15,18 @@ import {
   RotateCw,
 } from 'lucide-react'
 import type { DailyChallengeData } from '../../api/gamification'
+import type { StreakData } from '../../api/streak'
 
 interface DailyChallengeWidgetProps {
   data: DailyChallengeData | null
+  streak?: StreakData | null
   loading?: boolean
   onRefresh?: () => void
 }
 
 export const DailyChallengeWidget: React.FC<DailyChallengeWidgetProps> = ({
   data,
+  streak,
   loading = false,
   onRefresh,
 }) => {
@@ -197,8 +200,29 @@ export const DailyChallengeWidget: React.FC<DailyChallengeWidgetProps> = ({
           </div>
         </div>
 
-        {/* Right side: XP Reward Badge & Refresh button */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {/* Right side: Streak Badge, XP Reward Badge & Refresh button */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          {streak && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 14px',
+                borderRadius: 'var(--radius-full)',
+                backgroundColor: streak.completedToday ? '#ffedd5' : '#f8fafc',
+                border: streak.completedToday ? '1.5px solid #fb923c' : '1.5px solid var(--border-card)',
+                color: streak.completedToday ? '#c2410c' : 'var(--text-muted)',
+                fontWeight: 800,
+                fontSize: '0.88rem',
+              }}
+              title={streak.message || `Chuỗi: ${streak.currentStreak} ngày (Kỷ lục: ${streak.longestStreak} ngày)`}
+            >
+              <Flame size={18} style={{ color: streak.completedToday ? '#ea580c' : '#94a3b8' }} />
+              <span>{streak.currentStreak} ngày streak</span>
+            </div>
+          )}
+
           {onRefresh && (
             <button
               type="button"

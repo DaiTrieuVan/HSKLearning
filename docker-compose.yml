@@ -50,7 +50,7 @@ services:
       - "127.0.0.1:8080:8080"
 
   # -------------------------------------------------------------
-  # 3. Frontend React (Vite) + Nginx Web Server
+  # 3. Frontend React (Vite) + Nginx Web Server (Hỗ trợ HTTPS)
   # -------------------------------------------------------------
   frontend:
     build:
@@ -62,6 +62,9 @@ services:
       - backend
     ports:
       - "80:80"
+      - "443:443"
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:ro
 
 volumes:
   mysql_data:

@@ -20,11 +20,13 @@ import {
   HelpCircle,
   FileCheck,
   TrendingUp,
+  BarChart3,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { PandaMascot } from '../../components/common/PandaMascot'
 import { AdminTeacherReviewPanel } from '../../components/teacher/AdminTeacherReviewPanel'
 import { AdminUserManagementPanel } from '../../components/admin/AdminUserManagementPanel'
+import { AdminSystemStatsPanel } from '../../components/admin/AdminSystemStatsPanel'
 import { getMyTeacherRequest, type TeacherRequestItem } from '../../api/teacherRequest'
 import { getTeachingClasses, getEnrolledClasses, type ClassItem } from '../../api/classroom'
 
@@ -39,7 +41,9 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
   const [currentUserName, setCurrentUserName] = useState(user?.fullName || '')
   const [myTeacherRequest, setMyTeacherRequest] = useState<TeacherRequestItem | null>(null)
   const [actionAlert, setActionAlert] = useState<string | null>(null)
-  const [activeAdminTab, setActiveAdminTab] = useState<'OVERVIEW' | 'TEACHER_REQUESTS' | 'USER_MANAGEMENT'>('OVERVIEW')
+  const [activeAdminTab, setActiveAdminTab] = useState<'OVERVIEW' | 'SYSTEM_STATS' | 'TEACHER_REQUESTS' | 'USER_MANAGEMENT'>(
+    user?.roles.includes('ADMIN') ? 'SYSTEM_STATS' : 'OVERVIEW'
+  )
 
   // Classroom States
   const [classesList, setClassesList] = useState<ClassItem[]>([])
@@ -407,7 +411,29 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
               }}
             >
               <LayoutDashboard size={16} />
-              <span>Tổng quan</span>
+              <span>Tổng quan học tập</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveAdminTab('SYSTEM_STATS')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 16px',
+                borderRadius: 'var(--radius-md)',
+                border: 'none',
+                fontWeight: 800,
+                fontSize: '0.88rem',
+                cursor: 'pointer',
+                backgroundColor: activeAdminTab === 'SYSTEM_STATS' ? 'var(--primary)' : '#f1f5f9',
+                color: activeAdminTab === 'SYSTEM_STATS' ? '#ffffff' : 'var(--text-muted)',
+                transition: 'all 0.2s',
+              }}
+            >
+              <BarChart3 size={16} />
+              <span>Thống kê hệ thống</span>
             </button>
 
             <button
@@ -456,8 +482,10 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
           </div>
         )}
 
-        {/* Admin Tab View: Teacher Review Panel (HTT-01-CN-003) & User Management (HTT-01-CN-008) */}
-        {isAdmin && activeAdminTab === 'TEACHER_REQUESTS' ? (
+        {/* Admin Tab View: System Stats (HTT-07-CN-008), Teacher Review (HTT-01-CN-003) & User Management (HTT-01-CN-008) */}
+        {isAdmin && activeAdminTab === 'SYSTEM_STATS' ? (
+          <AdminSystemStatsPanel token={user.token} />
+        ) : isAdmin && activeAdminTab === 'TEACHER_REQUESTS' ? (
           <AdminTeacherReviewPanel token={user.token} />
         ) : isAdmin && activeAdminTab === 'USER_MANAGEMENT' ? (
           <AdminUserManagementPanel token={user.token} currentUserId={user.id} />

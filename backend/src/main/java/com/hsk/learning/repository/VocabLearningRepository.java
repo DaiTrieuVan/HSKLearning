@@ -55,4 +55,16 @@ public interface VocabLearningRepository extends JpaRepository<VocabLearningEnti
 		  AND vl.repetitionLevel >= 3
 	""")
 	long countMasteredCards(@org.springframework.data.repository.query.Param("userId") Long userId);
+
+	@org.springframework.data.jpa.repository.Query("""
+		SELECT COUNT(DISTINCT vl.id.vocabularyId) FROM VocabLearningEntity vl
+		WHERE vl.user.id = :userId
+		  AND vl.updatedAt >= :startOfDay
+		  AND vl.updatedAt <= :endOfDay
+	""")
+	long countReviewedVocabsInRange(
+			@org.springframework.data.repository.query.Param("userId") Long userId,
+			@org.springframework.data.repository.query.Param("startOfDay") java.time.Instant startOfDay,
+			@org.springframework.data.repository.query.Param("endOfDay") java.time.Instant endOfDay
+	);
 }

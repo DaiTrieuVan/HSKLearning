@@ -31,6 +31,8 @@ import { AdminSystemStatsPanel } from '../../components/admin/AdminSystemStatsPa
 import { getMyTeacherRequest, type TeacherRequestItem } from '../../api/teacherRequest'
 import { getTeachingClasses, getEnrolledClasses, type ClassItem } from '../../api/classroom'
 import { getSrsSummary, type SrsSummary } from '../../api/srs'
+import { getDailyChallenge, type DailyChallengeData } from '../../api/gamification'
+import { DailyChallengeWidget } from '../../components/gamification/DailyChallengeWidget'
 
 interface MainWorkspaceProps {
   onJoinClassClick?: () => void
@@ -51,6 +53,8 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
   const [classesList, setClassesList] = useState<ClassItem[]>([])
   const [loadingClasses, setLoadingClasses] = useState(false)
   const [srsSummary, setSrsSummary] = useState<SrsSummary | null>(null)
+  const [dailyChallenge, setDailyChallenge] = useState<DailyChallengeData | null>(null)
+  const [loadingChallenge, setLoadingChallenge] = useState(false)
 
   const isTeacher = user?.activeMode === 'TEACHER'
   const isAdmin = user?.roles.includes('ADMIN')
@@ -82,6 +86,16 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
     }
   }
 
+  const loadDailyChallenge = () => {
+    if (user && !user.roles.includes('ADMIN') && user.activeMode !== 'TEACHER') {
+      setLoadingChallenge(true)
+      getDailyChallenge(user.token)
+        .then((res) => setDailyChallenge(res))
+        .catch(() => {})
+        .finally(() => setLoadingChallenge(false))
+    }
+  }
+
   useEffect(() => {
     if (user) {
       setCurrentUserName(user.fullName)
@@ -91,10 +105,14 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
           .catch(() => {})
       }
       loadSrsSummary()
+      loadDailyChallenge()
       loadClasses()
 
-      // HTT-08-CN-002-TC-02: Tự động cập nhật số từ cần ôn khi học sinh quay lại trang chính
-      const handleFocus = () => loadSrsSummary()
+      // HTT-08-CN-002 & HTT-08-CN-003: Tự động cập nhật số từ cần ôn & thử thách hằng ngày khi học sinh quay lại trang chính
+      const handleFocus = () => {
+        loadSrsSummary()
+        loadDailyChallenge()
+      }
       window.addEventListener('focus', handleFocus)
       document.addEventListener('visibilitychange', handleFocus)
 
@@ -373,6 +391,28 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
               >
                 Giáo viên
               </button>
+            </div>
+          )}
+
+          {/* Total XP Badge for Student (HTT-08-CN-003) */}
+          {!isTeacher && !isAdmin && dailyChallenge && (
+            <div
+              title="Tổng điểm kinh nghiệm XP đã tích luỹ"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                backgroundColor: '#fef08a',
+                border: '1.5px solid #eab308',
+                padding: '6px 14px',
+                borderRadius: 'var(--radius-full)',
+                color: '#854d0e',
+                fontWeight: 800,
+                fontSize: '0.85rem',
+              }}
+            >
+              <Award size={18} style={{ color: '#ca8a04' }} />
+              <span>{dailyChallenge.currentTotalXp} XP</span>
             </div>
           )}
 
@@ -721,6 +761,15 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
                 <PandaMascot size={80} />
               </div>
             </div>
+
+            {/* HTT-08-CN-003: Daily Challenge Widget */}
+            {!isTeacher && !isAdmin && (
+              <DailyChallengeWidget
+                data={dailyChallenge}
+                loading={loadingChallenge}
+                onRefresh={loadDailyChallenge}
+              />
+            )}
 
             {/* Quick Action Cards Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>

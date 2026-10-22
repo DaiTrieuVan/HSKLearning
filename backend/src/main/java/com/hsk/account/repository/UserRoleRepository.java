@@ -13,6 +13,8 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
 
 	boolean existsByUser_IdAndRole_Code(Long userId, com.hsk.account.domain.RoleCode code);
 
+	long countByRole_Code(com.hsk.account.domain.RoleCode code);
+
 	@org.springframework.data.jpa.repository.Query("SELECT ur FROM UserRoleEntity ur JOIN FETCH ur.role WHERE ur.user.id IN :userIds")
 	List<UserRoleEntity> findByUserIdInWithRoles(@org.springframework.data.repository.query.Param("userIds") List<Long> userIds);
 }

@@ -22,6 +22,7 @@ import com.hsk.progress.dto.PersonalProgressResponse;
 import com.hsk.progress.dto.RecentActivityDto;
 import com.hsk.progress.dto.SubmissionAttemptItemDto;
 import com.hsk.progress.dto.SubmissionHistoryResponse;
+import com.hsk.progress.dto.SystemStatisticsResponse;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.*;
@@ -1478,5 +1479,61 @@ public class ProgressService {
 			return "'" + value;
 		}
 		return value;
+	}
+
+	@Transactional(readOnly = true)
+	public SystemStatisticsResponse getSystemStatistics(Long userId, String period) {
+		// 1. Phân quyền: Chỉ Quản trị viên nền tảng (ADMIN) được phép truy cập (TC-04)
+		boolean isAdmin = userRoleRepository.existsByUser_IdAndRole_Code(userId, RoleCode.ADMIN);
+		if (!isAdmin) {
+			throw new ApiException(ApiErrorCode.FORBIDDEN);
+		}
+
+		// 2. Chuẩn hóa period (ALL, 7D, 30D)
+		String normalizedPeriod = period != null ? period.trim().toUpperCase() : "ALL";
+		if (!normalizedPeriod.equals("7D") && !normalizedPeriod.equals("30D") && !normalizedPeriod.equals("ALL")) {
+			normalizedPeriod = "ALL";
+		}
+
+		// 3. Đếm số lượng tổng thể (TC-01, TC-03: hệ thống mới trả về 0, không lỗi)
+		long totalUsers = userRepository.count();
+		long totalStudents = userRoleRepository.countByRole_Code(RoleCode.STUDENT);
+		long totalTeachers = userRoleRepository.countByRole_Code(RoleCode.TEACHER);
+		long totalAdmins = userRoleRepository.countByRole_Code(RoleCode.ADMIN);
+		long totalClasses = classRepository.count();
+		long totalLessons = lessonRepository.count();
+		long totalSubmissions = assignmentSubmissionRepository.count();
+
+		// 4. Đếm số liệu theo khoảng thời gian (TC-02)
+		long newUsersInPeriod;
+		long newClassesInPeriod;
+		long newSubmissionsInPeriod;
+
+		if (normalizedPeriod.equals("ALL")) {
+			newUsersInPeriod = totalUsers;
+			newClassesInPeriod = totalClasses;
+			newSubmissionsInPeriod = totalSubmissions;
+		} else {
+			int days = normalizedPeriod.equals("7D") ? 7 : 30;
+			Instant since = Instant.now().minus(days, java.time.temporal.ChronoUnit.DAYS);
+			newUsersInPeriod = userRepository.countByCreatedAtAfter(since);
+			newClassesInPeriod = classRepository.countByCreatedAtAfter(since);
+			newSubmissionsInPeriod = assignmentSubmissionRepository.countByCreatedAtAfter(since);
+		}
+
+		return new SystemStatisticsResponse(
+				normalizedPeriod,
+				totalUsers,
+				totalStudents,
+				totalTeachers,
+				totalAdmins,
+				totalClasses,
+				totalLessons,
+				totalSubmissions,
+				newUsersInPeriod,
+				newClassesInPeriod,
+				newSubmissionsInPeriod,
+				Instant.now()
+		);
 	}
 }

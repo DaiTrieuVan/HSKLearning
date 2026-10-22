@@ -43,6 +43,8 @@ public interface AssignmentSubmissionRepository extends JpaRepository<Assignment
 	 */
 	boolean existsByAssignment_Id(Long assignmentId);
 
+	long countByCreatedAtAfter(java.time.Instant after);
+
 	/**
 	 * Lấy tất cả bài nộp của một lần giao bài (dùng cho thống kê giáo viên HTT-06-CN-006).
 	 */

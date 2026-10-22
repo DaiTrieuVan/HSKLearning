@@ -22,6 +22,7 @@ import { SubmissionHistoryPage } from './pages/progress/SubmissionHistoryPage'
 
 import { ClassGradebookPage } from './pages/classroom/ClassGradebookPage'
 import { ClassStudentProgressPage } from './pages/classroom/ClassStudentProgressPage'
+import { SrsReviewPage } from './pages/learning/SrsReviewPage'
 
 function AppRoutes() {
   const { isLoggedIn } = useAuth()
@@ -36,6 +37,7 @@ function AppRoutes() {
       <Route path="/progress" element={<PersonalProgressPage />} />
       <Route path="/history" element={<SubmissionHistoryPage />} />
       <Route path="/roadmap" element={<HskRoadmapPage />} />
+      <Route path="/srs/review" element={<SrsReviewPage />} />
       <Route path="/curriculum" element={<HskCurriculumPage />} />
       <Route path="/lessons/:lessonId" element={<LessonStudyPage />} />
       <Route path="/vocab-sets" element={<TeacherVocabSetsPage />} />

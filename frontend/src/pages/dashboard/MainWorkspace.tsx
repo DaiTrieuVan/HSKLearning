@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  LogOut,
   BookOpen,
-  User,
   Flame,
   Award,
   ArrowRight,
@@ -11,7 +9,6 @@ import {
   GraduationCap,
   Clock,
   AlertCircle,
-  ShieldCheck,
   CheckCircle2,
   Users,
   LayoutDashboard,
@@ -42,11 +39,10 @@ interface MainWorkspaceProps {
 }
 
 export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
-  const { user, logout, switchMode } = useAuth()
+  const { user } = useAuth()
   const navigate = useNavigate()
 
-  const [currentUserName, setCurrentUserName] = useState(user?.fullName || '')
-  const [myTeacherRequest, setMyTeacherRequest] = useState<TeacherRequestItem | null>(null)
+    const [myTeacherRequest, setMyTeacherRequest] = useState<TeacherRequestItem | null>(null)
   const [actionAlert, setActionAlert] = useState<string | null>(null)
   const [activeAdminTab, setActiveAdminTab] = useState<'OVERVIEW' | 'SYSTEM_STATS' | 'TEACHER_REQUESTS' | 'USER_MANAGEMENT'>(
     user?.roles.includes('ADMIN') ? 'SYSTEM_STATS' : 'OVERVIEW'
@@ -64,8 +60,7 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
 
   const isTeacher = user?.activeMode === 'TEACHER'
   const isAdmin = user?.roles.includes('ADMIN')
-  const hasMultipleRoles = user ? user.roles.includes('TEACHER') && user.roles.includes('STUDENT') : false
-
+  
   const loadClasses = () => {
     if (!user) return
     setLoadingClasses(true)
@@ -123,8 +118,7 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
 
   useEffect(() => {
     if (user) {
-      setCurrentUserName(user.fullName)
-      if (!user.roles.includes('TEACHER')) {
+            if (!user.roles.includes('TEACHER')) {
         getMyTeacherRequest(user.token)
           .then((res) => setMyTeacherRequest(res))
           .catch(() => {})
@@ -177,385 +171,264 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-page)' }}>
-      {/* Top Navbar */}
-      <header
-        style={{
-          padding: '14px 32px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          backgroundColor: '#ffffff',
-          borderBottom: '2px solid var(--border-card)',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
+      
+      {/* Vocapy-style Top Quick Stats */}
+      {!isAdmin && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+          {/* Card 1: Tổng từ vựng */}
           <div
+            className="game-card"
             style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: 'var(--radius-md)',
-              backgroundColor: 'var(--primary)',
-              color: '#ffffff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 900,
-              fontSize: '1.3rem',
-            }}
-            className="hanzi"
-          >
-            华
-          </div>
-          <div>
-            <div style={{ fontWeight: 800, fontSize: '1.2rem', color: 'var(--text-main)' }}>
-              HSK Master <span style={{ color: 'var(--primary)' }}>.</span>
-            </div>
-            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>
-              {isAdmin
-                ? 'TRANG QUẢN TRỊ VIÊN'
-                : isTeacher
-                ? 'KHÔNG GIAN GIÁO VIÊN'
-                : 'KHÔNG GIAN HỌC SINH'}
-            </div>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          {/* Roadmap Link (HTT-04-CN-001) */}
-          <button
-            type="button"
-            onClick={() => navigate('/roadmap')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 14px',
-              borderRadius: 'var(--radius-md)',
-              border: '1.5px solid var(--border-card)',
+              padding: '16px 20px',
               backgroundColor: '#ffffff',
-              color: 'var(--text-main)',
-              fontSize: '0.82rem',
-              fontWeight: 800,
-              cursor: 'pointer',
-            }}
-          >
-            <BookMarked size={16} color="var(--primary)" />
-            <span>Lộ trình HSK</span>
-          </button>
-
-          {/* Vocab Search Link (HTT-04-CN-006) */}
-          <button
-            type="button"
-            id="nav-vocab-search-btn"
-            onClick={() => navigate('/vocab-search')}
-            style={{
+              border: '1.5px solid var(--border-card)',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
-              padding: '6px 14px',
-              borderRadius: 'var(--radius-md)',
-              border: '1.5px solid var(--border-card)',
-              backgroundColor: '#ffffff',
-              color: 'var(--text-main)',
-              fontSize: '0.82rem',
-              fontWeight: 800,
-              cursor: 'pointer',
-            }}
-          >
-            <Search size={16} color="var(--primary)" />
-            <span>Tra từ vựng</span>
-          </button>
-
-          {/* Personal Progress Link (HTT-07-CN-001) */}
-          {!isAdmin && !isTeacher && (
-            <button
-              type="button"
-              id="nav-personal-progress-btn"
-              onClick={() => navigate('/progress')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '6px 14px',
-                borderRadius: 'var(--radius-md)',
-                border: '1.5px solid var(--border-card)',
-                backgroundColor: '#ffffff',
-                color: 'var(--text-main)',
-                fontSize: '0.82rem',
-                fontWeight: 800,
-                cursor: 'pointer',
-              }}
-            >
-              <TrendingUp size={16} color="var(--primary)" />
-              <span>Tiến độ cá nhân</span>
-            </button>
-          )}
-
-          {/* SRS Spaced Repetition Link (HTT-08-CN-001) */}
-          {!isAdmin && !isTeacher && (
-            <button
-              type="button"
-              id="nav-srs-review-btn"
-              onClick={() => navigate('/srs/review')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '6px 14px',
-                borderRadius: 'var(--radius-md)',
-                border: '1.5px solid var(--border-card)',
-                backgroundColor: '#ffffff',
-                color: 'var(--text-main)',
-                fontSize: '0.82rem',
-                fontWeight: 800,
-                cursor: 'pointer',
-              }}
-            >
-              <BrainCircuit size={16} color="var(--jade-green)" />
-              <span>Ôn từ SRS</span>
-              {srsSummary && srsSummary.dueTodayCount > 0 && (
-                <span
-                  style={{
-                    backgroundColor: '#ef4444',
-                    color: '#ffffff',
-                    borderRadius: '10px',
-                    padding: '1px 6px',
-                    fontSize: '0.7rem',
-                    fontWeight: 800,
-                    marginLeft: '2px',
-                  }}
-                >
-                  {srsSummary.dueTodayCount}
-                </span>
-              )}
-            </button>
-          )}
-
-          {/* Admin Navigation Tabs */}
-          {isAdmin && (
-            <div style={{ display: 'flex', gap: '6px' }}>
-              <button
-                type="button"
-                onClick={() => setActiveAdminTab('OVERVIEW')}
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: 'var(--radius-md)',
-                  border: 'none',
-                  fontSize: '0.82rem',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  backgroundColor: activeAdminTab === 'OVERVIEW' ? 'var(--primary)' : 'var(--bg-input)',
-                  color: activeAdminTab === 'OVERVIEW' ? '#ffffff' : 'var(--text-muted)',
-                }}
-              >
-                Tổng quan
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveAdminTab('TEACHER_REQUESTS')}
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: 'var(--radius-md)',
-                  border: 'none',
-                  fontSize: '0.82rem',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  backgroundColor: activeAdminTab === 'TEACHER_REQUESTS' ? 'var(--primary)' : 'var(--bg-input)',
-                  color: activeAdminTab === 'TEACHER_REQUESTS' ? '#ffffff' : 'var(--text-muted)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                }}
-              >
-                <ShieldCheck size={16} />
-                <span>Duyệt giáo viên</span>
-              </button>
-            </div>
-          )}
-
-          {/* Switch mode if user has multiple roles (HTT-01-CN-009) */}
-          {hasMultipleRoles && !isAdmin && (
-            <div
-              style={{
-                display: 'flex',
-                backgroundColor: 'var(--bg-input)',
-                borderRadius: 'var(--radius-full)',
-                padding: '3px',
-                border: '1.5px solid var(--border-card)',
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => switchMode('STUDENT')}
-                style={{
-                  padding: '4px 12px',
-                  borderRadius: 'var(--radius-full)',
-                  border: 'none',
-                  fontSize: '0.8rem',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  backgroundColor: !isTeacher ? '#ffffff' : 'transparent',
-                  color: !isTeacher ? 'var(--primary)' : 'var(--text-muted)',
-                  boxShadow: !isTeacher ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                }}
-              >
-                Học sinh
-              </button>
-              <button
-                type="button"
-                onClick={() => switchMode('TEACHER')}
-                style={{
-                  padding: '4px 12px',
-                  borderRadius: 'var(--radius-full)',
-                  border: 'none',
-                  fontSize: '0.8rem',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  backgroundColor: isTeacher ? '#ffffff' : 'transparent',
-                  color: isTeacher ? 'var(--primary)' : 'var(--text-muted)',
-                  boxShadow: isTeacher ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                }}
-              >
-                Giáo viên
-              </button>
-            </div>
-          )}
-
-          {/* Total XP Badge for Student (HTT-08-CN-003) */}
-          {!isTeacher && !isAdmin && dailyChallenge && (
-            <div
-              title="Tổng điểm kinh nghiệm XP đã tích luỹ"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                backgroundColor: '#fef08a',
-                border: '1.5px solid #eab308',
-                padding: '6px 14px',
-                borderRadius: 'var(--radius-full)',
-                color: '#854d0e',
-                fontWeight: 800,
-                fontSize: '0.85rem',
-              }}
-            >
-              <Award size={18} style={{ color: '#ca8a04' }} />
-              <span>{dailyChallenge.currentTotalXp} XP</span>
-            </div>
-          )}
-
-          {/* Streak Badge for Student (HTT-08-CN-004) */}
-          {!isTeacher && !isAdmin && streak && (
-            <div
-              title={streak.message || `Chuỗi ngày học: ${streak.currentStreak} ngày liên tiếp (Kỷ lục: ${streak.longestStreak} ngày)`}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                backgroundColor: streak.completedToday ? '#ffedd5' : '#f8fafc',
-                border: streak.completedToday ? '1.5px solid #fb923c' : '1.5px solid var(--border-card)',
-                padding: '6px 14px',
-                borderRadius: 'var(--radius-full)',
-                color: streak.completedToday ? '#c2410c' : 'var(--text-muted)',
-                fontWeight: 800,
-                fontSize: '0.85rem',
-              }}
-            >
-              <Flame size={18} style={{ color: streak.completedToday ? '#ea580c' : '#94a3b8' }} />
-              <span>{streak.currentStreak} ngày</span>
-            </div>
-          )}
-
-          {/* Level Badge for Student (HTT-08-CN-005) */}
-          {!isTeacher && !isAdmin && userLevel && (
-            <div
-              title={`Cấp ${userLevel.currentLevel}: ${userLevel.title} (Còn ${userLevel.xpToNextLevel} XP lên cấp tiếp theo)`}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                backgroundColor: '#fef3c7',
-                border: '1.5px solid #f59e0b',
-                padding: '6px 14px',
-                borderRadius: 'var(--radius-full)',
-                color: '#92400e',
-                fontWeight: 800,
-                fontSize: '0.85rem',
-              }}
-            >
-              <Award size={18} style={{ color: '#d97706' }} />
-              <span>Cấp {userLevel.currentLevel}: {userLevel.title}</span>
-            </div>
-          )}
-
-          {/* User Profile Badge (HTT-01-CN-006: Click to edit profile / change password) */}
-          <div
-            onClick={() => navigate('/profile')}
-            title="Bấm để xem & chỉnh sửa hồ sơ cá nhân"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              backgroundColor: '#f8fafc',
-              padding: '6px 14px',
-              borderRadius: 'var(--radius-full)',
-              border: '1.5px solid var(--border-card)',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
+              gap: '14px',
             }}
           >
             <div
               style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
+                width: '42px',
+                height: '42px',
+                borderRadius: 'var(--radius-md)',
                 backgroundColor: 'var(--primary-light)',
                 color: 'var(--primary)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontWeight: 800,
+                flexShrink: 0,
               }}
             >
-              <User size={18} />
+              <BookOpen size={22} />
             </div>
             <div>
-              <div style={{ fontWeight: 800, fontSize: '0.88rem', color: 'var(--text-main)' }}>
-                {currentUserName}
+              <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--text-main)', lineHeight: 1.1 }}>
+                {(srsSummary?.learningCount || 0) + (srsSummary?.masteredCount || 0)}
               </div>
-              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                {user.roles.join(', ')}
+              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+                Tổng từ đang học
               </div>
             </div>
           </div>
 
-          {/* Logout Button */}
-          <button
-            type="button"
-            onClick={logout}
+          {/* Card 2: Đã thuộc */}
+          <div
+            className="game-card"
             style={{
+              padding: '16px 20px',
+              backgroundColor: '#ffffff',
+              border: '1.5px solid var(--border-card)',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
-              padding: '8px 14px',
-              backgroundColor: '#ffffff',
-              border: '1.5px solid #fee2e2',
-              color: '#b91c1c',
-              borderRadius: 'var(--radius-md)',
-              fontWeight: 700,
-              fontSize: '0.85rem',
-              cursor: 'pointer',
+              gap: '14px',
             }}
           >
-            <LogOut size={16} />
-            <span>Đăng xuất</span>
+            <div
+              style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: '#dcfce7',
+                color: '#15803d',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <CheckCircle2 size={22} />
+            </div>
+            <div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#15803d', lineHeight: 1.1 }}>
+                {srsSummary?.masteredCount || 0}
+              </div>
+              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+                Từ vựng đã thuộc
+              </div>
+            </div>
+          </div>
+
+          {/* Card 3: Cần ôn SRS */}
+          <div
+            className="game-card"
+            style={{
+              padding: '16px 20px',
+              backgroundColor: '#ffffff',
+              border: '1.5px solid var(--border-card)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '14px',
+              cursor: 'pointer',
+            }}
+            onClick={() => navigate('/srs/review')}
+            title="Bấm để vào ôn từ SRS ngay"
+          >
+            <div
+              style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: (srsSummary?.dueTodayCount || 0) > 0 ? '#fee2e2' : '#f1f5f9',
+                color: (srsSummary?.dueTodayCount || 0) > 0 ? '#b91c1c' : '#64748b',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <BrainCircuit size={22} />
+            </div>
+            <div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 900, color: (srsSummary?.dueTodayCount || 0) > 0 ? '#b91c1c' : 'var(--text-main)', lineHeight: 1.1 }}>
+                {srsSummary?.dueTodayCount || 0}
+              </div>
+              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+                Từ cần ôn hôm nay
+              </div>
+            </div>
+          </div>
+
+          {/* Card 4: Lớp học */}
+          <div
+            className="game-card"
+            style={{
+              padding: '16px 20px',
+              backgroundColor: '#ffffff',
+              border: '1.5px solid var(--border-card)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '14px',
+            }}
+          >
+            <div
+              style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: '#dbeafe',
+                color: '#1d4ed8',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <GraduationCap size={22} />
+            </div>
+            <div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#1d4ed8', lineHeight: 1.1 }}>
+                {classesList.length}
+              </div>
+              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+                {isTeacher ? 'Lớp đang giảng dạy' : 'Lớp đã tham gia'}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Vocapy-style Quick Actions Bar */}
+      {!isAdmin && (
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '24px' }}>
+          <button
+            type="button"
+            onClick={() => navigate('/vocab-search')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 18px',
+              borderRadius: 'var(--radius-md)',
+              border: '1.5px solid var(--border-card)',
+              backgroundColor: '#ffffff',
+              color: 'var(--text-main)',
+              fontWeight: 800,
+              fontSize: '0.86rem',
+              cursor: 'pointer',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <Search size={17} style={{ color: 'var(--primary)' }} />
+            <span>Tra cứu từ vựng</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate('/srs/review')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 18px',
+              borderRadius: 'var(--radius-md)',
+              border: '1.5px solid var(--border-card)',
+              backgroundColor: '#ffffff',
+              color: 'var(--text-main)',
+              fontWeight: 800,
+              fontSize: '0.86rem',
+              cursor: 'pointer',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <BrainCircuit size={17} style={{ color: 'var(--jade-green)' }} />
+            <span>Luyện trí nhớ SRS</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate('/roadmap')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 18px',
+              borderRadius: 'var(--radius-md)',
+              border: '1.5px solid var(--border-card)',
+              backgroundColor: '#ffffff',
+              color: 'var(--text-main)',
+              fontWeight: 800,
+              fontSize: '0.86rem',
+              cursor: 'pointer',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <BookMarked size={17} style={{ color: '#d97706' }} />
+            <span>Lộ trình HSK</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate('/curriculum')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 18px',
+              borderRadius: 'var(--radius-md)',
+              border: '1.5px solid var(--border-card)',
+              backgroundColor: '#ffffff',
+              color: 'var(--text-main)',
+              fontWeight: 800,
+              fontSize: '0.86rem',
+              cursor: 'pointer',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <BookOpen size={17} style={{ color: '#2563eb' }} />
+            <span>Giáo trình & Bài học</span>
           </button>
         </div>
-      </header>
+      )}
 
-      {/* Main Content Area */}
-      <main style={{ flex: 1, maxWidth: '1100px', width: '100%', margin: '0 auto', padding: '32px 20px' }}>
+      {/* Main Workspace Body */}
+      <div style={{ width: '100%' }}>
+
         {/* Admin Navigation Tabs (HTT-01-CN-003 & HTT-01-CN-008) */}
         {isAdmin && (
           <div
@@ -1616,7 +1489,7 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
             </div>
           </>
         )}
-      </main>
+      </div>
 
     </div>
   )

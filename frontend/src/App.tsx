@@ -23,6 +23,7 @@ import { SubmissionHistoryPage } from './pages/progress/SubmissionHistoryPage'
 import { ClassGradebookPage } from './pages/classroom/ClassGradebookPage'
 import { ClassStudentProgressPage } from './pages/classroom/ClassStudentProgressPage'
 import { SrsReviewPage } from './pages/learning/SrsReviewPage'
+import { AppLayout } from './layouts/AppLayout'
 
 function AppRoutes() {
   const { isLoggedIn } = useAuth()
@@ -33,27 +34,29 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/" element={<MainWorkspace />} />
-      <Route path="/progress" element={<PersonalProgressPage />} />
-      <Route path="/history" element={<SubmissionHistoryPage />} />
-      <Route path="/roadmap" element={<HskRoadmapPage />} />
-      <Route path="/srs/review" element={<SrsReviewPage />} />
-      <Route path="/curriculum" element={<HskCurriculumPage />} />
-      <Route path="/lessons/:lessonId" element={<LessonStudyPage />} />
-      <Route path="/vocab-sets" element={<TeacherVocabSetsPage />} />
-      <Route path="/questions" element={<QuestionBankPage />} />
-      <Route path="/exercises" element={<ExerciseManagementPage />} />
-      <Route path="/classes/create" element={<CreateClassPage />} />
-      <Route path="/classes/join" element={<JoinClassPage />} />
-      <Route path="/classes/:classId" element={<ClassDetailPage />} />
-      <Route path="/classes/:classId/gradebook" element={<ClassGradebookPage />} />
-      <Route path="/classes/:classId/students/:studentId" element={<ClassStudentProgressPage />} />
-      <Route path="/classes/:classId/assignments/:assignmentId/take" element={<TakeAssignmentPage />} />
-      <Route path="/classes/:classId/assignments/:assignmentId/submissions" element={<AssignmentSubmissionsPage />} />
-      <Route path="/classes/:classId/assignments/:assignmentId/submissions/:submissionId" element={<StudentSubmissionDetailPage />} />
-      <Route path="/profile" element={<UserProfilePage />} />
-      <Route path="/teacher-request" element={<TeacherRequestPage />} />
-      <Route path="/vocab-search" element={<VocabSearchPage />} />
+      <Route element={<AppLayout />}>
+        <Route path="/" element={<MainWorkspace />} />
+        <Route path="/progress" element={<PersonalProgressPage />} />
+        <Route path="/history" element={<SubmissionHistoryPage />} />
+        <Route path="/roadmap" element={<HskRoadmapPage />} />
+        <Route path="/srs/review" element={<SrsReviewPage />} />
+        <Route path="/curriculum" element={<HskCurriculumPage />} />
+        <Route path="/lessons/:lessonId" element={<LessonStudyPage />} />
+        <Route path="/vocab-sets" element={<TeacherVocabSetsPage />} />
+        <Route path="/questions" element={<QuestionBankPage />} />
+        <Route path="/exercises" element={<ExerciseManagementPage />} />
+        <Route path="/classes/create" element={<CreateClassPage />} />
+        <Route path="/classes/join" element={<JoinClassPage />} />
+        <Route path="/classes/:classId" element={<ClassDetailPage />} />
+        <Route path="/classes/:classId/gradebook" element={<ClassGradebookPage />} />
+        <Route path="/classes/:classId/students/:studentId" element={<ClassStudentProgressPage />} />
+        <Route path="/classes/:classId/assignments/:assignmentId/take" element={<TakeAssignmentPage />} />
+        <Route path="/classes/:classId/assignments/:assignmentId/submissions" element={<AssignmentSubmissionsPage />} />
+        <Route path="/classes/:classId/assignments/:assignmentId/submissions/:submissionId" element={<StudentSubmissionDetailPage />} />
+        <Route path="/profile" element={<UserProfilePage />} />
+        <Route path="/teacher-request" element={<TeacherRequestPage />} />
+        <Route path="/vocab-search" element={<VocabSearchPage />} />
+      </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

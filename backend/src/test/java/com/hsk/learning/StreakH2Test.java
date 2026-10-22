@@ -82,6 +82,9 @@ class StreakH2Test {
 	private UserStreakRepository userStreakRepository;
 
 	@Autowired
+	private com.hsk.learning.repository.UserXpTransactionRepository userXpTransactionRepository;
+
+	@Autowired
 	private com.hsk.classroom.repository.ClassRepository classRepository;
 
 	@Autowired
@@ -125,6 +128,7 @@ class StreakH2Test {
 	}
 
 	private void cleanupData() {
+		userXpTransactionRepository.deleteAll();
 		userStreakRepository.deleteAll();
 		dailyChallengeHistoryRepository.deleteAll();
 		assignmentSubmissionRepository.deleteAll();

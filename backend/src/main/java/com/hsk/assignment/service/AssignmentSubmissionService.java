@@ -75,6 +75,7 @@ public class AssignmentSubmissionService {
 	private final UserRepository userRepository;
 	private final UserRoleRepository userRoleRepository;
 	private final AuditLogService auditLogService;
+	private final com.hsk.learning.service.XpLevelService xpLevelService;
 	private final ObjectMapper objectMapper;
 
 	public AssignmentSubmissionService(
@@ -84,7 +85,8 @@ public class AssignmentSubmissionService {
 			ClassMemberRepository classMemberRepository,
 			UserRepository userRepository,
 			UserRoleRepository userRoleRepository,
-			AuditLogService auditLogService
+			AuditLogService auditLogService,
+			com.hsk.learning.service.XpLevelService xpLevelService
 	) {
 		this.assignmentRepository = assignmentRepository;
 		this.submissionRepository = submissionRepository;
@@ -93,6 +95,7 @@ public class AssignmentSubmissionService {
 		this.userRepository = userRepository;
 		this.userRoleRepository = userRoleRepository;
 		this.auditLogService = auditLogService;
+		this.xpLevelService = xpLevelService;
 		this.objectMapper = new ObjectMapper();
 	}
 
@@ -322,6 +325,15 @@ public class AssignmentSubmissionService {
 				"ASSIGNMENT_SUBMISSION",
 				saved.getId().toString(),
 				"Chấm điểm tự động bài tập '" + assignment.getTitle() + "' cho học sinh " + student.getEmail() + ": Điểm gốc " + saved.getScore() + "/" + assignment.getTotalPoints()
+		);
+
+		// HTT-08-CN-005-TC-02: Nộp bài tập thưởng +20 XP (Idempotent theo assignmentId)
+		xpLevelService.awardXp(
+				student,
+				20,
+				"ASSIGNMENT_SUBMISSION",
+				"assignment:" + assignment.getId(),
+				"Hoàn thành nộp bài tập: " + assignment.getTitle()
 		);
 
 		boolean isPastDue = (assignment.getDueTime() == null) || !now.isBefore(assignment.getDueTime());

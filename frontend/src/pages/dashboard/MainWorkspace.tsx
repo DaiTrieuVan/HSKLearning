@@ -33,7 +33,9 @@ import { getTeachingClasses, getEnrolledClasses, type ClassItem } from '../../ap
 import { getSrsSummary, type SrsSummary } from '../../api/srs'
 import { getDailyChallenge, type DailyChallengeData } from '../../api/gamification'
 import { getStreak, type StreakData } from '../../api/streak'
+import { getUserLevel, getRecentXpHistory, type UserLevelData, type XpTransactionItem } from '../../api/gamificationLevel'
 import { DailyChallengeWidget } from '../../components/gamification/DailyChallengeWidget'
+import { LevelProgressCard } from '../../components/gamification/LevelProgressCard'
 
 interface MainWorkspaceProps {
   onJoinClassClick?: () => void
@@ -57,6 +59,8 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
   const [dailyChallenge, setDailyChallenge] = useState<DailyChallengeData | null>(null)
   const [loadingChallenge, setLoadingChallenge] = useState(false)
   const [streak, setStreak] = useState<StreakData | null>(null)
+  const [userLevel, setUserLevel] = useState<UserLevelData | null>(null)
+  const [recentXp, setRecentXp] = useState<XpTransactionItem[]>([])
 
   const isTeacher = user?.activeMode === 'TEACHER'
   const isAdmin = user?.roles.includes('ADMIN')
@@ -106,6 +110,17 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
     }
   }
 
+  const loadLevelData = () => {
+    if (user && !user.roles.includes('ADMIN') && user.activeMode !== 'TEACHER') {
+      getUserLevel(user.token)
+        .then((res) => setUserLevel(res))
+        .catch(() => {})
+      getRecentXpHistory(user.token)
+        .then((res) => setRecentXp(res))
+        .catch(() => {})
+    }
+  }
+
   useEffect(() => {
     if (user) {
       setCurrentUserName(user.fullName)
@@ -117,13 +132,15 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
       loadSrsSummary()
       loadDailyChallenge()
       loadStreak()
+      loadLevelData()
       loadClasses()
 
-      // HTT-08-CN-002, 003, 004: Tự động cập nhật số từ cần ôn, thử thách hằng ngày & streak khi học sinh quay lại trang chính
+      // HTT-08-CN-002..005: Tự động cập nhật số từ cần ôn, thử thách, streak & level khi quay lại trang chính
       const handleFocus = () => {
         loadSrsSummary()
         loadDailyChallenge()
         loadStreak()
+        loadLevelData()
       }
       window.addEventListener('focus', handleFocus)
       document.addEventListener('visibilitychange', handleFocus)
@@ -447,6 +464,28 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
             >
               <Flame size={18} style={{ color: streak.completedToday ? '#ea580c' : '#94a3b8' }} />
               <span>{streak.currentStreak} ngày</span>
+            </div>
+          )}
+
+          {/* Level Badge for Student (HTT-08-CN-005) */}
+          {!isTeacher && !isAdmin && userLevel && (
+            <div
+              title={`Cấp ${userLevel.currentLevel}: ${userLevel.title} (Còn ${userLevel.xpToNextLevel} XP lên cấp tiếp theo)`}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                backgroundColor: '#fef3c7',
+                border: '1.5px solid #f59e0b',
+                padding: '6px 14px',
+                borderRadius: 'var(--radius-full)',
+                color: '#92400e',
+                fontWeight: 800,
+                fontSize: '0.85rem',
+              }}
+            >
+              <Award size={18} style={{ color: '#d97706' }} />
+              <span>Cấp {userLevel.currentLevel}: {userLevel.title}</span>
             </div>
           )}
 
@@ -805,7 +844,16 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
                 onRefresh={() => {
                   loadDailyChallenge()
                   loadStreak()
+                  loadLevelData()
                 }}
+              />
+            )}
+
+            {/* HTT-08-CN-005: Level Progress and XP History Card */}
+            {!isTeacher && !isAdmin && (
+              <LevelProgressCard
+                levelData={userLevel}
+                recentXp={recentXp}
               />
             )}
 

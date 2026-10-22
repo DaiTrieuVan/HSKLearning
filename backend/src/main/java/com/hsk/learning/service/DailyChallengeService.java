@@ -32,6 +32,7 @@ public class DailyChallengeService {
 	private final AssignmentSubmissionRepository assignmentSubmissionRepository;
 	private final UserRepository userRepository;
 	private final StreakService streakService;
+	private final XpLevelService xpLevelService;
 
 	public DailyChallengeService(
 			DailyChallengeHistoryRepository dailyChallengeHistoryRepository,
@@ -39,7 +40,8 @@ public class DailyChallengeService {
 			VocabLearningRepository vocabLearningRepository,
 			AssignmentSubmissionRepository assignmentSubmissionRepository,
 			UserRepository userRepository,
-			StreakService streakService
+			StreakService streakService,
+			XpLevelService xpLevelService
 	) {
 		this.dailyChallengeHistoryRepository = dailyChallengeHistoryRepository;
 		this.lessonProgressRepository = lessonProgressRepository;
@@ -47,6 +49,7 @@ public class DailyChallengeService {
 		this.assignmentSubmissionRepository = assignmentSubmissionRepository;
 		this.userRepository = userRepository;
 		this.streakService = streakService;
+		this.xpLevelService = xpLevelService;
 	}
 
 	@Transactional
@@ -77,10 +80,15 @@ public class DailyChallengeService {
 
 		if (allMet) {
 			history.markCompleted();
-			// HTT-08-CN-003-TC-03 & TC-04: Idempotent - chỉ cộng 50 XP 1 lần duy nhất trong ngày
+			// HTT-08-CN-003-TC-03 & TC-04 & HTT-08-CN-005-TC-02: Idempotent - chỉ cộng 50 XP 1 lần duy nhất trong ngày
 			if (history.claimReward()) {
-				user.addXp(REWARD_XP);
-				userRepository.save(user);
+				xpLevelService.awardXp(
+						user,
+						REWARD_XP,
+						"DAILY_CHALLENGE",
+						"challenge:" + date,
+						"Hoàn thành Thử thách hằng ngày (" + date + ")"
+				);
 			}
 			// HTT-08-CN-004: Tự động ghi nhận chuỗi ngày học streak khi hoàn thành mục tiêu ngày
 			streakService.recordDailyGoalCompletion(user, date);

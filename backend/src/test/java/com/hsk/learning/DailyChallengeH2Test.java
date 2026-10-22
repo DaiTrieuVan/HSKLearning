@@ -123,6 +123,9 @@ class DailyChallengeH2Test {
 	private UserStreakRepository userStreakRepository;
 
 	@Autowired
+	private com.hsk.learning.repository.UserXpTransactionRepository userXpTransactionRepository;
+
+	@Autowired
 	private AssignmentSubmissionRepository assignmentSubmissionRepository;
 
 	@Autowired
@@ -226,6 +229,7 @@ class DailyChallengeH2Test {
 	}
 
 	private void cleanupData() {
+		userXpTransactionRepository.deleteAll();
 		userStreakRepository.deleteAll();
 		dailyChallengeHistoryRepository.deleteAll();
 		assignmentSubmissionRepository.deleteAll();

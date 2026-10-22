@@ -39,6 +39,7 @@ public class ClassJoinAttemptEntity {
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "student_id", nullable = false)
+	@org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
 	private UserEntity student;
 
 	@Column(name = "attempted_code", nullable = false, length = 20)

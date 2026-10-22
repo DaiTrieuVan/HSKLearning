@@ -36,6 +36,7 @@ public class RoadmapService {
 	private final GrammarPointRepository grammarPointRepository;
 	private final LessonProgressRepository lessonProgressRepository;
 	private final UserRepository userRepository;
+	private final XpLevelService xpLevelService;
 
 	public RoadmapService(
 			HskLevelRepository levelRepository,
@@ -43,13 +44,15 @@ public class RoadmapService {
 			LessonVocabularyRepository lessonVocabularyRepository,
 			GrammarPointRepository grammarPointRepository,
 			LessonProgressRepository lessonProgressRepository,
-			UserRepository userRepository) {
+			UserRepository userRepository,
+			XpLevelService xpLevelService) {
 		this.levelRepository = levelRepository;
 		this.lessonRepository = lessonRepository;
 		this.lessonVocabularyRepository = lessonVocabularyRepository;
 		this.grammarPointRepository = grammarPointRepository;
 		this.lessonProgressRepository = lessonProgressRepository;
 		this.userRepository = userRepository;
+		this.xpLevelService = xpLevelService;
 	}
 
 	@Transactional(readOnly = true)
@@ -190,6 +193,9 @@ public class RoadmapService {
 			LessonProgressEntity progress = new LessonProgressEntity(user, lesson);
 			LessonProgressEntity saved = lessonProgressRepository.saveAndFlush(progress);
 			completedAt = saved.getCompletedAt();
+
+			// HTT-08-CN-005-TC-01: Hoàn thành bài học thưởng +10 XP (Idempotent)
+			xpLevelService.awardXp(user, 10, "LESSON_COMPLETION", "lesson:" + lessonId, "Hoàn thành bài học: " + lesson.getTitle());
 		}
 
 		Long levelId = lesson.getHskLevel() != null ? lesson.getHskLevel().getId() : null;

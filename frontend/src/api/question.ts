@@ -396,4 +396,97 @@ export async function downloadQuestionCsvTemplate(token: string): Promise<Blob> 
   return response.blob()
 }
 
+export interface BulkDeleteResult {
+  requestedCount: number
+  deletedCount: number
+}
+
+export interface QuestionSearchParams {
+  keyword?: string
+  type?: 'MCQ' | 'FILL' | 'MATCH' | 'ORDER'
+  page?: number
+  size?: number
+  sortBy?: string
+  sortDir?: string
+}
+
+export interface QuestionPageResponse {
+  content: QuestionItem[]
+  totalElements: number
+  totalPages: number
+  size: number
+  number: number
+}
+
+export async function searchMyQuestions(
+  params: QuestionSearchParams,
+  token: string
+): Promise<QuestionPageResponse> {
+  const query = new URLSearchParams()
+  if (params.keyword && params.keyword.trim()) {
+    query.set('keyword', params.keyword.trim())
+  }
+  if (params.type) {
+    query.set('type', params.type)
+  }
+  if (typeof params.page === 'number') {
+    query.set('page', params.page.toString())
+  }
+  if (typeof params.size === 'number') {
+    query.set('size', params.size.toString())
+  }
+  if (params.sortBy) {
+    query.set('sortBy', params.sortBy)
+  }
+  if (params.sortDir) {
+    query.set('sortDir', params.sortDir)
+  }
+
+  const url = `${API_BASE}/search${query.toString() ? `?${query.toString()}` : ''}`
+  const response = await fetch(url, {
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  const data = await response.json().catch(() => null)
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'SEARCH_FAILED',
+      data?.message || 'Không thể tìm kiếm câu hỏi'
+    )
+  }
+
+  return data as QuestionPageResponse
+}
+
+export async function bulkDeleteQuestions(
+  questionIds: number[],
+  token: string
+): Promise<BulkDeleteResult> {
+  const response = await fetch(`${API_BASE}/bulk-delete`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ questionIds }),
+  })
+
+  const data = await response.json().catch(() => null)
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'BULK_DELETE_FAILED',
+      data?.message || 'Không thể xóa các câu hỏi đã chọn'
+    )
+  }
+
+  return data as BulkDeleteResult
+}
+
+
 

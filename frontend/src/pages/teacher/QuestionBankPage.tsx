@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -32,10 +32,15 @@ import {
   Upload,
   Download,
   FileUp,
+  Table as TableIcon,
+  LayoutGrid,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import {
-  getMyQuestions,
   createMultipleChoiceQuestion,
   createFillBlankQuestion,
   createMatchingQuestion,
@@ -47,6 +52,8 @@ import {
   importQuestions,
   downloadQuestionExcelTemplate,
   downloadQuestionCsvTemplate,
+  searchMyQuestions,
+  bulkDeleteQuestions,
   type QuestionItem,
   type CreateQuestionOptionPayload,
   type CreateQuestionPayload,
@@ -55,6 +62,7 @@ import {
   type BlankAnswerItem,
   type MatchingPairItem,
   type ImportQuestionsResult,
+  type QuestionPageResponse,
 } from '../../api/question'
 import { getMyVocabSets, type VocabSetItem } from '../../api/content'
 import { ApiError } from '../../api/auth'
@@ -78,14 +86,31 @@ export const QuestionBankPage: React.FC = () => {
   const { user } = useAuth()
   const navigate = useNavigate()
 
+  // Data & Pagination state
+  const [questionPage, setQuestionPage] = useState<QuestionPageResponse | null>(null)
   const [questions, setQuestions] = useState<QuestionItem[]>([])
   const [vocabSets, setVocabSets] = useState<VocabSetItem[]>([])
   const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+
+  // Filters, Pagination, Sorting & View state
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(20)
   const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedKeyword, setDebouncedKeyword] = useState('')
   const [selectedFilterType, setSelectedFilterType] = useState<QuestionFilterType>('ALL')
+  const [sortBy, setSortBy] = useState<'createdAt' | 'content' | 'id'>('createdAt')
+  const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc')
+  const [viewMode, setViewMode] = useState<'TABLE' | 'GRID'>('TABLE')
+
+  // Bulk Selection & Actions state
+  const [selectedQuestionIds, setSelectedQuestionIds] = useState<number[]>([])
+  const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false)
+
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Form Drawer / Inline state (No Modal!)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
@@ -299,43 +324,24 @@ export const QuestionBankPage: React.FC = () => {
     }
   }
 
-  useEffect(() => {
-    if (user) {
-      loadQuestions()
-      loadVocabSets()
-    }
-  }, [user])
-
-  // Automatically parse blanks when in FILL tab and question content changes
-  useEffect(() => {
-    if (activeTab === 'FILL') {
-      const regex = /_{3,}/g
-      const matches = questionContent.match(regex) || []
-      const blankCount = matches.length
-
-      setBlanks((prev) => {
-        const next: DraftBlank[] = []
-        for (let i = 0; i < blankCount; i++) {
-          const existing = prev[i]
-          next.push({
-            index: i,
-            correctAnswer: existing ? existing.correctAnswer : '',
-            acceptableAnswers: existing ? existing.acceptableAnswers : [],
-            newAcceptableInput: '',
-          })
-        }
-        return next
-      })
-    }
-  }, [questionContent, activeTab])
-
-  const loadQuestions = async () => {
+  const loadQuestions = useCallback(async () => {
     if (!user) return
     setLoading(true)
     setErrorMessage(null)
     try {
-      const data = await getMyQuestions(user.token)
-      setQuestions(data)
+      const data = await searchMyQuestions(
+        {
+          keyword: debouncedKeyword || undefined,
+          type: selectedFilterType === 'ALL' ? undefined : selectedFilterType,
+          page,
+          size: pageSize,
+          sortBy,
+          sortDir,
+        },
+        user.token
+      )
+      setQuestionPage(data)
+      setQuestions(data.content)
     } catch (err) {
       if (err instanceof ApiError) {
         setErrorMessage(err.message)
@@ -344,6 +350,103 @@ export const QuestionBankPage: React.FC = () => {
       }
     } finally {
       setLoading(false)
+    }
+  }, [user, debouncedKeyword, selectedFilterType, page, pageSize, sortBy, sortDir])
+
+  useEffect(() => {
+    if (user) {
+      loadQuestions()
+    }
+  }, [user, loadQuestions])
+
+  useEffect(() => {
+    if (user) {
+      loadVocabSets()
+    }
+  }, [user])
+
+  const handleSearchChange = (val: string) => {
+    setSearchTerm(val)
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+    searchTimeoutRef.current = setTimeout(() => {
+      setDebouncedKeyword(val)
+      setPage(0)
+    }, 300)
+  }
+
+  const handleClearSearch = () => {
+    setSearchTerm('')
+    setDebouncedKeyword('')
+    setPage(0)
+  }
+
+  const handleFilterTypeChange = (type: QuestionFilterType) => {
+    setSelectedFilterType(type)
+    setPage(0)
+  }
+
+  const handleSortChange = (newSortBy: 'createdAt' | 'content' | 'id', newSortDir: 'desc' | 'asc') => {
+    setSortBy(newSortBy)
+    setSortDir(newSortDir)
+    setPage(0)
+  }
+
+  const handlePageChange = (newPage: number) => {
+    if (!questionPage) return
+    const validPage = Math.max(0, Math.min(newPage, questionPage.totalPages - 1))
+    setPage(validPage)
+  }
+
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize)
+    setPage(0)
+  }
+
+  // --- Bulk Selection Handlers ---
+  const handleToggleSelectQuestion = (id: number) => {
+    setSelectedQuestionIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    )
+  }
+
+  const handleSelectAllCurrentPage = () => {
+    if (!questions || questions.length === 0) return
+    const currentPageIds = questions.map((q) => q.id)
+    const isAllSelected = currentPageIds.every((id) => selectedQuestionIds.includes(id))
+    if (isAllSelected) {
+      setSelectedQuestionIds((prev) => prev.filter((id) => !currentPageIds.includes(id)))
+    } else {
+      const next = Array.from(new Set([...selectedQuestionIds, ...currentPageIds]))
+      setSelectedQuestionIds(next)
+    }
+  }
+
+  const handleClearSelection = () => {
+    setSelectedQuestionIds([])
+    setShowBulkDeleteConfirm(false)
+  }
+
+  const handleBulkDeleteSubmit = async () => {
+    if (!user || selectedQuestionIds.length === 0) return
+    setBulkDeleting(true)
+    setErrorMessage(null)
+    setSuccessMessage(null)
+    try {
+      const res = await bulkDeleteQuestions(selectedQuestionIds, user.token)
+      setSuccessMessage(`Đã xóa thành công ${res.deletedCount} câu hỏi khỏi ngân hàng câu hỏi!`)
+      setSelectedQuestionIds([])
+      setShowBulkDeleteConfirm(false)
+      loadQuestions()
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setErrorMessage(err.message)
+      } else {
+        setErrorMessage('Đã xảy ra lỗi khi xóa các câu hỏi đã chọn.')
+      }
+    } finally {
+      setBulkDeleting(false)
     }
   }
 
@@ -838,11 +941,6 @@ export const QuestionBankPage: React.FC = () => {
     setImportResult(null)
   }
 
-  const filteredQuestions = questions.filter((q) => {
-    const matchSearch = q.content.toLowerCase().includes(searchTerm.toLowerCase())
-    if (selectedFilterType === 'ALL') return matchSearch
-    return matchSearch && q.type === selectedFilterType
-  })
 
   const optionLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
 
@@ -2521,85 +2619,205 @@ export const QuestionBankPage: React.FC = () => {
           </div>
         )}
 
-        {/* Search & Filter Bar */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="relative w-full md:w-96">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Tìm kiếm câu hỏi theo nội dung..."
-              className="w-full pl-10 pr-4 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
+        {/* ADVANCED CONTROL BAR: SEARCH, FILTERS, SORT & VIEW MODE */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-3.5">
+          {/* Top Row: Search input + Sort + View switcher */}
+          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+            <div className="relative flex-1 max-w-lg">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                placeholder="Tìm kiếm câu hỏi theo nội dung hoặc giải thích..."
+                className="w-full pl-10 pr-9 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-800"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={handleClearSearch}
+                  className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 transition"
+                  title="Xóa tìm kiếm"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center space-x-2.5 justify-end">
+              {/* Sort Dropdown */}
+              <select
+                value={`${sortBy},${sortDir}`}
+                onChange={(e) => {
+                  const [sb, sd] = e.target.value.split(',')
+                  handleSortChange(sb as 'createdAt' | 'content' | 'id', sd as 'desc' | 'asc')
+                }}
+                className="px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+              >
+                <option value="createdAt,desc">Mới nhất trước</option>
+                <option value="createdAt,asc">Cũ nhất trước</option>
+                <option value="content,asc">Theo nội dung A-Z</option>
+                <option value="id,desc">Mã ID giảm dần</option>
+              </select>
+
+              {/* View Mode Switcher */}
+              <div className="flex items-center bg-slate-100 p-1 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('TABLE')}
+                  className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                    viewMode === 'TABLE'
+                      ? 'bg-white text-indigo-700 shadow-xs'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                  title="Chế độ xem dạng bảng quản trị"
+                >
+                  <TableIcon className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Dạng bảng</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('GRID')}
+                  className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                    viewMode === 'GRID'
+                      ? 'bg-white text-indigo-700 shadow-xs'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                  title="Chế độ xem dạng thẻ chi tiết"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Dạng thẻ</span>
+                </button>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-center space-x-3 w-full md:w-auto justify-between md:justify-end">
-            {/* Filter by Type */}
-            <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-medium">
+          {/* Bottom Row: Filter Tabs & Total Count Badge */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-100">
+            <div className="flex flex-wrap items-center gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-100">
               <button
                 type="button"
-                onClick={() => setSelectedFilterType('ALL')}
-                className={`px-3 py-1 rounded-lg transition ${
+                onClick={() => handleFilterTypeChange('ALL')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                   selectedFilterType === 'ALL'
-                    ? 'bg-white text-slate-900 shadow-sm font-semibold'
-                    : 'text-slate-500 hover:text-slate-800'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Tất cả
               </button>
               <button
                 type="button"
-                onClick={() => setSelectedFilterType('MCQ')}
-                className={`px-3 py-1 rounded-lg transition ${
+                onClick={() => handleFilterTypeChange('MCQ')}
+                className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                   selectedFilterType === 'MCQ'
-                    ? 'bg-white text-indigo-700 shadow-sm font-semibold'
-                    : 'text-slate-500 hover:text-slate-800'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-blue-700 hover:bg-blue-50'
                 }`}
               >
-                Trắc nghiệm
+                <span>Trắc nghiệm</span>
+                <span className="text-[10px] opacity-80">(MCQ)</span>
               </button>
               <button
                 type="button"
-                onClick={() => setSelectedFilterType('FILL')}
-                className={`px-3 py-1 rounded-lg transition ${
+                onClick={() => handleFilterTypeChange('FILL')}
+                className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                   selectedFilterType === 'FILL'
-                    ? 'bg-white text-teal-700 shadow-sm font-semibold'
-                    : 'text-slate-500 hover:text-slate-800'
+                    ? 'bg-amber-600 text-white shadow-xs'
+                    : 'text-amber-800 hover:bg-amber-50'
                 }`}
               >
-                Điền từ
+                <span>Điền từ</span>
+                <span className="text-[10px] opacity-80">(FILL)</span>
               </button>
               <button
                 type="button"
-                onClick={() => setSelectedFilterType('MATCH')}
-                className={`px-3 py-1 rounded-lg transition ${
+                onClick={() => handleFilterTypeChange('MATCH')}
+                className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                   selectedFilterType === 'MATCH'
-                    ? 'bg-white text-purple-700 shadow-sm font-semibold'
-                    : 'text-slate-500 hover:text-slate-800'
+                    ? 'bg-purple-600 text-white shadow-xs'
+                    : 'text-purple-700 hover:bg-purple-50'
                 }`}
               >
-                Nối từ
+                <span>Nối từ</span>
+                <span className="text-[10px] opacity-80">(MATCH)</span>
               </button>
               <button
                 type="button"
-                onClick={() => setSelectedFilterType('ORDER')}
-                className={`px-3 py-1 rounded-lg transition ${
+                onClick={() => handleFilterTypeChange('ORDER')}
+                className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                   selectedFilterType === 'ORDER'
-                    ? 'bg-white text-amber-700 shadow-sm font-semibold'
-                    : 'text-slate-500 hover:text-slate-800'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-emerald-800 hover:bg-emerald-50'
                 }`}
               >
-                Sắp xếp
+                <span>Sắp xếp</span>
+                <span className="text-[10px] opacity-80">(ORDER)</span>
               </button>
             </div>
 
-            <span className="flex items-center space-x-1.5 font-medium text-xs text-slate-500">
-              <Layers className="w-4 h-4 text-indigo-500" />
-              <span>{filteredQuestions.length} câu hỏi</span>
+            <span className="flex items-center space-x-1.5 font-bold text-xs text-slate-600 bg-slate-100 px-3 py-1.5 rounded-xl self-start sm:self-auto">
+              <Layers className="w-4 h-4 text-indigo-600" />
+              <span>
+                {questionPage?.totalElements ? `${questionPage.totalElements.toLocaleString()} câu hỏi` : '0 câu hỏi'}
+              </span>
             </span>
           </div>
         </div>
+
+        {/* BULK ACTION BAR (NO MODAL) */}
+        {selectedQuestionIds.length > 0 && (
+          <div className="bg-slate-900 text-white px-5 py-3.5 rounded-2xl shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn">
+            <div className="flex items-center space-x-3">
+              <span className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-xs font-extrabold">
+                {selectedQuestionIds.length}
+              </span>
+              <span className="text-sm font-semibold">
+                Đã chọn {selectedQuestionIds.length} câu hỏi
+              </span>
+            </div>
+
+            <div className="flex items-center space-x-2.5">
+              {!showBulkDeleteConfirm ? (
+                <button
+                  type="button"
+                  onClick={() => setShowBulkDeleteConfirm(true)}
+                  className="flex items-center space-x-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs rounded-xl shadow-xs transition"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Xóa các câu đã chọn</span>
+                </button>
+              ) : (
+                <div className="flex items-center space-x-2 bg-rose-950/70 p-1.5 rounded-xl border border-rose-800">
+                  <span className="text-xs text-rose-200 px-2">Xác nhận xóa {selectedQuestionIds.length} câu?</span>
+                  <button
+                    type="button"
+                    onClick={handleBulkDeleteSubmit}
+                    disabled={bulkDeleting}
+                    className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg transition disabled:opacity-50"
+                  >
+                    {bulkDeleting ? 'Đang xóa...' : 'Đồng ý'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowBulkDeleteConfirm(false)}
+                    className="px-2 py-1 text-slate-300 hover:text-white text-xs"
+                  >
+                    Hủy
+                  </button>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={handleClearSelection}
+                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-medium text-xs rounded-xl transition"
+              >
+                Bỏ chọn
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Questions List */}
         {loading ? (
@@ -2607,7 +2825,7 @@ export const QuestionBankPage: React.FC = () => {
             <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
             <p className="text-sm font-medium">Đang tải ngân hàng câu hỏi...</p>
           </div>
-        ) : filteredQuestions.length === 0 ? (
+        ) : questions.length === 0 ? (
           <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center max-w-lg mx-auto shadow-sm">
             <div className="w-16 h-16 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-500 mx-auto mb-4">
               <FileQuestion className="w-8 h-8" />
@@ -2623,6 +2841,7 @@ export const QuestionBankPage: React.FC = () => {
             {!searchTerm && (
               <div className="flex items-center justify-center space-x-3">
                 <button
+                  type="button"
                   onClick={() => {
                     setIsQuickGenOpen(true)
                     setIsDrawerOpen(false)
@@ -2633,6 +2852,7 @@ export const QuestionBankPage: React.FC = () => {
                   <span>Tạo nhanh từ bộ từ</span>
                 </button>
                 <button
+                  type="button"
                   onClick={() => {
                     setIsDrawerOpen(true)
                     setIsQuickGenOpen(false)
@@ -2646,236 +2866,542 @@ export const QuestionBankPage: React.FC = () => {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {filteredQuestions.map((q) => {
-              const isFill = q.type === 'FILL'
-              const isMatch = q.type === 'MATCH'
-              const isOrder = q.type === 'ORDER'
-              const fillPayload = isFill ? parseFillPayload(q.payload) : null
-              const matchPayload = isMatch ? parseMatchPayload(q.payload) : null
-              const orderPayload = isOrder ? parseOrderPayload(q.payload) : null
+          <div className="space-y-4">
+            {viewMode === 'TABLE' ? (
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm text-slate-600">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500 font-semibold select-none">
+                      <tr>
+                        <th className="py-3.5 px-4 w-12 text-center">
+                          <input
+                            type="checkbox"
+                            checked={
+                              questions.length > 0 &&
+                              questions.every((q) => selectedQuestionIds.includes(q.id))
+                            }
+                            onChange={handleSelectAllCurrentPage}
+                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                            title="Chọn tất cả trên trang này"
+                          />
+                        </th>
+                        <th className="py-3.5 px-4 w-32">Loại câu</th>
+                        <th className="py-3.5 px-4 min-w-[280px]">Nội dung câu hỏi</th>
+                        <th className="py-3.5 px-4 min-w-[220px]">Đáp án tóm tắt</th>
+                        <th className="py-3.5 px-4 w-32">Ngày tạo</th>
+                        <th className="py-3.5 px-4 w-24 text-right">Thao tác</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {questions.map((q) => {
+                        const isSelected = selectedQuestionIds.includes(q.id)
+                        const isFill = q.type === 'FILL'
+                        const isMatch = q.type === 'MATCH'
+                        const isOrder = q.type === 'ORDER'
+                        const fillPayload = isFill ? parseFillPayload(q.payload) : null
+                        const matchPayload = isMatch ? parseMatchPayload(q.payload) : null
+                        const orderPayload = isOrder ? parseOrderPayload(q.payload) : null
 
-              return (
-                <div
-                  key={q.id}
-                  className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition flex flex-col justify-between space-y-4"
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-start justify-between">
-                      <span
-                        className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-xs font-semibold ${
-                          isFill
-                            ? 'bg-teal-50 text-teal-800 border border-teal-200'
-                            : isMatch
-                            ? 'bg-purple-50 text-purple-800 border border-purple-200'
-                            : isOrder
-                            ? 'bg-amber-50 text-amber-800 border border-amber-200'
-                            : 'bg-indigo-50 text-indigo-700 border border-indigo-100'
-                        }`}
-                      >
-                        <span>Câu #{q.id}</span>
-                        <span>•</span>
-                        <span>
-                          {isFill
-                            ? 'Điền từ (FILL)'
-                            : isMatch
-                            ? 'Nối từ (MATCH)'
-                            : isOrder
-                            ? 'Sắp xếp (ORDER)'
-                            : 'Trắc nghiệm (MCQ)'}
-                        </span>
-                      </span>
-                      <div className="flex items-center space-x-1">
-                        <span className="text-xs text-slate-400 flex items-center space-x-1 mr-1">
-                          <Calendar className="w-3.5 h-3.5" />
-                          <span>{new Date(q.createdAt).toLocaleDateString('vi-VN')}</span>
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEdit(q)}
-                          className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
-                          title="Sửa câu hỏi"
-                        >
-                          <Edit3 className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setDeletingQuestionId(deletingQuestionId === q.id ? null : q.id)}
-                          className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
-                          title="Xóa câu hỏi"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="text-base font-bold text-slate-900 leading-snug break-words">
-                      {q.content}
-                    </div>
-
-                    {/* Render according to type */}
-                    {isFill ? (
-                      /* Fill in blank display */
-                      <div className="space-y-2 pt-1">
-                        {fillPayload?.blanks && fillPayload.blanks.length > 0 ? (
-                          fillPayload.blanks.map((b, bIdx) => (
-                            <div
-                              key={bIdx}
-                              className="px-3 py-2 rounded-xl text-xs bg-slate-50 text-slate-800 border border-slate-200 flex flex-col space-y-1"
+                        return (
+                          <React.Fragment key={q.id}>
+                            <tr
+                              className={`transition hover:bg-slate-50/80 ${
+                                isSelected ? 'bg-indigo-50/40' : ''
+                              }`}
                             >
-                              <div className="flex items-center space-x-2">
-                                <span className="font-semibold text-slate-600">
-                                  Chỗ trống #{bIdx + 1}:
+                              <td className="py-3.5 px-4 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => handleToggleSelectQuestion(q.id)}
+                                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                                />
+                              </td>
+                              <td className="py-3.5 px-4 whitespace-nowrap">
+                                <span
+                                  className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ${
+                                    isFill
+                                      ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                                      : isMatch
+                                      ? 'bg-purple-50 text-purple-800 border border-purple-200'
+                                      : isOrder
+                                      ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                                      : 'bg-blue-50 text-blue-700 border border-blue-200'
+                                  }`}
+                                >
+                                  {isFill
+                                    ? 'Điền từ'
+                                    : isMatch
+                                    ? 'Nối từ'
+                                    : isOrder
+                                    ? 'Sắp xếp'
+                                    : 'Trắc nghiệm'}
                                 </span>
-                                <span className="font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
-                                  {b.correctAnswer}
-                                </span>
+                                <div className="text-[11px] text-slate-400 font-mono mt-0.5">#{q.id}</div>
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <div className="font-semibold text-slate-900 leading-snug line-clamp-2">
+                                  {q.content}
+                                </div>
+                                {q.explanation && (
+                                  <div className="text-xs text-slate-500 line-clamp-1 mt-1 italic">
+                                    <span className="font-medium text-amber-700">Giải thích:</span> {q.explanation}
+                                  </div>
+                                )}
+                              </td>
+                              <td className="py-3.5 px-4 text-xs">
+                                {isFill ? (
+                                  <div className="space-y-1">
+                                    {fillPayload?.blanks && fillPayload.blanks.length > 0 ? (
+                                      fillPayload.blanks.map((b, bIdx) => (
+                                        <div key={bIdx} className="flex items-center space-x-1.5">
+                                          <span className="text-slate-400">#{bIdx + 1}:</span>
+                                          <span className="font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                                            {b.correctAnswer}
+                                          </span>
+                                        </div>
+                                      ))
+                                    ) : (
+                                      <span className="text-slate-400 italic">Chưa có đáp án</span>
+                                    )}
+                                  </div>
+                                ) : isMatch ? (
+                                  <div className="space-y-1">
+                                    <span className="font-semibold text-purple-800">
+                                      {matchPayload?.pairs?.length || 0} cặp nối
+                                    </span>
+                                    {matchPayload?.pairs && matchPayload.pairs.length > 0 && (
+                                      <div className="text-slate-500 text-[11px] line-clamp-1">
+                                        {matchPayload.pairs.map((p) => `${p.left} ↔ ${p.right}`).join(', ')}
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : isOrder ? (
+                                  <div className="space-y-1">
+                                    <span className="font-semibold text-emerald-800">
+                                      {orderPayload?.correctOrder?.length || 0} từ/cụm từ
+                                    </span>
+                                    {orderPayload?.correctOrder && orderPayload.correctOrder.length > 0 && (
+                                      <div className="text-slate-600 text-[11px] line-clamp-1 font-medium">
+                                        {orderPayload.correctOrder.join(' / ')}
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="space-y-1">
+                                    {q.options?.find((opt) => opt.isCorrect) ? (
+                                      <div className="flex items-center space-x-1.5 text-emerald-700 font-semibold">
+                                        <Check className="w-3.5 h-3.5 flex-shrink-0" />
+                                        <span className="line-clamp-1">
+                                          {q.options.find((opt) => opt.isCorrect)?.content}
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <span className="text-slate-400 italic">Chưa chọn đáp án</span>
+                                    )}
+                                    <div className="text-slate-400 text-[11px]">
+                                      {q.options?.length || 0} phương án
+                                    </div>
+                                  </div>
+                                )}
+                              </td>
+                              <td className="py-3.5 px-4 text-xs text-slate-500 whitespace-nowrap">
+                                <div className="flex items-center space-x-1">
+                                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                                  <span>{new Date(q.createdAt).toLocaleDateString('vi-VN')}</span>
+                                </div>
+                              </td>
+                              <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                                <div className="flex items-center justify-end space-x-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenEdit(q)}
+                                    className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+                                    title="Sửa câu hỏi"
+                                  >
+                                    <Edit3 className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setDeletingQuestionId(deletingQuestionId === q.id ? null : q.id)}
+                                    className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                                    title="Xóa câu hỏi"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                            {/* Inline Delete Confirmation for Table (Zero modal) */}
+                            {deletingQuestionId === q.id && (
+                              <tr className="bg-rose-50/70">
+                                <td colSpan={6} className="px-6 py-3 border-y border-rose-200">
+                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                                    <div className="flex items-center space-x-2 text-rose-800">
+                                      <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                                      <span className="font-medium">
+                                        Xác nhận xóa câu hỏi #{q.id}? (Hệ thống sẽ ẩn bảo toàn nếu đã dùng trong bài tập - QTN-14)
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center space-x-2 self-end sm:self-auto">
+                                      <button
+                                        type="button"
+                                        onClick={() => setDeletingQuestionId(null)}
+                                        disabled={deleteSubmitting}
+                                        className="px-3 py-1 bg-white border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 transition font-medium"
+                                      >
+                                        Hủy
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteQuestion(q.id)}
+                                        disabled={deleteSubmitting}
+                                        className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition font-medium flex items-center space-x-1"
+                                      >
+                                        {deleteSubmitting ? (
+                                          <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                        ) : (
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        )}
+                                        <span>Xác nhận xóa</span>
+                                      </button>
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              /* GRID VIEW (Dạng thẻ chi tiết) */
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {questions.map((q) => {
+                  const isSelected = selectedQuestionIds.includes(q.id)
+                  const isFill = q.type === 'FILL'
+                  const isMatch = q.type === 'MATCH'
+                  const isOrder = q.type === 'ORDER'
+                  const fillPayload = isFill ? parseFillPayload(q.payload) : null
+                  const matchPayload = isMatch ? parseMatchPayload(q.payload) : null
+                  const orderPayload = isOrder ? parseOrderPayload(q.payload) : null
+
+                  return (
+                    <div
+                      key={q.id}
+                      className={`bg-white rounded-2xl border p-5 shadow-sm hover:shadow-md transition flex flex-col justify-between space-y-4 relative ${
+                        isSelected ? 'border-indigo-400 ring-2 ring-indigo-500/20' : 'border-slate-200'
+                      }`}
+                    >
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center space-x-2.5">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleToggleSelectQuestion(q.id)}
+                              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                              title="Chọn câu hỏi này"
+                            />
+                            <span
+                              className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-xs font-semibold ${
+                                isFill
+                                  ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                                  : isMatch
+                                  ? 'bg-purple-50 text-purple-800 border border-purple-200'
+                                  : isOrder
+                                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                                  : 'bg-blue-50 text-blue-700 border border-blue-200'
+                              }`}
+                            >
+                              <span>Câu #{q.id}</span>
+                              <span>•</span>
+                              <span>
+                                {isFill
+                                  ? 'Điền từ (FILL)'
+                                  : isMatch
+                                  ? 'Nối từ (MATCH)'
+                                  : isOrder
+                                  ? 'Sắp xếp (ORDER)'
+                                  : 'Trắc nghiệm (MCQ)'}
+                              </span>
+                            </span>
+                          </div>
+
+                          <div className="flex items-center space-x-1">
+                            <span className="text-xs text-slate-400 flex items-center space-x-1 mr-1">
+                              <Calendar className="w-3.5 h-3.5" />
+                              <span>{new Date(q.createdAt).toLocaleDateString('vi-VN')}</span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEdit(q)}
+                              className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+                              title="Sửa câu hỏi"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDeletingQuestionId(deletingQuestionId === q.id ? null : q.id)}
+                              className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                              title="Xóa câu hỏi"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="text-base font-bold text-slate-900 leading-snug break-words">
+                          {q.content}
+                        </div>
+
+                        {/* Render according to type */}
+                        {isFill ? (
+                          <div className="space-y-2 pt-1">
+                            {fillPayload?.blanks && fillPayload.blanks.length > 0 ? (
+                              fillPayload.blanks.map((b, bIdx) => (
+                                <div
+                                  key={bIdx}
+                                  className="px-3 py-2 rounded-xl text-xs bg-slate-50 text-slate-800 border border-slate-200 flex flex-col space-y-1"
+                                >
+                                  <div className="flex items-center space-x-2">
+                                    <span className="font-semibold text-slate-600">
+                                      Chỗ trống #{bIdx + 1}:
+                                    </span>
+                                    <span className="font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
+                                      {b.correctAnswer}
+                                    </span>
+                                  </div>
+                                  {b.acceptableAnswers && b.acceptableAnswers.length > 0 && (
+                                    <div className="text-slate-500 flex items-center space-x-1">
+                                      <span>Chấp nhận khác:</span>
+                                      <span className="text-slate-700 font-medium">
+                                        {b.acceptableAnswers.join(', ')}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              ))
+                            ) : (
+                              <div className="text-xs text-slate-400 italic">
+                                Chưa có dữ liệu đáp án chi tiết.
                               </div>
-                              {b.acceptableAnswers && b.acceptableAnswers.length > 0 && (
-                                <div className="text-slate-500 flex items-center space-x-1">
-                                  <span>Chấp nhận khác:</span>
-                                  <span className="text-slate-700 font-medium">
-                                    {b.acceptableAnswers.join(', ')}
-                                  </span>
+                            )}
+                          </div>
+                        ) : isMatch ? (
+                          <div className="space-y-2 pt-1">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {matchPayload?.pairs && matchPayload.pairs.length > 0 ? (
+                                matchPayload.pairs.map((p, pIdx) => (
+                                  <div
+                                    key={pIdx}
+                                    className="px-3 py-2 rounded-xl text-xs bg-purple-50/50 text-purple-900 border border-purple-200 flex items-center justify-between"
+                                  >
+                                    <span className="font-bold">{p.left}</span>
+                                    <Link2 className="w-3.5 h-3.5 text-purple-400 mx-1.5 flex-shrink-0" />
+                                    <span className="font-medium text-slate-700">{p.right}</span>
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="text-xs text-slate-400 italic">
+                                  Chưa có dữ liệu cặp nối từ chi tiết.
                                 </div>
                               )}
                             </div>
-                          ))
+                          </div>
+                        ) : isOrder ? (
+                          <div className="space-y-2 pt-1">
+                            <span className="text-xs font-semibold text-slate-500 block">
+                              Thứ tự các thành phần đúng:
+                            </span>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {orderPayload?.correctOrder && orderPayload.correctOrder.length > 0 ? (
+                                orderPayload.correctOrder.map((token, tIdx) => (
+                                  <span
+                                    key={tIdx}
+                                    className="px-2.5 py-1 text-xs font-bold bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-lg shadow-2xs"
+                                  >
+                                    <span className="text-emerald-500 mr-1 text-[10px] font-normal">
+                                      {tIdx + 1}.
+                                    </span>
+                                    {token}
+                                  </span>
+                                ))
+                              ) : (
+                                <div className="text-xs text-slate-400 italic">
+                                  Chưa có dữ liệu thứ tự câu chi tiết.
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         ) : (
-                          <div className="text-xs text-slate-400 italic">
-                            Chưa có dữ liệu đáp án chi tiết.
+                          <div className="space-y-2 pt-1">
+                            {q.options &&
+                              q.options.map((opt, oIdx) => (
+                                <div
+                                  key={opt.id}
+                                  className={`px-3 py-2 rounded-xl text-xs flex items-center space-x-2.5 ${
+                                    opt.isCorrect
+                                      ? 'bg-emerald-50 text-emerald-900 border border-emerald-200 font-medium'
+                                      : 'bg-slate-50 text-slate-700 border border-slate-100'
+                                  }`}
+                                >
+                                  <span
+                                    className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-xs ${
+                                      opt.isCorrect
+                                        ? 'bg-emerald-600 text-white'
+                                        : 'bg-slate-200 text-slate-600'
+                                    }`}
+                                  >
+                                    {optionLetters[oIdx] || oIdx + 1}
+                                  </span>
+                                  <span className="flex-1 break-words">{opt.content}</span>
+                                  {opt.isCorrect && (
+                                    <span className="flex items-center space-x-1 text-emerald-700 font-semibold text-xs">
+                                      <Check className="w-3.5 h-3.5" />
+                                      <span>Đáp án đúng</span>
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
+                          </div>
+                        )}
+
+                        {q.explanation && (
+                          <div className="p-3 bg-amber-50/70 border border-amber-100 rounded-xl text-xs text-amber-900">
+                            <span className="font-bold">Giải thích: </span>
+                            <span>{q.explanation}</span>
+                          </div>
+                        )}
+
+                        {/* Inline Delete Confirmation (No Modal!) */}
+                        {deletingQuestionId === q.id && (
+                          <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl space-y-2 text-xs">
+                            <div className="flex items-start space-x-2 text-rose-800">
+                              <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+                              <span className="leading-relaxed">
+                                Xác nhận xóa câu hỏi này khỏi ngân hàng? Nếu câu hỏi đã dùng trong bài tập, hệ thống sẽ ẩn để bảo toàn dữ liệu làm bài (QTN-14).
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-end space-x-2 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => setDeletingQuestionId(null)}
+                                disabled={deleteSubmitting}
+                                className="px-3 py-1 bg-white border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 transition font-medium"
+                              >
+                                Hủy
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteQuestion(q.id)}
+                                disabled={deleteSubmitting}
+                                className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition font-medium flex items-center space-x-1"
+                              >
+                                {deleteSubmitting ? (
+                                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                )}
+                                <span>Xác nhận xóa</span>
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>
-                    ) : isMatch ? (
-                      /* Matching pairs display */
-                      <div className="space-y-2 pt-1">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          {matchPayload?.pairs && matchPayload.pairs.length > 0 ? (
-                            matchPayload.pairs.map((p, pIdx) => (
-                              <div
-                                key={pIdx}
-                                className="px-3 py-2 rounded-xl text-xs bg-purple-50/50 text-purple-900 border border-purple-200 flex items-center justify-between"
-                              >
-                                <span className="font-bold">{p.left}</span>
-                                <Link2 className="w-3.5 h-3.5 text-purple-400 mx-1.5 flex-shrink-0" />
-                                <span className="font-medium text-slate-700">{p.right}</span>
-                              </div>
-                            ))
-                          ) : (
-                            <div className="text-xs text-slate-400 italic">
-                              Chưa có dữ liệu cặp nối từ chi tiết.
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ) : isOrder ? (
-                      /* Ordering sentence display */
-                      <div className="space-y-2 pt-1">
-                        <span className="text-xs font-semibold text-slate-500 block">
-                          Thứ tự các thành phần đúng:
-                        </span>
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          {orderPayload?.correctOrder && orderPayload.correctOrder.length > 0 ? (
-                            orderPayload.correctOrder.map((token, tIdx) => (
-                              <span
-                                key={tIdx}
-                                className="px-2.5 py-1 text-xs font-bold bg-amber-50 border border-amber-200 text-amber-900 rounded-lg shadow-2xs"
-                              >
-                                <span className="text-amber-500 mr-1 text-[10px] font-normal">
-                                  {tIdx + 1}.
-                                </span>
-                                {token}
-                              </span>
-                            ))
-                          ) : (
-                            <div className="text-xs text-slate-400 italic">
-                              Chưa có dữ liệu thứ tự câu chi tiết.
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ) : (
-                      /* MCQ options list */
-                      <div className="space-y-2 pt-1">
-                        {q.options &&
-                          q.options.map((opt, oIdx) => (
-                            <div
-                              key={opt.id}
-                              className={`px-3 py-2 rounded-xl text-xs flex items-center space-x-2.5 ${
-                                opt.isCorrect
-                                  ? 'bg-emerald-50 text-emerald-900 border border-emerald-200 font-medium'
-                                  : 'bg-slate-50 text-slate-700 border border-slate-100'
-                              }`}
-                            >
-                              <span
-                                className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-xs ${
-                                  opt.isCorrect
-                                    ? 'bg-emerald-600 text-white'
-                                    : 'bg-slate-200 text-slate-600'
-                                }`}
-                              >
-                                {optionLetters[oIdx] || oIdx + 1}
-                              </span>
-                              <span className="flex-1 break-words">{opt.content}</span>
-                              {opt.isCorrect && (
-                                <span className="flex items-center space-x-1 text-emerald-700 font-semibold text-xs">
-                                  <Check className="w-3.5 h-3.5" />
-                                  <span>Đáp án đúng</span>
-                                </span>
-                              )}
-                            </div>
-                          ))}
-                      </div>
-                    )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
 
-                    {q.explanation && (
-                      <div className="p-3 bg-amber-50/70 border border-amber-100 rounded-xl text-xs text-amber-900">
-                        <span className="font-bold">Giải thích: </span>
-                        <span>{q.explanation}</span>
-                      </div>
-                    )}
-
-                    {/* Inline Delete Confirmation (No Modal!) */}
-                    {deletingQuestionId === q.id && (
-                      <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl space-y-2 text-xs">
-                        <div className="flex items-start space-x-2 text-rose-800">
-                          <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
-                          <span className="leading-relaxed">
-                            Xác nhận xóa câu hỏi này khỏi ngân hàng? Nếu câu hỏi đã dùng trong bài tập, hệ thống sẽ ẩn để bảo toàn dữ liệu làm bài (QTN-14).
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-end space-x-2 pt-1">
-                          <button
-                            type="button"
-                            onClick={() => setDeletingQuestionId(null)}
-                            disabled={deleteSubmitting}
-                            className="px-3 py-1 bg-white border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 transition font-medium"
-                          >
-                            Hủy
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteQuestion(q.id)}
-                            disabled={deleteSubmitting}
-                            className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition font-medium flex items-center space-x-1"
-                          >
-                            {deleteSubmitting ? (
-                              <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                            ) : (
-                              <Trash2 className="w-3.5 h-3.5" />
-                            )}
-                            <span>Xác nhận xóa</span>
-                          </button>
-                        </div>
-                      </div>
-                    )}
+            {/* PAGINATION CONTROLS FOOTER */}
+            {questionPage && questionPage.totalElements > 0 && (
+              <div className="bg-white rounded-2xl border border-slate-200 px-5 py-3.5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center space-x-3 text-xs text-slate-600 font-medium">
+                  <span>
+                    Hiển thị{' '}
+                    <strong className="text-slate-900">
+                      {page * pageSize + 1}
+                    </strong>{' '}
+                    -{' '}
+                    <strong className="text-slate-900">
+                      {Math.min((page + 1) * pageSize, questionPage.totalElements)}
+                    </strong>{' '}
+                    trong tổng số{' '}
+                    <strong className="text-indigo-600">
+                      {questionPage.totalElements.toLocaleString()}
+                    </strong>{' '}
+                    câu hỏi
+                  </span>
+                  <span>•</span>
+                  <div className="flex items-center space-x-1.5">
+                    <span>Số lượng:</span>
+                    <select
+                      value={pageSize}
+                      onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                      className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value={10}>10 / trang</option>
+                      <option value={20}>20 / trang</option>
+                      <option value={50}>50 / trang</option>
+                      <option value={100}>100 / trang</option>
+                    </select>
                   </div>
                 </div>
-              )
-            })}
+
+                <div className="flex items-center space-x-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handlePageChange(0)}
+                    disabled={page === 0}
+                    className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                    title="Trang đầu"
+                  >
+                    <ChevronsLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handlePageChange(page - 1)}
+                    disabled={page === 0}
+                    className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                    title="Trang trước"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+
+                  <span className="px-3 py-1 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-700 font-bold text-xs">
+                    Trang {page + 1} / {questionPage.totalPages || 1}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => handlePageChange(page + 1)}
+                    disabled={page >= questionPage.totalPages - 1}
+                    className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                    title="Trang sau"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handlePageChange(questionPage.totalPages - 1)}
+                    disabled={page >= questionPage.totalPages - 1}
+                    className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                    title="Trang cuối"
+                  >
+                    <ChevronsRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
+      
       </main>
     </div>
   )

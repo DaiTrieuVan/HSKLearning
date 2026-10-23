@@ -4,6 +4,8 @@ import com.hsk.account.domain.UserEntity;
 import com.hsk.account.repository.UserRepository;
 import com.hsk.common.api.ApiErrorCode;
 import com.hsk.common.api.ApiException;
+import com.hsk.content.dto.BatchAddVocabSetItemsRequest;
+import com.hsk.content.dto.BatchAddVocabSetItemsResponse;
 import com.hsk.content.dto.CreateGrammarPointRequest;
 import com.hsk.content.dto.CreateLessonRequest;
 import com.hsk.content.dto.CreateVocabSetRequest;
@@ -321,6 +323,16 @@ public class ContentController {
 			Principal principal) {
 		UserEntity user = requireUser(principal);
 		contentService.addVocabularyToVocabSet(vocabSetId, vocabularyId, user.getId());
+	}
+
+	@PostMapping("/vocab-sets/{vocabSetId}/vocabularies/batch")
+	@ResponseStatus(HttpStatus.CREATED)
+	public BatchAddVocabSetItemsResponse addVocabulariesBatchToVocabSet(
+			@PathVariable Long vocabSetId,
+			@Valid @RequestBody BatchAddVocabSetItemsRequest request,
+			Principal principal) {
+		UserEntity user = requireUser(principal);
+		return contentService.addVocabulariesBatchToVocabSet(vocabSetId, request.vocabularyIds(), user.getId());
 	}
 
 	@DeleteMapping("/vocab-sets/{vocabSetId}/vocabularies/{vocabularyId}")

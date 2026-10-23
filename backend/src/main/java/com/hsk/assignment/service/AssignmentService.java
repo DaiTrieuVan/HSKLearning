@@ -567,6 +567,67 @@ public class AssignmentService {
 	}
 
 	/**
+	 * HTT-06-CN-010 / TC-01→TC-06: Kéo dài hạn nộp của cả lần giao bài.
+	 * QTY-01: Chỉ giáo viên phụ trách lớp (hoặc admin) mới được thực hiện.
+	 * QTN-21: Hạn mới bắt buộc phải sau hạn hiện tại (chỉ kéo dài, không rút ngắn hay giữ nguyên).
+	 * TC-03: Các lượt IN_PROGRESS tự hưởng hạn mới vì hạn lượt được tính runtime từ assignment.dueTime.
+	 * TC-04: Lượt SUBMITTED/AUTO_SUBMITTED không bị mở lại (trạng thái đã completed, không touch).
+	 * TC-06: Ghi Audit Log với hạn cũ, hạn mới, giáo viên và thời điểm thực hiện.
+	 */
+	@Transactional
+	public AssignmentResponse extendAssignmentDueDate(Long teacherId, Long assignmentId, Instant newDueTime) {
+		assertTeacherOrAdmin(teacherId);
+
+		AssignmentEntity assignment = assignmentRepository.findById(assignmentId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.ASSIGNMENT_NOT_FOUND));
+
+		ClassEntity classroom = assignment.getClassroom();
+		boolean isAdmin = userRoleRepository.existsByUser_IdAndRole_Code(teacherId, RoleCode.ADMIN);
+		boolean isClassTeacher = classroom.getTeacher().getId().equals(teacherId);
+
+		// TC-05: QTN-01 — Chỉ giáo viên phụ trách lớp (hoặc admin) mới được kéo dài hạn
+		if (!isClassTeacher && !isAdmin) {
+			throw new ApiException(ApiErrorCode.FORBIDDEN,
+					"Bạn chỉ có thể kéo dài hạn nộp của lần giao bài thuộc lớp do mình phụ trách");
+		}
+
+		// TC-04: Lần giao đã hủy không thể kéo dài hạn
+		if (assignment.getStatus() == AssignmentStatus.CANCELLED) {
+			throw new ApiException(ApiErrorCode.ASSIGNMENT_ALREADY_CANCELLED);
+		}
+
+		Instant oldDueTime = assignment.getDueTime();
+
+		// TC-02: QTN-21 — Hạn mới phải sau hạn hiện tại (chỉ kéo dài, không rút ngắn)
+		if (!newDueTime.isAfter(oldDueTime)) {
+			throw new ApiException(ApiErrorCode.ASSIGNMENT_DUE_TIME_CANNOT_SHORTEN);
+		}
+
+		// Cập nhật hạn nộp trên lần giao bài.
+		// TC-03: Lượt IN_PROGRESS tự hưởng hạn mới vì hạn lượt được tính runtime từ assignment.dueTime.
+		// TC-04: Lượt SUBMITTED/AUTO_SUBMITTED không bị ảnh hưởng (trạng thái completed, không mở lại).
+		assignment.setDueTime(newDueTime);
+		AssignmentEntity saved = assignmentRepository.save(assignment);
+
+		// TC-06: Ghi Audit Log với hạn cũ, hạn mới, giáo viên và thời điểm
+		UserEntity teacher = userRepository.findById(teacherId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.UNAUTHORIZED));
+
+		auditLogService.record(
+				teacher,
+				"EXTEND_ASSIGNMENT_DUE_DATE",
+				"ASSIGNMENT",
+				saved.getId().toString(),
+				"Giáo viên " + teacher.getEmail()
+						+ " kéo dài hạn nộp bài '" + saved.getTitle()
+						+ "' (lớp: " + classroom.getTitle() + ")"
+						+ " từ [" + oldDueTime + "] → [" + newDueTime + "]"
+		);
+
+		return mapToResponse(saved);
+	}
+
+	/**
 	 * HTT-06-CN-009 / TC-01 -> TC-06: Hủy một lần giao bài (chuyển sang CANCELLED).
 	 * QTN-01: Chỉ giáo viên phụ trách lớp (hoặc admin) mới được hủy bài.
 	 * QTN-21: Chỉ được hủy khi chưa có bất kỳ học sinh nào làm bài hoặc nộp bài.

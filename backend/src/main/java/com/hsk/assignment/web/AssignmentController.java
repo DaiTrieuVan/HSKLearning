@@ -20,11 +20,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.hsk.assignment.dto.ExtendAssignmentDueDateRequest;
 
 /**
  * Controller xử lý các yêu cầu Giao bài tập cho lớp (HTT-06-CN-001)
@@ -153,6 +155,24 @@ public class AssignmentController {
 	) {
 		UserEntity user = requireUser(principal);
 		AssignmentResponse response = assignmentService.cancelAssignment(user.getId(), id);
+		return ResponseEntity.ok(response);
+	}
+
+	@PatchMapping("/{id}/due-date")
+	@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
+	@Operation(
+			summary = "HTT-06-CN-010 — Kéo dài hạn nộp lần giao bài",
+			description = "Giáo viên phụ trách lớp kéo dài hạn nộp của cả lần giao bài (QTN-21). "
+					+ "Hạn mới phải sau hạn hiện tại. Lượt đã nộp không bị mở lại (TC-04)."
+	)
+	public ResponseEntity<AssignmentResponse> extendAssignmentDueDate(
+			@PathVariable("id") Long id,
+			@Valid @RequestBody ExtendAssignmentDueDateRequest request,
+			Principal principal
+	) {
+		UserEntity user = requireUser(principal);
+		AssignmentResponse response = assignmentService.extendAssignmentDueDate(
+				user.getId(), id, request.newDueTime());
 		return ResponseEntity.ok(response);
 	}
 }

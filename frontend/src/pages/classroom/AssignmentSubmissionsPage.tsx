@@ -30,8 +30,10 @@ import {
   adjustSubmissionScore,
   grantStudentExtension,
   grantStudentRetake,
+  extendAssignmentDueDate,
   type AssignmentSubmissionsOverviewData,
   type StudentSubmissionSummary,
+  type AssignmentItem,
 } from '../../api/assignment'
 import { ApiError } from '../../api/auth'
 
@@ -76,6 +78,13 @@ export const AssignmentSubmissionsPage: React.FC = () => {
   const [retakeReason, setRetakeReason] = useState<string>('')
   const [retakeSubmitting, setRetakeSubmitting] = useState<boolean>(false)
   const [retakeError, setRetakeError] = useState<string | null>(null)
+
+  // HTT-06-CN-010: Kéo dài hạn nộp cả lần giao (inline expand — không dùng modal)
+  const [extendAllOpen, setExtendAllOpen] = useState<boolean>(false)
+  const [extendAllDueTime, setExtendAllDueTime] = useState<string>('')
+  const [extendAllSubmitting, setExtendAllSubmitting] = useState<boolean>(false)
+  const [extendAllError, setExtendAllError] = useState<string | null>(null)
+  const [extendAllSuccess, setExtendAllSuccess] = useState<string | null>(null)
 
   // Load Overview Data
   const loadOverview = async () => {
@@ -346,6 +355,44 @@ export const AssignmentSubmissionsPage: React.FC = () => {
     }
   }
 
+  // HTT-06-CN-010: Xử lý kéo dài hạn nộp cả lần giao bài
+  const handleExtendAllDueDate = async () => {
+    if (!assignmentId || !user?.token) return
+    if (!extendAllDueTime) {
+      setExtendAllError('Vui lòng chọn hạn nộp mới')
+      return
+    }
+    const newDueTimeIso = new Date(extendAllDueTime).toISOString()
+    // Validation client-side: hạn mới phải sau hạn hiện tại
+    if (data?.dueTime && new Date(newDueTimeIso) <= new Date(data.dueTime)) {
+      setExtendAllError('Hạn nộp mới phải sau hạn nộp hiện tại. Vui lòng chọn thời gian muộn hơn.')
+      return
+    }
+
+    try {
+      setExtendAllSubmitting(true)
+      setExtendAllError(null)
+      setExtendAllSuccess(null)
+      const updated: AssignmentItem = await extendAssignmentDueDate(
+        Number(assignmentId),
+        { newDueTime: newDueTimeIso },
+        user.token
+      )
+      // Cập nhật dueTime hiển thị trên trang mà không cần reload
+      setData((prev) => prev ? { ...prev, dueTime: updated.dueTime } : prev)
+      setExtendAllSuccess(
+        `Đã kéo dài hạn nộp thành công đến ${new Date(updated.dueTime).toLocaleString('vi-VN')}. Tất cả học sinh đang làm bài sẽ thấy hạn mới ngay lập tức.`
+      )
+      setExtendAllOpen(false)
+      setExtendAllDueTime('')
+    } catch (err) {
+      setExtendAllError(err instanceof ApiError ? err.message : 'Không thể kéo dài hạn nộp.')
+    } finally {
+      setExtendAllSubmitting(false)
+    }
+  }
+
+
   if (loading && !data) {
     return (
       <div style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 24px', textAlign: 'center' }}>
@@ -444,7 +491,41 @@ export const AssignmentSubmissionsPage: React.FC = () => {
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '10px' }}>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            {/* HTT-06-CN-010: Nút kéo dài hạn nộp cả lần giao */}
+            {data?.status !== 'CANCELLED' && (
+              <button
+                type="button"
+                id="btn-extend-all-due-date"
+                onClick={() => {
+                  setExtendAllOpen((prev) => !prev)
+                  setExtendAllError(null)
+                  setExtendAllSuccess(null)
+                  if (!extendAllOpen && data?.dueTime) {
+                    const dt = new Date(data.dueTime)
+                    dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset())
+                    setExtendAllDueTime(dt.toISOString().slice(0, 16))
+                  }
+                }}
+                className="btn btn-secondary"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '8px 16px',
+                  fontSize: '0.85rem',
+                  fontWeight: 700,
+                  color: '#7c3aed',
+                  borderColor: '#ede9fe',
+                  backgroundColor: '#f5f3ff',
+                  cursor: 'pointer',
+                }}
+              >
+                <CalendarPlus size={15} />
+                <span>Kéo dài hạn nộp</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => setUnsubmittedDrawerOpen(true)}
@@ -486,6 +567,147 @@ export const AssignmentSubmissionsPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* HTT-06-CN-010: Inline expand panel kéo dài hạn nộp cả lần giao (không dùng modal) */}
+      {extendAllOpen && (
+        <div
+          id="panel-extend-all-due-date"
+          style={{
+            marginBottom: '20px',
+            padding: '20px 24px',
+            borderRadius: 'var(--radius-lg)',
+            border: '2px solid #ede9fe',
+            backgroundColor: '#faf5ff',
+            animation: 'fadeIn 0.2s ease',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+            <CalendarPlus size={20} color="#7c3aed" />
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#5b21b6' }}>
+              Kéo dài hạn nộp cho cả lần giao bài
+            </h3>
+          </div>
+          <p style={{ margin: '0 0 16px', fontSize: '0.84rem', color: '#6d28d9', lineHeight: 1.5 }}>
+            Hạn nộp hiện tại: <strong>{data?.dueTime ? new Date(data.dueTime).toLocaleString('vi-VN') : '—'}</strong>.
+            Hạn mới sẽ áp dụng ngay cho toàn bộ học sinh đang làm bài. Lượt đã nộp không bị mở lại.
+          </p>
+
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: '12px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label
+                htmlFor="extend-all-due-time-input"
+                style={{ fontSize: '0.8rem', fontWeight: 700, color: '#5b21b6' }}
+              >
+                Hạn nộp mới <span style={{ color: '#dc2626' }}>*</span>
+              </label>
+              <input
+                id="extend-all-due-time-input"
+                type="datetime-local"
+                value={extendAllDueTime}
+                onChange={(e) => {
+                  setExtendAllDueTime(e.target.value)
+                  setExtendAllError(null)
+                }}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: 'var(--radius)',
+                  border: `1.5px solid ${extendAllError ? '#ef4444' : '#c4b5fd'}`,
+                  fontSize: '0.9rem',
+                  backgroundColor: '#fff',
+                  color: 'var(--text-main)',
+                  outline: 'none',
+                  minWidth: '220px',
+                }}
+              />
+            </div>
+
+            <button
+              id="btn-confirm-extend-all"
+              type="button"
+              onClick={handleExtendAllDueDate}
+              disabled={extendAllSubmitting || !extendAllDueTime}
+              className="btn btn-primary"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 20px',
+                fontSize: '0.88rem',
+                fontWeight: 700,
+                backgroundColor: '#7c3aed',
+                borderColor: '#7c3aed',
+                opacity: extendAllSubmitting ? 0.7 : 1,
+              }}
+            >
+              {extendAllSubmitting ? <RefreshCw size={14} className="animate-spin" /> : <Check size={14} />}
+              <span>{extendAllSubmitting ? 'Đang lưu...' : 'Xác nhận kéo dài hạn'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => { setExtendAllOpen(false); setExtendAllError(null) }}
+              className="btn btn-secondary"
+              style={{ padding: '8px 16px', fontSize: '0.88rem', fontWeight: 700 }}
+            >
+              <X size={14} />
+            </button>
+          </div>
+
+          {extendAllError && (
+            <div
+              style={{
+                marginTop: '12px',
+                padding: '10px 14px',
+                borderRadius: 'var(--radius)',
+                backgroundColor: '#fef2f2',
+                border: '1px solid #fecaca',
+                color: '#dc2626',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}
+            >
+              <AlertCircle size={15} />
+              {extendAllError}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Thông báo thành công kéo dài hạn */}
+      {extendAllSuccess && (
+        <div
+          style={{
+            marginBottom: '20px',
+            padding: '14px 18px',
+            borderRadius: 'var(--radius-lg)',
+            backgroundColor: '#f0fdf4',
+            border: '1.5px solid #bbf7d0',
+            color: '#15803d',
+            fontSize: '0.88rem',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <CheckCircle2 size={18} />
+            {extendAllSuccess}
+          </div>
+          <button
+            type="button"
+            onClick={() => setExtendAllSuccess(null)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#15803d', lineHeight: 1 }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
 
       {/* MAIN VIEW SWITCHER: Submissions vs Statistics (HTT-07-CN-005) */}
       <div

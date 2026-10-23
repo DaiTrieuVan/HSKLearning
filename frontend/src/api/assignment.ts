@@ -611,5 +611,38 @@ export async function grantStudentRetake(
 
   return data as StudentOverrideData
 }
+// ---------------------------------------------------------------------------
+// HTT-06-CN-010: Kéo dài hạn nộp lần giao bài (cả lớp)
+// ---------------------------------------------------------------------------
 
+export interface ExtendAssignmentDueDatePayload {
+  newDueTime: string  // ISO-8601 Instant — phải sau dueTime hiện tại (QTN-21)
+}
 
+export async function extendAssignmentDueDate(
+  assignmentId: number,
+  payload: ExtendAssignmentDueDatePayload,
+  token: string
+): Promise<AssignmentItem> {
+  const response = await fetch(`${API_BASE}/${assignmentId}/due-date`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  const data = await response.json().catch(() => null)
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'UNKNOWN_ERROR',
+      data?.message || 'Không thể kéo dài hạn nộp lần giao bài',
+      data?.fields
+    )
+  }
+
+  return data as AssignmentItem
+}

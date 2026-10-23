@@ -230,6 +230,9 @@ public enum ApiErrorCode {
 	/** HTT-06-CN-009 / TC-06: Assignment is already cancelled. */
 	ASSIGNMENT_ALREADY_CANCELLED(HttpStatus.BAD_REQUEST, "Lần giao bài này đã bị hủy trước đó"),
 
+	/** HTT-06-CN-010 / TC-02 & QTN-21: New due time must be strictly after current due time (only extend, not shorten). */
+	ASSIGNMENT_DUE_TIME_CANNOT_SHORTEN(HttpStatus.BAD_REQUEST, "Hạn nộp mới phải sau hạn nộp hiện tại, không thể rút ngắn hoặc giữ nguyên"),
+
 	/** HTT-06-CN-007 / TC-03: Adjusted score must be between 0 and total points. */
 	INVALID_ADJUSTED_SCORE(HttpStatus.BAD_REQUEST, "Điểm điều chỉnh không hợp lệ"),
 

@@ -25,6 +25,7 @@ import { ClassStudentProgressPage } from './pages/classroom/ClassStudentProgress
 import { SrsReviewPage } from './pages/learning/SrsReviewPage'
 import { PrivateVocabManagementPage } from './pages/teacher/PrivateVocabManagementPage'
 import { AddWordsToVocabSetPage } from './pages/teacher/AddWordsToVocabSetPage'
+import { MockExamManagementPage } from './pages/teacher/MockExamManagementPage'
 import { AppLayout } from './layouts/AppLayout'
 
 function AppRoutes() {
@@ -50,6 +51,7 @@ function AppRoutes() {
         <Route path="/private-vocab" element={<PrivateVocabManagementPage />} />
         <Route path="/questions" element={<QuestionBankPage />} />
         <Route path="/exercises" element={<ExerciseManagementPage />} />
+        <Route path="/mock-exams" element={<MockExamManagementPage />} />
         <Route path="/classes/create" element={<CreateClassPage />} />
         <Route path="/classes/join" element={<JoinClassPage />} />
         <Route path="/classes/:classId" element={<ClassDetailPage />} />

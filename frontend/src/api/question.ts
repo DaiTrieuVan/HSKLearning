@@ -340,3 +340,60 @@ export async function deleteQuestion(id: number, token: string): Promise<void> {
   }
 }
 
+export interface ImportQuestionsResult {
+  totalRows: number
+  successCount: number
+  skippedCount: number
+  errors: string[]
+  importedQuestions: QuestionItem[]
+}
+
+export async function importQuestions(file: File, token: string): Promise<ImportQuestionsResult> {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const response = await fetch(`${API_BASE}/import`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  })
+
+  const data = await response.json().catch(() => null)
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'IMPORT_FAILED',
+      data?.message || 'Không thể nhập câu hỏi từ file'
+    )
+  }
+
+  return data as ImportQuestionsResult
+}
+
+export async function downloadQuestionExcelTemplate(token: string): Promise<Blob> {
+  const response = await fetch(`${API_BASE}/template/excel`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+  if (!response.ok) {
+    throw new ApiError(response.status, 'DOWNLOAD_FAILED', 'Không thể tải file mẫu Excel')
+  }
+  return response.blob()
+}
+
+export async function downloadQuestionCsvTemplate(token: string): Promise<Blob> {
+  const response = await fetch(`${API_BASE}/template/csv`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+  if (!response.ok) {
+    throw new ApiError(response.status, 'DOWNLOAD_FAILED', 'Không thể tải file mẫu CSV')
+  }
+  return response.blob()
+}
+
+

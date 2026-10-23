@@ -28,6 +28,10 @@ import {
   Save,
   AlertTriangle,
   FileCheck,
+  FileSpreadsheet,
+  Upload,
+  Download,
+  FileUp,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import {
@@ -40,6 +44,9 @@ import {
   batchCreateQuestions,
   updateQuestion,
   deleteQuestion,
+  importQuestions,
+  downloadQuestionExcelTemplate,
+  downloadQuestionCsvTemplate,
   type QuestionItem,
   type CreateQuestionOptionPayload,
   type CreateQuestionPayload,
@@ -47,6 +54,7 @@ import {
   type QuestionFormat,
   type BlankAnswerItem,
   type MatchingPairItem,
+  type ImportQuestionsResult,
 } from '../../api/question'
 import { getMyVocabSets, type VocabSetItem } from '../../api/content'
 import { ApiError } from '../../api/auth'
@@ -116,6 +124,13 @@ export const QuestionBankPage: React.FC = () => {
   const [generating, setGenerating] = useState(false)
   const [batchSaving, setBatchSaving] = useState(false)
   const [generatedDrafts, setGeneratedDrafts] = useState<CreateQuestionPayload[]>([])
+
+  // --- Bulk Import from Excel / CSV Panel state ---
+  const [isImportOpen, setIsImportOpen] = useState(false)
+  const [importFile, setImportFile] = useState<File | null>(null)
+  const [importing, setImporting] = useState(false)
+  const [downloadingTemplate, setDownloadingTemplate] = useState<'excel' | 'csv' | null>(null)
+  const [importResult, setImportResult] = useState<ImportQuestionsResult | null>(null)
 
   // --- Edit Question Drawer state (HTT-05-CN-005 / QTN-10, QTN-19) ---
   const [editingQuestion, setEditingQuestion] = useState<QuestionItem | null>(null)
@@ -747,6 +762,82 @@ export const QuestionBankPage: React.FC = () => {
     }
   }
 
+  // --- Bulk Import Handlers ---
+  const handleDownloadTemplate = async (format: 'excel' | 'csv') => {
+    if (!user) return
+    setDownloadingTemplate(format)
+    setErrorMessage(null)
+    try {
+      const blob =
+        format === 'excel'
+          ? await downloadQuestionExcelTemplate(user.token)
+          : await downloadQuestionCsvTemplate(user.token)
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = format === 'excel' ? 'Mau_Cau_Hoi_HSK.xlsx' : 'Mau_Cau_Hoi_HSK.csv'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setErrorMessage(err.message)
+      } else {
+        setErrorMessage('Không thể tải file mẫu. Vui lòng thử lại.')
+      }
+    } finally {
+      setDownloadingTemplate(null)
+    }
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const nameLower = file.name.toLowerCase()
+    if (!nameLower.endsWith('.xlsx') && !nameLower.endsWith('.csv')) {
+      setErrorMessage('Hệ thống chỉ hỗ trợ file định dạng Excel (.xlsx) hoặc CSV (.csv).')
+      setImportFile(null)
+      return
+    }
+    setImportFile(file)
+    setImportResult(null)
+    setErrorMessage(null)
+  }
+
+  const handleImportSubmit = async () => {
+    if (!user || !importFile) return
+    setImporting(true)
+    setErrorMessage(null)
+    setSuccessMessage(null)
+    try {
+      const res = await importQuestions(importFile, user.token)
+      setImportResult(res)
+      if (res.successCount > 0) {
+        setSuccessMessage(`Đã nhập thành công ${res.successCount} câu hỏi vào ngân hàng câu hỏi!`)
+        await loadQuestions()
+      }
+      if (res.errors && res.errors.length > 0) {
+        setErrorMessage(
+          `Có ${res.errors.length} dòng không thể nhập do dữ liệu không hợp lệ. Vui lòng xem bảng chi tiết bên dưới.`
+        )
+      }
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setErrorMessage(err.message)
+      } else {
+        setErrorMessage('Đã xảy ra lỗi khi nhập câu hỏi từ file.')
+      }
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  const handleClearImport = () => {
+    setImportFile(null)
+    setImportResult(null)
+  }
+
   const filteredQuestions = questions.filter((q) => {
     const matchSearch = q.content.toLowerCase().includes(searchTerm.toLowerCase())
     if (selectedFilterType === 'ALL') return matchSearch
@@ -983,11 +1074,34 @@ export const QuestionBankPage: React.FC = () => {
               <span>Quản lý bài tập</span>
             </button>
 
+            {/* Bulk Import from Excel / CSV Action */}
+            <button
+              onClick={() => {
+                setIsImportOpen(!isImportOpen)
+                setIsQuickGenOpen(false)
+                setIsDrawerOpen(false)
+                setIsEditDrawerOpen(false)
+                setErrorMessage(null)
+                setFormErrors([])
+              }}
+              className={`flex items-center space-x-2 px-4 py-2.5 font-medium rounded-xl shadow-xs transition text-sm ${
+                isImportOpen
+                  ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                  : 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+              }`}
+              title="Nhập danh sách câu hỏi hàng loạt từ file Excel (.xlsx) hoặc CSV (.csv)"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>{isImportOpen ? 'Đóng nhập file' : 'Nhập từ file (Excel/CSV)'}</span>
+            </button>
+
             {/* HTT-05-CN-004: Quick Generate Action */}
             <button
               onClick={() => {
                 setIsQuickGenOpen(!isQuickGenOpen)
+                setIsImportOpen(false)
                 setIsDrawerOpen(false)
+                setIsEditDrawerOpen(false)
                 setErrorMessage(null)
                 setFormErrors([])
               }}
@@ -1006,6 +1120,8 @@ export const QuestionBankPage: React.FC = () => {
               onClick={() => {
                 setIsDrawerOpen(!isDrawerOpen)
                 setIsQuickGenOpen(false)
+                setIsImportOpen(false)
+                setIsEditDrawerOpen(false)
                 setErrorMessage(null)
                 setFormErrors([])
               }}
@@ -1053,6 +1169,308 @@ export const QuestionBankPage: React.FC = () => {
             >
               <X className="w-4 h-4" />
             </button>
+          </div>
+        )}
+
+        {/* BULK IMPORT FROM EXCEL / CSV PANEL (NO MODAL) */}
+        {isImportOpen && (
+          <div className="bg-white border-2 border-emerald-300 rounded-2xl shadow-lg p-6 lg:p-8 animate-fadeIn space-y-6">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700">
+                  <FileSpreadsheet className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">
+                    Nhập câu hỏi hàng loạt từ file Excel (.xlsx) hoặc CSV (.csv)
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    Hỗ trợ đầy đủ 4 dạng câu hỏi: Trắc nghiệm (MCQ), Điền từ (FILL), Nối từ (MATCH) và Sắp xếp câu (ORDER).
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsImportOpen(false)
+                  handleClearImport()
+                }}
+                className="p-2 text-slate-400 hover:text-slate-600 rounded-lg transition"
+                title="Đóng panel nhập file"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Template Download & Format Guide */}
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-emerald-50/60 border border-emerald-100 rounded-2xl">
+                <div>
+                  <span className="text-sm font-bold text-emerald-950 block">
+                    Tải mẫu câu hỏi chuẩn của hệ thống
+                  </span>
+                  <span className="text-xs text-emerald-800">
+                    File mẫu đã có sẵn 4 ví dụ cụ thể cho cả 4 dạng câu hỏi kèm hướng dẫn định dạng chi tiết.
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2.5 flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadTemplate('excel')}
+                    disabled={downloadingTemplate !== null}
+                    className="flex items-center space-x-2 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-xl shadow-xs transition disabled:opacity-50"
+                  >
+                    {downloadingTemplate === 'excel' ? (
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Download className="w-3.5 h-3.5" />
+                    )}
+                    <span>Tải mẫu Excel (.xlsx)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadTemplate('csv')}
+                    disabled={downloadingTemplate !== null}
+                    className="flex items-center space-x-2 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-semibold text-xs rounded-xl shadow-xs transition disabled:opacity-50"
+                  >
+                    {downloadingTemplate === 'csv' ? (
+                      <div className="w-3.5 h-3.5 border-2 border-slate-600 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Download className="w-3.5 h-3.5" />
+                    )}
+                    <span>Tải mẫu CSV (.csv)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 4 Formats Reference Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                <div className="p-3 bg-blue-50/60 border border-blue-100 rounded-xl space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-blue-900">1. Trắc nghiệm</span>
+                    <span className="px-2 py-0.5 bg-blue-600 text-white text-[10px] font-bold rounded-md">
+                      MCQ
+                    </span>
+                  </div>
+                  <p className="text-blue-800 leading-relaxed text-[11px]">
+                    <strong>Cột B:</strong> Câu hỏi<br />
+                    <strong>Cột D:</strong> 4 lựa chọn cách nhau bằng dấu <code className="bg-blue-100 px-1 py-0.2 rounded font-mono">|</code><br />
+                    <strong>Cột E:</strong> Đáp án đúng (khớp nội dung hoặc A/B/C/D)
+                  </p>
+                </div>
+
+                <div className="p-3 bg-amber-50/60 border border-amber-100 rounded-xl space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-amber-900">2. Điền từ</span>
+                    <span className="px-2 py-0.5 bg-amber-600 text-white text-[10px] font-bold rounded-md">
+                      FILL
+                    </span>
+                  </div>
+                  <p className="text-amber-800 leading-relaxed text-[11px]">
+                    <strong>Cột B:</strong> Chứa ít nhất một chỗ trống <code className="bg-amber-100 px-1 py-0.2 rounded font-mono">___</code><br />
+                    <strong>Cột E:</strong> Đáp án đúng (các chỗ trống cách nhau bằng <code className="bg-amber-100 px-1 py-0.2 rounded font-mono">|</code>)<br />
+                    <strong>Cột F:</strong> Đáp án chấp nhận khác (tùy chọn)
+                  </p>
+                </div>
+
+                <div className="p-3 bg-purple-50/60 border border-purple-100 rounded-xl space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-purple-900">3. Nối từ</span>
+                    <span className="px-2 py-0.5 bg-purple-600 text-white text-[10px] font-bold rounded-md">
+                      MATCH
+                    </span>
+                  </div>
+                  <p className="text-purple-800 leading-relaxed text-[11px]">
+                    <strong>Cột B:</strong> Yêu cầu bài tập<br />
+                    <strong>Cột D:</strong> Danh sách cặp nối định dạng <code className="bg-purple-100 px-1 py-0.2 rounded font-mono">từ:nghĩa|từ:nghĩa</code> (tối thiểu 2 cặp)
+                  </p>
+                </div>
+
+                <div className="p-3 bg-emerald-50/60 border border-emerald-100 rounded-xl space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-emerald-900">4. Sắp xếp câu</span>
+                    <span className="px-2 py-0.5 bg-emerald-600 text-white text-[10px] font-bold rounded-md">
+                      ORDER
+                    </span>
+                  </div>
+                  <p className="text-emerald-800 leading-relaxed text-[11px]">
+                    <strong>Cột B:</strong> Yêu cầu bài tập<br />
+                    <strong>Cột D:</strong> Các từ/cụm từ theo thứ tự đúng cách nhau bằng dấu <code className="bg-emerald-100 px-1 py-0.2 rounded font-mono">|</code> (tối thiểu 2 thành phần)
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* File Upload Dropzone */}
+            <div className="bg-slate-50/80 p-5 rounded-2xl border border-slate-200 space-y-4">
+              <label className="block text-sm font-semibold text-slate-800 mb-1 flex items-center space-x-1.5">
+                <FileUp className="w-4 h-4 text-emerald-600" />
+                <span>Chọn file câu hỏi từ máy tính (.xlsx hoặc .csv)</span>
+              </label>
+
+              {!importFile ? (
+                <label className="border-2 border-dashed border-emerald-300 hover:border-emerald-500 bg-white hover:bg-emerald-50/40 rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer transition text-center group">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-50 group-hover:bg-emerald-100 text-emerald-600 flex items-center justify-center mb-3 transition">
+                    <Upload className="w-6 h-6" />
+                  </div>
+                  <span className="text-sm font-bold text-slate-800 group-hover:text-emerald-700">
+                    Nhấn vào đây để tải file lên hoặc kéo thả file vào khung này
+                  </span>
+                  <span className="text-xs text-slate-400 mt-1">
+                    Định dạng hỗ trợ: Microsoft Excel (.xlsx) hoặc CSV (.csv) mã hóa UTF-8
+                  </span>
+                  <input
+                    type="file"
+                    accept=".xlsx,.csv"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                </label>
+              ) : (
+                <div className="bg-white border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center space-x-3.5">
+                    <div className="w-11 h-11 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center flex-shrink-0">
+                      <FileSpreadsheet className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900 break-all">
+                        {importFile.name}
+                      </h4>
+                      <p className="text-xs text-slate-500">
+                        Dung lượng: {(importFile.size / 1024).toFixed(1)} KB • Định dạng:{' '}
+                        {importFile.name.endsWith('.xlsx') ? 'Excel (.xlsx)' : 'CSV (.csv)'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2.5 flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={handleClearImport}
+                      disabled={importing}
+                      className="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition border border-slate-200"
+                    >
+                      Chọn file khác
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleImportSubmit}
+                      disabled={importing}
+                      className="flex items-center space-x-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition disabled:opacity-50"
+                    >
+                      {importing ? (
+                        <>
+                          <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span>Đang xử lý & lưu...</span>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Tiến hành nhập vào ngân hàng</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Import Result Statistics & Details Area */}
+            {importResult && (
+              <div className="space-y-4 pt-3 border-t border-slate-100 animate-fadeIn">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+                    <div>
+                      <span className="text-xs text-slate-500 block">Tổng số dòng xử lý</span>
+                      <span className="text-lg font-extrabold text-slate-900">
+                        {importResult.totalRows}
+                      </span>
+                    </div>
+                    <Layers className="w-5 h-5 text-slate-400" />
+                  </div>
+
+                  <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
+                    <div>
+                      <span className="text-xs text-emerald-700 block">Nhập thành công</span>
+                      <span className="text-lg font-extrabold text-emerald-800">
+                        {importResult.successCount} câu
+                      </span>
+                    </div>
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                  </div>
+
+                  <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between">
+                    <div>
+                      <span className="text-xs text-amber-700 block">Dòng lỗi / Bỏ qua</span>
+                      <span className="text-lg font-extrabold text-amber-800">
+                        {importResult.skippedCount} dòng
+                      </span>
+                    </div>
+                    <AlertTriangle className="w-5 h-5 text-amber-600" />
+                  </div>
+                </div>
+
+                {/* Errors List */}
+                {importResult.errors && importResult.errors.length > 0 && (
+                  <div className="p-4 bg-rose-50/70 border border-rose-200 rounded-2xl space-y-2">
+                    <div className="flex items-center space-x-2 text-rose-800 font-bold text-xs">
+                      <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                      <span>Chi tiết các dòng không hợp lệ ({importResult.errors.length}):</span>
+                    </div>
+                    <div className="max-h-48 overflow-y-auto space-y-1.5 pl-6 pr-2 text-xs text-rose-700">
+                      {importResult.errors.map((err, idx) => (
+                        <div key={idx} className="flex items-start space-x-1.5">
+                          <span className="font-bold text-rose-800">•</span>
+                          <span>{err}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Success Imported List Preview */}
+                {importResult.importedQuestions && importResult.importedQuestions.length > 0 && (
+                  <div className="space-y-2">
+                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+                      Danh sách các câu hỏi vừa nhập mới ({importResult.importedQuestions.length}):
+                    </span>
+                    <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
+                      {importResult.importedQuestions.map((q) => (
+                        <div
+                          key={q.id}
+                          className="p-3 bg-emerald-50/40 border border-emerald-100 rounded-xl flex items-center justify-between text-xs"
+                        >
+                          <div className="flex items-center space-x-3 overflow-hidden">
+                            <span
+                              className={`px-2 py-0.5 text-[10px] font-bold rounded-md flex-shrink-0 ${
+                                q.type === 'MCQ'
+                                  ? 'bg-blue-100 text-blue-700'
+                                  : q.type === 'FILL'
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : q.type === 'MATCH'
+                                  ? 'bg-purple-100 text-purple-700'
+                                  : 'bg-emerald-100 text-emerald-800'
+                              }`}
+                            >
+                              {q.type}
+                            </span>
+                            <span className="font-semibold text-slate-800 truncate">
+                              {q.content}
+                            </span>
+                          </div>
+                          <span className="text-emerald-700 font-medium flex-shrink-0 ml-3">
+                            #ID: {q.id}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

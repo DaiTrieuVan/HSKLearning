@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
   Search,
-  Filter,
   Plus,
   CheckCircle2,
   AlertCircle,
@@ -73,15 +72,14 @@ export const AddWordsToVocabSetPage: React.FC = () => {
   // ==================== TAB 1: KHO TỪ VỰNG RIÊNG ====================
   const [privateVocabPage, setPrivateVocabPage] = useState<PageResponse<VocabularyItem>>({
     content: [],
-    pageNumber: 0,
-    pageSize: 20,
+    number: 0,
+    size: 20,
     totalElements: 0,
     totalPages: 0,
-    last: true,
   })
   const [privateLoading, setPrivateLoading] = useState(false)
   const [privatePage, setPrivatePage] = useState(0)
-  const [privatePageSize, setPrivatePageSize] = useState(20)
+  const [privatePageSize] = useState(20)
   const [privateKeyword, setPrivateKeyword] = useState('')
   const [debouncedKeyword, setDebouncedKeyword] = useState('')
   const [privatePos, setPrivatePos] = useState('Tất cả loại từ')
@@ -781,8 +779,8 @@ export const AddWordsToVocabSetPage: React.FC = () => {
               }}
             >
               <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                Hiển thị {privateVocabPage.pageNumber * privateVocabPage.pageSize + 1} -{' '}
-                {Math.min((privateVocabPage.pageNumber + 1) * privateVocabPage.pageSize, privateVocabPage.totalElements)}{' '}
+                Hiển thị {privateVocabPage.number * privateVocabPage.size + 1} -{' '}
+                {Math.min((privateVocabPage.number + 1) * privateVocabPage.size, privateVocabPage.totalElements)}{' '}
                 trong tổng số {privateVocabPage.totalElements} từ
               </div>
 
@@ -810,20 +808,20 @@ export const AddWordsToVocabSetPage: React.FC = () => {
                 </button>
 
                 <span style={{ fontSize: '0.85rem', fontWeight: 700, padding: '0 8px' }}>
-                  {privatePage + 1} / {privateVocabPage.totalPages}
+                  {privatePage + 1} / {Math.max(1, privateVocabPage.totalPages)}
                 </span>
 
                 <button
                   type="button"
-                  disabled={privateVocabPage.last}
+                  disabled={privatePage >= privateVocabPage.totalPages - 1}
                   onClick={() => setPrivatePage((p) => p + 1)}
                   style={{
                     padding: '6px 12px',
                     borderRadius: 'var(--radius-md)',
                     border: '1px solid var(--border-card)',
                     backgroundColor: '#ffffff',
-                    cursor: privateVocabPage.last ? 'not-allowed' : 'pointer',
-                    opacity: privateVocabPage.last ? 0.5 : 1,
+                    cursor: privatePage >= privateVocabPage.totalPages - 1 ? 'not-allowed' : 'pointer',
+                    opacity: privatePage >= privateVocabPage.totalPages - 1 ? 0.5 : 1,
                     display: 'flex',
                     alignItems: 'center',
                     gap: '4px',
@@ -869,7 +867,7 @@ export const AddWordsToVocabSetPage: React.FC = () => {
                     transition: 'all 0.15s ease',
                   }}
                 >
-                  {lvl.name}
+                  {lvl.title}
                 </button>
               )
             })}

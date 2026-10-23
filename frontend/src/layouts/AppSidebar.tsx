@@ -150,15 +150,26 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ isCollapsed, onToggleCol
                 {!isCollapsed && <span>Trang chủ</span>}
               </button>
 
-              {/* 2. Bộ từ vựng & Từ riêng */}
+              {/* 2. Kho từ vựng của tôi */}
+              <button
+                type="button"
+                onClick={() => navigate('/private-vocab')}
+                style={navItemStyle(isActive('/private-vocab') || isActive('/teacher/private-vocab'))}
+                title={isCollapsed ? 'Kho từ vựng của tôi' : undefined}
+              >
+                <BookOpen size={20} style={{ flexShrink: 0, color: (isActive('/private-vocab') || isActive('/teacher/private-vocab')) ? 'var(--primary)' : '#64748b' }} />
+                {!isCollapsed && <span>Kho từ vựng của tôi</span>}
+              </button>
+
+              {/* 3. Bộ từ vựng của lớp */}
               <button
                 type="button"
                 onClick={() => navigate('/vocab-sets')}
                 style={navItemStyle(isActive('/vocab-sets'))}
-                title={isCollapsed ? 'Bộ từ vựng giáo viên' : undefined}
+                title={isCollapsed ? 'Bộ từ vựng của lớp' : undefined}
               >
                 <BookMarked size={20} style={{ flexShrink: 0, color: isActive('/vocab-sets') ? 'var(--primary)' : '#64748b' }} />
-                {!isCollapsed && <span>Bộ từ vựng & Từ riêng</span>}
+                {!isCollapsed && <span>Bộ từ vựng của lớp</span>}
               </button>
 
               {/* 3. Ngân hàng câu hỏi */}

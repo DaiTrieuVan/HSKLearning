@@ -49,6 +49,14 @@ export interface VocabularyItem {
   hidden: boolean
 }
 
+export interface PageResponse<T> {
+  content: T[]
+  totalElements: number
+  totalPages: number
+  size: number
+  number: number
+}
+
 export interface GrammarExampleItem {
   id: number
   hanzi: string
@@ -254,6 +262,18 @@ export async function getVocabularies(query?: string, token?: string): Promise<V
   return response.json()
 }
 
+export async function deleteVocabulary(id: number, token: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/vocabularies/${id}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+  if (!response.ok && response.status !== 204) {
+    throw new ApiError(response.status, 'DELETE_VOCAB_FAILED', 'Không thể xóa từ vựng')
+  }
+}
+
 export async function uploadAudio(file: File, token: string): Promise<string> {
   const formData = new FormData()
   formData.append('file', file)
@@ -316,6 +336,40 @@ export async function getMyPrivateVocabularies(token: string): Promise<Vocabular
   })
   if (!response.ok) {
     throw new ApiError(response.status, 'FETCH_PRIVATE_VOCAB_FAILED', 'Không thể tải từ vựng riêng')
+  }
+  return response.json()
+}
+
+export interface SearchPrivateVocabParams {
+  keyword?: string
+  partOfSpeech?: string
+  page?: number
+  size?: number
+  sortBy?: string
+  sortDir?: 'asc' | 'desc'
+}
+
+export async function searchMyPrivateVocabularies(
+  token: string,
+  params: SearchPrivateVocabParams = {}
+): Promise<PageResponse<VocabularyItem>> {
+  const queryParams = new URLSearchParams()
+  if (params.keyword) queryParams.set('keyword', params.keyword)
+  if (params.partOfSpeech) queryParams.set('partOfSpeech', params.partOfSpeech)
+  if (params.page !== undefined) queryParams.set('page', params.page.toString())
+  if (params.size !== undefined) queryParams.set('size', params.size.toString())
+  if (params.sortBy) queryParams.set('sortBy', params.sortBy)
+  if (params.sortDir) queryParams.set('sortDir', params.sortDir)
+
+  const url = `${API_BASE}/vocabularies/my-private/search?${queryParams.toString()}`
+  const response = await fetch(url, {
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
+  if (!response.ok) {
+    throw new ApiError(response.status, 'FETCH_PRIVATE_VOCAB_FAILED', 'Không thể tải danh sách từ vựng riêng')
   }
   return response.json()
 }

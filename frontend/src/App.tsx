@@ -23,6 +23,7 @@ import { SubmissionHistoryPage } from './pages/progress/SubmissionHistoryPage'
 import { ClassGradebookPage } from './pages/classroom/ClassGradebookPage'
 import { ClassStudentProgressPage } from './pages/classroom/ClassStudentProgressPage'
 import { SrsReviewPage } from './pages/learning/SrsReviewPage'
+import { PrivateVocabManagementPage } from './pages/teacher/PrivateVocabManagementPage'
 import { AppLayout } from './layouts/AppLayout'
 
 function AppRoutes() {
@@ -43,6 +44,8 @@ function AppRoutes() {
         <Route path="/curriculum" element={<HskCurriculumPage />} />
         <Route path="/lessons/:lessonId" element={<LessonStudyPage />} />
         <Route path="/vocab-sets" element={<TeacherVocabSetsPage />} />
+        <Route path="/teacher/private-vocab" element={<PrivateVocabManagementPage />} />
+        <Route path="/private-vocab" element={<PrivateVocabManagementPage />} />
         <Route path="/questions" element={<QuestionBankPage />} />
         <Route path="/exercises" element={<ExerciseManagementPage />} />
         <Route path="/classes/create" element={<CreateClassPage />} />

@@ -894,6 +894,42 @@ export const TeacherVocabSetsPage: React.FC = () => {
         {/* TAB 2: PRIVATE WORDS */}
         {activeTab === 'PRIVATE_WORDS' && (
           <div>
+            {/* Dedicated Page Suggestion Banner */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 18px',
+                backgroundColor: '#eff6ff',
+                border: '1.5px solid #bfdbfe',
+                borderRadius: 'var(--radius-md)',
+                marginBottom: '16px',
+                gap: '12px',
+                flexWrap: 'wrap',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <BookOpen size={20} style={{ color: '#2563eb', flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#1e40af' }}>
+                    Quản lý số lượng lớn từ vựng (1,000+ từ)?
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: '#3b82f6' }}>
+                    Sử dụng Trang Quản trị Chuyên biệt với Tìm kiếm tức thời, Lọc loại từ, Phân trang và Chọn nhiều từ tạo bộ từ.
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate('/private-vocab')}
+                className="btn-gamified btn-primary"
+                style={{ padding: '6px 14px', fontSize: '0.82rem', whiteSpace: 'nowrap' }}
+              >
+                Mở Trang Quản trị Kho Từ
+              </button>
+            </div>
+
             {/* Action Bar */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <div style={{ fontSize: '0.92rem', color: 'var(--text-muted)', fontWeight: 600 }}>

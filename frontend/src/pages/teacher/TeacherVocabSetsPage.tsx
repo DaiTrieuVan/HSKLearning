@@ -751,30 +751,47 @@ export const TeacherVocabSetsPage: React.FC = () => {
 
                     {/* Add Word into Set section */}
                     <div style={{ marginBottom: '20px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
                         <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-main)' }}>
                           Danh sách từ vựng trong bộ ({setWords.length})
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => setShowAddWordToSet(!showAddWordToSet)}
-                          style={{
-                            padding: '6px 12px',
-                            borderRadius: 'var(--radius-md)',
-                            border: '1.5px solid var(--primary)',
-                            backgroundColor: 'var(--primary-light)',
-                            color: 'var(--primary)',
-                            fontSize: '0.82rem',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                          }}
-                        >
-                          <Search size={14} />
-                          <span>{showAddWordToSet ? 'Đóng tìm kiếm' : 'Tìm & thêm từ vào bộ'}</span>
-                        </button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/vocab-sets/${selectedSet.id}/add-words`)}
+                            className="btn-gamified btn-primary"
+                            style={{
+                              padding: '6px 14px',
+                              fontSize: '0.82rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                            }}
+                          >
+                            <Plus size={15} />
+                            <span>+ Thêm nhiều từ vào bộ</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setShowAddWordToSet(!showAddWordToSet)}
+                            style={{
+                              padding: '6px 12px',
+                              borderRadius: 'var(--radius-md)',
+                              border: '1.5px solid var(--border-card)',
+                              backgroundColor: '#ffffff',
+                              color: 'var(--text-main)',
+                              fontSize: '0.82rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                            }}
+                          >
+                            <Search size={14} />
+                            <span>{showAddWordToSet ? 'Đóng tìm nhanh' : 'Tìm nhanh 1 từ'}</span>
+                          </button>
+                        </div>
                       </div>
 
                       {showAddWordToSet && (
@@ -831,8 +848,17 @@ export const TeacherVocabSetsPage: React.FC = () => {
                         Đang tải danh sách từ vựng...
                       </div>
                     ) : setWords.length === 0 ? (
-                      <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
-                        Bộ từ vựng này chưa có từ nào. Hãy bấm &quot;Tìm & thêm từ vào bộ&quot; để bổ sung từ vựng!
+                      <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
+                        <p style={{ margin: '0 0 16px' }}>Bộ từ vựng này chưa có từ nào.</p>
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/vocab-sets/${selectedSet.id}/add-words`)}
+                          className="btn-gamified btn-primary"
+                          style={{ padding: '8px 20px', fontSize: '0.88rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                        >
+                          <Plus size={16} />
+                          <span>+ Thêm nhiều từ vào bộ ngay</span>
+                        </button>
                       </div>
                     ) : (
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '12px' }}>

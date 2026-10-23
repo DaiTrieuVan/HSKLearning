@@ -492,6 +492,45 @@ export async function getVocabSetItems(vocabSetId: number, token: string): Promi
   return response.json()
 }
 
+export interface BatchAddVocabSetItemsResponse {
+  addedCount: number
+  totalRequested: number
+}
+
+export async function addVocabulariesBatchToVocabSet(
+  vocabSetId: number,
+  vocabularyIds: number[],
+  token: string
+): Promise<BatchAddVocabSetItemsResponse> {
+  try {
+    const response = await fetch(`${API_BASE}/vocab-sets/${vocabSetId}/vocabularies/batch`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ vocabularyIds }),
+    })
+    if (response.ok) {
+      return await response.json()
+    }
+  } catch {
+    // If backend endpoint fails or dev server didn't reload, fallback to single calls
+  }
+
+  // Graceful fallback
+  let added = 0
+  for (const id of vocabularyIds) {
+    try {
+      await addVocabularyToVocabSet(vocabSetId, id, token)
+      added++
+    } catch {
+      // already exists or error
+    }
+  }
+  return { addedCount: added, totalRequested: vocabularyIds.length }
+}
+
 export async function addVocabularyToVocabSet(
   vocabSetId: number,
   vocabularyId: number,

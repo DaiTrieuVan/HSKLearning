@@ -38,6 +38,8 @@ import com.hsk.content.repository.LessonVocabularyRepository;
 import com.hsk.content.repository.VocabSetItemRepository;
 import com.hsk.content.repository.VocabSetRepository;
 import com.hsk.content.repository.VocabularyRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -722,6 +724,15 @@ public class ContentService {
 	public List<VocabularyResponse> getTeacherPrivateVocabularies(Long teacherId) {
 		return vocabularyRepository.findAllByOwnerIdAndHiddenFalse(teacherId)
 			.stream().map(VocabularyResponse::fromEntity).toList();
+	}
+
+	@Transactional(readOnly = true)
+	public Page<VocabularyResponse> searchTeacherPrivateVocabularies(
+			Long teacherId, String keyword, String partOfSpeech, Pageable pageable) {
+		String cleanKeyword = (keyword != null && !keyword.isBlank()) ? keyword.trim() : null;
+		String cleanPos = (partOfSpeech != null && !partOfSpeech.isBlank()) ? partOfSpeech.trim() : null;
+		return vocabularyRepository.searchTeacherPrivateVocabularies(teacherId, cleanKeyword, cleanPos, pageable)
+			.map(VocabularyResponse::fromEntity);
 	}
 
 	@Transactional(readOnly = true)

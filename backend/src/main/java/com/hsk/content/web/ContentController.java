@@ -23,6 +23,10 @@ import jakarta.validation.Valid;
 import java.security.Principal;
 import java.util.List;
 import java.util.Map;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.Authentication;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -272,6 +276,27 @@ public class ContentController {
 	public List<VocabularyResponse> getMyPrivateVocabularies(Principal principal) {
 		UserEntity user = requireUser(principal);
 		return contentService.getTeacherPrivateVocabularies(user.getId());
+	}
+
+	@GetMapping("/vocabularies/my-private/search")
+	public Page<VocabularyResponse> searchMyPrivateVocabularies(
+			@RequestParam(required = false) String keyword,
+			@RequestParam(required = false) String partOfSpeech,
+			@RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "20") int size,
+			@RequestParam(defaultValue = "id") String sortBy,
+			@RequestParam(defaultValue = "desc") String sortDir,
+			Principal principal) {
+		UserEntity user = requireUser(principal);
+		String safeSortBy = switch (sortBy) {
+			case "hanzi" -> "hanzi";
+			case "pinyin" -> "pinyin";
+			case "createdAt" -> "createdAt";
+			default -> "id";
+		};
+		Sort sort = sortDir.equalsIgnoreCase("asc") ? Sort.by(safeSortBy).ascending() : Sort.by(safeSortBy).descending();
+		Pageable pageable = PageRequest.of(Math.max(0, page), Math.min(Math.max(1, size), 100), sort);
+		return contentService.searchTeacherPrivateVocabularies(user.getId(), keyword, partOfSpeech, pageable);
 	}
 
 	@GetMapping("/classes/{classId}/vocab-sets")

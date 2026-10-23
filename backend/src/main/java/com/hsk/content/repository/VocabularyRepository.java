@@ -3,6 +3,8 @@ package com.hsk.content.repository;
 import com.hsk.content.domain.VocabularyEntity;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -38,4 +40,16 @@ public interface VocabularyRepository extends JpaRepository<VocabularyEntity, Lo
 			@Param("userId") Long userId,
 			@Param("rawQuery") String rawQuery,
 			@Param("normalizedPinyin") String normalizedPinyin);
+
+	@Query("SELECT v FROM VocabularyEntity v WHERE v.hidden = false AND v.ownerId = :ownerId " +
+		   "AND (:keyword IS NULL OR :keyword = '' " +
+		   "     OR LOWER(v.hanzi) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+		   "     OR LOWER(v.pinyin) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+		   "     OR LOWER(v.meaning) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+		   "AND (:partOfSpeech IS NULL OR :partOfSpeech = '' OR v.partOfSpeech = :partOfSpeech)")
+	Page<VocabularyEntity> searchTeacherPrivateVocabularies(
+			@Param("ownerId") Long ownerId,
+			@Param("keyword") String keyword,
+			@Param("partOfSpeech") String partOfSpeech,
+			Pageable pageable);
 }

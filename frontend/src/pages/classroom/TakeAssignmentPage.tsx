@@ -29,6 +29,7 @@ import {
   Lock,
   Unlock,
   Award,
+  GraduationCap,
 } from 'lucide-react'
 
 interface MatchingPair {
@@ -93,9 +94,17 @@ export const TakeAssignmentPage: React.FC = () => {
   const [savingDraft, setSavingDraft] = useState(false)
   const saveTimeoutRef = useRef<number | null>(null)
 
-  // Remaining time in seconds
+  // Remaining time in seconds and monotonic performance references (TC-05 tamper-proof)
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null)
   const timerIntervalRef = useRef<number | null>(null)
+  const initialRemainingSecRef = useRef<number | null>(null)
+  const timerStartPerfRef = useRef<number | null>(null)
+
+  // Keep latest answers in refs to prevent stale closure during auto-submission
+  const selectedOptionsRef = useRef(selectedOptions)
+  selectedOptionsRef.current = selectedOptions
+  const textAnswersRef = useRef(textAnswers)
+  textAnswersRef.current = textAnswers
 
   // Inline submit warning (No modals!)
   const [showUnansweredWarning, setShowUnansweredWarning] = useState(false)
@@ -141,11 +150,15 @@ export const TakeAssignmentPage: React.FC = () => {
           setSelectedOptions(initialOpts)
           setTextAnswers(initialTexts)
 
-          // Khởi tạo đếm ngược theo dueTime
-          const nowMs = Date.now()
-          const dueMs = new Date(data.dueTime).getTime()
-          const diffSec = Math.max(0, Math.floor((dueMs - nowMs) / 1000))
-          setRemainingSeconds(diffSec)
+          // Khởi tạo đếm ngược tamper-proof theo effectiveDeadline và serverTimeMillis (TC-05)
+          const effectiveDeadlineStr = data.effectiveDeadline || data.dueTime
+          const deadlineMs = new Date(effectiveDeadlineStr).getTime()
+          const serverNowMs = data.serverTimeMillis || Date.now()
+          const initialDiffSec = Math.max(0, Math.floor((deadlineMs - serverNowMs) / 1000))
+
+          initialRemainingSecRef.current = initialDiffSec
+          timerStartPerfRef.current = performance.now()
+          setRemainingSeconds(initialDiffSec)
         }
       } catch (err) {
         if (err instanceof ApiError) {
@@ -161,7 +174,7 @@ export const TakeAssignmentPage: React.FC = () => {
     loadData()
   }, [user?.id, user?.token, assignmentId])
 
-  // 2. Countdown Timer
+  // 2. Countdown Timer: Monotonic performance.now() countdown, immune to client clock tampering (TC-05)
   useEffect(() => {
     if (remainingSeconds === null || assignmentData?.status !== 'IN_PROGRESS') return
 
@@ -171,24 +184,27 @@ export const TakeAssignmentPage: React.FC = () => {
     }
 
     timerIntervalRef.current = window.setInterval(() => {
-      setRemainingSeconds((prev) => {
-        if (prev === null || prev <= 1) {
-          window.clearInterval(timerIntervalRef.current!)
-          handleAutoSubmitOnTimeout()
-          return 0
+      if (initialRemainingSecRef.current === null || timerStartPerfRef.current === null) return
+      const elapsedSec = Math.floor((performance.now() - timerStartPerfRef.current) / 1000)
+      const currentRemaining = Math.max(0, initialRemainingSecRef.current - elapsedSec)
+
+      setRemainingSeconds(currentRemaining)
+      if (currentRemaining <= 0) {
+        if (timerIntervalRef.current) {
+          window.clearInterval(timerIntervalRef.current)
         }
-        return prev - 1
-      })
+        handleAutoSubmitOnTimeout()
+      }
     }, 1000)
 
     return () => {
       if (timerIntervalRef.current) window.clearInterval(timerIntervalRef.current)
     }
-  }, [remainingSeconds, assignmentData?.status])
+  }, [assignmentData?.status, remainingSeconds === null])
 
   const buildAnswerPayload = (
-    currentOpts = selectedOptions,
-    currentTexts = textAnswers
+    currentOpts = selectedOptionsRef.current,
+    currentTexts = textAnswersRef.current
   ): StudentAnswerItem[] => {
     if (!assignmentData) return []
     return assignmentData.questions.map((q) => ({
@@ -539,6 +555,49 @@ export const TakeAssignmentPage: React.FC = () => {
           <div style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>
             Thời điểm nộp: {new Date(resultData.submittedAt).toLocaleString('vi-VN')}
           </div>
+
+          {/* Đánh giá Đạt / Chưa đạt đối với Đề thi thử HSK */}
+          {assignmentData?.passingScore != null && (
+            <div style={{ marginTop: '16px' }}>
+              {(resultData.adjustedScore ?? resultData.score) >= assignmentData.passingScore ? (
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 16px',
+                    borderRadius: 'var(--radius-full)',
+                    backgroundColor: '#ecfdf5',
+                    border: '1.5px solid #10b981',
+                    color: '#047857',
+                    fontWeight: 800,
+                    fontSize: '0.88rem',
+                  }}
+                >
+                  <Check size={16} />
+                  <span>KẾT QUẢ THI THỬ: ĐẠT (≥ {assignmentData.passingScore} điểm)</span>
+                </span>
+              ) : (
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 16px',
+                    borderRadius: 'var(--radius-full)',
+                    backgroundColor: '#fef2f2',
+                    border: '1.5px solid #ef4444',
+                    color: '#b91c1c',
+                    fontWeight: 800,
+                    fontSize: '0.88rem',
+                  }}
+                >
+                  <X size={16} />
+                  <span>KẾT QUẢ THI THỬ: CHƯA ĐẠT (&lt; {assignmentData.passingScore} điểm)</span>
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Banner kiểm soát hiển thị đáp án chống lộ đề (Anti-Cheating Policy - HTT-06-CN-005) */}
@@ -951,9 +1010,72 @@ export const TakeAssignmentPage: React.FC = () => {
             <ArrowLeft size={14} />
             <span>Thoát ra danh sách lớp (Bản nháp được tự lưu)</span>
           </button>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--text-main)', margin: 0 }}>
-            {assignmentData.title}
-          </h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--text-main)', margin: 0 }}>
+              {assignmentData.title}
+            </h2>
+            {assignmentData.exerciseType === 'MOCK_EXAM' && (
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '0.75rem',
+                  fontWeight: 800,
+                  color: '#7c3aed',
+                  backgroundColor: '#f5f3ff',
+                  border: '1px solid #ddd6fe',
+                  padding: '2px 8px',
+                  borderRadius: 'var(--radius-full)',
+                }}
+              >
+                <GraduationCap size={13} />
+                <span>Đề thi thử HSK {assignmentData.hskLevel || ''}</span>
+              </span>
+            )}
+          </div>
+          {assignmentData.exerciseType === 'MOCK_EXAM' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
+              {assignmentData.timeLimitMinutes && (
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    color: '#b45309',
+                    backgroundColor: '#fef3c7',
+                    border: '1px solid #fde68a',
+                    padding: '2px 8px',
+                    borderRadius: 'var(--radius-full)',
+                  }}
+                >
+                  <Clock size={12} />
+                  <span>Thời gian làm bài: {assignmentData.timeLimitMinutes} phút</span>
+                </span>
+              )}
+              {assignmentData.passingScore != null && (
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    color: '#047857',
+                    backgroundColor: '#ecfdf5',
+                    border: '1px solid #a7f3d0',
+                    padding: '2px 8px',
+                    borderRadius: 'var(--radius-full)',
+                  }}
+                >
+                  <Award size={12} />
+                  <span>Điểm đạt: {assignmentData.passingScore} / {assignmentData.totalPoints}</span>
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Khối đồng hồ đếm ngược và trạng thái lưu nháp */}
@@ -1450,9 +1572,30 @@ export const TakeAssignmentPage: React.FC = () => {
             <h4 style={{ margin: '0 0 12px', fontSize: '1rem', fontWeight: 800, color: 'var(--text-main)' }}>
               Danh sách câu hỏi
             </h4>
-            <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
+            <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '12px' }}>
               Đã làm <strong>{answeredCount}</strong> / {totalQuestions} câu
             </div>
+            {assignmentData.exerciseType === 'MOCK_EXAM' && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '8px 12px',
+                  borderRadius: 'var(--radius-md)',
+                  backgroundColor: '#fffbeb',
+                  border: '1px solid #fde68a',
+                  color: '#92400e',
+                  fontSize: '0.76rem',
+                  fontWeight: 600,
+                  marginBottom: '16px',
+                  lineHeight: 1.4,
+                }}
+              >
+                <Clock size={14} style={{ flexShrink: 0, color: '#b45309' }} />
+                <span>Đề thi có tính giờ. Khi hết thời gian, hệ thống sẽ tự động nộp bài làm của bạn.</span>
+              </div>
+            )}
 
             {/* Grid các ô số câu hỏi */}
             <div

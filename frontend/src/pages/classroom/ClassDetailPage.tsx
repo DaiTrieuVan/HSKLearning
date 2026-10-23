@@ -12,6 +12,7 @@ import {
   LogOut,
   BookMarked,
   ChevronDown,
+  ChevronUp,
   ChevronRight,
   Plus,
   Users,
@@ -22,6 +23,20 @@ import {
   Sparkles,
   BookOpen,
   Layers,
+  FileCheck,
+  Calendar,
+  Clock,
+  Send,
+  CheckCircle2,
+  AlertTriangle,
+  FileText,
+  Play,
+  Ban,
+  Trash2,
+  FileSpreadsheet,
+  ExternalLink,
+  TrendingUp,
+  Trophy,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import {
@@ -48,11 +63,23 @@ import {
   reviewFlashcard,
   type FlashcardItem,
 } from '../../api/flashcard'
+import {
+  getAssignmentsForClass,
+  getStudentAssignmentsForClass,
+  cancelAssignment,
+  type AssignmentItem,
+  type StudentAssignmentItem,
+} from '../../api/assignment'
 import { ApiError } from '../../api/auth'
+import { AssignmentSubmissionsPanel } from '../../components/classroom/AssignmentSubmissionsPanel'
+import { getClassGradebook, type ClassGradebookResponse } from '../../api/progress'
+import { ClassGradebookView } from '../../components/classroom/ClassGradebookView'
+import { getClassLeaderboard, type ClassLeaderboardResponse } from '../../api/leaderboard'
+import { ClassLeaderboardView } from '../../components/classroom/ClassLeaderboardView'
 
 export const ClassDetailPage: React.FC = () => {
   const { classId } = useParams<{ classId: string }>()
-  const { user } = useAuth()
+  const { token, user } = useAuth()
   const navigate = useNavigate()
 
   const [classroom, setClassroom] = useState<ClassItem | null>(null)
@@ -60,14 +87,58 @@ export const ClassDetailPage: React.FC = () => {
 
   const isTeacher = user?.activeMode === 'TEACHER'
 
-  const [activeTab, setActiveTab] = useState<'MEMBERS' | 'REMOVED' | 'VOCAB_SETS'>(
-    isTeacher ? 'MEMBERS' : 'VOCAB_SETS'
+  const [activeTab, setActiveTab] = useState<'MEMBERS' | 'REMOVED' | 'VOCAB_SETS' | 'ASSIGNMENTS' | 'GRADEBOOK' | 'LEADERBOARD'>(
+    'ASSIGNMENTS'
   )
+  const [gradebook, setGradebook] = useState<ClassGradebookResponse | null>(null)
+  const [gradebookLoading, setGradebookLoading] = useState(false)
+  const [gradebookError, setGradebookError] = useState<string | null>(null)
+
+  const loadGradebook = async () => {
+    if (!token || !classId) return
+    setGradebookLoading(true)
+    setGradebookError(null)
+    try {
+      const data = await getClassGradebook(token, parseInt(classId, 10))
+      setGradebook(data)
+    } catch (err: any) {
+      setGradebookError(err.message || 'Không thể tải bảng điểm lớp học')
+    } finally {
+      setGradebookLoading(false)
+    }
+  }
+
+  const [leaderboardData, setLeaderboardData] = useState<ClassLeaderboardResponse | null>(null)
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false)
+  const [leaderboardError, setLeaderboardError] = useState<string | null>(null)
+
+  const loadLeaderboard = async () => {
+    if (!token || !classId) return
+    setLeaderboardLoading(true)
+    setLeaderboardError(null)
+    try {
+      const data = await getClassLeaderboard(token, parseInt(classId, 10))
+      setLeaderboardData(data)
+    } catch (err: any) {
+      setLeaderboardError(err.message || 'Không thể tải bảng xếp hạng lớp học')
+    } finally {
+      setLeaderboardLoading(false)
+    }
+  }
   const [members, setMembers] = useState<ClassMemberItem[]>([])
   const [loading, setLoading] = useState(false)
   const [actionLoading, setActionLoading] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+
+  // Assignments state (HTT-06-CN-001 & HTT-06-CN-002 & HTT-06-CN-009 & HTT-06-CN-006)
+  const [classAssignments, setClassAssignments] = useState<AssignmentItem[]>([])
+  const [studentAssignments, setStudentAssignments] = useState<StudentAssignmentItem[]>([])
+  const [assignmentsLoading, setAssignmentsLoading] = useState(false)
+  const [confirmCancelAssignmentId, setConfirmCancelAssignmentId] = useState<number | null>(null)
+  const [cancellingAssignmentId, setCancellingAssignmentId] = useState<number | null>(null)
+  const [cancelAssignmentError, setCancelAssignmentError] = useState<string | null>(null)
+  const [expandedSubmissionsAssignmentId, setExpandedSubmissionsAssignmentId] = useState<number | null>(null)
 
   // Vocab Sets state
   const [classVocabSets, setClassVocabSets] = useState<VocabSetItem[]>([])
@@ -135,11 +206,50 @@ export const ClassDetailPage: React.FC = () => {
     if (classroom && user) {
       if (activeTab === 'VOCAB_SETS') {
         loadClassVocabSets()
+      } else if (activeTab === 'ASSIGNMENTS') {
+        loadClassAssignments()
       } else {
         loadMembers()
       }
     }
   }, [classroom, activeTab])
+
+  const loadClassAssignments = async () => {
+    if (!classroom || !user) return
+    try {
+      setAssignmentsLoading(true)
+      if (isTeacher) {
+        const data = await getAssignmentsForClass(classroom.id, user.token)
+        setClassAssignments(data)
+      } else {
+        const data = await getStudentAssignmentsForClass(classroom.id, user.token)
+        setStudentAssignments(data)
+      }
+    } catch {
+      // fallback
+    } finally {
+      setAssignmentsLoading(false)
+    }
+  }
+
+  const handleConfirmCancelAssignment = async (assignmentId: number) => {
+    if (!user) return
+    try {
+      setCancellingAssignmentId(assignmentId)
+      setCancelAssignmentError(null)
+      await cancelAssignment(assignmentId, user.token)
+      setConfirmCancelAssignmentId(null)
+      await loadClassAssignments()
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setCancelAssignmentError(err.message)
+      } else {
+        setCancelAssignmentError('Không thể hủy lần giao bài này. Vui lòng thử lại.')
+      }
+    } finally {
+      setCancellingAssignmentId(null)
+    }
+  }
 
   const loadMembers = async () => {
     if (!classroom || !user) return
@@ -637,6 +747,27 @@ export const ClassDetailPage: React.FC = () => {
 
         {/* Navigation Tabs */}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '2px solid var(--border-card)', paddingBottom: '8px' }}>
+          <button
+            type="button"
+            onClick={() => setActiveTab('ASSIGNMENTS')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 16px',
+              borderRadius: 'var(--radius-md)',
+              border: 'none',
+              fontWeight: 800,
+              fontSize: '0.88rem',
+              cursor: 'pointer',
+              backgroundColor: activeTab === 'ASSIGNMENTS' ? 'var(--primary)' : '#f1f5f9',
+              color: activeTab === 'ASSIGNMENTS' ? '#ffffff' : 'var(--text-muted)',
+            }}
+          >
+            <FileCheck size={16} />
+            <span>Bài tập ({isTeacher ? classAssignments.length : studentAssignments.length})</span>
+          </button>
+
           {isTeacher && (
             <button
               type="button"
@@ -703,7 +834,688 @@ export const ClassDetailPage: React.FC = () => {
               <span>Đã xóa / Đã rời ({removedMembers.length})</span>
             </button>
           )}
+
+          {isTeacher && (
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('GRADEBOOK')
+                if (!gradebook) {
+                  loadGradebook()
+                }
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 16px',
+                borderRadius: 'var(--radius-md)',
+                border: 'none',
+                fontWeight: 800,
+                fontSize: '0.88rem',
+                cursor: 'pointer',
+                backgroundColor: activeTab === 'GRADEBOOK' ? 'var(--primary)' : '#f1f5f9',
+                color: activeTab === 'GRADEBOOK' ? '#ffffff' : 'var(--text-muted)',
+              }}
+            >
+              <FileSpreadsheet size={16} />
+              <span>Bảng điểm</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('LEADERBOARD')
+              if (!leaderboardData) {
+                loadLeaderboard()
+              }
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 16px',
+              borderRadius: 'var(--radius-md)',
+              border: 'none',
+              fontWeight: 800,
+              fontSize: '0.88rem',
+              cursor: 'pointer',
+              backgroundColor: activeTab === 'LEADERBOARD' ? 'var(--primary)' : '#f1f5f9',
+              color: activeTab === 'LEADERBOARD' ? '#ffffff' : 'var(--text-muted)',
+            }}
+          >
+            <Trophy size={16} />
+            <span>Bảng xếp hạng</span>
+          </button>
         </div>
+
+        {/* Tab 0: Class Assignments (HTT-06-CN-001) */}
+        {activeTab === 'ASSIGNMENTS' && (
+          <div className="game-card" style={{ padding: '24px', backgroundColor: '#ffffff' }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '20px',
+                flexWrap: 'wrap',
+                gap: '12px',
+              }}
+            >
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                  Bài tập đã giao cho lớp
+                </h3>
+                <p style={{ margin: '4px 0 0', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                  Danh sách bài tập và hạn nộp (QTN-01, QTN-09, QTN-10)
+                </p>
+              </div>
+
+              {isTeacher && classroom.status === 'ACTIVE' && (
+                <button
+                  type="button"
+                  onClick={() => navigate('/exercises')}
+                  className="btn-primary"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 16px',
+                    borderRadius: 'var(--radius-md)',
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <Send size={15} />
+                  <span>Giao bài tập mới</span>
+                </button>
+              )}
+            </div>
+
+            {assignmentsLoading ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                Đang tải danh sách bài tập...
+              </div>
+            ) : isTeacher ? (
+              classAssignments.length === 0 ? (
+                <div
+                  style={{
+                    textAlign: 'center',
+                    padding: '48px 20px',
+                    backgroundColor: '#f8fafc',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px dashed #cbd5e1',
+                  }}
+                >
+                  <FileCheck size={36} style={{ color: '#94a3b8', margin: '0 auto 12px', display: 'block' }} />
+                  <h4 style={{ margin: '0 0 6px', fontSize: '1rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                    Chưa có bài tập nào được giao cho lớp
+                  </h4>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    Bạn có thể vào trang Quản lý bài tập để chọn bài và giao ngay cho lớp này.
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  {classAssignments.map((a) => {
+                    const isCancelled = a.status === 'CANCELLED'
+                    const isClosed = a.status === 'CLOSED'
+                    const isScheduled = a.status === 'SCHEDULED'
+                    const isConfirming = confirmCancelAssignmentId === a.id
+                    const isCancelling = cancellingAssignmentId === a.id
+
+                    return (
+                      <div
+                        key={a.id}
+                        style={{
+                          borderRadius: 'var(--radius-md)',
+                          border: isCancelled ? '1.5px dashed #cbd5e1' : '1.5px solid #e2e8f0',
+                          backgroundColor: isCancelled ? '#f8fafc' : '#ffffff',
+                          opacity: isCancelled ? 0.75 : 1,
+                          overflow: 'hidden',
+                        }}
+                      >
+                        <div
+                          style={{
+                            padding: '18px 20px',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            flexWrap: 'wrap',
+                            gap: '16px',
+                          }}
+                        >
+                          <div style={{ flex: 1, minWidth: '260px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                              <span
+                                style={{
+                                  fontSize: '0.72rem',
+                                  fontWeight: 800,
+                                  padding: '2px 8px',
+                                  borderRadius: 'var(--radius-full)',
+                                  backgroundColor: isCancelled ? '#fef2f2' : isClosed ? '#f1f5f9' : isScheduled ? '#fffbeb' : '#ecfdf5',
+                                  color: isCancelled ? '#b91c1c' : isClosed ? '#64748b' : isScheduled ? '#b45309' : '#047857',
+                                  border: `1px solid ${isCancelled ? '#fecaca' : isClosed ? '#cbd5e1' : isScheduled ? '#fde68a' : '#a7f3d0'}`,
+                                }}
+                              >
+                                {isCancelled ? 'ĐÃ HỦY GIAO' : isClosed ? 'ĐÃ HẾT HẠN' : isScheduled ? 'SẮP DIỄN RA' : 'ĐANG MỞ LÀM BÀI'}
+                              </span>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                Mã đợt #{a.id}
+                              </span>
+                            </div>
+
+                            <h4
+                              style={{
+                                margin: '0 0 6px',
+                                fontSize: '1.05rem',
+                                fontWeight: 800,
+                                color: isCancelled ? 'var(--text-muted)' : 'var(--text-main)',
+                                textDecoration: isCancelled ? 'line-through' : 'none',
+                              }}
+                            >
+                              {a.title}
+                            </h4>
+
+                            {a.description && (
+                              <p style={{ margin: '0 0 8px', fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                                {a.description}
+                              </p>
+                            )}
+
+                            <div
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '16px',
+                                fontSize: '0.8rem',
+                                color: 'var(--text-muted)',
+                                flexWrap: 'wrap',
+                              }}
+                            >
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <Calendar size={14} />
+                                <span>Bắt đầu: {new Date(a.startTime).toLocaleString('vi-VN')}</span>
+                              </span>
+                              <span
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  color: isCancelled ? 'var(--text-muted)' : isClosed ? '#ef4444' : '#b45309',
+                                  fontWeight: 700,
+                                }}
+                              >
+                                <Clock size={14} />
+                                <span>Hạn nộp: {new Date(a.dueTime).toLocaleString('vi-VN')}</span>
+                              </span>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                            <div style={{ textAlign: 'right' }}>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{a.questionCount} câu hỏi</div>
+                              <div style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--primary)' }}>{a.totalPoints} điểm</div>
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <button
+                                id={`btn-manage-submissions-${a.id}`}
+                                type="button"
+                                onClick={() => navigate(`/classes/${classId}/assignments/${a.id}/submissions`)}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  padding: '7px 14px',
+                                  borderRadius: 'var(--radius-md)',
+                                  border: '1.5px solid var(--primary)',
+                                  backgroundColor: 'var(--primary-light)',
+                                  color: 'var(--primary-hover)',
+                                  fontSize: '0.8rem',
+                                  fontWeight: 800,
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease',
+                                }}
+                                title="Mở trang Quản lý bài nộp & Chấm điểm riêng biệt toàn màn hình"
+                              >
+                                <Users size={14} />
+                                <span>Quản lý bài nộp & Chấm điểm →</span>
+                              </button>
+
+                              <button
+                                id={`btn-view-submissions-${a.id}`}
+                                type="button"
+                                onClick={() => {
+                                  setExpandedSubmissionsAssignmentId(
+                                    expandedSubmissionsAssignmentId === a.id ? null : a.id
+                                  )
+                                }}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  padding: '7px 10px',
+                                  borderRadius: 'var(--radius-md)',
+                                  border: '1px solid #cbd5e1',
+                                  backgroundColor: expandedSubmissionsAssignmentId === a.id ? '#f1f5f9' : '#ffffff',
+                                  color: 'var(--text-muted)',
+                                  fontSize: '0.78rem',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease',
+                                }}
+                                title="Xem nhanh tại chỗ"
+                              >
+                                <span>{expandedSubmissionsAssignmentId === a.id ? 'Đóng xem nhanh' : 'Xem nhanh'}</span>
+                                {expandedSubmissionsAssignmentId === a.id ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                              </button>
+
+                              {!isCancelled && (
+                                <button
+                                  id={`btn-cancel-assignment-${a.id}`}
+                                  type="button"
+                                  onClick={() => {
+                                    setCancelAssignmentError(null)
+                                    setConfirmCancelAssignmentId(isConfirming ? null : a.id)
+                                  }}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    padding: '7px 12px',
+                                    borderRadius: 'var(--radius-md)',
+                                    border: '1px solid #fee2e2',
+                                    backgroundColor: '#fff1f2',
+                                    color: '#e11d48',
+                                    fontSize: '0.78rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease',
+                                  }}
+                                  title="Hủy lần giao bài này"
+                                >
+                                  <Ban size={14} />
+                                  <span>Hủy giao bài</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Inline confirmation accordion block - Tuân thủ NO MODAL constraint */}
+                        {isConfirming && (
+                          <div
+                            id={`inline-cancel-confirm-${a.id}`}
+                            style={{
+                              padding: '14px 20px',
+                              backgroundColor: '#fff7ed',
+                              borderTop: '1px solid #ffedd5',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '10px',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', color: '#c2410c', fontSize: '0.85rem' }}>
+                              <AlertTriangle size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
+                              <div>
+                                <strong>Xác nhận hủy lần giao bài này?</strong>
+                                <div style={{ fontSize: '0.78rem', marginTop: '2px', color: '#9a3412', lineHeight: 1.4 }}>
+                                  Hệ thống sẽ chuyển trạng thái sang <strong>CANCELLED</strong> và ẩn bài khỏi danh sách của học sinh.
+                                  Lưu ý: Chỉ hủy được khi chưa có học sinh nào làm hoặc nộp bài (QTN-21).
+                                </div>
+                              </div>
+                            </div>
+
+                            {cancelAssignmentError && (
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  color: '#b91c1c',
+                                  fontSize: '0.8rem',
+                                  backgroundColor: '#fef2f2',
+                                  padding: '6px 10px',
+                                  borderRadius: 'var(--radius-sm)',
+                                  border: '1px solid #fecaca',
+                                }}
+                              >
+                                <AlertCircle size={14} />
+                                <span>{cancelAssignmentError}</span>
+                              </div>
+                            )}
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '2px' }}>
+                              <button
+                                id={`btn-confirm-cancel-${a.id}`}
+                                type="button"
+                                disabled={isCancelling}
+                                onClick={() => handleConfirmCancelAssignment(a.id)}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  padding: '6px 14px',
+                                  borderRadius: 'var(--radius-sm)',
+                                  border: 'none',
+                                  backgroundColor: '#dc2626',
+                                  color: '#ffffff',
+                                  fontSize: '0.78rem',
+                                  fontWeight: 700,
+                                  cursor: isCancelling ? 'not-allowed' : 'pointer',
+                                  opacity: isCancelling ? 0.7 : 1,
+                                }}
+                              >
+                                {isCancelling ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                                <span>{isCancelling ? 'Đang hủy...' : 'Đồng ý hủy'}</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                disabled={isCancelling}
+                                onClick={() => {
+                                  setConfirmCancelAssignmentId(null)
+                                  setCancelAssignmentError(null)
+                                }}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  padding: '6px 12px',
+                                  borderRadius: 'var(--radius-sm)',
+                                  border: '1px solid #cbd5e1',
+                                  backgroundColor: '#ffffff',
+                                  color: 'var(--text-muted)',
+                                  fontSize: '0.78rem',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                <X size={14} />
+                                <span>Giữ lại bài</span>
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Inline Student Submissions Panel (HTT-06-CN-006 - Tuân thủ NO MODAL constraint) */}
+                        {expandedSubmissionsAssignmentId === a.id && user && (
+                          <div style={{ padding: '0 20px 20px 20px' }}>
+                            <AssignmentSubmissionsPanel
+                              assignmentId={a.id}
+                              token={user.token}
+                              onClose={() => setExpandedSubmissionsAssignmentId(null)}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            ) : (
+              /* Student View (HTT-06-CN-002) */
+              studentAssignments.length === 0 ? (
+                <div
+                  style={{
+                    textAlign: 'center',
+                    padding: '48px 20px',
+                    backgroundColor: '#f8fafc',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px dashed #cbd5e1',
+                  }}
+                >
+                  <FileCheck size={36} style={{ color: '#94a3b8', margin: '0 auto 12px', display: 'block' }} />
+                  <h4 style={{ margin: '0 0 6px', fontSize: '1rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                    Chưa có bài tập nào được giao cho lớp
+                  </h4>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    Giáo viên chưa giao bài tập nào. Hãy quay lại kiểm tra sau nhé!
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  {studentAssignments.map((a) => {
+                    const isSubmitted = a.studentStatus === 'SUBMITTED'
+                    const isOverdue = a.studentStatus === 'OVERDUE'
+                    const isUpcoming = a.studentStatus === 'UPCOMING'
+                    const isInProgress = a.studentStatus === 'IN_PROGRESS'
+
+                    let badgeBg = '#eff6ff'
+                    let badgeColor = '#1d4ed8'
+                    let badgeBorder = '#bfdbfe'
+                    let badgeText = 'CHƯA LÀM'
+                    let BadgeIcon = FileText
+
+                    if (isSubmitted) {
+                      badgeBg = '#ecfdf5'
+                      badgeColor = '#047857'
+                      badgeBorder = '#a7f3d0'
+                      badgeText = 'ĐÃ NỘP'
+                      BadgeIcon = CheckCircle2
+                    } else if (isOverdue) {
+                      badgeBg = '#fef2f2'
+                      badgeColor = '#b91c1c'
+                      badgeBorder = '#fecaca'
+                      badgeText = 'QUÁ HẠN'
+                      BadgeIcon = AlertTriangle
+                    } else if (isUpcoming) {
+                      badgeBg = '#fffbeb'
+                      badgeColor = '#b45309'
+                      badgeBorder = '#fde68a'
+                      badgeText = 'CHƯA MỞ'
+                      BadgeIcon = Clock
+                    } else if (isInProgress) {
+                      badgeBg = '#fef3c7'
+                      badgeColor = '#92400e'
+                      badgeBorder = '#fde68a'
+                      badgeText = 'ĐANG LÀM DỞ'
+                      BadgeIcon = Clock
+                    }
+
+                    return (
+                      <div
+                        key={a.id}
+                        style={{
+                          padding: '18px 20px',
+                          borderRadius: 'var(--radius-md)',
+                          border: '1.5px solid #e2e8f0',
+                          backgroundColor: '#ffffff',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          flexWrap: 'wrap',
+                          gap: '16px',
+                          transition: 'all 0.2s',
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: '260px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                fontSize: '0.72rem',
+                                fontWeight: 800,
+                                padding: '3px 9px',
+                                borderRadius: 'var(--radius-full)',
+                                backgroundColor: badgeBg,
+                                color: badgeColor,
+                                border: `1px solid ${badgeBorder}`,
+                              }}
+                            >
+                              <BadgeIcon size={12} />
+                              <span>{badgeText}</span>
+                            </span>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                              Mã đợt #{a.id}
+                            </span>
+                          </div>
+
+                          <h4 style={{ margin: '0 0 6px', fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                            {a.title}
+                          </h4>
+
+                          {a.description && (
+                            <p style={{ margin: '0 0 8px', fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                              {a.description}
+                            </p>
+                          )}
+
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '16px',
+                              fontSize: '0.8rem',
+                              color: 'var(--text-muted)',
+                              flexWrap: 'wrap',
+                            }}
+                          >
+                            {isUpcoming ? (
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#b45309', fontWeight: 700 }}>
+                                <Clock size={14} />
+                                <span>Mở lúc: {new Date(a.startTime).toLocaleString('vi-VN')}</span>
+                              </span>
+                            ) : (
+                              <span
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  color: isOverdue ? '#ef4444' : '#64748b',
+                                  fontWeight: isOverdue ? 700 : 500,
+                                }}
+                              >
+                                <Clock size={14} />
+                                <span>
+                                  {isOverdue
+                                    ? `Đã hết hạn: ${new Date(a.dueTime).toLocaleString('vi-VN')}`
+                                    : `Hạn nộp: ${new Date(a.dueTime).toLocaleString('vi-VN')}`}
+                                </span>
+                              </span>
+                            )}
+
+                            {isSubmitted && a.submittedAt && (
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#047857', fontWeight: 700 }}>
+                                <CheckCircle2 size={14} />
+                                <span>Đã nộp: {new Date(a.submittedAt).toLocaleString('vi-VN')}</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{a.questionCount} câu hỏi</div>
+                            {isSubmitted && a.score !== null && a.score !== undefined ? (
+                              <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#047857' }}>
+                                {a.score} / {a.totalPoints} <span style={{ fontSize: '0.75rem' }}>điểm</span>
+                              </div>
+                            ) : (
+                              <div style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--primary)' }}>
+                                {a.totalPoints} điểm
+                              </div>
+                            )}
+                          </div>
+
+                          {isSubmitted ? (
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/classes/${classroom.id}/assignments/${a.id}/take`)}
+                              style={{
+                                padding: '8px 16px',
+                                borderRadius: 'var(--radius-md)',
+                                border: '1px solid #cbd5e1',
+                                backgroundColor: '#f8fafc',
+                                color: '#047857',
+                                fontWeight: 800,
+                                fontSize: '0.85rem',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                              }}
+                            >
+                              <CheckCircle2 size={15} />
+                              <span>Xem kết quả</span>
+                            </button>
+                          ) : isUpcoming ? (
+                            <button
+                              type="button"
+                              disabled
+                              style={{
+                                padding: '8px 16px',
+                                borderRadius: 'var(--radius-md)',
+                                border: '1px solid #e2e8f0',
+                                backgroundColor: '#f1f5f9',
+                                color: '#94a3b8',
+                                fontWeight: 800,
+                                fontSize: '0.85rem',
+                                cursor: 'not-allowed',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                              }}
+                            >
+                              <Clock size={15} />
+                              <span>Chưa mở</span>
+                            </button>
+                          ) : isOverdue ? (
+                            <button
+                              type="button"
+                              disabled
+                              style={{
+                                padding: '8px 16px',
+                                borderRadius: 'var(--radius-md)',
+                                border: '1px solid #fee2e2',
+                                backgroundColor: '#fef2f2',
+                                color: '#b91c1c',
+                                fontWeight: 800,
+                                fontSize: '0.85rem',
+                                cursor: 'not-allowed',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                              }}
+                            >
+                              <AlertTriangle size={15} />
+                              <span>Đã hết hạn</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/classes/${classroom.id}/assignments/${a.id}/take`)}
+                              className="btn-primary"
+                              style={{
+                                padding: '8px 20px',
+                                borderRadius: 'var(--radius-md)',
+                                fontWeight: 800,
+                                fontSize: '0.85rem',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.06)',
+                              }}
+                            >
+                              <Play size={15} />
+                              <span>{isInProgress ? 'Tiếp tục làm' : 'Làm bài'}</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            )}
+          </div>
+        )}
 
         {/* Tab 1: Active Members */}
         {activeTab === 'MEMBERS' && (
@@ -741,26 +1553,50 @@ export const ClassDetailPage: React.FC = () => {
                     </div>
 
                     {isTeacher && (
-                      <button
-                        type="button"
-                        onClick={() => setRemovingStudent(member)}
-                        className="btn-danger"
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          padding: '6px 12px',
-                          borderRadius: 'var(--radius-md)',
-                          border: '1px solid #fecaca',
-                          backgroundColor: '#ffffff',
-                          fontSize: '0.8rem',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <UserMinus size={14} />
-                        <span>Khai trừ</span>
-                      </button>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/classes/${classroom.id}/students/${member.studentId}`)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '6px 12px',
+                            borderRadius: 'var(--radius-md)',
+                            border: '1.5px solid #c7d2fe',
+                            backgroundColor: '#eef2ff',
+                            color: '#4f46e5',
+                            fontSize: '0.8rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                          }}
+                        >
+                          <TrendingUp size={14} />
+                          <span>Xem tiến độ</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setRemovingStudent(member)}
+                          className="btn-danger"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '6px 12px',
+                            borderRadius: 'var(--radius-md)',
+                            border: '1px solid #fecaca',
+                            backgroundColor: '#ffffff',
+                            fontSize: '0.8rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <UserMinus size={14} />
+                          <span>Khai trừ</span>
+                        </button>
+                      </div>
                     )}
                   </div>
                 ))}
@@ -1483,31 +2319,158 @@ export const ClassDetailPage: React.FC = () => {
                       </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => handleRestoreStudent(member.studentId)}
-                      disabled={actionLoading === member.studentId}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        padding: '6px 12px',
-                        borderRadius: 'var(--radius-md)',
-                        border: '1.5px solid var(--primary)',
-                        backgroundColor: 'var(--primary-light)',
-                        color: 'var(--primary)',
-                        fontSize: '0.8rem',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <RotateCcw size={14} />
-                      <span>Khôi phục lại</span>
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/classes/${classroom.id}/students/${member.studentId}`)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '6px 12px',
+                          borderRadius: 'var(--radius-md)',
+                          border: '1.5px solid #c7d2fe',
+                          backgroundColor: '#eef2ff',
+                          color: '#4f46e5',
+                          fontSize: '0.8rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                        }}
+                      >
+                        <TrendingUp size={14} />
+                        <span>Xem tiến độ</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleRestoreStudent(member.studentId)}
+                        disabled={actionLoading === member.studentId}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '6px 12px',
+                          borderRadius: 'var(--radius-md)',
+                          border: '1.5px solid var(--primary)',
+                          backgroundColor: 'var(--primary-light)',
+                          color: 'var(--primary)',
+                          fontSize: '0.8rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <RotateCcw size={14} />
+                        <span>Khôi phục lại</span>
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Tab 4: Class Gradebook (HTT-07-CN-003) */}
+        {activeTab === 'GRADEBOOK' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '12px 18px',
+                backgroundColor: '#eff6ff',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid #bfdbfe',
+                flexWrap: 'wrap',
+                gap: '10px',
+              }}
+            >
+              <div style={{ fontSize: '0.86rem', color: '#1e40af', fontWeight: 600 }}>
+                💡 Mẹo: Bạn có thể mở bảng điểm ở chế độ toàn màn hình để dễ dàng quan sát và thao tác khi lớp có nhiều bài tập.
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate(`/classes/${classId}/gradebook`)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 14px',
+                  borderRadius: 'var(--radius-sm)',
+                  backgroundColor: '#ffffff',
+                  color: 'var(--primary)',
+                  border: '1.5px solid var(--primary)',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <ExternalLink size={14} />
+                <span>Mở toàn màn hình</span>
+              </button>
+            </div>
+
+            {gradebookLoading ? (
+              <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+                <Loader2 size={36} className="animate-spin" style={{ color: 'var(--primary)', margin: '0 auto 12px' }} />
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem' }}>Đang tải bảng điểm lớp...</p>
+              </div>
+            ) : gradebookError ? (
+              <div
+                style={{
+                  padding: '24px',
+                  textAlign: 'center',
+                  backgroundColor: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  borderRadius: 'var(--radius-md)',
+                }}
+              >
+                <AlertCircle size={36} style={{ color: '#ef4444', margin: '0 auto 8px' }} />
+                <p style={{ color: '#b91c1c', fontSize: '0.88rem', marginBottom: '12px' }}>{gradebookError}</p>
+                <button type="button" onClick={loadGradebook} className="btn-gamified btn-primary">
+                  Thử lại
+                </button>
+              </div>
+            ) : gradebook ? (
+              <ClassGradebookView gradebook={gradebook} classId={parseInt(classId!, 10)} onRefresh={loadGradebook} />
+            ) : null}
+          </div>
+        )}
+
+        {/* Tab 5: Class Leaderboard (HTT-08-CN-006) */}
+        {activeTab === 'LEADERBOARD' && (
+          <div>
+            {leaderboardLoading ? (
+              <div
+                className="game-card"
+                style={{ textAlign: 'center', padding: '60px 20px', backgroundColor: '#ffffff' }}
+              >
+                <Loader2 size={36} className="animate-spin" style={{ color: 'var(--primary)', margin: '0 auto 12px' }} />
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem' }}>Đang tải bảng xếp hạng lớp...</p>
+              </div>
+            ) : leaderboardError ? (
+              <div
+                className="game-card"
+                style={{
+                  padding: '32px 20px',
+                  textAlign: 'center',
+                  backgroundColor: '#fef2f2',
+                  border: '1px solid #fecaca',
+                }}
+              >
+                <AlertCircle size={36} style={{ color: '#ef4444', margin: '0 auto 8px' }} />
+                <p style={{ color: '#b91c1c', fontSize: '0.88rem', marginBottom: '16px' }}>{leaderboardError}</p>
+                <button type="button" onClick={loadLeaderboard} className="btn-gamified btn-primary">
+                  Thử lại
+                </button>
+              </div>
+            ) : leaderboardData ? (
+              <ClassLeaderboardView data={leaderboardData} onRefresh={loadLeaderboard} />
+            ) : null}
           </div>
         )}
 

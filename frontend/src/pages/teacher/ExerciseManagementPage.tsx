@@ -18,11 +18,15 @@ import {
   X,
   Eye,
   Copy,
+  Pencil,
+  Send,
+  Clock,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import {
   getMyExercises,
   createExercise,
+  updateExercise,
   getExerciseDetail,
   copyExercise,
   type ExerciseItem,
@@ -30,6 +34,8 @@ import {
   type CreateExerciseQuestionItem,
 } from '../../api/exercise'
 import { getMyQuestions, type QuestionItem } from '../../api/question'
+import { assignExercise } from '../../api/assignment'
+import { getTeachingClasses, type ClassItem } from '../../api/classroom'
 import { ApiError } from '../../api/auth'
 
 interface SelectedQuestionConfig {
@@ -51,8 +57,9 @@ export const ExerciseManagementPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'DRAFT' | 'READY'>('ALL')
 
-  // Drawer Create Exercise state (No Modal!)
+  // Drawer Create & Edit Exercise state (No Modal! HTT-05-CN-008)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  const [editingExerciseId, setEditingExerciseId] = useState<number | null>(null)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [status, setStatus] = useState<ExerciseStatus>('DRAFT')
@@ -67,6 +74,18 @@ export const ExerciseManagementPage: React.FC = () => {
   const [sourceExerciseToCopy, setSourceExerciseToCopy] = useState<ExerciseItem | null>(null)
   const [newCopyTitle, setNewCopyTitle] = useState('')
   const [copying, setCopying] = useState(false)
+
+  // Assign Drawer state (No Modal! HTT-06-CN-001)
+  const [isAssignDrawerOpen, setIsAssignDrawerOpen] = useState(false)
+  const [exerciseToAssign, setExerciseToAssign] = useState<ExerciseItem | null>(null)
+  const [teachingClasses, setTeachingClasses] = useState<ClassItem[]>([])
+  const [loadingClasses, setLoadingClasses] = useState(false)
+  const [selectedClassId, setSelectedClassId] = useState<number | ''>('')
+  const [assignMode, setAssignMode] = useState<'NOW' | 'SCHEDULED'>('NOW')
+  const [scheduledStartTime, setScheduledStartTime] = useState('')
+  const [dueTime, setDueTime] = useState('')
+  const [assignErrors, setAssignErrors] = useState<string[]>([])
+  const [assigning, setAssigning] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -103,8 +122,9 @@ export const ExerciseManagementPage: React.FC = () => {
     }
   }
 
-  // --- Handlers for Create Exercise Drawer ---
+  // --- Handlers for Create & Edit Exercise Drawer ---
   const handleOpenCreateDrawer = () => {
+    setEditingExerciseId(null)
     setTitle('')
     setDescription('')
     setStatus('DRAFT')
@@ -112,11 +132,31 @@ export const ExerciseManagementPage: React.FC = () => {
     setFormErrors([])
     setErrorMessage(null)
     setDetailExercise(null)
+    setIsCopyDrawerOpen(false)
+    setIsDrawerOpen(true)
+  }
+
+  const handleOpenEditDrawer = (ex: ExerciseItem) => {
+    setEditingExerciseId(ex.id)
+    setTitle(ex.title)
+    setDescription(ex.description || '')
+    setStatus(ex.status)
+    const configs: SelectedQuestionConfig[] = (ex.questions || []).map((q, idx) => ({
+      questionId: q.questionId,
+      points: q.points,
+      sortOrder: q.sortOrder || idx + 1,
+    }))
+    setSelectedConfigs(configs)
+    setFormErrors([])
+    setErrorMessage(null)
+    setDetailExercise(null)
+    setIsCopyDrawerOpen(false)
     setIsDrawerOpen(true)
   }
 
   const handleCloseCreateDrawer = () => {
     setIsDrawerOpen(false)
+    setEditingExerciseId(null)
     setFormErrors([])
   }
 
@@ -234,24 +274,38 @@ export const ExerciseManagementPage: React.FC = () => {
         })
       )
 
-      const saved = await createExercise(
-        {
-          title: title.trim(),
-          description: description.trim() ? description.trim() : undefined,
-          status,
-          questions: questionsPayload,
-        },
-        user.token
-      )
+      if (editingExerciseId) {
+        const updated = await updateExercise(
+          editingExerciseId,
+          {
+            title: title.trim(),
+            description: description.trim() ? description.trim() : undefined,
+            status,
+            questions: questionsPayload,
+          },
+          user.token
+        )
+        setSuccessMessage(`Đã cập nhật bài tập "${updated.title}" thành công!`)
+      } else {
+        const saved = await createExercise(
+          {
+            title: title.trim(),
+            description: description.trim() ? description.trim() : undefined,
+            status,
+            questions: questionsPayload,
+          },
+          user.token
+        )
+        setSuccessMessage(`Đã tạo thành công bài tập "${saved.title}" (Tổng điểm: ${saved.totalPoints})!`)
+      }
 
-      setSuccessMessage(`Đã tạo thành công bài tập "${saved.title}" (Tổng điểm: ${saved.totalPoints})!`)
       handleCloseCreateDrawer()
       loadExercises()
     } catch (err) {
       if (err instanceof ApiError) {
         setErrorMessage(err.message)
       } else {
-        setErrorMessage('Không thể tạo bài tập')
+        setErrorMessage(editingExerciseId ? 'Không thể cập nhật bài tập' : 'Không thể tạo bài tập')
       }
     } finally {
       setSubmitting(false)
@@ -314,6 +368,113 @@ export const ExerciseManagementPage: React.FC = () => {
       }
     } finally {
       setCopying(false)
+    }
+  }
+
+  // --- Handlers for Assign Exercise to Classroom Drawer (HTT-06-CN-001) ---
+  const getDefaultDueDate = () => {
+    const d = new Date()
+    d.setDate(d.getDate() + 3)
+    d.setHours(23, 59, 0, 0)
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
+    return d.toISOString().slice(0, 16)
+  }
+
+  const getDefaultStartDate = () => {
+    const d = new Date()
+    d.setDate(d.getDate() + 1)
+    d.setHours(8, 0, 0, 0)
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
+    return d.toISOString().slice(0, 16)
+  }
+
+  const handleOpenAssignDrawer = async (ex: ExerciseItem) => {
+    setIsDrawerOpen(false)
+    setIsCopyDrawerOpen(false)
+    setDetailExercise(null)
+    setExerciseToAssign(ex)
+    setAssignMode('NOW')
+    setScheduledStartTime(getDefaultStartDate())
+    setDueTime(getDefaultDueDate())
+    setAssignErrors([])
+    setIsAssignDrawerOpen(true)
+
+    if (user) {
+      setLoadingClasses(true)
+      try {
+        const classes = await getTeachingClasses(user.token)
+        const activeClasses = classes.filter((c) => c.status === 'ACTIVE')
+        setTeachingClasses(activeClasses)
+        if (activeClasses.length > 0) {
+          setSelectedClassId(activeClasses[0].id)
+        } else {
+          setSelectedClassId('')
+        }
+      } catch {
+        setAssignErrors(['Không thể tải danh sách lớp học của bạn'])
+      } finally {
+        setLoadingClasses(false)
+      }
+    }
+  }
+
+  const handleCloseAssignDrawer = () => {
+    setIsAssignDrawerOpen(false)
+    setExerciseToAssign(null)
+    setAssignErrors([])
+  }
+
+  const handleExecuteAssign = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!user || !exerciseToAssign) return
+
+    const errors: string[] = []
+    if (!selectedClassId) {
+      errors.push('Vui lòng chọn lớp học để giao bài')
+    }
+    if (!dueTime) {
+      errors.push('Hạn nộp bài không được để trống')
+    } else {
+      const due = new Date(dueTime)
+      const start =
+        assignMode === 'SCHEDULED' && scheduledStartTime
+          ? new Date(scheduledStartTime)
+          : new Date()
+      if (due <= start) {
+        errors.push('Hạn nộp bài phải sau thời gian bắt đầu / thời điểm giao bài')
+      }
+    }
+
+    if (errors.length > 0) {
+      setAssignErrors(errors)
+      return
+    }
+
+    setAssigning(true)
+    setAssignErrors([])
+    try {
+      const payload = {
+        exerciseId: exerciseToAssign.id,
+        classId: Number(selectedClassId),
+        startTime:
+          assignMode === 'SCHEDULED' && scheduledStartTime
+            ? new Date(scheduledStartTime).toISOString()
+            : null,
+        dueTime: new Date(dueTime).toISOString(),
+      }
+      const assigned = await assignExercise(payload, user.token)
+      setSuccessMessage(
+        `Đã giao thành công bài tập "${assigned.title}" cho lớp "${assigned.classTitle}"!`
+      )
+      handleCloseAssignDrawer()
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setAssignErrors([err.message])
+      } else {
+        setAssignErrors(['Không thể giao bài tập cho lớp. Vui lòng thử lại sau.'])
+      }
+    } finally {
+      setAssigning(false)
     }
   }
 
@@ -394,18 +555,22 @@ export const ExerciseManagementPage: React.FC = () => {
           </div>
         )}
 
-        {/* CREATE EXERCISE SLIDE-OVER DRAWER (NO MODAL!) */}
+        {/* CREATE & EDIT EXERCISE SLIDE-OVER DRAWER (NO MODAL! HTT-05-CN-008) */}
         {isDrawerOpen && (
           <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-xl overflow-hidden">
             <div className="bg-gradient-to-r from-purple-700 via-purple-600 to-indigo-600 px-6 py-4 flex items-center justify-between text-white">
               <div className="flex items-center space-x-3">
                 <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center font-bold text-white text-sm">
-                  <FileText className="w-5 h-5" />
+                  {editingExerciseId ? <Pencil className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
                 </div>
                 <div>
-                  <h2 className="text-base font-bold">Tạo bài tập mới từ câu hỏi</h2>
+                  <h2 className="text-base font-bold">
+                    {editingExerciseId ? 'Chỉnh sửa bài tập (HTT-05-CN-008)' : 'Tạo bài tập mới từ câu hỏi'}
+                  </h2>
                   <p className="text-xs text-purple-100">
-                    Chọn câu hỏi từ ngân hàng của bạn, gán điểm từng câu và đặt trạng thái giao bài (QTN-09, QTN-19).
+                    {editingExerciseId
+                      ? 'Cập nhật tên bài, điểm từng câu, đổi thứ tự và thêm/bớt câu hỏi (QTN-09, QTN-10, QTN-19).'
+                      : 'Chọn câu hỏi từ ngân hàng của bạn, gán điểm từng câu và đặt trạng thái giao bài (QTN-09, QTN-19).'}
                   </p>
                 </div>
               </div>
@@ -689,7 +854,7 @@ export const ExerciseManagementPage: React.FC = () => {
                   ) : (
                     <FileCheck className="w-4 h-4" />
                   )}
-                  <span>Lưu bài tập</span>
+                  <span>{editingExerciseId ? 'Cập nhật bài tập' : 'Lưu bài tập'}</span>
                 </button>
               </div>
             </form>
@@ -787,6 +952,205 @@ export const ExerciseManagementPage: React.FC = () => {
           </div>
         )}
 
+        {/* ASSIGN EXERCISE TO CLASS DRAWER (NO MODAL! HTT-06-CN-001) */}
+        {isAssignDrawerOpen && exerciseToAssign && (
+          <div className="bg-white rounded-3xl border-2 border-emerald-300 shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300">
+            <div className="bg-gradient-to-r from-emerald-700 via-teal-600 to-cyan-600 px-6 py-4 flex items-center justify-between text-white">
+              <div className="flex items-center space-x-3">
+                <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center font-bold text-white text-sm">
+                  <Send className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold">
+                    Giao bài tập cho lớp học (HTT-06-CN-001)
+                  </h2>
+                  <p className="text-xs text-emerald-100">
+                    Chụp snapshot câu hỏi, cố định nội dung đề và điểm số cho lớp (QTN-01, QTN-09, QTN-10).
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseAssignDrawer}
+                className="p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
+                title="Đóng giao bài"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleExecuteAssign} className="p-6 space-y-5">
+              {assignErrors.length > 0 && (
+                <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl space-y-1">
+                  <div className="flex items-center space-x-2 text-rose-800 font-bold text-sm">
+                    <AlertCircle className="w-4 h-4 text-rose-600" />
+                    <span>Vui lòng kiểm tra lại:</span>
+                  </div>
+                  <ul className="list-disc list-inside text-xs text-rose-700 space-y-0.5 pl-1">
+                    {assignErrors.map((err, idx) => (
+                      <li key={idx}>{err}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Tóm tắt bài tập */}
+              <div className="p-4 bg-emerald-50/60 border border-emerald-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div>
+                  <div className="font-bold text-slate-900 text-sm">{exerciseToAssign.title}</div>
+                  <div className="text-slate-500 mt-0.5">
+                    Mã bài #{exerciseToAssign.id} • {exerciseToAssign.questionCount} câu hỏi • Tổng {exerciseToAssign.totalPoints} điểm
+                  </div>
+                </div>
+                <span className="inline-flex items-center space-x-1.5 text-xs font-bold text-emerald-800 bg-white px-3 py-1.5 rounded-xl border border-emerald-200 shadow-2xs self-start sm:self-auto">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>Sẵn sàng giao</span>
+                </span>
+              </div>
+
+              {/* Chọn lớp học */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  Chọn lớp học phụ trách <span className="text-rose-500">*</span>
+                </label>
+                {loadingClasses ? (
+                  <div className="py-3 text-center text-xs text-slate-400">Đang tải danh sách lớp học...</div>
+                ) : teachingClasses.length === 0 ? (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
+                    Bạn chưa có lớp học nào đang hoạt động. Vui lòng tạo lớp học trước khi giao bài!
+                  </div>
+                ) : (
+                  <select
+                    value={selectedClassId}
+                    onChange={(e) => setSelectedClassId(Number(e.target.value))}
+                    required
+                    className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-semibold bg-white"
+                  >
+                    {teachingClasses.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.title} (Mã: {c.joinCode} - {c.memberCount} học sinh)
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              {/* Tùy chọn thời gian bắt đầu */}
+              <div className="space-y-2 pt-1">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  Thời gian bắt đầu làm bài <span className="text-rose-500">*</span>
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label
+                    className={`flex items-center space-x-3 p-3 rounded-xl border cursor-pointer transition ${
+                      assignMode === 'NOW'
+                        ? 'border-emerald-500 bg-emerald-50/50 text-emerald-900 font-bold'
+                        : 'border-slate-200 hover:bg-slate-50 text-slate-700 font-medium'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="assignMode"
+                      value="NOW"
+                      checked={assignMode === 'NOW'}
+                      onChange={() => setAssignMode('NOW')}
+                      className="text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <div className="text-xs">
+                      <div>Giao ngay bây giờ</div>
+                      <div className="text-slate-400 font-normal text-[11px]">Học sinh có thể làm bài ngay lập tức</div>
+                    </div>
+                  </label>
+
+                  <label
+                    className={`flex items-center space-x-3 p-3 rounded-xl border cursor-pointer transition ${
+                      assignMode === 'SCHEDULED'
+                        ? 'border-emerald-500 bg-emerald-50/50 text-emerald-900 font-bold'
+                        : 'border-slate-200 hover:bg-slate-50 text-slate-700 font-medium'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="assignMode"
+                      value="SCHEDULED"
+                      checked={assignMode === 'SCHEDULED'}
+                      onChange={() => setAssignMode('SCHEDULED')}
+                      className="text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <div className="text-xs">
+                      <div>Hẹn giờ mở bài</div>
+                      <div className="text-slate-400 font-normal text-[11px]">Chỉ hiển thị và cho làm từ giờ hẹn</div>
+                    </div>
+                  </label>
+                </div>
+
+                {assignMode === 'SCHEDULED' && (
+                  <div className="pt-2">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Thời điểm mở bài (Giờ & Ngày):
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={scheduledStartTime}
+                      onChange={(e) => setScheduledStartTime(e.target.value)}
+                      required={assignMode === 'SCHEDULED'}
+                      className="w-full sm:w-72 px-4 py-2 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-semibold"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Hạn nộp bài */}
+              <div className="space-y-1.5 pt-1">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  Hạn chót nộp bài (Hạn nộp) <span className="text-rose-500">*</span>
+                </label>
+                <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
+                  <input
+                    type="datetime-local"
+                    value={dueTime}
+                    onChange={(e) => setDueTime(e.target.value)}
+                    required
+                    className="w-full sm:w-72 px-4 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-semibold"
+                  />
+                  <span className="text-xs text-slate-400 flex items-center space-x-1">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>Sau hạn nộp hệ thống sẽ đóng bài và không nhận thêm bài làm</span>
+                  </span>
+                </div>
+              </div>
+
+              {/* Footer Buttons */}
+              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={handleCloseAssignDrawer}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-100 font-medium text-xs transition"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  disabled={assigning || teachingClasses.length === 0}
+                  className="flex items-center space-x-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-sm text-xs transition disabled:opacity-50"
+                >
+                  {assigning ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Đang giao bài...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      <span>Xác nhận giao bài</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
         {/* DETAIL SLIDE-OVER DRAWER (NO MODAL!) */}
         {detailExercise && (
           <div className="bg-white rounded-3xl border-2 border-slate-200 shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300">
@@ -815,6 +1179,26 @@ export const ExerciseManagementPage: React.FC = () => {
                 </div>
               </div>
               <div className="flex items-center space-x-2">
+                {detailExercise.status === 'READY' && (
+                  <button
+                    type="button"
+                    onClick={() => handleOpenAssignDrawer(detailExercise)}
+                    className="flex items-center space-x-1 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 rounded-lg transition shadow-sm"
+                    title="Giao bài tập này cho lớp"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Giao bài</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => handleOpenEditDrawer(detailExercise)}
+                  className="flex items-center space-x-1 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 px-3 py-1.5 rounded-lg transition shadow-sm"
+                  title="Chỉnh sửa bài tập này"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  <span>Sửa</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => handleOpenCopyDrawer(detailExercise)}
@@ -1011,6 +1395,27 @@ export const ExerciseManagementPage: React.FC = () => {
                   </div>
 
                   <div className="flex items-center space-x-2">
+                    {ex.status === 'READY' && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenAssignDrawer(ex)}
+                        className="flex items-center space-x-1 text-xs font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1.5 rounded-lg transition"
+                        title="Giao bài tập cho lớp"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        <span>Giao bài</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditDrawer(ex)}
+                      className="flex items-center space-x-1 text-xs font-bold text-amber-700 hover:text-amber-800 bg-amber-50 hover:bg-amber-100 px-2.5 py-1.5 rounded-lg transition"
+                      title="Chỉnh sửa bài tập"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                      <span>Sửa</span>
+                    </button>
+
                     <button
                       type="button"
                       onClick={() => handleOpenCopyDrawer(ex)}

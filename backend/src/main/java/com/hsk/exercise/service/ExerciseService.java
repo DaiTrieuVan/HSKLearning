@@ -12,6 +12,7 @@ import com.hsk.exercise.dto.CreateExerciseQuestionItem;
 import com.hsk.exercise.dto.CreateExerciseRequest;
 import com.hsk.exercise.dto.ExerciseQuestionResponse;
 import com.hsk.exercise.dto.ExerciseResponse;
+import com.hsk.exercise.dto.UpdateExerciseRequest;
 import com.hsk.exercise.repository.ExerciseQuestionRepository;
 import com.hsk.exercise.repository.ExerciseRepository;
 import com.hsk.question.domain.QuestionEntity;
@@ -19,9 +20,12 @@ import com.hsk.question.repository.QuestionRepository;
 import com.hsk.question.service.QuestionService;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -228,6 +232,113 @@ public class ExerciseService {
 		savedExercise.setQuestions(copiedQuestions);
 
 		return mapToResponse(savedExercise);
+	}
+
+	/**
+	 * HTT-05-CN-008: Chỉnh sửa bài tập (QTN-09, QTN-10, QTN-14, QTN-19).
+	 * Cập nhật tên, mô tả, trạng thái, danh sách câu hỏi, điểm từng câu và thứ tự sắp xếp.
+	 */
+	@Transactional
+	public ExerciseResponse updateExercise(Long teacherId, Long exerciseId, UpdateExerciseRequest request) {
+		assertTeacherOrAdmin(teacherId);
+
+		ExerciseEntity exercise = exerciseRepository.findWithQuestionsById(exerciseId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.EXERCISE_NOT_FOUND));
+
+		// QTN-19: Giáo viên chỉ được sửa bài tập của chính mình
+		if (!exercise.getOwnerId().equals(teacherId)) {
+			throw new ApiException(ApiErrorCode.ACCESS_DENIED_EXERCISE);
+		}
+
+		if (request == null) {
+			throw new ApiException(ApiErrorCode.MALFORMED_REQUEST_BODY);
+		}
+
+		// HTT-05-CN-008-TC-04: Bỏ trống tên bài tập -> Báo lỗi
+		if (request.title() == null || request.title().trim().isEmpty()) {
+			throw new ApiException(ApiErrorCode.EXERCISE_TITLE_BLANK);
+		}
+
+		ExerciseStatus status = request.status() != null ? request.status() : exercise.getStatus();
+
+		// HTT-05-CN-008-TC-06 & QTN-09: Bài 0 câu hỏi chỉ cho phép lưu DRAFT, chặn chuyển READY
+		List<CreateExerciseQuestionItem> questionItems = request.questions() != null ? request.questions() : List.of();
+		if (status == ExerciseStatus.READY && questionItems.isEmpty()) {
+			throw new ApiException(ApiErrorCode.EXERCISE_READY_REQUIRES_QUESTIONS);
+		}
+
+		// Kiểm tra trùng lặp câu hỏi trong bài tập
+		Set<Long> seenQuestionIds = new HashSet<>();
+		for (CreateExerciseQuestionItem item : questionItems) {
+			if (item == null || item.questionId() == null) {
+				throw new ApiException(ApiErrorCode.MALFORMED_REQUEST_BODY);
+			}
+			if (!seenQuestionIds.add(item.questionId())) {
+				throw new ApiException(ApiErrorCode.EXERCISE_DUPLICATE_QUESTIONS);
+			}
+		}
+
+		exercise.setTitle(request.title().trim());
+		exercise.setDescription(request.description() != null && !request.description().trim().isEmpty() ? request.description().trim() : null);
+		exercise.setStatus(status);
+
+		// 1. Loại bỏ các câu hỏi không còn trong danh sách yêu cầu mới
+		Set<Long> targetQuestionIds = questionItems.stream()
+				.map(CreateExerciseQuestionItem::questionId)
+				.collect(Collectors.toSet());
+
+		exercise.getQuestions().removeIf(eq -> eq.getQuestion() == null || !targetQuestionIds.contains(eq.getQuestion().getId()));
+
+		// 2. Map các câu hỏi còn giữ lại để tái sử dụng entity và tránh lỗi Unique Constraint
+		Map<Long, ExerciseQuestionEntity> existingMap = new HashMap<>();
+		for (ExerciseQuestionEntity eq : exercise.getQuestions()) {
+			if (eq.getQuestion() != null) {
+				existingMap.put(eq.getQuestion().getId(), eq);
+			}
+		}
+
+		BigDecimal totalPoints = BigDecimal.ZERO;
+		int defaultOrder = 1;
+
+		for (CreateExerciseQuestionItem item : questionItems) {
+			// Điểm câu hỏi phải > 0
+			if (item.points() == null || item.points().compareTo(BigDecimal.ZERO) <= 0) {
+				throw new ApiException(ApiErrorCode.EXERCISE_QUESTION_POINTS_INVALID);
+			}
+
+			int sortOrder = item.sortOrder() != null ? item.sortOrder() : defaultOrder;
+			ExerciseQuestionEntity existingEq = existingMap.get(item.questionId());
+
+			if (existingEq != null) {
+				existingEq.setPoints(item.points());
+				existingEq.setSortOrder(sortOrder);
+			} else {
+				QuestionEntity question = questionRepository.findById(item.questionId())
+						.orElseThrow(() -> new ApiException(ApiErrorCode.QUESTION_NOT_FOUND));
+
+				if (question.isHidden()) {
+					throw new ApiException(ApiErrorCode.QUESTION_NOT_FOUND);
+				}
+
+				// QTN-19: Giáo viên chỉ được đưa câu hỏi của mình vào bài tập
+				if (!question.getOwnerId().equals(teacherId)) {
+					throw new ApiException(ApiErrorCode.ACCESS_DENIED_QUESTION);
+				}
+
+				// QTN-14: Đánh dấu câu hỏi đã được dùng trong bài tập
+				questionService.markQuestionAsUsedInExercise(question.getId());
+
+				ExerciseQuestionEntity newEq = new ExerciseQuestionEntity(exercise, question, item.points(), sortOrder);
+				exercise.addQuestion(newEq);
+			}
+
+			totalPoints = totalPoints.add(item.points());
+			defaultOrder++;
+		}
+
+		exercise.setTotalPoints(totalPoints);
+		ExerciseEntity saved = exerciseRepository.save(exercise);
+		return mapToResponse(saved);
 	}
 
 	public ExerciseResponse mapToResponse(ExerciseEntity entity) {

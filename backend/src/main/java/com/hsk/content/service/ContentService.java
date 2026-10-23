@@ -16,6 +16,7 @@ import com.hsk.content.domain.LessonVocabularyId;
 import com.hsk.content.domain.VocabSetEntity;
 import com.hsk.content.domain.VocabSetItemEntity;
 import com.hsk.content.domain.VocabularyEntity;
+import com.hsk.content.dto.BatchAddVocabSetItemsResponse;
 import com.hsk.content.dto.CreateGrammarPointRequest;
 import com.hsk.content.dto.CreateLessonRequest;
 import com.hsk.content.dto.CreateVocabSetRequest;
@@ -38,6 +39,8 @@ import com.hsk.content.repository.LessonVocabularyRepository;
 import com.hsk.content.repository.VocabSetItemRepository;
 import com.hsk.content.repository.VocabSetRepository;
 import com.hsk.content.repository.VocabularyRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -49,7 +52,9 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -725,6 +730,15 @@ public class ContentService {
 	}
 
 	@Transactional(readOnly = true)
+	public Page<VocabularyResponse> searchTeacherPrivateVocabularies(
+			Long teacherId, String keyword, String partOfSpeech, Pageable pageable) {
+		String cleanKeyword = (keyword != null && !keyword.isBlank()) ? keyword.trim() : null;
+		String cleanPos = (partOfSpeech != null && !partOfSpeech.isBlank()) ? partOfSpeech.trim() : null;
+		return vocabularyRepository.searchTeacherPrivateVocabularies(teacherId, cleanKeyword, cleanPos, pageable)
+			.map(VocabularyResponse::fromEntity);
+	}
+
+	@Transactional(readOnly = true)
 	public List<VocabularyResponse> getVocabSetItems(Long vocabSetId, Long userId) {
 		VocabSetEntity set = vocabSetRepository.findById(vocabSetId)
 			.orElseThrow(() -> new ApiException(ApiErrorCode.VOCAB_SET_NOT_FOUND));
@@ -760,6 +774,41 @@ public class ContentService {
 		int currentCount = vocabSetItemRepository.findAllByVocabSetIdOrderBySortOrderAsc(vocabSetId).size();
 		VocabSetItemEntity item = new VocabSetItemEntity(set, vocab, currentCount + 1);
 		vocabSetItemRepository.save(item);
+	}
+
+	@Transactional
+	public BatchAddVocabSetItemsResponse addVocabulariesBatchToVocabSet(Long vocabSetId, List<Long> vocabularyIds, Long teacherId) {
+		VocabSetEntity set = vocabSetRepository.findById(vocabSetId)
+			.orElseThrow(() -> new ApiException(ApiErrorCode.VOCAB_SET_NOT_FOUND));
+		if (!Objects.equals(set.getTeacherId(), teacherId)) {
+			throw new ApiException(ApiErrorCode.FORBIDDEN);
+		}
+		if (vocabularyIds == null || vocabularyIds.isEmpty()) {
+			return new BatchAddVocabSetItemsResponse(0, 0);
+		}
+
+		List<VocabSetItemEntity> currentItems = vocabSetItemRepository.findAllByVocabSetIdOrderBySortOrderAsc(vocabSetId);
+		Set<Long> existingVocabIds = currentItems.stream()
+			.map(item -> item.getVocabulary().getId())
+			.collect(Collectors.toSet());
+
+		List<VocabularyEntity> vocabsToAdd = vocabularyRepository.findAllById(vocabularyIds);
+		int currentOrder = currentItems.size();
+		List<VocabSetItemEntity> newItems = new ArrayList<>();
+
+		for (VocabularyEntity vocab : vocabsToAdd) {
+			if (!existingVocabIds.contains(vocab.getId())) {
+				currentOrder++;
+				newItems.add(new VocabSetItemEntity(set, vocab, currentOrder));
+				existingVocabIds.add(vocab.getId());
+			}
+		}
+
+		if (!newItems.isEmpty()) {
+			vocabSetItemRepository.saveAll(newItems);
+		}
+
+		return new BatchAddVocabSetItemsResponse(newItems.size(), vocabularyIds.size());
 	}
 
 	@Transactional

@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   AlertCircle,
   FileSpreadsheet,
+  Download,
   Search,
   BookOpen,
 } from 'lucide-react'
@@ -353,6 +354,27 @@ export const TeacherVocabSetsPage: React.FC = () => {
     }
   }
 
+  const handleDownloadTemplate = () => {
+    // Tiêu đề các cột tương thích chính xác với backend ContentService: hanzi,pinyin,meaning,partOfSpeech,exampleSentence,examplePinyin,exampleMeaning
+    const headers = 'hanzi,pinyin,meaning,partOfSpeech,exampleSentence,examplePinyin,exampleMeaning'
+    const sampleRows = [
+      '老师,lǎoshī,thầy giáo/cô giáo,danh từ,李老师很好。,Lǐ lǎoshī hěn hǎo.,Thầy Lý rất tốt.',
+      '学生,xuésheng,học sinh,danh từ,他是我的学生。,Tā shì wǒ de xuésheng.,Em ấy là học sinh của tôi.',
+      '学习,xuéxí,học tập,động từ,我们要努力学习。,Wǒmen yào nǔlì xuéxí.,Chúng ta phải chăm chỉ học tập.',
+    ]
+    // \uFEFF là UTF-8 BOM giúp Microsoft Excel mở file tiếng Trung và tiếng Việt không bị lỗi hiển thị font
+    const csvContent = '\uFEFF' + [headers, ...sampleRows].join('\r\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', 'mau_tu_vung_rieng.csv')
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-page)', padding: '32px 20px' }}>
       <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
@@ -400,10 +422,10 @@ export const TeacherVocabSetsPage: React.FC = () => {
             </div>
             <div>
               <h1 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>
-                Quản lý Bộ từ vựng & Kho từ vựng riêng
+                Quản lý Bộ từ vựng của lớp
               </h1>
               <p style={{ margin: '4px 0 0', fontSize: '0.88rem', color: 'var(--text-muted)' }}>
-                Soạn các bộ từ vựng theo chủ đề, quản lý từ vựng riêng của giáo viên và giao cho các lớp học (QTN-19).
+                Soạn các bộ từ vựng theo chủ đề và giao cho các lớp học (QTN-19).
               </p>
             </div>
           </div>
@@ -467,8 +489,8 @@ export const TeacherVocabSetsPage: React.FC = () => {
               fontWeight: 800,
               fontSize: '0.92rem',
               cursor: 'pointer',
-              backgroundColor: activeTab === 'SETS' ? 'var(--primary)' : '#f1f5f9',
-              color: activeTab === 'SETS' ? '#ffffff' : 'var(--text-muted)',
+              backgroundColor: 'var(--primary)',
+              color: '#ffffff',
             }}
           >
             <FolderPlus size={18} />
@@ -477,7 +499,7 @@ export const TeacherVocabSetsPage: React.FC = () => {
 
           <button
             type="button"
-            onClick={() => setActiveTab('PRIVATE_WORDS')}
+            onClick={() => navigate('/private-vocab')}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -488,9 +510,11 @@ export const TeacherVocabSetsPage: React.FC = () => {
               fontWeight: 800,
               fontSize: '0.92rem',
               cursor: 'pointer',
-              backgroundColor: activeTab === 'PRIVATE_WORDS' ? 'var(--primary)' : '#f1f5f9',
-              color: activeTab === 'PRIVATE_WORDS' ? '#ffffff' : 'var(--text-muted)',
+              backgroundColor: '#f1f5f9',
+              color: 'var(--text-muted)',
+              transition: 'all 0.15s ease',
             }}
+            title="Vào ngay Trang Quản trị Kho từ vựng riêng (Có tìm kiếm, lọc & phân trang)"
           >
             <BookOpen size={18} />
             <span>Kho từ vựng riêng ({privateWords.length})</span>
@@ -727,30 +751,47 @@ export const TeacherVocabSetsPage: React.FC = () => {
 
                     {/* Add Word into Set section */}
                     <div style={{ marginBottom: '20px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
                         <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-main)' }}>
                           Danh sách từ vựng trong bộ ({setWords.length})
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => setShowAddWordToSet(!showAddWordToSet)}
-                          style={{
-                            padding: '6px 12px',
-                            borderRadius: 'var(--radius-md)',
-                            border: '1.5px solid var(--primary)',
-                            backgroundColor: 'var(--primary-light)',
-                            color: 'var(--primary)',
-                            fontSize: '0.82rem',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                          }}
-                        >
-                          <Search size={14} />
-                          <span>{showAddWordToSet ? 'Đóng tìm kiếm' : 'Tìm & thêm từ vào bộ'}</span>
-                        </button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/vocab-sets/${selectedSet.id}/add-words`)}
+                            className="btn-gamified btn-primary"
+                            style={{
+                              padding: '6px 14px',
+                              fontSize: '0.82rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                            }}
+                          >
+                            <Plus size={15} />
+                            <span>+ Thêm nhiều từ vào bộ</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setShowAddWordToSet(!showAddWordToSet)}
+                            style={{
+                              padding: '6px 12px',
+                              borderRadius: 'var(--radius-md)',
+                              border: '1.5px solid var(--border-card)',
+                              backgroundColor: '#ffffff',
+                              color: 'var(--text-main)',
+                              fontSize: '0.82rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                            }}
+                          >
+                            <Search size={14} />
+                            <span>{showAddWordToSet ? 'Đóng tìm nhanh' : 'Tìm nhanh 1 từ'}</span>
+                          </button>
+                        </div>
                       </div>
 
                       {showAddWordToSet && (
@@ -807,8 +848,17 @@ export const TeacherVocabSetsPage: React.FC = () => {
                         Đang tải danh sách từ vựng...
                       </div>
                     ) : setWords.length === 0 ? (
-                      <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
-                        Bộ từ vựng này chưa có từ nào. Hãy bấm &quot;Tìm & thêm từ vào bộ&quot; để bổ sung từ vựng!
+                      <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
+                        <p style={{ margin: '0 0 16px' }}>Bộ từ vựng này chưa có từ nào.</p>
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/vocab-sets/${selectedSet.id}/add-words`)}
+                          className="btn-gamified btn-primary"
+                          style={{ padding: '8px 20px', fontSize: '0.88rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                        >
+                          <Plus size={16} />
+                          <span>+ Thêm nhiều từ vào bộ ngay</span>
+                        </button>
                       </div>
                     ) : (
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '12px' }}>
@@ -872,6 +922,42 @@ export const TeacherVocabSetsPage: React.FC = () => {
         {/* TAB 2: PRIVATE WORDS */}
         {activeTab === 'PRIVATE_WORDS' && (
           <div>
+            {/* Dedicated Page Suggestion Banner */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 18px',
+                backgroundColor: '#eff6ff',
+                border: '1.5px solid #bfdbfe',
+                borderRadius: 'var(--radius-md)',
+                marginBottom: '16px',
+                gap: '12px',
+                flexWrap: 'wrap',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <BookOpen size={20} style={{ color: '#2563eb', flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#1e40af' }}>
+                    Quản lý số lượng lớn từ vựng (1,000+ từ)?
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: '#3b82f6' }}>
+                    Sử dụng Trang Quản trị Chuyên biệt với Tìm kiếm tức thời, Lọc loại từ, Phân trang và Chọn nhiều từ tạo bộ từ.
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate('/private-vocab')}
+                className="btn-gamified btn-primary"
+                style={{ padding: '6px 14px', fontSize: '0.82rem', whiteSpace: 'nowrap' }}
+              >
+                Mở Trang Quản trị Kho Từ
+              </button>
+            </div>
+
             {/* Action Bar */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <div style={{ fontSize: '0.92rem', color: 'var(--text-muted)', fontWeight: 600 }}>
@@ -994,13 +1080,34 @@ export const TeacherVocabSetsPage: React.FC = () => {
             {/* Inline Import CSV Form */}
             {showImport && (
               <div className="game-card" style={{ padding: '24px', backgroundColor: '#ffffff', marginBottom: '24px', border: '2px solid var(--accent-gold)' }}>
-                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: '0 0 8px', color: 'var(--text-main)' }}>
-                  Nhập danh sách từ vựng riêng từ file CSV
-                </h3>
-                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
-                  Định dạng cột CSV: <code>hanzi,pinyin,meaning,partOfSpeech,exampleSentence,examplePinyin,exampleMeaning</code>
-                </p>
-                <form onSubmit={handleImportPrivateWords} style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '10px' }}>
+                  <div>
+                    <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: '0 0 6px', color: 'var(--text-main)' }}>
+                      Nhập danh sách từ vựng riêng từ file CSV
+                    </h3>
+                    <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: 0 }}>
+                      Định dạng cột CSV: <code>hanzi,pinyin,meaning,partOfSpeech,exampleSentence,examplePinyin,exampleMeaning</code>
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleDownloadTemplate}
+                    className="btn-gamified btn-gold"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px 16px',
+                      fontSize: '0.84rem',
+                      whiteSpace: 'nowrap',
+                    }}
+                    title="Tải về file mẫu CSV định dạng UTF-8 chuẩn để cô giáo không cần tự tạo file thủ công"
+                  >
+                    <Download size={16} />
+                    <span>Tải file mẫu CSV</span>
+                  </button>
+                </div>
+                <form onSubmit={handleImportPrivateWords} style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: '16px' }}>
                   <input
                     type="file"
                     accept=".csv"

@@ -63,6 +63,15 @@ public class UserEntity {
 	@Column(name = "failed_login_count", nullable = false)
 	private int failedLoginCount;
 
+	@Column(name = "total_xp", nullable = false)
+	private int totalXp = 0;
+
+	public void addXp(int xp) {
+		if (xp > 0) {
+			this.totalXp += xp;
+		}
+	}
+
 	/** QTN-17: while this is in the future the account cannot sign in. Used by HTT-01-CN-004. */
 	@Column(name = "locked_until")
 	private Instant lockedUntil;

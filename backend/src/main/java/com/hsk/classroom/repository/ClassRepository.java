@@ -16,6 +16,8 @@ public interface ClassRepository extends JpaRepository<ClassEntity, Long> {
 
 	boolean existsByJoinCode(String joinCode);
 
+	long countByCreatedAtAfter(java.time.Instant after);
+
 	List<ClassEntity> findByTeacher_IdOrderByCreatedAtDesc(Long teacherId);
 
 	List<ClassEntity> findByTeacher_IdAndStatusOrderByCreatedAtDesc(Long teacherId, ClassStatus status);

@@ -45,6 +45,7 @@ import com.hsk.classroom.repository.ClassJoinAttemptRepository;
 import com.hsk.classroom.repository.ClassMemberEventRepository;
 import com.hsk.classroom.repository.ClassMemberRepository;
 import com.hsk.classroom.repository.ClassRepository;
+import com.hsk.content.dto.BatchAddVocabSetItemsRequest;
 import com.hsk.content.dto.CreateGrammarExampleRequest;
 import com.hsk.content.dto.CreateGrammarPointRequest;
 import com.hsk.content.dto.CreateLessonRequest;
@@ -431,5 +432,105 @@ class ContentH2Test {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$", hasSize(1)))
 			.andExpect(jsonPath("$[0].title", is("Bộ từ vựng Giao tiếp HSK 1")));
+	}
+
+	@Test
+	@DisplayName("HTT-03-CN-011: Should search teacher private vocabularies with pagination and filters")
+	void shouldSearchTeacherPrivateVocabulariesWithPagination() throws Exception {
+		// 1. Create a private vocab for teacher
+		CreateVocabularyRequest req = new CreateVocabularyRequest(
+			"咖啡", "kā fēi", "cà phê", "danh từ",
+			null, "我想喝一杯咖啡。", "Wǒ xiǎng hē yì bēi kāfēi.", "Tôi muốn uống 1 cốc cà phê.",
+			null, true
+		);
+
+		mockMvc.perform(post("/api/v1/content/vocabularies")
+				.header("Authorization", "Bearer " + teacherToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(req)))
+			.andExpect(status().isCreated());
+
+		// 2. Search with pagination
+		mockMvc.perform(get("/api/v1/content/vocabularies/my-private/search")
+				.header("Authorization", "Bearer " + teacherToken)
+				.param("page", "0")
+				.param("size", "20"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.content", hasSize(greaterThanOrEqualTo(1))))
+			.andExpect(jsonPath("$.totalElements", greaterThanOrEqualTo(1)));
+
+		// 3. Search with keyword
+		mockMvc.perform(get("/api/v1/content/vocabularies/my-private/search")
+				.header("Authorization", "Bearer " + teacherToken)
+				.param("keyword", "咖啡"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.content", hasSize(1)))
+			.andExpect(jsonPath("$.content[0].hanzi", is("咖啡")));
+	}
+
+	@Test
+	@DisplayName("Should add multiple vocabularies to vocab set in batch")
+	void shouldAddVocabulariesBatchToVocabSet() throws Exception {
+		// 1. Create 2 vocabularies
+		CreateVocabularyRequest req1 = new CreateVocabularyRequest(
+			"苹果", "píng guǒ", "quả táo", "danh từ",
+			null, "我喜欢吃苹果。", "Wǒ xǐhuan chī píngguǒ.", "Tôi thích ăn táo.",
+			null, true
+		);
+		String res1 = mockMvc.perform(post("/api/v1/content/vocabularies")
+				.header("Authorization", "Bearer " + teacherToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(req1)))
+			.andExpect(status().isCreated())
+			.andReturn().getResponse().getContentAsString();
+		Long vocab1Id = ((Number) com.jayway.jsonpath.JsonPath.read(res1, "$.id")).longValue();
+
+		CreateVocabularyRequest req2 = new CreateVocabularyRequest(
+			"香蕉", "xiāng jiāo", "quả chuối", "danh từ",
+			null, "他买了两根香蕉。", "Tā mǎile liǎng gēn xiāngjiāo.", "Anh ấy mua hai quả chuối.",
+			null, true
+		);
+		String res2 = mockMvc.perform(post("/api/v1/content/vocabularies")
+				.header("Authorization", "Bearer " + teacherToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(req2)))
+			.andExpect(status().isCreated())
+			.andReturn().getResponse().getContentAsString();
+		Long vocab2Id = ((Number) com.jayway.jsonpath.JsonPath.read(res2, "$.id")).longValue();
+
+		// 2. Create Vocab Set
+		CreateVocabSetRequest setReq = new CreateVocabSetRequest("Bộ Hoa Quả", "Từ vựng về hoa quả", List.of());
+		String setRes = mockMvc.perform(post("/api/v1/content/vocab-sets")
+				.header("Authorization", "Bearer " + teacherToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(setReq)))
+			.andExpect(status().isCreated())
+			.andReturn().getResponse().getContentAsString();
+		Long setId = ((Number) com.jayway.jsonpath.JsonPath.read(setRes, "$.id")).longValue();
+
+		// 3. Batch add vocabularies
+		BatchAddVocabSetItemsRequest batchReq = new BatchAddVocabSetItemsRequest(List.of(vocab1Id, vocab2Id));
+		mockMvc.perform(post("/api/v1/content/vocab-sets/" + setId + "/vocabularies/batch")
+				.header("Authorization", "Bearer " + teacherToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(batchReq)))
+			.andExpect(status().isCreated())
+			.andExpect(jsonPath("$.addedCount", is(2)))
+			.andExpect(jsonPath("$.totalRequested", is(2)));
+
+		// 4. Verify items in vocab set
+		mockMvc.perform(get("/api/v1/content/vocab-sets/" + setId + "/vocabularies")
+				.header("Authorization", "Bearer " + teacherToken))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$", hasSize(2)));
+
+		// 5. Duplicate test: batch adding again should not duplicate
+		mockMvc.perform(post("/api/v1/content/vocab-sets/" + setId + "/vocabularies/batch")
+				.header("Authorization", "Bearer " + teacherToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(batchReq)))
+			.andExpect(status().isCreated())
+			.andExpect(jsonPath("$.addedCount", is(0)))
+			.andExpect(jsonPath("$.totalRequested", is(2)));
 	}
 }

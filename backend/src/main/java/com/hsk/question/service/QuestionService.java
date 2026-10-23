@@ -11,6 +11,7 @@ import com.hsk.content.domain.VocabSetItemEntity;
 import com.hsk.content.domain.VocabularyEntity;
 import com.hsk.content.repository.VocabSetItemRepository;
 import com.hsk.content.repository.VocabSetRepository;
+import com.hsk.exercise.repository.ExerciseQuestionRepository;
 import com.hsk.question.domain.QuestionEntity;
 import com.hsk.question.domain.QuestionFormat;
 import com.hsk.question.domain.QuestionOptionEntity;
@@ -26,21 +27,47 @@ import com.hsk.question.dto.FillBlankPayloadDto;
 import com.hsk.question.dto.MatchingPairDto;
 import com.hsk.question.dto.MatchingPayloadDto;
 import com.hsk.question.dto.OrderingPayloadDto;
+import com.hsk.question.dto.BulkDeleteResult;
+import com.hsk.question.dto.ImportQuestionsResult;
 import com.hsk.question.dto.QuestionOptionResponse;
 import com.hsk.question.dto.QuestionResponse;
 import com.hsk.question.dto.QuickGeneratePreviewRequest;
 import com.hsk.question.dto.UpdateQuestionRequest;
 import com.hsk.question.repository.QuestionRepository;
+import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.util.Random;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * Dịch vụ xử lý nghiệp vụ câu hỏi (HTT-05-CN-001 -> HTT-05-CN-005).
@@ -49,24 +76,28 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class QuestionService {
 
+	private static final Logger log = LoggerFactory.getLogger(QuestionService.class);
 	private static final Pattern BLANK_PATTERN = Pattern.compile("_{3,}");
 
 	private final QuestionRepository questionRepository;
 	private final UserRoleRepository userRoleRepository;
 	private final VocabSetRepository vocabSetRepository;
 	private final VocabSetItemRepository vocabSetItemRepository;
+	private final ObjectProvider<ExerciseQuestionRepository> exerciseQuestionRepositoryProvider;
 	private final ObjectMapper objectMapper;
 
 	public QuestionService(
 			QuestionRepository questionRepository,
 			UserRoleRepository userRoleRepository,
 			VocabSetRepository vocabSetRepository,
-			VocabSetItemRepository vocabSetItemRepository
+			VocabSetItemRepository vocabSetItemRepository,
+			ObjectProvider<ExerciseQuestionRepository> exerciseQuestionRepositoryProvider
 	) {
 		this.questionRepository = questionRepository;
 		this.userRoleRepository = userRoleRepository;
 		this.vocabSetRepository = vocabSetRepository;
 		this.vocabSetItemRepository = vocabSetItemRepository;
+		this.exerciseQuestionRepositoryProvider = exerciseQuestionRepositoryProvider;
 		this.objectMapper = new ObjectMapper();
 	}
 
@@ -501,6 +532,46 @@ public class QuestionService {
 				.toList();
 	}
 
+	/**
+	 * Tìm kiếm câu hỏi trong ngân hàng của giáo viên có phân trang và bộ lọc.
+	 */
+	@Transactional(readOnly = true)
+	public Page<QuestionResponse> searchMyQuestions(Long teacherId, String keyword, QuestionType type, Pageable pageable) {
+		assertTeacherOrAdmin(teacherId);
+		String searchKeyword = (keyword != null && !keyword.trim().isEmpty()) ? keyword.trim() : null;
+		Page<QuestionEntity> page = questionRepository.searchMyQuestions(teacherId, searchKeyword, type, pageable);
+		return page.map(this::mapToResponse);
+	}
+
+	/**
+	 * Xóa hàng loạt câu hỏi thuộc quyền sở hữu của giáo viên (QTN-14, QTN-19).
+	 */
+	@Transactional
+	public BulkDeleteResult bulkDeleteQuestions(Long teacherId, List<Long> questionIds) {
+		assertTeacherOrAdmin(teacherId);
+		if (questionIds == null || questionIds.isEmpty()) {
+			return new BulkDeleteResult(0, 0);
+		}
+		int deletedCount = 0;
+		for (Long qId : questionIds) {
+			if (qId == null) continue;
+			Optional<QuestionEntity> opt = questionRepository.findWithOptionsById(qId);
+			if (opt.isPresent()) {
+				QuestionEntity q = opt.get();
+				if (q.getOwnerId().equals(teacherId) && !q.isHidden()) {
+					if (isQuestionUsedInAnyExercise(qId)) {
+						q.setHidden(true);
+						questionRepository.save(q);
+					} else {
+						questionRepository.delete(q);
+					}
+					deletedCount++;
+				}
+			}
+		}
+		return new BulkDeleteResult(questionIds.size(), deletedCount);
+	}
+
 	public QuestionResponse mapToResponse(QuestionEntity entity) {
 		List<QuestionOptionResponse> optionResponses = new ArrayList<>();
 		if (entity.getOptions() != null) {
@@ -531,7 +602,7 @@ public class QuestionService {
 	private final Set<Long> usedInExerciseQuestionIds = Collections.synchronizedSet(new HashSet<>());
 
 	/**
-	 * Đánh dấu câu hỏi đã được sử dụng trong bài tập (phục vụ mô phỏng QTN-14 cho đến khi HTT-05-CN-006 hoàn thiện).
+	 * Đánh dấu câu hỏi đã được sử dụng trong bài tập (phục vụ mô phỏng QTN-14).
 	 */
 	public void markQuestionAsUsedInExercise(Long questionId) {
 		if (questionId != null) {
@@ -540,10 +611,28 @@ public class QuestionService {
 	}
 
 	/**
-	 * Kiểm tra xem câu hỏi đã được gắn vào bài tập nào hay chưa.
+	 * Xóa cache mô phỏng câu hỏi đã dùng (dùng cho test isolation).
+	 */
+	public void clearUsedInExerciseQuestionIds() {
+		usedInExerciseQuestionIds.clear();
+	}
+
+	/**
+	 * Kiểm tra xem câu hỏi đã được gắn vào bài tập nào hay chưa (QTN-14).
+	 * Kiểm tra trực tiếp trong DB thông qua ExerciseQuestionRepository nếu có,
+	 * đồng thời kiểm tra thêm bộ nhớ in-memory cache/mock.
 	 */
 	public boolean isQuestionUsedInAnyExercise(Long questionId) {
-		return questionId != null && usedInExerciseQuestionIds.contains(questionId);
+		if (questionId == null) {
+			return false;
+		}
+		ExerciseQuestionRepository exerciseQuestionRepository = exerciseQuestionRepositoryProvider != null
+				? exerciseQuestionRepositoryProvider.getIfAvailable()
+				: null;
+		if (exerciseQuestionRepository != null && exerciseQuestionRepository.existsByQuestion_Id(questionId)) {
+			return true;
+		}
+		return usedInExerciseQuestionIds.contains(questionId);
 	}
 
 	/**
@@ -668,5 +757,511 @@ public class QuestionService {
 			// Câu hỏi chưa từng dùng trong bài tập nào -> cho phép xóa cứng khỏi database
 			questionRepository.delete(question);
 		}
+	}
+
+	// ==================== IMPORT CÂU HỎI TỪ FILE (EXCEL / CSV) ====================
+
+	/**
+	 * QTN-07: Khử công thức độc hại: bảo vệ chống formula injection bằng cách escape =, +, -, @
+	 */
+	private String sanitizeFormula(String value) {
+		if (value == null) return "";
+		String trimmed = value.trim();
+		if (trimmed.startsWith("=") || trimmed.startsWith("+") || trimmed.startsWith("-") || trimmed.startsWith("@")) {
+			return "'" + trimmed;
+		}
+		return trimmed;
+	}
+
+	private QuestionType parseQuestionType(String rawType) {
+		if (rawType == null) return null;
+		String norm = rawType.trim().toUpperCase();
+		if (norm.equals("MCQ") || norm.contains("TRẮC NGHIỆM") || norm.contains("TRAC NGHIEM") || norm.contains("CHỌN")) {
+			return QuestionType.MCQ;
+		}
+		if (norm.equals("FILL") || norm.contains("ĐIỀN") || norm.contains("DIEN")) {
+			return QuestionType.FILL;
+		}
+		if (norm.equals("MATCH") || norm.contains("NỐI") || norm.contains("NOI")) {
+			return QuestionType.MATCH;
+		}
+		if (norm.equals("ORDER") || norm.contains("SẮP XẾP") || norm.contains("SAP XEP") || norm.contains("XẾP")) {
+			return QuestionType.ORDER;
+		}
+		return null;
+	}
+
+	private List<String> parseCsvLine(String line) {
+		List<String> result = new ArrayList<>();
+		if (line == null) return result;
+
+		// Hỗ trợ tab delimiter
+		if (line.contains("\t") && !line.contains(",")) {
+			String[] parts = line.split("\t", -1);
+			for (String p : parts) result.add(p.trim());
+			return result;
+		}
+
+		// Hỗ trợ semicolon delimiter
+		if (line.contains(";") && !line.contains(",")) {
+			String[] parts = line.split(";", -1);
+			for (String p : parts) result.add(p.trim());
+			return result;
+		}
+
+		StringBuilder current = new StringBuilder();
+		boolean inQuotes = false;
+		for (int i = 0; i < line.length(); i++) {
+			char c = line.charAt(i);
+			if (c == '\"') {
+				if (inQuotes && i + 1 < line.length() && line.charAt(i + 1) == '\"') {
+					current.append('\"');
+					i++;
+				} else {
+					inQuotes = !inQuotes;
+				}
+			} else if (c == ',' && !inQuotes) {
+				result.add(current.toString().trim());
+				current.setLength(0);
+			} else {
+				current.append(c);
+			}
+		}
+		result.add(current.toString().trim());
+		return result;
+	}
+
+	private List<String[]> parseCsvFile(InputStream is) throws IOException {
+		List<String[]> rows = new ArrayList<>();
+		try (BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+			String line;
+			while ((line = reader.readLine()) != null) {
+				if (line.trim().isEmpty()) continue;
+				if (line.startsWith("\uFEFF")) {
+					line = line.substring(1);
+				}
+				List<String> cells = parseCsvLine(line);
+				if (!cells.isEmpty()) {
+					rows.add(cells.toArray(new String[0]));
+				}
+			}
+		}
+		return rows;
+	}
+
+	private List<String[]> parseExcelFile(InputStream is) throws Exception {
+		List<String[]> rows = new ArrayList<>();
+		try (Workbook workbook = WorkbookFactory.create(is)) {
+			Sheet sheet = workbook.getSheetAt(0);
+			DataFormatter formatter = new DataFormatter();
+			for (Row row : sheet) {
+				if (row == null) continue;
+				int lastCell = Math.max(row.getLastCellNum(), 8);
+				String[] cells = new String[lastCell];
+				boolean hasData = false;
+				for (int i = 0; i < lastCell; i++) {
+					Cell cell = row.getCell(i, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
+					String text = cell != null ? formatter.formatCellValue(cell).trim() : "";
+					cells[i] = text;
+					if (!text.isEmpty()) hasData = true;
+				}
+				if (hasData) {
+					rows.add(cells);
+				}
+			}
+		}
+		return rows;
+	}
+
+	@Transactional
+	public ImportQuestionsResult importQuestionsFromFile(Long teacherId, MultipartFile file) {
+		assertTeacherOrAdmin(teacherId);
+
+		if (file == null || file.isEmpty()) {
+			throw new ApiException(ApiErrorCode.MALFORMED_REQUEST_BODY);
+		}
+
+		String fileName = file.getOriginalFilename() != null ? file.getOriginalFilename().toLowerCase() : "";
+		List<String[]> rawRows;
+
+		try {
+			if (fileName.endsWith(".xlsx") || fileName.endsWith(".xls")) {
+				rawRows = parseExcelFile(file.getInputStream());
+			} else {
+				rawRows = parseCsvFile(file.getInputStream());
+			}
+		} catch (Exception e) {
+			log.error("Failed to parse question file", e);
+			throw new ApiException(ApiErrorCode.MALFORMED_REQUEST_BODY);
+		}
+
+		List<String> errors = new ArrayList<>();
+		List<QuestionResponse> importedQuestions = new ArrayList<>();
+		int totalRows = 0;
+		int successCount = 0;
+		int skippedCount = 0;
+
+		boolean isFirstRow = true;
+		for (String[] row : rawRows) {
+			if (row == null || row.length == 0) continue;
+
+			// Kiểm tra nếu là dòng tiêu đề (header)
+			if (isFirstRow) {
+				isFirstRow = false;
+				String firstCell = row[0] != null ? row[0].toLowerCase() : "";
+				if (firstCell.contains("type") || firstCell.contains("loại") || firstCell.contains("dang")) {
+					continue;
+				}
+			}
+
+			// Bỏ qua dòng rỗng hoàn toàn
+			boolean allEmpty = true;
+			for (String c : row) {
+				if (c != null && !c.trim().isEmpty()) {
+					allEmpty = false;
+					break;
+				}
+			}
+			if (allEmpty) continue;
+
+			totalRows++;
+			int rowNum = totalRows;
+
+			String rawType = row.length > 0 ? sanitizeFormula(row[0]) : "";
+			String content = row.length > 1 ? sanitizeFormula(row[1]) : "";
+			String optAOrData = row.length > 2 ? sanitizeFormula(row[2]) : "";
+			String optB = row.length > 3 ? sanitizeFormula(row[3]) : "";
+			String optC = row.length > 4 ? sanitizeFormula(row[4]) : "";
+			String optD = row.length > 5 ? sanitizeFormula(row[5]) : "";
+			String correctAnswer = row.length > 6 ? sanitizeFormula(row[6]) : "";
+			String explanation = row.length > 7 ? sanitizeFormula(row[7]) : null;
+
+			QuestionType type = parseQuestionType(rawType);
+			if (type == null) {
+				skippedCount++;
+				errors.add("Dòng " + rowNum + ": Loại câu hỏi không hợp lệ ('" + rawType + "'). Chấp nhận: MCQ, FILL, MATCH, ORDER");
+				continue;
+			}
+
+			if (content.isEmpty()) {
+				skippedCount++;
+				errors.add("Dòng " + rowNum + ": Nội dung câu hỏi không được để trống.");
+				continue;
+			}
+
+			try {
+				switch (type) {
+					case MCQ -> {
+						QuestionResponse res = parseAndCreateMcq(teacherId, content, optAOrData, optB, optC, optD, correctAnswer, explanation);
+						importedQuestions.add(res);
+						successCount++;
+					}
+					case FILL -> {
+						QuestionResponse res = parseAndCreateFill(teacherId, content, optAOrData, correctAnswer, explanation);
+						importedQuestions.add(res);
+						successCount++;
+					}
+					case MATCH -> {
+						QuestionResponse res = parseAndCreateMatch(teacherId, content, optAOrData, explanation);
+						importedQuestions.add(res);
+						successCount++;
+					}
+					case ORDER -> {
+						QuestionResponse res = parseAndCreateOrder(teacherId, content, optAOrData, explanation);
+						importedQuestions.add(res);
+						successCount++;
+					}
+				}
+			} catch (ApiException e) {
+				skippedCount++;
+				String msg = e.getMessage() != null ? e.getMessage() : (e.code() != null ? e.code().message() : "Lỗi dữ liệu");
+				errors.add("Dòng " + rowNum + " (" + type + "): " + msg);
+			} catch (Exception e) {
+				skippedCount++;
+				errors.add("Dòng " + rowNum + " (" + type + "): " + e.getMessage());
+			}
+		}
+
+		return new ImportQuestionsResult(totalRows, successCount, skippedCount, errors, importedQuestions);
+	}
+
+	private QuestionResponse parseAndCreateMcq(
+			Long teacherId,
+			String content,
+			String optA,
+			String optB,
+			String optC,
+			String optD,
+			String rawCorrectAnswer,
+			String explanation
+	) {
+		List<String> optionsText = new ArrayList<>();
+		if (!optB.isEmpty()) {
+			if (!optA.isEmpty()) optionsText.add(optA);
+			if (!optB.isEmpty()) optionsText.add(optB);
+			if (!optC.isEmpty()) optionsText.add(optC);
+			if (!optD.isEmpty()) optionsText.add(optD);
+		} else if (optA.contains("|")) {
+			String[] split = optA.split("\\|");
+			for (String s : split) {
+				if (!s.trim().isEmpty()) {
+					optionsText.add(s.trim());
+				}
+			}
+		} else {
+			optionsText.add(optA);
+		}
+
+		if (optionsText.size() < 2) {
+			throw new ApiException(ApiErrorCode.QUESTION_MIN_OPTIONS);
+		}
+
+		int correctIdx = -1;
+		String normCorrect = rawCorrectAnswer != null ? rawCorrectAnswer.trim().toUpperCase() : "";
+
+		if (normCorrect.equals("A") || normCorrect.equals("1") || normCorrect.startsWith("A.") || normCorrect.startsWith("A:")) {
+			correctIdx = 0;
+		} else if (normCorrect.equals("B") || normCorrect.equals("2") || normCorrect.startsWith("B.") || normCorrect.startsWith("B:")) {
+			correctIdx = 1;
+		} else if (normCorrect.equals("C") || normCorrect.equals("3") || normCorrect.startsWith("C.") || normCorrect.startsWith("C:")) {
+			correctIdx = 2;
+		} else if (normCorrect.equals("D") || normCorrect.equals("4") || normCorrect.startsWith("D.") || normCorrect.startsWith("D:")) {
+			correctIdx = 3;
+		} else if (!rawCorrectAnswer.isEmpty()) {
+			for (int i = 0; i < optionsText.size(); i++) {
+				if (optionsText.get(i).equalsIgnoreCase(rawCorrectAnswer.trim())) {
+					correctIdx = i;
+					break;
+				}
+			}
+		}
+
+		if (correctIdx < 0 || correctIdx >= optionsText.size()) {
+			throw new ApiException(ApiErrorCode.QUESTION_EXACTLY_ONE_CORRECT);
+		}
+
+		List<CreateQuestionOptionRequest> options = new ArrayList<>();
+		for (int i = 0; i < optionsText.size(); i++) {
+			String cleanOpt = optionsText.get(i).replaceFirst("^[A-Da-d][.:\\)]\\s*", "").trim();
+			if (cleanOpt.isEmpty()) {
+				cleanOpt = optionsText.get(i);
+			}
+			options.add(new CreateQuestionOptionRequest(cleanOpt, i == correctIdx));
+		}
+
+		CreateQuestionRequest req = new CreateQuestionRequest(
+				content,
+				explanation,
+				QuestionType.MCQ,
+				null,
+				options
+		);
+		return createMultipleChoiceQuestion(teacherId, req);
+	}
+
+	private QuestionResponse parseAndCreateFill(
+			Long teacherId,
+			String content,
+			String rawData,
+			String rawCorrectAnswer,
+			String explanation
+	) {
+		String answerData = !rawData.isEmpty() ? rawData : rawCorrectAnswer;
+		if (answerData == null || answerData.trim().isEmpty()) {
+			throw new ApiException(ApiErrorCode.QUESTION_CORRECT_ANSWER_BLANK);
+		}
+
+		String[] blankParts = answerData.split("\\|");
+		List<BlankAnswerDto> blanks = new ArrayList<>();
+		for (int i = 0; i < blankParts.length; i++) {
+			String bp = blankParts[i].trim();
+			if (bp.isEmpty()) continue;
+
+			String[] alts = bp.split("/");
+			String correct = alts[0].trim();
+			List<String> acceptable = new ArrayList<>();
+			for (int j = 1; j < alts.length; j++) {
+				if (!alts[j].trim().isEmpty()) {
+					acceptable.add(alts[j].trim());
+				}
+			}
+			blanks.add(new BlankAnswerDto(i, correct, acceptable));
+		}
+
+		CreateFillBlankQuestionRequest req = new CreateFillBlankQuestionRequest(content, explanation, blanks);
+		return createFillBlankQuestion(teacherId, req);
+	}
+
+	private QuestionResponse parseAndCreateMatch(
+			Long teacherId,
+			String content,
+			String rawData,
+			String explanation
+	) {
+		if (rawData == null || rawData.trim().isEmpty()) {
+			throw new ApiException(ApiErrorCode.QUESTION_MATCH_MIN_PAIRS);
+		}
+
+		String[] pairTokens = rawData.split("[|\\n\\r]+");
+		List<MatchingPairDto> pairs = new ArrayList<>();
+
+		for (String token : pairTokens) {
+			token = token.trim();
+			if (token.isEmpty()) continue;
+
+			String[] parts = token.split("[:\\-]", 2);
+			if (parts.length >= 2) {
+				String left = parts[0].trim();
+				String right = parts[1].trim();
+				if (!left.isEmpty() && !right.isEmpty()) {
+					pairs.add(new MatchingPairDto(left, right));
+				}
+			}
+		}
+
+		if (pairs.size() < 2) {
+			throw new ApiException(ApiErrorCode.QUESTION_MATCH_MIN_PAIRS);
+		}
+
+		CreateMatchingQuestionRequest req = new CreateMatchingQuestionRequest(content, explanation, pairs);
+		return createMatchingQuestion(teacherId, req);
+	}
+
+	private QuestionResponse parseAndCreateOrder(
+			Long teacherId,
+			String content,
+			String rawData,
+			String explanation
+	) {
+		if (rawData == null || rawData.trim().isEmpty()) {
+			throw new ApiException(ApiErrorCode.QUESTION_ORDER_MIN_ITEMS);
+		}
+
+		String[] itemsArr = rawData.split("[|/]+");
+		List<String> items = new ArrayList<>();
+		for (String it : itemsArr) {
+			String trimmed = it.trim();
+			if (!trimmed.isEmpty()) {
+				items.add(trimmed);
+			}
+		}
+
+		if (items.size() < 2) {
+			throw new ApiException(ApiErrorCode.QUESTION_ORDER_MIN_ITEMS);
+		}
+
+		CreateOrderingQuestionRequest req = new CreateOrderingQuestionRequest(content, explanation, items);
+		return createOrderingQuestion(teacherId, req);
+	}
+
+	/**
+	 * Tạo file mẫu Excel (.xlsx) có sẵn tiêu đề và ví dụ mẫu cho cả 4 loại câu hỏi.
+	 */
+	public byte[] generateQuestionExcelTemplate() {
+		try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+			Sheet sheet = workbook.createSheet("HSK_CauHoi_Mau");
+
+			CellStyle headerStyle = workbook.createCellStyle();
+			Font headerFont = workbook.createFont();
+			headerFont.setBold(true);
+			headerFont.setColor(IndexedColors.WHITE.getIndex());
+			headerStyle.setFont(headerFont);
+			headerStyle.setFillForegroundColor(IndexedColors.INDIGO.getIndex());
+			headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+			String[] headers = {
+					"type (Loại câu hỏi)",
+					"content (Nội dung câu hỏi)",
+					"option_a_or_data (Lựa chọn A / Đáp án / Cặp nối / Thứ tự từ)",
+					"option_b (Lựa chọn B)",
+					"option_c (Lựa chọn C)",
+					"option_d (Lựa chọn D)",
+					"correct_answer (Đáp án đúng)",
+					"explanation (Giải thích)"
+			};
+
+			Row headerRow = sheet.createRow(0);
+			for (int i = 0; i < headers.length; i++) {
+				Cell cell = headerRow.createCell(i);
+				cell.setCellValue(headers[i]);
+				cell.setCellStyle(headerStyle);
+			}
+
+			String[][] sampleData = {
+					{
+							"MCQ",
+							"Từ \"苹果\" (píngguǒ) có nghĩa là gì?",
+							"Quả táo",
+							"Quả chuối",
+							"Quả cam",
+							"Quả dưa hấu",
+							"A",
+							"苹果 (píngguǒ) nghĩa là quả táo trong tiếng Trung."
+					},
+					{
+							"FILL",
+							"我想喝一___咖啡。",
+							"杯",
+							"",
+							"",
+							"",
+							"",
+							"杯 (bēi) là lượng từ chỉ cốc/ly."
+					},
+					{
+							"MATCH",
+							"Nối từ vựng với nghĩa tiếng Việt tương ứng:",
+							"咖啡: Cà phê | 茶: Trà | 牛奶: Sữa | 水: Nước",
+							"",
+							"",
+							"",
+							"",
+							"Các từ vựng về thức uống thông dụng trong HSK 1-2."
+					},
+					{
+							"ORDER",
+							"Hãy sắp xếp các từ sau thành câu hoàn chỉnh:",
+							"我 | 喜欢 | 吃 | 苹果",
+							"",
+							"",
+							"",
+							"",
+							"Cấu trúc: Chủ ngữ (我) + Động từ (喜欢吃) + Tân ngữ (苹果)."
+					}
+			};
+
+			for (int r = 0; r < sampleData.length; r++) {
+				Row row = sheet.createRow(r + 1);
+				for (int c = 0; c < sampleData[r].length; c++) {
+					Cell cell = row.createCell(c);
+					cell.setCellValue(sampleData[r][c]);
+				}
+			}
+
+			for (int i = 0; i < headers.length; i++) {
+				sheet.autoSizeColumn(i);
+			}
+
+			workbook.write(out);
+			return out.toByteArray();
+		} catch (Exception e) {
+			log.error("Failed to generate Excel template", e);
+			throw new ApiException(ApiErrorCode.INTERNAL_ERROR);
+		}
+	}
+
+	/**
+	 * Tạo file mẫu CSV (UTF-8 BOM) có sẵn tiêu đề và ví dụ mẫu cho cả 4 loại câu hỏi.
+	 */
+	public byte[] generateQuestionCsvTemplate() {
+		StringBuilder sb = new StringBuilder();
+		// UTF-8 BOM
+		sb.append("\uFEFF");
+		sb.append("type,content,option_a_or_data,option_b,option_c,option_d,correct_answer,explanation\n");
+		sb.append("MCQ,\"Từ \"\"苹果\"\" (píngguǒ) có nghĩa là gì?\",Quả táo,Quả chuối,Quả cam,Quả dưa hấu,A,\"苹果 (píngguǒ) nghĩa là quả táo.\"\n");
+		sb.append("FILL,我想喝一___咖啡。,杯,,,,,杯 (bēi) là lượng từ chỉ cốc/ly.\n");
+		sb.append("MATCH,Nối từ vựng với nghĩa tiếng Việt tương ứng:,\"咖啡: Cà phê | 茶: Trà | 牛奶: Sữa | 水: Nước\",,,,,\"Từ vựng về thức uống.\"\n");
+		sb.append("ORDER,Hãy sắp xếp các từ sau thành câu hoàn chỉnh:,我 | 喜欢 | 吃 | 苹果,,,,,Chủ ngữ + Vị ngữ + Tân ngữ.\n");
+		return sb.toString().getBytes(StandardCharsets.UTF_8);
 	}
 }

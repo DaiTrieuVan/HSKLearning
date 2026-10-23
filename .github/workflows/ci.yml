@@ -81,3 +81,22 @@ jobs:
 
       - name: Run build check
         run: npm run build
+
+  deploy:
+    name: Continuous Deployment (AWS EC2)
+    needs: [backend-ci, frontend-ci]
+    if: (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main') && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd ~/HSK
+            git pull origin ${{ github.ref_name }}
+            docker compose up -d --build
+            docker image prune -f
+

@@ -42,6 +42,7 @@ public class ClassEntity {
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "teacher_id", nullable = false)
+	@org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
 	private UserEntity teacher;
 
 	@Column(name = "title", nullable = false, length = 150)

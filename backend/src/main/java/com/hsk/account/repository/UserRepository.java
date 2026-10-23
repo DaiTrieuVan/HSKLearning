@@ -15,6 +15,8 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
 
 	boolean existsByEmail(String email);
 
+	long countByCreatedAtAfter(java.time.Instant after);
+
 	@org.springframework.data.jpa.repository.Query("""
 		SELECT u FROM UserEntity u
 		WHERE (:query IS NULL OR LOWER(u.email) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :query, '%')))

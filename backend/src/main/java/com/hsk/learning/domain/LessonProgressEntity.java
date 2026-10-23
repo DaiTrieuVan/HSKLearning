@@ -23,11 +23,13 @@ public class LessonProgressEntity {
 	@ManyToOne(fetch = FetchType.LAZY)
 	@MapsId("userId")
 	@JoinColumn(name = "user_id")
+	@org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
 	private UserEntity user;
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@MapsId("lessonId")
 	@JoinColumn(name = "lesson_id")
+	@org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
 	private LessonEntity lesson;
 
 	@CreationTimestamp

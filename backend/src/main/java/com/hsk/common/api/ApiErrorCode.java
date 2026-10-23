@@ -194,6 +194,66 @@ public enum ApiErrorCode {
 	/** HTT-05-CN-006 / QTN-19: Access denied to exercise of another teacher. */
 	ACCESS_DENIED_EXERCISE(HttpStatus.FORBIDDEN, "Bạn không có quyền thao tác với bài tập này"),
 
+	/** HTT-06-CN-001 / TC-03: Assignment due time must be after start/assign time (QTN-09). */
+	ASSIGNMENT_DUE_DATE_INVALID(HttpStatus.BAD_REQUEST, "Hạn nộp bài phải sau thời gian bắt đầu hoặc thời điểm giao bài"),
+
+	/** HTT-06-CN-001 / TC-04 & QTN-09: Exercise must have at least one question to assign. */
+	ASSIGNMENT_EXERCISE_EMPTY(HttpStatus.BAD_REQUEST, "Bài tập chưa có câu hỏi nào, không thể giao bài cho lớp"),
+
+	/** HTT-06-CN-001 / TC-05: Classroom is required to assign exercise. */
+	ASSIGNMENT_CLASS_REQUIRED(HttpStatus.BAD_REQUEST, "Vui lòng chọn lớp học để giao bài"),
+
+	/** HTT-06-CN-001 / TC-05: Due date is required to assign exercise. */
+	ASSIGNMENT_DUE_DATE_REQUIRED(HttpStatus.BAD_REQUEST, "Hạn nộp bài không được để trống"),
+
+	/** HTT-06-CN-001: Assignment not found. */
+	ASSIGNMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy lần giao bài"),
+
+	/** HTT-06-CN-003 / TC-04 & QTN-11: Assignment has expired, cannot start or submit manually. */
+	ASSIGNMENT_ALREADY_EXPIRED(HttpStatus.BAD_REQUEST, "Bài tập đã quá hạn nộp, không thể bắt đầu hoặc nộp bài"),
+
+	/** HTT-06-CN-003 / TC-10: Assignment has not yet started. */
+	ASSIGNMENT_NOT_YET_STARTED(HttpStatus.BAD_REQUEST, "Bài tập chưa đến thời gian mở làm bài"),
+
+	/** HTT-06-CN-003 / TC-06 & QTN-12: Assignment already submitted. */
+	ASSIGNMENT_ALREADY_SUBMITTED(HttpStatus.BAD_REQUEST, "Bài tập đã được nộp trước đó"),
+
+	/** HTT-06-CN-003: Submission not found. */
+	SUBMISSION_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy lượt làm bài tập"),
+
+	/** HTT-06-CN-003: Submission is not in progress. */
+	SUBMISSION_NOT_IN_PROGRESS(HttpStatus.BAD_REQUEST, "Lượt làm bài đã kết thúc hoặc không ở trạng thái đang làm"),
+
+	/** HTT-06-CN-009 / TC-03 & QTN-21: Cannot cancel assignment when at least one student has started/submitted. */
+	ASSIGNMENT_CANNOT_CANCEL_HAS_SUBMISSIONS(HttpStatus.BAD_REQUEST, "Không thể hủy bài tập đã có học sinh làm hoặc nộp bài"),
+
+	/** HTT-06-CN-009 / TC-06: Assignment is already cancelled. */
+	ASSIGNMENT_ALREADY_CANCELLED(HttpStatus.BAD_REQUEST, "Lần giao bài này đã bị hủy trước đó"),
+
+	/** HTT-06-CN-010 / TC-02 & QTN-21: New due time must be strictly after current due time (only extend, not shorten). */
+	ASSIGNMENT_DUE_TIME_CANNOT_SHORTEN(HttpStatus.BAD_REQUEST, "Hạn nộp mới phải sau hạn nộp hiện tại, không thể rút ngắn hoặc giữ nguyên"),
+
+	/** HTT-06-CN-007 / TC-03: Adjusted score must be between 0 and total points. */
+	INVALID_ADJUSTED_SCORE(HttpStatus.BAD_REQUEST, "Điểm điều chỉnh không hợp lệ"),
+
+	/** HTT-06-CN-007 / TC-02: Adjust reason is required. */
+	ADJUST_REASON_REQUIRED(HttpStatus.BAD_REQUEST, "Lý do điều chỉnh điểm không được để trống"),
+
+	/** HTT-06-CN-008 / TC-02 & QTN-11: Extended due time must be after now. */
+	EXTENSION_DUE_TIME_INVALID(HttpStatus.BAD_REQUEST, "Thời gian gia hạn phải sau thời điểm hiện tại"),
+
+	/** HTT-06-CN-008 / TC-08: Cannot extend when already auto-submitted; suggest retake. */
+	CANNOT_EXTEND_AUTO_SUBMITTED(HttpStatus.BAD_REQUEST, "Bài nộp đã bị hệ thống tự động nộp khi hết hạn. Vui lòng cấp lượt làm lại thay vì gia hạn"),
+
+	/** HTT-06-CN-008: Student already submitted. */
+	CANNOT_EXTEND_ALREADY_SUBMITTED(HttpStatus.BAD_REQUEST, "Học sinh đã nộp bài. Vui lòng cấp lượt làm lại thay vì gia hạn"),
+
+	/** HTT-07-CN-007: Start date is after end date. */
+	INVALID_DATE_RANGE(HttpStatus.BAD_REQUEST, "Khoảng thời gian không hợp lệ: Ngày bắt đầu không được sau ngày kết thúc"),
+
+	/** HTT-07-CN-007: No assignment data found for the selected period. */
+	NO_DATA_FOR_PERIOD(HttpStatus.BAD_REQUEST, "Khoảng thời gian đã chọn không có bài tập nào"),
+
 	/** Unexpected server side failure; the client may retry. */
 	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Hệ thống đang gặp sự cố, vui lòng thử lại sau");
 

@@ -1,0 +1,71 @@
+services:
+  # -------------------------------------------------------------
+  # 1. Cơ sở dữ liệu MySQL 8.0 (Tối ưu RAM cho EC2 Free Tier)
+  # -------------------------------------------------------------
+  mysql:
+    image: mysql:8.0
+    container_name: hsk-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-RootHsk2026!}
+      MYSQL_DATABASE: hsk_learning
+      MYSQL_USER: ${DB_USERNAME:-hsk_app}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-HskDev2026!}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      - --default-authentication-plugin=caching_sha2_password
+      - --innodb-buffer-pool-size=128M
+      - --max-connections=50
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "3307:3306"
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-RootHsk2026!}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # -------------------------------------------------------------
+  # 2. Backend Spring Boot (Java 21)
+  # -------------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hsk-backend
+    restart: always
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/hsk_learning?sslMode=DISABLED&allowPublicKeyRetrieval=true&connectionTimeZone=UTC&preserveInstants=true&characterEncoding=UTF-8
+      DB_USERNAME: ${DB_USERNAME:-hsk_app}
+      DB_PASSWORD: ${DB_PASSWORD:-HskDev2026!}
+      APP_CORS_ALLOWED_ORIGINS: "*"
+    volumes:
+      - backend_uploads:/app/uploads
+    ports:
+      - "127.0.0.1:8080:8080"
+
+  # -------------------------------------------------------------
+  # 3. Frontend React (Vite) + Nginx Web Server (Hỗ trợ HTTPS)
+  # -------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: hsk-frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+
+volumes:
+  mysql_data:
+  backend_uploads:

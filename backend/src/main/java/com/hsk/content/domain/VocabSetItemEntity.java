@@ -21,11 +21,13 @@ public class VocabSetItemEntity {
 	@ManyToOne(fetch = FetchType.LAZY)
 	@MapsId("vocabSetId")
 	@JoinColumn(name = "vocab_set_id")
+	@org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
 	private VocabSetEntity vocabSet;
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@MapsId("vocabularyId")
 	@JoinColumn(name = "vocabulary_id")
+	@org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
 	private VocabularyEntity vocabulary;
 
 	@Column(name = "sort_order", nullable = false)

@@ -35,12 +35,13 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ isCollapsed, onToggleCol
   const isAdmin = user?.roles.includes('ADMIN')
 
   useEffect(() => {
-    if (user && !isAdmin) {
+    // Chỉ tải SRS khi ở chế độ học sinh
+    if (user && !isAdmin && !isTeacher) {
       getSrsSummary(user.token)
         .then((data) => setSrsSummary(data))
         .catch(() => {})
     }
-  }, [user, isAdmin])
+  }, [user, isAdmin, isTeacher])
 
   const isActive = (path: string) => {
     if (path === '/') {
@@ -126,7 +127,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ isCollapsed, onToggleCol
                 HSK Master<span style={{ color: 'var(--primary)' }}>.</span>
               </div>
               <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)' }}>
-                {isAdmin ? 'HỆ THỐNG QUẢN TRỊ' : isTeacher ? 'KHÔNG GIAN GIÁO VIÊN' : 'NỀN TẢNG HỌC TIẾNG TRUNG'}
+                {isAdmin ? 'HỆ THỐNG QUẢN TRỊ' : isTeacher ? 'KHÔNG GIAN GIÁO VIÊN' : 'KHÔNG GIAN HỌC SINH'}
               </div>
             </div>
           )}
@@ -134,139 +135,22 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ isCollapsed, onToggleCol
 
         {/* Navigation Items */}
         <div style={{ padding: isCollapsed ? '16px 8px' : '16px 12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          {/* 1. Trang chủ */}
-          <button
-            type="button"
-            onClick={() => navigate('/')}
-            style={navItemStyle(isActive('/'))}
-            title={isCollapsed ? 'Trang chủ' : undefined}
-          >
-            <LayoutDashboard size={20} style={{ flexShrink: 0, color: isActive('/') ? 'var(--primary)' : '#64748b' }} />
-            {!isCollapsed && <span>Trang chủ</span>}
-          </button>
-
-          {/* 2. Lộ trình HSK */}
-          <button
-            type="button"
-            onClick={() => navigate('/roadmap')}
-            style={navItemStyle(isActive('/roadmap'))}
-            title={isCollapsed ? 'Lộ trình HSK' : undefined}
-          >
-            <BookMarked size={20} style={{ flexShrink: 0, color: isActive('/roadmap') ? 'var(--primary)' : '#64748b' }} />
-            {!isCollapsed && <span>Lộ trình HSK</span>}
-          </button>
-
-          {/* 3. Giáo trình & Bài học */}
-          <button
-            type="button"
-            onClick={() => navigate('/curriculum')}
-            style={navItemStyle(isActive('/curriculum'))}
-            title={isCollapsed ? 'Giáo trình bài học' : undefined}
-          >
-            <BookOpen size={20} style={{ flexShrink: 0, color: isActive('/curriculum') ? 'var(--primary)' : '#64748b' }} />
-            {!isCollapsed && <span>Giáo trình & Bài học</span>}
-          </button>
-
-          {/* 4. Ôn từ SRS */}
-          {!isAdmin && (
-            <button
-              type="button"
-              onClick={() => navigate('/srs/review')}
-              style={navItemStyle(isActive('/srs/review'))}
-              title={isCollapsed ? 'Ôn từ SRS' : undefined}
-            >
-              <BrainCircuit size={20} style={{ flexShrink: 0, color: isActive('/srs/review') ? 'var(--primary)' : '#64748b' }} />
-              {!isCollapsed && (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                  <span>Ôn từ SRS</span>
-                  {srsSummary && srsSummary.dueTodayCount > 0 && (
-                    <span
-                      style={{
-                        backgroundColor: '#ef4444',
-                        color: '#ffffff',
-                        borderRadius: 'var(--radius-full)',
-                        padding: '1px 7px',
-                        fontSize: '0.7rem',
-                        fontWeight: 800,
-                      }}
-                    >
-                      {srsSummary.dueTodayCount}
-                    </span>
-                  )}
-                </div>
-              )}
-              {isCollapsed && srsSummary && srsSummary.dueTodayCount > 0 && (
-                <span
-                  style={{
-                    position: 'absolute',
-                    top: '6px',
-                    right: '6px',
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    backgroundColor: '#ef4444',
-                  }}
-                />
-              )}
-            </button>
-          )}
-
-          {/* 5. Tra cứu từ vựng */}
-          <button
-            type="button"
-            onClick={() => navigate('/vocab-search')}
-            style={navItemStyle(isActive('/vocab-search'))}
-            title={isCollapsed ? 'Tra cứu từ vựng' : undefined}
-          >
-            <Search size={20} style={{ flexShrink: 0, color: isActive('/vocab-search') ? 'var(--primary)' : '#64748b' }} />
-            {!isCollapsed && <span>Tra cứu từ vựng</span>}
-          </button>
-
-          {/* 6. Tiến độ cá nhân */}
-          {!isAdmin && (
-            <button
-              type="button"
-              onClick={() => navigate('/progress')}
-              style={navItemStyle(isActive('/progress'))}
-              title={isCollapsed ? 'Tiến độ học tập' : undefined}
-            >
-              <BarChart3 size={20} style={{ flexShrink: 0, color: isActive('/progress') ? 'var(--primary)' : '#64748b' }} />
-              {!isCollapsed && <span>Tiến độ học tập</span>}
-            </button>
-          )}
-
-          {/* 7. Lịch sử bài tập */}
-          {!isAdmin && !isTeacher && (
-            <button
-              type="button"
-              onClick={() => navigate('/history')}
-              style={navItemStyle(isActive('/history'))}
-              title={isCollapsed ? 'Lịch sử nộp bài' : undefined}
-            >
-              <Clock size={20} style={{ flexShrink: 0, color: isActive('/history') ? 'var(--primary)' : '#64748b' }} />
-              {!isCollapsed && <span>Lịch sử nộp bài</span>}
-            </button>
-          )}
-
-          {/* TEACHER SPECIFIC SECTION */}
-          {isTeacher && (
+          
+          {/* KHÔNG GIAN 1: GIÁO VIÊN (activeMode === 'TEACHER') */}
+          {isTeacher && !isAdmin && (
             <>
-              {!isCollapsed && (
-                <div
-                  style={{
-                    fontSize: '0.68rem',
-                    fontWeight: 800,
-                    color: '#94a3b8',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    padding: '14px 10px 4px',
-                  }}
-                >
-                  Công cụ Giáo viên
-                </div>
-              )}
-              {isCollapsed && <div style={{ height: '1px', backgroundColor: 'var(--border-card)', margin: '8px 0' }} />}
+              {/* 1. Trang chủ Giáo viên */}
+              <button
+                type="button"
+                onClick={() => navigate('/')}
+                style={navItemStyle(isActive('/'))}
+                title={isCollapsed ? 'Trang chủ Giáo viên' : undefined}
+              >
+                <LayoutDashboard size={20} style={{ flexShrink: 0, color: isActive('/') ? 'var(--primary)' : '#64748b' }} />
+                {!isCollapsed && <span>Trang chủ</span>}
+              </button>
 
+              {/* 2. Bộ từ vựng & Từ riêng */}
               <button
                 type="button"
                 onClick={() => navigate('/vocab-sets')}
@@ -274,9 +158,10 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ isCollapsed, onToggleCol
                 title={isCollapsed ? 'Bộ từ vựng giáo viên' : undefined}
               >
                 <BookMarked size={20} style={{ flexShrink: 0, color: isActive('/vocab-sets') ? 'var(--primary)' : '#64748b' }} />
-                {!isCollapsed && <span>Bộ từ vựng</span>}
+                {!isCollapsed && <span>Bộ từ vựng & Từ riêng</span>}
               </button>
 
+              {/* 3. Ngân hàng câu hỏi */}
               <button
                 type="button"
                 onClick={() => navigate('/questions')}
@@ -287,6 +172,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ isCollapsed, onToggleCol
                 {!isCollapsed && <span>Ngân hàng câu hỏi</span>}
               </button>
 
+              {/* 4. Quản lý bài tập */}
               <button
                 type="button"
                 onClick={() => navigate('/exercises')}
@@ -296,35 +182,143 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ isCollapsed, onToggleCol
                 <FileCheck size={20} style={{ flexShrink: 0, color: isActive('/exercises') ? 'var(--primary)' : '#64748b' }} />
                 {!isCollapsed && <span>Quản lý bài tập</span>}
               </button>
+
+              {/* 5. Tra cứu từ vựng (Hỗ trợ soạn bài) */}
+              <button
+                type="button"
+                onClick={() => navigate('/vocab-search')}
+                style={navItemStyle(isActive('/vocab-search'))}
+                title={isCollapsed ? 'Tra cứu từ vựng' : undefined}
+              >
+                <Search size={20} style={{ flexShrink: 0, color: isActive('/vocab-search') ? 'var(--primary)' : '#64748b' }} />
+                {!isCollapsed && <span>Tra cứu từ vựng</span>}
+              </button>
             </>
           )}
 
-          {/* ADMIN SPECIFIC SECTION */}
-          {isAdmin && (
+          {/* KHÔNG GIAN 2: HỌC SINH (!isTeacher && !isAdmin) */}
+          {!isTeacher && !isAdmin && (
             <>
-              {!isCollapsed && (
-                <div
-                  style={{
-                    fontSize: '0.68rem',
-                    fontWeight: 800,
-                    color: '#94a3b8',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    padding: '14px 10px 4px',
-                  }}
-                >
-                  Quản trị viên
-                </div>
-              )}
-              {isCollapsed && <div style={{ height: '1px', backgroundColor: 'var(--border-card)', margin: '8px 0' }} />}
-
+              {/* 1. Trang chủ */}
               <button
                 type="button"
                 onClick={() => navigate('/')}
-                style={navItemStyle(isActive('/admin'))}
+                style={navItemStyle(isActive('/'))}
+                title={isCollapsed ? 'Trang chủ' : undefined}
+              >
+                <LayoutDashboard size={20} style={{ flexShrink: 0, color: isActive('/') ? 'var(--primary)' : '#64748b' }} />
+                {!isCollapsed && <span>Trang chủ</span>}
+              </button>
+
+              {/* 2. Lộ trình HSK */}
+              <button
+                type="button"
+                onClick={() => navigate('/roadmap')}
+                style={navItemStyle(isActive('/roadmap'))}
+                title={isCollapsed ? 'Lộ trình HSK' : undefined}
+              >
+                <BookMarked size={20} style={{ flexShrink: 0, color: isActive('/roadmap') ? 'var(--primary)' : '#64748b' }} />
+                {!isCollapsed && <span>Lộ trình HSK</span>}
+              </button>
+
+              {/* 3. Giáo trình & Bài học */}
+              <button
+                type="button"
+                onClick={() => navigate('/curriculum')}
+                style={navItemStyle(isActive('/curriculum'))}
+                title={isCollapsed ? 'Giáo trình bài học' : undefined}
+              >
+                <BookOpen size={20} style={{ flexShrink: 0, color: isActive('/curriculum') ? 'var(--primary)' : '#64748b' }} />
+                {!isCollapsed && <span>Giáo trình & Bài học</span>}
+              </button>
+
+              {/* 4. Ôn từ SRS */}
+              <button
+                type="button"
+                onClick={() => navigate('/srs/review')}
+                style={navItemStyle(isActive('/srs/review'))}
+                title={isCollapsed ? 'Ôn từ SRS' : undefined}
+              >
+                <BrainCircuit size={20} style={{ flexShrink: 0, color: isActive('/srs/review') ? 'var(--primary)' : '#64748b' }} />
+                {!isCollapsed && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                    <span>Ôn từ SRS</span>
+                    {srsSummary && srsSummary.dueTodayCount > 0 && (
+                      <span
+                        style={{
+                          backgroundColor: '#ef4444',
+                          color: '#ffffff',
+                          borderRadius: 'var(--radius-full)',
+                          padding: '1px 7px',
+                          fontSize: '0.7rem',
+                          fontWeight: 800,
+                        }}
+                      >
+                        {srsSummary.dueTodayCount}
+                      </span>
+                    )}
+                  </div>
+                )}
+                {isCollapsed && srsSummary && srsSummary.dueTodayCount > 0 && (
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: '6px',
+                      right: '6px',
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      backgroundColor: '#ef4444',
+                    }}
+                  />
+                )}
+              </button>
+
+              {/* 5. Tra cứu từ vựng */}
+              <button
+                type="button"
+                onClick={() => navigate('/vocab-search')}
+                style={navItemStyle(isActive('/vocab-search'))}
+                title={isCollapsed ? 'Tra cứu từ vựng' : undefined}
+              >
+                <Search size={20} style={{ flexShrink: 0, color: isActive('/vocab-search') ? 'var(--primary)' : '#64748b' }} />
+                {!isCollapsed && <span>Tra cứu từ vựng</span>}
+              </button>
+
+              {/* 6. Tiến độ cá nhân */}
+              <button
+                type="button"
+                onClick={() => navigate('/progress')}
+                style={navItemStyle(isActive('/progress'))}
+                title={isCollapsed ? 'Tiến độ học tập' : undefined}
+              >
+                <BarChart3 size={20} style={{ flexShrink: 0, color: isActive('/progress') ? 'var(--primary)' : '#64748b' }} />
+                {!isCollapsed && <span>Tiến độ học tập</span>}
+              </button>
+
+              {/* 7. Lịch sử bài tập */}
+              <button
+                type="button"
+                onClick={() => navigate('/history')}
+                style={navItemStyle(isActive('/history'))}
+                title={isCollapsed ? 'Lịch sử nộp bài' : undefined}
+              >
+                <Clock size={20} style={{ flexShrink: 0, color: isActive('/history') ? 'var(--primary)' : '#64748b' }} />
+                {!isCollapsed && <span>Lịch sử nộp bài</span>}
+              </button>
+            </>
+          )}
+
+          {/* KHÔNG GIAN 3: QUẢN TRỊ VIÊN (ADMIN) */}
+          {isAdmin && (
+            <>
+              <button
+                type="button"
+                onClick={() => navigate('/')}
+                style={navItemStyle(isActive('/'))}
                 title={isCollapsed ? 'Duyệt giáo viên & Quản trị' : undefined}
               >
-                <ShieldCheck size={20} style={{ flexShrink: 0, color: isActive('/admin') ? 'var(--primary)' : '#64748b' }} />
+                <ShieldCheck size={20} style={{ flexShrink: 0, color: isActive('/') ? 'var(--primary)' : '#64748b' }} />
                 {!isCollapsed && <span>Bảng điều khiển Admin</span>}
               </button>
             </>
@@ -378,7 +372,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ isCollapsed, onToggleCol
                 {user?.fullName || 'Người dùng'}
               </div>
               <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                {user?.roles?.join(', ')}
+                {isTeacher ? 'Giáo viên' : isAdmin ? 'Quản trị viên' : 'Học sinh'}
               </div>
             </div>
           )}

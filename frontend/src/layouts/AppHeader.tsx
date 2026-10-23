@@ -83,6 +83,23 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           >
             {isAdmin ? 'ADMIN' : isTeacher ? 'GIÁO VIÊN' : 'HỌC SINH'}
           </span>
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              color: 'var(--jade-green-shadow)',
+              backgroundColor: 'var(--jade-green-light)',
+              padding: '2px 8px',
+              borderRadius: 'var(--radius-full)',
+            }}
+            title="Phiên làm việc đang hoạt động và đồng bộ"
+          >
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--jade-green)' }} />
+            Đang hoạt động
+          </span>
         </div>
       </div>
 
@@ -116,7 +133,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         )}
 
         {/* Streak Badge */}
-        {streak && (
+        {streak && !isTeacher && !isAdmin && (
           <div
             title={`Chuỗi học tập liên tục: ${streak.currentStreak} ngày!`}
             style={{

@@ -173,8 +173,170 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
   return (
     <div style={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
       
-      {/* Vocapy-style Top Quick Stats */}
-      {!isAdmin && (
+      {/* Top Quick Stats: Separated for Teacher vs Student */}
+      {!isAdmin && isTeacher && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+          {/* Teacher Card 1: Lớp giảng dạy */}
+          <div
+            className="game-card"
+            style={{
+              padding: '16px 20px',
+              backgroundColor: '#ffffff',
+              border: '1.5px solid var(--border-card)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '14px',
+            }}
+          >
+            <div
+              style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: '#dbeafe',
+                color: '#1d4ed8',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <GraduationCap size={22} />
+            </div>
+            <div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#1d4ed8', lineHeight: 1.1 }}>
+                {classesList.length}
+              </div>
+              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+                Lớp đang giảng dạy
+              </div>
+            </div>
+          </div>
+
+          {/* Teacher Card 2: Quản lý bài tập */}
+          <div
+            className="game-card"
+            style={{
+              padding: '16px 20px',
+              backgroundColor: '#ffffff',
+              border: '1.5px solid var(--border-card)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '14px',
+              cursor: 'pointer',
+            }}
+            onClick={() => navigate('/exercises')}
+            title="Bấm để vào trang Quản lý bài tập"
+          >
+            <div
+              style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: '#f3e8ff',
+                color: '#7e22ce',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <FileCheck size={22} />
+            </div>
+            <div>
+              <div style={{ fontSize: '1.15rem', fontWeight: 900, color: '#7e22ce', lineHeight: 1.2 }}>
+                Bài tập
+              </div>
+              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+                Soạn & Giao đề
+              </div>
+            </div>
+          </div>
+
+          {/* Teacher Card 3: Ngân hàng câu hỏi */}
+          <div
+            className="game-card"
+            style={{
+              padding: '16px 20px',
+              backgroundColor: '#ffffff',
+              border: '1.5px solid var(--border-card)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '14px',
+              cursor: 'pointer',
+            }}
+            onClick={() => navigate('/questions')}
+            title="Bấm để vào Ngân hàng câu hỏi"
+          >
+            <div
+              style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: '#e0e7ff',
+                color: '#4338ca',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <HelpCircle size={22} />
+            </div>
+            <div>
+              <div style={{ fontSize: '1.15rem', fontWeight: 900, color: '#4338ca', lineHeight: 1.2 }}>
+                Kho câu hỏi
+              </div>
+              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+                Ngân hàng trắc nghiệm
+              </div>
+            </div>
+          </div>
+
+          {/* Teacher Card 4: Bộ từ vựng & Tra cứu */}
+          <div
+            className="game-card"
+            style={{
+              padding: '16px 20px',
+              backgroundColor: '#ffffff',
+              border: '1.5px solid var(--border-card)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '14px',
+              cursor: 'pointer',
+            }}
+            onClick={() => navigate('/vocab-sets')}
+            title="Bấm để vào Bộ từ vựng & Từ riêng"
+          >
+            <div
+              style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: 'var(--primary-light)',
+                color: 'var(--primary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <BookMarked size={22} />
+            </div>
+            <div>
+              <div style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--primary)', lineHeight: 1.2 }}>
+                Bộ từ vựng
+              </div>
+              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+                Kho từ theo chủ đề
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Top Quick Stats: Student Mode */}
+      {!isAdmin && !isTeacher && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '16px', marginBottom: '20px' }}>
           {/* Card 1: Tổng từ vựng */}
           <div
@@ -322,15 +484,134 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
                 {classesList.length}
               </div>
               <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>
-                {isTeacher ? 'Lớp đang giảng dạy' : 'Lớp đã tham gia'}
+                Lớp đã tham gia
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Vocapy-style Quick Actions Bar */}
-      {!isAdmin && (
+      {/* Quick Actions Bar: Separated for Teacher vs Student */}
+      {!isAdmin && isTeacher && (
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '24px' }}>
+          <button
+            type="button"
+            onClick={handleCreateClassClick}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 18px',
+              borderRadius: 'var(--radius-md)',
+              border: '1.5px solid #fcd34d',
+              backgroundColor: 'var(--accent-gold-light)',
+              color: 'var(--accent-gold-shadow)',
+              fontWeight: 800,
+              fontSize: '0.86rem',
+              cursor: 'pointer',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <PlusCircle size={17} />
+            <span>Tạo lớp học mới</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate('/exercises')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 18px',
+              borderRadius: 'var(--radius-md)',
+              border: '1.5px solid var(--border-card)',
+              backgroundColor: '#ffffff',
+              color: 'var(--text-main)',
+              fontWeight: 800,
+              fontSize: '0.86rem',
+              cursor: 'pointer',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <FileCheck size={17} style={{ color: '#7e22ce' }} />
+            <span>Quản lý bài tập</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate('/questions')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 18px',
+              borderRadius: 'var(--radius-md)',
+              border: '1.5px solid var(--border-card)',
+              backgroundColor: '#ffffff',
+              color: 'var(--text-main)',
+              fontWeight: 800,
+              fontSize: '0.86rem',
+              cursor: 'pointer',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <HelpCircle size={17} style={{ color: '#4338ca' }} />
+            <span>Ngân hàng câu hỏi</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate('/vocab-sets')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 18px',
+              borderRadius: 'var(--radius-md)',
+              border: '1.5px solid var(--border-card)',
+              backgroundColor: '#ffffff',
+              color: 'var(--text-main)',
+              fontWeight: 800,
+              fontSize: '0.86rem',
+              cursor: 'pointer',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <BookMarked size={17} style={{ color: 'var(--primary)' }} />
+            <span>Bộ từ vựng giáo viên</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate('/vocab-search')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 18px',
+              borderRadius: 'var(--radius-md)',
+              border: '1.5px solid var(--border-card)',
+              backgroundColor: '#ffffff',
+              color: 'var(--text-main)',
+              fontWeight: 800,
+              fontSize: '0.86rem',
+              cursor: 'pointer',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <Search size={17} style={{ color: '#0284c7' }} />
+            <span>Tra cứu từ vựng</span>
+          </button>
+        </div>
+      )}
+
+      {!isAdmin && !isTeacher && (
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '24px' }}>
           <button
             type="button"
@@ -660,53 +941,70 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
               </div>
             )}
 
-            {/* Welcome Banner */}
-            <div
-              className="game-card"
-              style={{
-                padding: '28px',
-                backgroundColor: '#ffffff',
-                marginBottom: '28px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '24px',
-              }}
-            >
-              <div>
-                <div
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    backgroundColor: 'var(--jade-green-light)',
-                    color: 'var(--jade-green-shadow)',
-                    padding: '4px 12px',
-                    borderRadius: 'var(--radius-full)',
-                    fontWeight: 800,
-                    fontSize: '0.8rem',
-                    marginBottom: '10px',
-                  }}
-                >
-                  <CheckCircle2 size={14} />
-                  <span>Phiên học hoạt động</span>
+            {/* Compact Workspace Header */}
+            {isTeacher ? (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '16px 20px',
+                  backgroundColor: '#ffffff',
+                  border: '1.5px solid var(--border-card)',
+                  borderRadius: 'var(--radius-lg)',
+                  marginBottom: '24px',
+                }}
+              >
+                <div>
+                  <h1 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
+                    Không gian Quản lý Giảng dạy
+                  </h1>
+                  <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    Chào mừng trở lại, {user.fullName}! Quản lý lớp học, phân công bài tập và theo dõi học sinh hiệu quả.
+                  </p>
                 </div>
-                <h1 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '8px' }}>
-                  Chào mừng trở lại, {user.fullName}!
-                </h1>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', maxWidth: '600px', lineHeight: 1.6 }}>
-                  {isAdmin
-                    ? 'Bạn đang ở trang Quản trị viên. Bạn có quyền quản lý tài khoản, duyệt giáo viên và giám sát toàn bộ nền tảng.'
-                    : isTeacher
-                    ? 'Bạn đang ở chế độ Giáo viên. Tại đây bạn có thể quản lý danh sách lớp học, soạn câu hỏi và giao bài tập cho học sinh.'
-                    : 'Bạn đang ở chế độ Học sinh. Hãy tiếp tục lộ trình HSK 1 hoặc tham gia lớp học bằng mã của giáo viên.'}
-                </p>
+                <button
+                  type="button"
+                  onClick={handleCreateClassClick}
+                  className="btn-gamified btn-gold"
+                  style={{ padding: '8px 16px', fontSize: '0.85rem', flexShrink: 0 }}
+                >
+                  <PlusCircle size={16} />
+                  <span>Tạo lớp học mới</span>
+                </button>
               </div>
-
-              <div className="animate-float" style={{ flexShrink: 0 }}>
-                <PandaMascot size={80} />
+            ) : !isAdmin ? (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '16px 20px',
+                  backgroundColor: '#ffffff',
+                  border: '1.5px solid var(--border-card)',
+                  borderRadius: 'var(--radius-lg)',
+                  marginBottom: '24px',
+                }}
+              >
+                <div>
+                  <h1 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
+                    Không gian Luyện thi & Học tập HSK
+                  </h1>
+                  <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    Chào mừng trở lại, {user.fullName}! Hãy tiếp tục hành trình chinh phục tiếng Trung mỗi ngày.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleJoinClassClick}
+                  className="btn-gamified btn-primary"
+                  style={{ padding: '8px 16px', fontSize: '0.85rem', flexShrink: 0 }}
+                >
+                  <PlusCircle size={16} />
+                  <span>Tham gia lớp học</span>
+                </button>
               </div>
-            </div>
+            ) : null}
 
             {/* HTT-08-CN-003 & HTT-08-CN-004: Daily Challenge Widget & Streak */}
             {!isTeacher && !isAdmin && (
@@ -732,7 +1030,8 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
 
             {/* Quick Action Cards Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
-              {/* Card 1: HSK Roadmap (HTT-04-CN-001) */}
+              {/* Card 1: HSK Roadmap (HTT-04-CN-001) - Học sinh */}
+              {!isTeacher && !isAdmin && (
               <div
                 className="game-card"
                 style={{
@@ -777,6 +1076,7 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
                   <ArrowRight size={18} />
                 </button>
               </div>
+              )}
 
               {/* Card 1.5: Personal Progress (HTT-07-CN-001) */}
               {!isTeacher && !isAdmin && (
@@ -929,7 +1229,8 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
                 </div>
               )}
 
-              {/* Card 2: HSK Curriculum / Giáo trình */}
+              {/* Card 2: HSK Curriculum / Giáo trình - Học sinh */}
+              {!isTeacher && !isAdmin && (
               <div
                 className="game-card"
                 style={{
@@ -974,8 +1275,10 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
                   <ArrowRight size={18} />
                 </button>
               </div>
+              )}
 
-              {/* Card 2: Classes / Lớp học */}
+              {/* Card 2: Classes / Lớp học - Học sinh */}
+              {!isTeacher && !isAdmin && (
               <div
                 className="game-card"
                 style={{
@@ -1034,6 +1337,7 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
                   </button>
                 )}
               </div>
+              )}
 
               {/* Card 3: Teacher Upgrade or Streak */}
               {!isTeacher && !isAdmin && (
@@ -1249,7 +1553,7 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
               )}
 
               {/* Card 4: Daily Streak */}
-              {(isTeacher || isAdmin) && (
+              {!isTeacher && !isAdmin && (
                 <div
                   className="game-card"
                   style={{

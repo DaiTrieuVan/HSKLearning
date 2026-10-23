@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   BookOpen,
+  Copy,
+  Check,
+  Sparkles,
   Flame,
   Award,
   ArrowRight,
@@ -27,6 +30,7 @@ import { AdminUserManagementPanel } from '../../components/admin/AdminUserManage
 import { AdminSystemStatsPanel } from '../../components/admin/AdminSystemStatsPanel'
 import { getMyTeacherRequest, type TeacherRequestItem } from '../../api/teacherRequest'
 import { getTeachingClasses, getEnrolledClasses, type ClassItem } from '../../api/classroom'
+import { getAssignmentsForClass, type AssignmentItem } from '../../api/assignment'
 import { getSrsSummary, type SrsSummary } from '../../api/srs'
 import { getDailyChallenge, type DailyChallengeData } from '../../api/gamification'
 import { getStreak, type StreakData } from '../../api/streak'
@@ -57,6 +61,16 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
   const [streak, setStreak] = useState<StreakData | null>(null)
   const [userLevel, setUserLevel] = useState<UserLevelData | null>(null)
   const [recentXp, setRecentXp] = useState<XpTransactionItem[]>([])
+  const [teacherAssignments, setTeacherAssignments] = useState<AssignmentItem[]>([])
+  const [copiedCode, setCopiedCode] = useState<string | null>(null)
+
+  const handleCopyCode = (code: string) => {
+    navigator.clipboard.writeText(code)
+    setCopiedCode(code)
+    setTimeout(() => {
+      setCopiedCode(null)
+    }, 2000)
+  }
 
   const isTeacher = user?.activeMode === 'TEACHER'
   const isAdmin = user?.roles.includes('ADMIN')
@@ -66,7 +80,22 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
     setLoadingClasses(true)
     if (user.activeMode === 'TEACHER') {
       getTeachingClasses(user.token)
-        .then((res: ClassItem[]) => setClassesList(res))
+        .then(async (res: ClassItem[]) => {
+          setClassesList(res)
+          if (res.length > 0) {
+            try {
+              const promises = res.map((c) =>
+                getAssignmentsForClass(c.id, user.token).catch(() => [] as AssignmentItem[])
+              )
+              const assignmentArrays = await Promise.all(promises)
+              setTeacherAssignments(assignmentArrays.flat())
+            } catch {
+              setTeacherAssignments([])
+            }
+          } else {
+            setTeacherAssignments([])
+          }
+        })
         .catch(() => {})
         .finally(() => setLoadingClasses(false))
     } else if (!user.roles.includes('ADMIN')) {
@@ -148,6 +177,17 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
 
   if (!user) return null
 
+  // Derived Teacher Metrics
+  const totalStudents = classesList.reduce((acc, c) => acc + (c.memberCount || 0), 0)
+  const activeAssignments = teacherAssignments.filter((a) => a.status === 'ACTIVE')
+  const dueSoonAssignments = activeAssignments.filter((a) => {
+    const diff = new Date(a.dueTime).getTime() - Date.now()
+    return diff > 0 && diff < 48 * 3600 * 1000
+  })
+  const classesWithoutAssignments = classesList.filter(
+    (c) => !teacherAssignments.some((a) => a.classId === c.id && a.status === 'ACTIVE')
+  )
+
   const handleCreateClassClick = () => {
     if (isTeacher) {
       navigate('/classes/create')
@@ -173,10 +213,10 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
   return (
     <div style={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
       
-      {/* Top Quick Stats: Separated for Teacher vs Student */}
+      {/* Top Quick Stats: Overview Metrics for Teacher */}
       {!isAdmin && isTeacher && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '16px', marginBottom: '20px' }}>
-          {/* Teacher Card 1: Lớp giảng dạy */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+          {/* Card 1: Số lớp đang phụ trách */}
           <div
             className="game-card"
             style={{
@@ -190,8 +230,8 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
           >
             <div
               style={{
-                width: '42px',
-                height: '42px',
+                width: '44px',
+                height: '44px',
                 borderRadius: 'var(--radius-md)',
                 backgroundColor: '#dbeafe',
                 color: '#1d4ed8',
@@ -204,16 +244,53 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
               <GraduationCap size={22} />
             </div>
             <div>
-              <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#1d4ed8', lineHeight: 1.1 }}>
+              <div style={{ fontSize: '1.45rem', fontWeight: 900, color: '#1d4ed8', lineHeight: 1.1 }}>
                 {classesList.length}
               </div>
               <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>
-                Lớp đang giảng dạy
+                Số lớp đang phụ trách
               </div>
             </div>
           </div>
 
-          {/* Teacher Card 2: Quản lý bài tập */}
+          {/* Card 2: Tổng số học sinh */}
+          <div
+            className="game-card"
+            style={{
+              padding: '16px 20px',
+              backgroundColor: '#ffffff',
+              border: '1.5px solid var(--border-card)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '14px',
+            }}
+          >
+            <div
+              style={{
+                width: '44px',
+                height: '44px',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: '#d1fae5',
+                color: '#059669',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <Users size={22} />
+            </div>
+            <div>
+              <div style={{ fontSize: '1.45rem', fontWeight: 900, color: '#059669', lineHeight: 1.1 }}>
+                {totalStudents}
+              </div>
+              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+                Tổng số học sinh
+              </div>
+            </div>
+          </div>
+
+          {/* Card 3: Bài tập đang mở */}
           <div
             className="game-card"
             style={{
@@ -226,12 +303,12 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
               cursor: 'pointer',
             }}
             onClick={() => navigate('/exercises')}
-            title="Bấm để vào trang Quản lý bài tập"
+            title="Bấm để xem danh sách bài tập"
           >
             <div
               style={{
-                width: '42px',
-                height: '42px',
+                width: '44px',
+                height: '44px',
                 borderRadius: 'var(--radius-md)',
                 backgroundColor: '#f3e8ff',
                 color: '#7e22ce',
@@ -244,16 +321,16 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
               <FileCheck size={22} />
             </div>
             <div>
-              <div style={{ fontSize: '1.15rem', fontWeight: 900, color: '#7e22ce', lineHeight: 1.2 }}>
-                Bài tập
+              <div style={{ fontSize: '1.45rem', fontWeight: 900, color: '#7e22ce', lineHeight: 1.1 }}>
+                {activeAssignments.length}
               </div>
               <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>
-                Soạn & Giao đề
+                Bài tập đang mở
               </div>
             </div>
           </div>
 
-          {/* Teacher Card 3: Ngân hàng câu hỏi */}
+          {/* Card 4: Bài tập cần xử lý / sắp hết hạn */}
           <div
             className="game-card"
             style={{
@@ -263,72 +340,29 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
               display: 'flex',
               alignItems: 'center',
               gap: '14px',
-              cursor: 'pointer',
             }}
-            onClick={() => navigate('/questions')}
-            title="Bấm để vào Ngân hàng câu hỏi"
           >
             <div
               style={{
-                width: '42px',
-                height: '42px',
+                width: '44px',
+                height: '44px',
                 borderRadius: 'var(--radius-md)',
-                backgroundColor: '#e0e7ff',
-                color: '#4338ca',
+                backgroundColor: dueSoonAssignments.length > 0 ? '#fef3c7' : '#f1f5f9',
+                color: dueSoonAssignments.length > 0 ? '#d97706' : '#64748b',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 flexShrink: 0,
               }}
             >
-              <HelpCircle size={22} />
+              <Clock size={22} />
             </div>
             <div>
-              <div style={{ fontSize: '1.15rem', fontWeight: 900, color: '#4338ca', lineHeight: 1.2 }}>
-                Kho câu hỏi
+              <div style={{ fontSize: '1.45rem', fontWeight: 900, color: dueSoonAssignments.length > 0 ? '#d97706' : 'var(--text-main)', lineHeight: 1.1 }}>
+                {dueSoonAssignments.length}
               </div>
               <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>
-                Ngân hàng trắc nghiệm
-              </div>
-            </div>
-          </div>
-
-          {/* Teacher Card 4: Bộ từ vựng & Tra cứu */}
-          <div
-            className="game-card"
-            style={{
-              padding: '16px 20px',
-              backgroundColor: '#ffffff',
-              border: '1.5px solid var(--border-card)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '14px',
-              cursor: 'pointer',
-            }}
-            onClick={() => navigate('/vocab-sets')}
-            title="Bấm để vào Bộ từ vựng & Từ riêng"
-          >
-            <div
-              style={{
-                width: '42px',
-                height: '42px',
-                borderRadius: 'var(--radius-md)',
-                backgroundColor: 'var(--primary-light)',
-                color: 'var(--primary)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}
-            >
-              <BookMarked size={22} />
-            </div>
-            <div>
-              <div style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--primary)', lineHeight: 1.2 }}>
-                Bộ từ vựng
-              </div>
-              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>
-                Kho từ theo chủ đề
+                Bài tập cần xử lý
               </div>
             </div>
           </div>
@@ -491,6 +525,7 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
         </div>
       )}
 
+      {/* Student Quick Actions Bar */}
       {/* Quick Actions Bar: Separated for Teacher vs Student */}
       {!isAdmin && isTeacher && (
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '24px' }}>
@@ -941,39 +976,8 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
               </div>
             )}
 
-            {/* Compact Workspace Header */}
-            {isTeacher ? (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '16px 20px',
-                  backgroundColor: '#ffffff',
-                  border: '1.5px solid var(--border-card)',
-                  borderRadius: 'var(--radius-lg)',
-                  marginBottom: '24px',
-                }}
-              >
-                <div>
-                  <h1 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
-                    Không gian Quản lý Giảng dạy
-                  </h1>
-                  <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                    Chào mừng trở lại, {user.fullName}! Quản lý lớp học, phân công bài tập và theo dõi học sinh hiệu quả.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleCreateClassClick}
-                  className="btn-gamified btn-gold"
-                  style={{ padding: '8px 16px', fontSize: '0.85rem', flexShrink: 0 }}
-                >
-                  <PlusCircle size={16} />
-                  <span>Tạo lớp học mới</span>
-                </button>
-              </div>
-            ) : !isAdmin ? (
+            {/* Student Workspace Compact Header */}
+            {!isAdmin && !isTeacher && (
               <div
                 style={{
                   display: 'flex',
@@ -1004,7 +1008,270 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
                   <span>Tham gia lớp học</span>
                 </button>
               </div>
-            ) : null}
+            )}
+
+            {/* Teacher Action Center: Cần xử lý ngay / Onboarding dẫn dắt 3 bước */}
+            {!isAdmin && isTeacher && (
+              <div style={{ marginBottom: '28px' }}>
+                {classesList.length === 0 ? (
+                  /* Onboarding 3 bước cho giáo viên mới */
+                  <div
+                    className="game-card"
+                    style={{
+                      padding: '24px',
+                      backgroundColor: '#ffffff',
+                      border: '1.5px solid var(--border-card)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                      <Sparkles size={20} style={{ color: 'var(--primary)' }} />
+                      <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>
+                        Chào mừng giáo viên mới! Hãy bắt đầu với 3 bước sau:
+                      </h3>
+                    </div>
+                    <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)', marginBottom: '18px', lineHeight: 1.5 }}>
+                      Để bắt đầu quản lý học sinh và tổ chức kiểm tra hiệu quả, hãy thực hiện theo thứ tự dẫn dắt dưới đây:
+                    </p>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
+                      {/* Bước 1 */}
+                      <div
+                        style={{
+                          padding: '16px',
+                          borderRadius: 'var(--radius-md)',
+                          backgroundColor: 'var(--accent-gold-light)',
+                          border: '1.5px solid var(--accent-gold)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                        }}
+                      >
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                            <span style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: 'var(--accent-gold-shadow)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 900 }}>1</span>
+                            <span style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--accent-gold-shadow)' }}>Tạo lớp đầu tiên</span>
+                          </div>
+                          <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.4, margin: '0 0 14px' }}>
+                            Tạo lớp để nhận mã mời 6 ký tự. Cấp mã này cho học sinh để các em tự nhập vào lớp.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => navigate('/classes/create')}
+                          className="btn-gamified btn-gold"
+                          style={{ width: '100%', fontSize: '0.85rem', padding: '8px' }}
+                        >
+                          <PlusCircle size={16} />
+                          <span>Tạo lớp học ngay</span>
+                        </button>
+                      </div>
+
+                      {/* Bước 2 */}
+                      <div
+                        style={{
+                          padding: '16px',
+                          borderRadius: 'var(--radius-md)',
+                          backgroundColor: '#f8fafc',
+                          border: '1.5px solid var(--border-card)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                        }}
+                      >
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                            <span style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#64748b', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 900 }}>2</span>
+                            <span style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-main)' }}>Soạn câu hỏi & Từ vựng</span>
+                          </div>
+                          <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.4, margin: '0 0 14px' }}>
+                            Xây dựng ngân hàng câu hỏi trắc nghiệm hoặc kho từ vựng riêng của bạn phục vụ cho bài tập.
+                          </p>
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            type="button"
+                            onClick={() => navigate('/questions')}
+                            style={{ flex: 1, padding: '7px 4px', fontSize: '0.78rem', fontWeight: 700, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-card)', backgroundColor: '#ffffff', color: 'var(--text-main)', cursor: 'pointer' }}
+                          >
+                            Ngân hàng câu hỏi
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => navigate('/vocab-sets')}
+                            style={{ flex: 1, padding: '7px 4px', fontSize: '0.78rem', fontWeight: 700, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-card)', backgroundColor: '#ffffff', color: 'var(--text-main)', cursor: 'pointer' }}
+                          >
+                            Bộ từ vựng
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Bước 3 */}
+                      <div
+                        style={{
+                          padding: '16px',
+                          borderRadius: 'var(--radius-md)',
+                          backgroundColor: '#f8fafc',
+                          border: '1.5px solid var(--border-card)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                        }}
+                      >
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                            <span style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#64748b', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 900 }}>3</span>
+                            <span style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-main)' }}>Giao bài tập cho lớp</span>
+                          </div>
+                          <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.4, margin: '0 0 14px' }}>
+                            Đóng gói các câu hỏi thành bài tập kiểm tra hoàn chỉnh và lên lịch thời hạn nộp cho lớp học.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => navigate('/exercises')}
+                          style={{ width: '100%', padding: '7px', fontSize: '0.82rem', fontWeight: 700, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-card)', backgroundColor: '#ffffff', color: 'var(--text-main)', cursor: 'pointer' }}
+                        >
+                          Đến trang Bài tập
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* Khối Cần xử lý ngay khi đã có lớp */
+                  <div
+                    className="game-card"
+                    style={{
+                      padding: '20px',
+                      backgroundColor: '#ffffff',
+                      border: '1.5px solid var(--border-card)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <AlertCircle size={20} style={{ color: dueSoonAssignments.length > 0 ? '#d97706' : 'var(--primary)' }} />
+                        <h3 style={{ fontSize: '1.05rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>
+                          Cần xử lý ngay
+                        </h3>
+                      </div>
+                      <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                        Trạng thái giảng dạy
+                      </span>
+                    </div>
+
+                    {dueSoonAssignments.length > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {dueSoonAssignments.map((a) => {
+                          const hoursLeft = Math.max(1, Math.round((new Date(a.dueTime).getTime() - Date.now()) / (1000 * 3600)))
+                          return (
+                            <div
+                              key={a.id}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '12px 16px',
+                                backgroundColor: '#fffbeb',
+                                border: '1px solid #fde68a',
+                                borderRadius: 'var(--radius-md)',
+                                gap: '12px',
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <Clock size={18} style={{ color: '#d97706', flexShrink: 0 }} />
+                                <div>
+                                  <span style={{ fontWeight: 800, fontSize: '0.88rem', color: '#92400e' }}>
+                                    {a.title} ({a.classTitle})
+                                  </span>
+                                  <span style={{ fontSize: '0.8rem', color: '#b45309', marginLeft: '8px' }}>
+                                    Hết hạn sau {hoursLeft} giờ nữa
+                                  </span>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => navigate(`/classes/${a.classId}`)}
+                                style={{
+                                  padding: '6px 12px',
+                                  borderRadius: 'var(--radius-sm)',
+                                  border: '1px solid #f59e0b',
+                                  backgroundColor: '#ffffff',
+                                  color: '#b45309',
+                                  fontWeight: 800,
+                                  fontSize: '0.78rem',
+                                  cursor: 'pointer',
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                Xem bài nộp
+                              </button>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ) : classesWithoutAssignments.length > 0 ? (
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '12px 16px',
+                          backgroundColor: '#eff6ff',
+                          border: '1px solid #bfdbfe',
+                          borderRadius: 'var(--radius-md)',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <FileCheck size={18} style={{ color: '#2563eb', flexShrink: 0 }} />
+                          <div>
+                            <span style={{ fontWeight: 800, fontSize: '0.88rem', color: '#1e40af' }}>
+                              Lớp &quot;{classesWithoutAssignments[0].title}&quot; chưa có bài tập nào đang mở
+                            </span>
+                            <span style={{ fontSize: '0.8rem', color: '#3b82f6', marginLeft: '8px' }}>
+                              Hãy giao bài tập để học sinh có thể ôn luyện ngay.
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => navigate('/exercises')}
+                          style={{
+                            padding: '6px 12px',
+                            borderRadius: 'var(--radius-sm)',
+                            border: '1px solid #3b82f6',
+                            backgroundColor: '#ffffff',
+                            color: '#1d4ed8',
+                            fontWeight: 800,
+                            fontSize: '0.78rem',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          Giao bài tập
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '12px 16px',
+                          backgroundColor: 'var(--jade-green-light)',
+                          border: '1px solid #a7f3d0',
+                          borderRadius: 'var(--radius-md)',
+                          color: 'var(--jade-green-shadow)',
+                          fontSize: '0.86rem',
+                          fontWeight: 700,
+                        }}
+                      >
+                        <CheckCircle2 size={18} />
+                        <span>Tất cả bài tập và lớp học đều đang hoạt động tốt. Không có việc gấp cần xử lý hôm nay.</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* HTT-08-CN-003 & HTT-08-CN-004: Daily Challenge Widget & Streak */}
             {!isTeacher && !isAdmin && (
@@ -1028,7 +1295,8 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
               />
             )}
 
-            {/* Quick Action Cards Grid */}
+            {/* Student Feature Cards Grid (Học sinh) */}
+            {!isTeacher && !isAdmin && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
               {/* Card 1: HSK Roadmap (HTT-04-CN-001) - Học sinh */}
               {!isTeacher && !isAdmin && (
@@ -1306,36 +1574,22 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
                     <Award size={24} />
                   </div>
                   <h3 style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: '6px' }}>
-                    {isTeacher ? 'Lớp học phụ trách' : 'Lớp học của tôi'}
+                    Lớp học của tôi
                   </h3>
                   <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '16px' }}>
-                    {isTeacher
-                      ? 'Tạo lớp học mới, cấp mã mời học sinh và theo dõi tiến độ nộp bài.'
-                      : 'Nhập mã lớp để kết nối với giáo viên và nhận bài tập được giao mỗi ngày.'}
+                    Nhập mã lớp để kết nối với giáo viên và nhận bài tập được giao mỗi ngày.
                   </p>
                 </div>
 
-                {isTeacher ? (
-                  <button
-                    type="button"
-                    onClick={handleCreateClassClick}
-                    className="btn-gamified btn-gold"
-                    style={{ width: '100%', fontSize: '0.92rem', padding: '10px' }}
-                  >
-                    <PlusCircle size={18} />
-                    <span>Tạo lớp học mới</span>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleJoinClassClick}
-                    className="btn-gamified btn-gold"
-                    style={{ width: '100%', fontSize: '0.92rem', padding: '10px' }}
-                  >
-                    <PlusCircle size={18} />
-                    <span>Tham gia lớp bằng mã</span>
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={handleJoinClassClick}
+                  className="btn-gamified btn-gold"
+                  style={{ width: '100%', fontSize: '0.92rem', padding: '10px' }}
+                >
+                  <PlusCircle size={18} />
+                  <span>Tham gia lớp bằng mã</span>
+                </button>
               </div>
               )}
 
@@ -1408,151 +1662,7 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
                 </div>
               )}
 
-              {/* Card 3: Teacher Vocab Sets (HTT-03-CN-009, 011 / QTN-19) */}
-              {isTeacher && (
-                <div
-                  className="game-card"
-                  style={{
-                    padding: '24px',
-                    backgroundColor: '#ffffff',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                  }}
-                >
-                  <div>
-                    <div
-                      style={{
-                        width: '44px',
-                        height: '44px',
-                        borderRadius: 'var(--radius-md)',
-                        backgroundColor: 'var(--primary-light)',
-                        color: 'var(--primary)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        marginBottom: '16px',
-                      }}
-                    >
-                      <BookMarked size={24} />
-                    </div>
-                    <h3 style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: '6px' }}>
-                      Bộ từ vựng & Từ riêng
-                    </h3>
-                    <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '16px' }}>
-                      Tạo bộ từ vựng theo chuyên đề, quản lý kho từ vựng riêng của giáo viên và giao cho các lớp học phụ trách (QTN-19).
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => navigate('/vocab-sets')}
-                    className="btn-gamified btn-primary"
-                    style={{ width: '100%', fontSize: '0.92rem', padding: '10px' }}
-                  >
-                    <BookMarked size={18} />
-                    <span>Quản lý bộ từ vựng</span>
-                  </button>
-                </div>
-              )}
-
-              {/* Card 4: Question Bank (HTT-05-CN-001 / QTN-19) */}
-              {isTeacher && (
-                <div
-                  className="game-card"
-                  style={{
-                    padding: '24px',
-                    backgroundColor: '#ffffff',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                  }}
-                >
-                  <div>
-                    <div
-                      style={{
-                        width: '44px',
-                        height: '44px',
-                        borderRadius: 'var(--radius-md)',
-                        backgroundColor: '#e0e7ff',
-                        color: '#4338ca',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        marginBottom: '16px',
-                      }}
-                    >
-                      <HelpCircle size={24} />
-                    </div>
-                    <h3 style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: '6px' }}>
-                      Ngân hàng câu hỏi
-                    </h3>
-                    <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '16px' }}>
-                      Soạn câu hỏi trắc nghiệm tiếng Trung với đáp án, giải thích chi tiết và lưu trữ an toàn trong kho của bạn (QTN-08, QTN-19).
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => navigate('/questions')}
-                    className="btn-gamified btn-primary"
-                    style={{ width: '100%', fontSize: '0.92rem', padding: '10px' }}
-                  >
-                    <HelpCircle size={18} />
-                    <span>Quản lý ngân hàng câu hỏi</span>
-                  </button>
-                </div>
-              )}
-
-              {/* Card 5: Exercise Management (HTT-05-CN-006 / QTN-19) */}
-              {isTeacher && (
-                <div
-                  className="game-card"
-                  style={{
-                    padding: '24px',
-                    backgroundColor: '#ffffff',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                  }}
-                >
-                  <div>
-                    <div
-                      style={{
-                        width: '44px',
-                        height: '44px',
-                        borderRadius: 'var(--radius-md)',
-                        backgroundColor: '#f3e8ff',
-                        color: '#7e22ce',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        marginBottom: '16px',
-                      }}
-                    >
-                      <FileCheck size={24} />
-                    </div>
-                    <h3 style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: '6px' }}>
-                      Quản lý bài tập
-                    </h3>
-                    <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '16px' }}>
-                      Đóng gói câu hỏi từ ngân hàng cá nhân thành các bài tập kiểm tra hoàn chỉnh, gán điểm và sẵn sàng giao cho lớp (QTN-09, QTN-19).
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => navigate('/exercises')}
-                    className="btn-gamified btn-primary"
-                    style={{ width: '100%', fontSize: '0.92rem', padding: '10px', backgroundColor: '#7e22ce', borderColor: '#6b21a8' }}
-                  >
-                    <FileCheck size={18} />
-                    <span>Quản lý & tạo bài tập</span>
-                  </button>
-                </div>
-              )}
-
-              {/* Card 4: Daily Streak */}
+                            {/* Card 4: Daily Streak */}
               {!isTeacher && !isAdmin && (
                 <div
                   className="game-card"
@@ -1605,6 +1715,8 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
               )}
             </div>
 
+            )}
+
             {/* Classroom Section (HTT-02) */}
             <div style={{ marginTop: '36px' }}>
               <div
@@ -1631,7 +1743,7 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
                     <button
                       type="button"
                       onClick={() => navigate('/classes/create')}
-                      className="btn-gamified btn-primary"
+                      className="btn-gamified btn-gold"
                       style={{ padding: '8px 16px', fontSize: '0.85rem' }}
                     >
                       <PlusCircle size={16} />
@@ -1724,24 +1836,42 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
                             {cls.status === 'ARCHIVED' ? 'ĐÃ LƯU TRỮ' : 'HOẠT ĐỘNG'}
                           </span>
 
-                          <div
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleCopyCode(cls.joinCode)
+                            }}
+                            title="Bấm để sao chép mã mời lớp học"
                             style={{
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: '6px',
-                              padding: '2px 8px',
-                              backgroundColor: '#f8fafc',
-                              border: '1px solid var(--border-card)',
+                              padding: '3px 8px',
+                              backgroundColor: copiedCode === cls.joinCode ? '#dcfce7' : '#f8fafc',
+                              border: copiedCode === cls.joinCode ? '1.5px solid #16a34a' : '1px solid var(--border-card)',
                               borderRadius: 'var(--radius-sm)',
                               fontFamily: 'monospace',
                               fontWeight: 800,
                               fontSize: '0.82rem',
                               letterSpacing: '1px',
-                              color: 'var(--text-main)',
+                              color: copiedCode === cls.joinCode ? '#15803d' : 'var(--text-main)',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease',
                             }}
                           >
-                            <span>Mã: {cls.joinCode}</span>
-                          </div>
+                            {copiedCode === cls.joinCode ? (
+                              <>
+                                <Check size={13} style={{ color: '#16a34a' }} />
+                                <span>Đã chép</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy size={13} style={{ color: '#64748b' }} />
+                                <span>Mã: {cls.joinCode}</span>
+                              </>
+                            )}
+                          </button>
                         </div>
 
                         <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '4px' }}>

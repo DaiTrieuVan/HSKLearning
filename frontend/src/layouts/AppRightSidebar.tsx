@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Flame,
@@ -10,13 +10,13 @@ import {
   BookMarked,
   CheckCircle2,
   Circle,
-  GraduationCap,
   PlusCircle,
-  FileCheck,
-  HelpCircle,
   Lightbulb,
+  Activity,
+  UserCheck,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { getTeachingClasses, type ClassItem } from '../api/classroom'
 import type { StreakData } from '../api/streak'
 import type { UserLevelData } from '../api/gamificationLevel'
 import type { DailyChallengeData } from '../api/gamification'
@@ -36,6 +36,19 @@ export const AppRightSidebar: React.FC<AppRightSidebarProps> = ({
   const navigate = useNavigate()
 
   const isTeacher = user?.activeMode === 'TEACHER'
+
+  const [teacherClasses, setTeacherClasses] = useState<ClassItem[]>([])
+  const [loadingTeacherClasses, setLoadingTeacherClasses] = useState(false)
+
+  useEffect(() => {
+    if (user && isTeacher) {
+      setLoadingTeacherClasses(true)
+      getTeachingClasses(user.token)
+        .then((res) => setTeacherClasses(res))
+        .catch(() => {})
+        .finally(() => setLoadingTeacherClasses(false))
+    }
+  }, [user, isTeacher])
 
   // Weekdays abbreviation for students
   const weekDays = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
@@ -62,47 +75,7 @@ export const AppRightSidebar: React.FC<AppRightSidebarProps> = ({
          ======================================================== */}
       {isTeacher ? (
         <>
-          {/* 1. Teaching Hub Banner */}
-          <div
-            style={{
-              borderRadius: 'var(--radius-lg)',
-              background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 50%, #a7f3d0 100%)',
-              padding: '20px',
-              border: '2px solid #10b981',
-              boxShadow: '0 6px 16px rgba(16, 185, 129, 0.15)',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <div
-                style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '50%',
-                  backgroundColor: '#ffffff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'var(--primary)',
-                  boxShadow: '0 2px 6px rgba(16, 185, 129, 0.25)',
-                }}
-              >
-                <GraduationCap size={20} />
-              </div>
-              <div>
-                <div style={{ fontSize: '0.72rem', fontWeight: 900, color: '#047857', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Bảng Điều Khiển
-                </div>
-                <div style={{ fontSize: '1.15rem', fontWeight: 900, color: '#065f46' }}>
-                  Không Gian Giáo Viên
-                </div>
-              </div>
-            </div>
-            <p style={{ fontSize: '0.8rem', color: '#047857', lineHeight: 1.5, margin: '8px 0 0' }}>
-              Quản lý học sinh, giao bài tập và theo dõi tiến độ thi đua lớp học hiệu quả.
-            </p>
-          </div>
-
-          {/* 2. Quick Actions For Teacher */}
+          {/* 1. Hoạt động gần đây (Recent Activities) */}
           <div
             className="game-card"
             style={{
@@ -111,116 +84,101 @@ export const AppRightSidebar: React.FC<AppRightSidebarProps> = ({
               border: '1.5px solid var(--border-card)',
             }}
           >
-            <div style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>
-              Thao tác giảng dạy nhanh
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Activity size={18} style={{ color: 'var(--primary)' }} />
+                <span style={{ fontSize: '0.8rem', fontWeight: 900, color: 'var(--text-main)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Hoạt động gần đây
+                </span>
+              </div>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700 }}>
+                Lớp học
+              </span>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <button
-                type="button"
-                onClick={() => navigate('/classes/create')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  padding: '10px 14px',
-                  borderRadius: 'var(--radius-md)',
-                  backgroundColor: 'var(--primary-light)',
-                  border: '1.5px solid var(--primary)',
-                  color: 'var(--primary-hover)',
-                  fontWeight: 800,
-                  fontSize: '0.85rem',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                }}
-              >
-                <PlusCircle size={18} />
-                <span>Tạo lớp học mới</span>
-              </button>
 
-              <button
-                type="button"
-                onClick={() => navigate('/exercises')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  padding: '10px 14px',
-                  borderRadius: 'var(--radius-md)',
-                  backgroundColor: '#f8fafc',
-                  border: '1px solid var(--border-card)',
-                  color: 'var(--text-main)',
-                  fontWeight: 700,
-                  fontSize: '0.85rem',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                }}
-              >
-                <FileCheck size={18} style={{ color: '#7e22ce' }} />
-                <span>Quản lý & tạo bài tập</span>
-              </button>
+            {loadingTeacherClasses ? (
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', textAlign: 'center', padding: '16px 0' }}>
+                Đang tải dữ liệu...
+              </div>
+            ) : teacherClasses.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '20px 10px', color: 'var(--text-muted)' }}>
+                <div style={{ fontSize: '0.82rem', fontWeight: 600, lineHeight: 1.4, marginBottom: '12px' }}>
+                  Chưa có hoạt động mới hôm nay. Hãy tạo lớp đầu tiên để kết nối với học viên!
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate('/classes/create')}
+                  className="btn-gamified btn-gold"
+                  style={{ padding: '6px 14px', fontSize: '0.78rem' }}
+                >
+                  <PlusCircle size={14} />
+                  <span>Tạo lớp học ngay</span>
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {teacherClasses.slice(0, 4).map((c) => (
+                  <div
+                    key={c.id}
+                    onClick={() => navigate(`/classes/${c.id}`)}
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: 'var(--radius-md)',
+                      backgroundColor: '#f8fafc',
+                      border: '1px solid var(--border-card)',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <span style={{ fontWeight: 800, fontSize: '0.85rem', color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '170px' }}>
+                        {c.title}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: '0.7rem',
+                          fontWeight: 800,
+                          padding: '2px 6px',
+                          borderRadius: 'var(--radius-sm)',
+                          backgroundColor: c.status === 'ACTIVE' ? '#dcfce7' : '#f1f5f9',
+                          color: c.status === 'ACTIVE' ? '#15803d' : '#64748b',
+                        }}
+                      >
+                        {c.status === 'ACTIVE' ? 'Đang mở' : 'Đã đóng'}
+                      </span>
+                    </div>
 
-              <button
-                type="button"
-                onClick={() => navigate('/questions')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  padding: '10px 14px',
-                  borderRadius: 'var(--radius-md)',
-                  backgroundColor: '#f8fafc',
-                  border: '1px solid var(--border-card)',
-                  color: 'var(--text-main)',
-                  fontWeight: 700,
-                  fontSize: '0.85rem',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                }}
-              >
-                <HelpCircle size={18} style={{ color: '#4338ca' }} />
-                <span>Soạn câu hỏi trắc nghiệm</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => navigate('/vocab-sets')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  padding: '10px 14px',
-                  borderRadius: 'var(--radius-md)',
-                  backgroundColor: '#f8fafc',
-                  border: '1px solid var(--border-card)',
-                  color: 'var(--text-main)',
-                  fontWeight: 700,
-                  fontSize: '0.85rem',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                }}
-              >
-                <BookMarked size={18} style={{ color: '#d97706' }} />
-                <span>Soạn bộ từ vựng riêng</span>
-              </button>
-            </div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.76rem', color: 'var(--text-muted)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <UserCheck size={13} style={{ color: 'var(--primary)' }} />
+                        <span>{c.memberCount || 0} học viên</span>
+                      </div>
+                      <span style={{ fontFamily: 'monospace', fontWeight: 800, color: 'var(--primary-hover)' }}>
+                        Mã: {c.joinCode}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* 3. Teaching Tips Card */}
+          {/* 2. Mẹo giảng dạy nhỏ gọn (Mini Tip) */}
           <div
-            className="game-card"
             style={{
-              padding: '16px',
+              padding: '12px 14px',
               backgroundColor: '#fefce8',
-              border: '1.5px solid #fef08a',
+              border: '1px solid #fef08a',
+              borderRadius: 'var(--radius-md)',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '10px',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#854d0e', marginBottom: '8px' }}>
-              <Lightbulb size={18} />
-              <span style={{ fontWeight: 800, fontSize: '0.85rem' }}>Mẹo dành cho giáo viên</span>
+            <Lightbulb size={17} style={{ color: '#854d0e', flexShrink: 0, marginTop: '2px' }} />
+            <div style={{ fontSize: '0.78rem', color: '#713f12', lineHeight: 1.45 }}>
+              <strong style={{ fontWeight: 800 }}>Mẹo nhỏ:</strong> Giao bài tập có hạn nộp cụ thể giúp tỷ lệ học sinh làm bài đúng hạn tăng trên 75%.
             </div>
-            <p style={{ fontSize: '0.78rem', color: '#713f12', lineHeight: 1.5, margin: 0 }}>
-              Giao bài tập có hạn nộp sẽ thúc đẩy học sinh tự giác luyện tập. Hệ thống tự động chấm điểm và tổng hợp bảng điểm chi tiết cho bạn!
-            </p>
           </div>
         </>
       ) : (

@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   AlertCircle,
   FileSpreadsheet,
+  Download,
   Search,
   BookOpen,
 } from 'lucide-react'
@@ -349,6 +350,25 @@ export const TeacherVocabSetsModal: React.FC<TeacherVocabSetsModalProps> = ({
     } finally {
       setImporting(false)
     }
+  }
+
+  const handleDownloadTemplate = () => {
+    const headers = 'hanzi,pinyin,meaning,partOfSpeech,exampleSentence,examplePinyin,exampleMeaning'
+    const sampleRows = [
+      '老师,lǎoshī,thầy giáo/cô giáo,danh từ,李老师很好。,Lǐ lǎoshī hěn hǎo.,Thầy Lý rất tốt.',
+      '学生,xuésheng,học sinh,danh từ,他是我的学生。,Tā shì wǒ de xuésheng.,Em ấy là học sinh của tôi.',
+      '学习,xuéxí,học tập,động từ,我们要努力学习。,Wǒmen yào nǔlì xuéxí.,Chúng ta phải chăm chỉ học tập.',
+    ]
+    const csvContent = '\uFEFF' + [headers, ...sampleRows].join('\r\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', 'mau_tu_vung_rieng.csv')
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
   }
 
   return (
@@ -1540,20 +1560,38 @@ export const TeacherVocabSetsModal: React.FC<TeacherVocabSetsModalProps> = ({
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                 <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800 }}>Nhập file CSV từ vựng riêng</h3>
-                <button
-                  type="button"
-                  onClick={() => setShowImport(false)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    color: 'var(--text-muted)',
-                    padding: '4px',
-                  }}
-                  title="Đóng"
-                >
-                  <X size={20} />
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={handleDownloadTemplate}
+                    className="btn-gamified btn-gold"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '6px 12px',
+                      fontSize: '0.8rem',
+                    }}
+                    title="Tải về file CSV mẫu chuẩn UTF-8"
+                  >
+                    <Download size={14} />
+                    <span>Tải file mẫu CSV</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowImport(false)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: 'var(--text-muted)',
+                      padding: '4px',
+                    }}
+                    title="Đóng"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
               </div>
               <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '0 0 16px', lineHeight: 1.5 }}>
                 Định dạng tệp CSV UTF-8 theo cột: <code>hanzi,pinyin,meaning,partOfSpeech,exampleSentence,examplePinyin,exampleMeaning</code>

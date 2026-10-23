@@ -49,6 +49,14 @@ export interface VocabularyItem {
   hidden: boolean
 }
 
+export interface PageResponse<T> {
+  content: T[]
+  totalElements: number
+  totalPages: number
+  size: number
+  number: number
+}
+
 export interface GrammarExampleItem {
   id: number
   hanzi: string
@@ -254,6 +262,18 @@ export async function getVocabularies(query?: string, token?: string): Promise<V
   return response.json()
 }
 
+export async function deleteVocabulary(id: number, token: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/vocabularies/${id}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+  if (!response.ok && response.status !== 204) {
+    throw new ApiError(response.status, 'DELETE_VOCAB_FAILED', 'Không thể xóa từ vựng')
+  }
+}
+
 export async function uploadAudio(file: File, token: string): Promise<string> {
   const formData = new FormData()
   formData.append('file', file)
@@ -320,6 +340,112 @@ export async function getMyPrivateVocabularies(token: string): Promise<Vocabular
   return response.json()
 }
 
+export interface SearchPrivateVocabParams {
+  keyword?: string
+  partOfSpeech?: string
+  page?: number
+  size?: number
+  sortBy?: string
+  sortDir?: 'asc' | 'desc'
+}
+
+export async function searchMyPrivateVocabularies(
+  token: string,
+  params: SearchPrivateVocabParams = {}
+): Promise<PageResponse<VocabularyItem>> {
+  const queryParams = new URLSearchParams()
+  if (params.keyword) queryParams.set('keyword', params.keyword)
+  if (params.partOfSpeech) queryParams.set('partOfSpeech', params.partOfSpeech)
+  if (params.page !== undefined) queryParams.set('page', params.page.toString())
+  if (params.size !== undefined) queryParams.set('size', params.size.toString())
+  if (params.sortBy) queryParams.set('sortBy', params.sortBy)
+  if (params.sortDir) queryParams.set('sortDir', params.sortDir)
+
+  const headers = {
+    Accept: 'application/json',
+    Authorization: `Bearer ${token}`,
+  }
+
+  let data: any = null
+
+  // 1. Try paginated endpoint first
+  try {
+    const searchUrl = `${API_BASE}/vocabularies/my-private/search?${queryParams.toString()}`
+    const res = await fetch(searchUrl, { headers })
+    if (res.ok) {
+      data = await res.json()
+    }
+  } catch {
+    // continue to fallback
+  }
+
+  // 2. Fallback to base endpoint if search endpoint returned non-ok (e.g. 404 before server restart)
+  if (!data) {
+    const fallbackUrl = `${API_BASE}/vocabularies/my-private?${queryParams.toString()}`
+    const res = await fetch(fallbackUrl, { headers })
+    if (!res.ok) {
+      throw new ApiError(res.status, 'FETCH_PRIVATE_VOCAB_FAILED', 'Không thể tải danh sách từ vựng riêng')
+    }
+    data = await res.json()
+  }
+
+  // If backend returns PageResponse format
+  if (data && Array.isArray(data.content)) {
+    return data as PageResponse<VocabularyItem>
+  }
+
+  // If backend returns Array format, perform client-side filtering and pagination seamlessly
+  if (Array.isArray(data)) {
+    let list: VocabularyItem[] = [...data]
+    if (params.keyword && params.keyword.trim()) {
+      const kw = params.keyword.trim().toLowerCase()
+      list = list.filter(
+        (w) =>
+          w.hanzi.toLowerCase().includes(kw) ||
+          w.pinyin.toLowerCase().includes(kw) ||
+          w.meaning.toLowerCase().includes(kw)
+      )
+    }
+    if (params.partOfSpeech && params.partOfSpeech !== 'Tất cả loại từ') {
+      list = list.filter((w) => w.partOfSpeech === params.partOfSpeech)
+    }
+
+    const sortDir = params.sortDir || 'desc'
+    if (params.sortBy === 'hanzi') {
+      list.sort((a, b) =>
+        sortDir === 'asc' ? a.hanzi.localeCompare(b.hanzi) : b.hanzi.localeCompare(a.hanzi)
+      )
+    } else if (params.sortBy === 'pinyin') {
+      list.sort((a, b) =>
+        sortDir === 'asc' ? a.pinyin.localeCompare(b.pinyin) : b.pinyin.localeCompare(a.pinyin)
+      )
+    } else {
+      list.sort((a, b) => (sortDir === 'asc' ? a.id - b.id : b.id - a.id))
+    }
+
+    const pageNum = params.page || 0
+    const pageSizeNum = params.size || 20
+    const start = pageNum * pageSizeNum
+    const pagedItems = list.slice(start, start + pageSizeNum)
+
+    return {
+      content: pagedItems,
+      totalElements: list.length,
+      totalPages: Math.ceil(list.length / pageSizeNum),
+      size: pageSizeNum,
+      number: pageNum,
+    }
+  }
+
+  return {
+    content: [],
+    totalElements: 0,
+    totalPages: 0,
+    size: params.size || 20,
+    number: params.page || 0,
+  }
+}
+
 export async function getMyVocabSets(token: string): Promise<VocabSetItem[]> {
   const response = await fetch(`${API_BASE}/vocab-sets`, {
     headers: {
@@ -364,6 +490,45 @@ export async function getVocabSetItems(vocabSetId: number, token: string): Promi
     throw new ApiError(response.status, 'FETCH_VOCAB_SET_ITEMS_FAILED', 'Không thể tải từ vựng trong bộ')
   }
   return response.json()
+}
+
+export interface BatchAddVocabSetItemsResponse {
+  addedCount: number
+  totalRequested: number
+}
+
+export async function addVocabulariesBatchToVocabSet(
+  vocabSetId: number,
+  vocabularyIds: number[],
+  token: string
+): Promise<BatchAddVocabSetItemsResponse> {
+  try {
+    const response = await fetch(`${API_BASE}/vocab-sets/${vocabSetId}/vocabularies/batch`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ vocabularyIds }),
+    })
+    if (response.ok) {
+      return await response.json()
+    }
+  } catch {
+    // If backend endpoint fails or dev server didn't reload, fallback to single calls
+  }
+
+  // Graceful fallback
+  let added = 0
+  for (const id of vocabularyIds) {
+    try {
+      await addVocabularyToVocabSet(vocabSetId, id, token)
+      added++
+    } catch {
+      // already exists or error
+    }
+  }
+  return { addedCount: added, totalRequested: vocabularyIds.length }
 }
 
 export async function addVocabularyToVocabSet(

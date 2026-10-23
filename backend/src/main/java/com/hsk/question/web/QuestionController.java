@@ -4,11 +4,15 @@ import com.hsk.account.domain.UserEntity;
 import com.hsk.account.repository.UserRepository;
 import com.hsk.common.api.ApiErrorCode;
 import com.hsk.common.api.ApiException;
+import com.hsk.question.domain.QuestionType;
 import com.hsk.question.dto.BatchCreateQuestionsRequest;
+import com.hsk.question.dto.BulkDeleteQuestionsRequest;
+import com.hsk.question.dto.BulkDeleteResult;
 import com.hsk.question.dto.CreateFillBlankQuestionRequest;
 import com.hsk.question.dto.CreateMatchingQuestionRequest;
 import com.hsk.question.dto.CreateOrderingQuestionRequest;
 import com.hsk.question.dto.CreateQuestionRequest;
+import com.hsk.question.dto.ImportQuestionsResult;
 import com.hsk.question.dto.QuestionResponse;
 import com.hsk.question.dto.QuickGeneratePreviewRequest;
 import com.hsk.question.dto.UpdateQuestionRequest;
@@ -19,9 +23,17 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.security.Principal;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -158,6 +170,48 @@ public class QuestionController {
 		return ResponseEntity.ok(response);
 	}
 
+	@GetMapping("/search")
+	@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
+	@Operation(
+			summary = "Tìm kiếm và phân trang câu hỏi trong ngân hàng của tôi",
+			description = "Hỗ trợ lọc theo từ khóa, loại câu hỏi, phân trang và sắp xếp (QTN-19)."
+	)
+	public ResponseEntity<Page<QuestionResponse>> searchMyQuestions(
+			@RequestParam(required = false) String keyword,
+			@RequestParam(required = false) QuestionType type,
+			@RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "20") int size,
+			@RequestParam(defaultValue = "createdAt") String sortBy,
+			@RequestParam(defaultValue = "desc") String sortDir,
+			Principal principal
+	) {
+		UserEntity user = requireUser(principal);
+		String safeSortBy = switch (sortBy) {
+			case "content" -> "content";
+			case "id" -> "id";
+			default -> "createdAt";
+		};
+		Sort sort = sortDir.equalsIgnoreCase("asc") ? Sort.by(safeSortBy).ascending() : Sort.by(safeSortBy).descending();
+		Pageable pageable = PageRequest.of(Math.max(0, page), Math.min(Math.max(1, size), 100), sort);
+		Page<QuestionResponse> result = questionService.searchMyQuestions(user.getId(), keyword, type, pageable);
+		return ResponseEntity.ok(result);
+	}
+
+	@PostMapping("/bulk-delete")
+	@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
+	@Operation(
+			summary = "Xóa hàng loạt câu hỏi trong ngân hàng của tôi",
+			description = "Xóa an toàn danh sách câu hỏi thuộc sở hữu của giáo viên hiện tại (QTN-14, QTN-19)."
+	)
+	public ResponseEntity<BulkDeleteResult> bulkDeleteQuestions(
+			@RequestBody BulkDeleteQuestionsRequest request,
+			Principal principal
+	) {
+		UserEntity user = requireUser(principal);
+		BulkDeleteResult result = questionService.bulkDeleteQuestions(user.getId(), request.questionIds());
+		return ResponseEntity.ok(result);
+	}
+
 	@GetMapping("/{id}")
 	@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
 	@Operation(
@@ -202,5 +256,42 @@ public class QuestionController {
 		UserEntity user = requireUser(principal);
 		questionService.deleteOrHideQuestion(user.getId(), id);
 		return ResponseEntity.noContent().build();
+	}
+
+	@PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
+	@Operation(
+			summary = "Nhập hàng loạt câu hỏi từ file Excel/CSV",
+			description = "Hỗ trợ 4 loại câu hỏi: MCQ, FILL, MATCH, ORDER. Trả về thống kê thành công và lỗi chi tiết."
+	)
+	public ResponseEntity<ImportQuestionsResult> importQuestions(
+			@RequestParam("file") MultipartFile file,
+			Principal principal
+	) {
+		UserEntity user = requireUser(principal);
+		ImportQuestionsResult result = questionService.importQuestionsFromFile(user.getId(), file);
+		return ResponseEntity.status(HttpStatus.CREATED).body(result);
+	}
+
+	@GetMapping("/template/excel")
+	@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
+	@Operation(summary = "Tải file mẫu Excel (.xlsx) nhập câu hỏi")
+	public ResponseEntity<byte[]> downloadExcelTemplate() {
+		byte[] data = questionService.generateQuestionExcelTemplate();
+		return ResponseEntity.ok()
+				.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"HSK_Question_Import_Template.xlsx\"")
+				.contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+				.body(data);
+	}
+
+	@GetMapping("/template/csv")
+	@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
+	@Operation(summary = "Tải file mẫu CSV (.csv) nhập câu hỏi")
+	public ResponseEntity<byte[]> downloadCsvTemplate() {
+		byte[] data = questionService.generateQuestionCsvTemplate();
+		return ResponseEntity.ok()
+				.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"HSK_Question_Import_Template.csv\"")
+				.contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
+				.body(data);
 	}
 }

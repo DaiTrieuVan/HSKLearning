@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import {
   GraduationCap,
   Clock,
@@ -17,7 +16,6 @@ import {
   ChevronUp,
   Search,
   X,
-  Check,
   Calendar,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
@@ -27,7 +25,6 @@ import {
   getMockExamDetail,
   type MockExamItem,
   type CreateMockExamPayload,
-  type CreateMockExamSectionPayload,
 } from '../../api/mockExam'
 import { getMyQuestions, type QuestionItem } from '../../api/question'
 import { getTeachingClasses, type ClassItem } from '../../api/classroom'
@@ -50,7 +47,6 @@ interface DraftSection {
 
 export const MockExamManagementPage: React.FC = () => {
   const { user } = useAuth()
-  const navigate = useNavigate()
 
   // State danh sách đề thi thử
   const [mockExams, setMockExams] = useState<MockExamItem[]>([])

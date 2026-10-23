@@ -432,4 +432,38 @@ class ContentH2Test {
 			.andExpect(jsonPath("$", hasSize(1)))
 			.andExpect(jsonPath("$[0].title", is("Bộ từ vựng Giao tiếp HSK 1")));
 	}
+
+	@Test
+	@DisplayName("HTT-03-CN-011: Should search teacher private vocabularies with pagination and filters")
+	void shouldSearchTeacherPrivateVocabulariesWithPagination() throws Exception {
+		// 1. Create a private vocab for teacher
+		CreateVocabularyRequest req = new CreateVocabularyRequest(
+			"咖啡", "kā fēi", "cà phê", "danh từ",
+			null, "我想喝一杯咖啡。", "Wǒ xiǎng hē yì bēi kāfēi.", "Tôi muốn uống 1 cốc cà phê.",
+			null, true
+		);
+
+		mockMvc.perform(post("/api/v1/content/vocabularies")
+				.header("Authorization", "Bearer " + teacherToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(req)))
+			.andExpect(status().isCreated());
+
+		// 2. Search with pagination
+		mockMvc.perform(get("/api/v1/content/vocabularies/my-private/search")
+				.header("Authorization", "Bearer " + teacherToken)
+				.param("page", "0")
+				.param("size", "20"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.content", hasSize(greaterThanOrEqualTo(1))))
+			.andExpect(jsonPath("$.totalElements", greaterThanOrEqualTo(1)));
+
+		// 3. Search with keyword
+		mockMvc.perform(get("/api/v1/content/vocabularies/my-private/search")
+				.header("Authorization", "Bearer " + teacherToken)
+				.param("keyword", "咖啡"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.content", hasSize(1)))
+			.andExpect(jsonPath("$.content[0].hanzi", is("咖啡")));
+	}
 }

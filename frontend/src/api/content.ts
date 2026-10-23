@@ -361,17 +361,89 @@ export async function searchMyPrivateVocabularies(
   if (params.sortBy) queryParams.set('sortBy', params.sortBy)
   if (params.sortDir) queryParams.set('sortDir', params.sortDir)
 
-  const url = `${API_BASE}/vocabularies/my-private/search?${queryParams.toString()}`
-  const response = await fetch(url, {
-    headers: {
-      Accept: 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-  })
-  if (!response.ok) {
-    throw new ApiError(response.status, 'FETCH_PRIVATE_VOCAB_FAILED', 'Không thể tải danh sách từ vựng riêng')
+  const headers = {
+    Accept: 'application/json',
+    Authorization: `Bearer ${token}`,
   }
-  return response.json()
+
+  let data: any = null
+
+  // 1. Try paginated endpoint first
+  try {
+    const searchUrl = `${API_BASE}/vocabularies/my-private/search?${queryParams.toString()}`
+    const res = await fetch(searchUrl, { headers })
+    if (res.ok) {
+      data = await res.json()
+    }
+  } catch {
+    // continue to fallback
+  }
+
+  // 2. Fallback to base endpoint if search endpoint returned non-ok (e.g. 404 before server restart)
+  if (!data) {
+    const fallbackUrl = `${API_BASE}/vocabularies/my-private?${queryParams.toString()}`
+    const res = await fetch(fallbackUrl, { headers })
+    if (!res.ok) {
+      throw new ApiError(res.status, 'FETCH_PRIVATE_VOCAB_FAILED', 'Không thể tải danh sách từ vựng riêng')
+    }
+    data = await res.json()
+  }
+
+  // If backend returns PageResponse format
+  if (data && Array.isArray(data.content)) {
+    return data as PageResponse<VocabularyItem>
+  }
+
+  // If backend returns Array format, perform client-side filtering and pagination seamlessly
+  if (Array.isArray(data)) {
+    let list: VocabularyItem[] = [...data]
+    if (params.keyword && params.keyword.trim()) {
+      const kw = params.keyword.trim().toLowerCase()
+      list = list.filter(
+        (w) =>
+          w.hanzi.toLowerCase().includes(kw) ||
+          w.pinyin.toLowerCase().includes(kw) ||
+          w.meaning.toLowerCase().includes(kw)
+      )
+    }
+    if (params.partOfSpeech && params.partOfSpeech !== 'Tất cả loại từ') {
+      list = list.filter((w) => w.partOfSpeech === params.partOfSpeech)
+    }
+
+    const sortDir = params.sortDir || 'desc'
+    if (params.sortBy === 'hanzi') {
+      list.sort((a, b) =>
+        sortDir === 'asc' ? a.hanzi.localeCompare(b.hanzi) : b.hanzi.localeCompare(a.hanzi)
+      )
+    } else if (params.sortBy === 'pinyin') {
+      list.sort((a, b) =>
+        sortDir === 'asc' ? a.pinyin.localeCompare(b.pinyin) : b.pinyin.localeCompare(a.pinyin)
+      )
+    } else {
+      list.sort((a, b) => (sortDir === 'asc' ? a.id - b.id : b.id - a.id))
+    }
+
+    const pageNum = params.page || 0
+    const pageSizeNum = params.size || 20
+    const start = pageNum * pageSizeNum
+    const pagedItems = list.slice(start, start + pageSizeNum)
+
+    return {
+      content: pagedItems,
+      totalElements: list.length,
+      totalPages: Math.ceil(list.length / pageSizeNum),
+      size: pageSizeNum,
+      number: pageNum,
+    }
+  }
+
+  return {
+    content: [],
+    totalElements: 0,
+    totalPages: 0,
+    size: params.size || 20,
+    number: params.page || 0,
+  }
 }
 
 export async function getMyVocabSets(token: string): Promise<VocabSetItem[]> {

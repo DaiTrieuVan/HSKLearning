@@ -422,10 +422,10 @@ export const TeacherVocabSetsPage: React.FC = () => {
             </div>
             <div>
               <h1 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>
-                Quản lý Bộ từ vựng & Kho từ vựng riêng
+                Quản lý Bộ từ vựng của lớp
               </h1>
               <p style={{ margin: '4px 0 0', fontSize: '0.88rem', color: 'var(--text-muted)' }}>
-                Soạn các bộ từ vựng theo chủ đề, quản lý từ vựng riêng của giáo viên và giao cho các lớp học (QTN-19).
+                Soạn các bộ từ vựng theo chủ đề và giao cho các lớp học (QTN-19).
               </p>
             </div>
           </div>
@@ -489,8 +489,8 @@ export const TeacherVocabSetsPage: React.FC = () => {
               fontWeight: 800,
               fontSize: '0.92rem',
               cursor: 'pointer',
-              backgroundColor: activeTab === 'SETS' ? 'var(--primary)' : '#f1f5f9',
-              color: activeTab === 'SETS' ? '#ffffff' : 'var(--text-muted)',
+              backgroundColor: 'var(--primary)',
+              color: '#ffffff',
             }}
           >
             <FolderPlus size={18} />
@@ -499,7 +499,7 @@ export const TeacherVocabSetsPage: React.FC = () => {
 
           <button
             type="button"
-            onClick={() => setActiveTab('PRIVATE_WORDS')}
+            onClick={() => navigate('/private-vocab')}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -510,9 +510,11 @@ export const TeacherVocabSetsPage: React.FC = () => {
               fontWeight: 800,
               fontSize: '0.92rem',
               cursor: 'pointer',
-              backgroundColor: activeTab === 'PRIVATE_WORDS' ? 'var(--primary)' : '#f1f5f9',
-              color: activeTab === 'PRIVATE_WORDS' ? '#ffffff' : 'var(--text-muted)',
+              backgroundColor: '#f1f5f9',
+              color: 'var(--text-muted)',
+              transition: 'all 0.15s ease',
             }}
+            title="Vào ngay Trang Quản trị Kho từ vựng riêng (Có tìm kiếm, lọc & phân trang)"
           >
             <BookOpen size={18} />
             <span>Kho từ vựng riêng ({privateWords.length})</span>

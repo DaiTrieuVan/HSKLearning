@@ -42,10 +42,13 @@ import com.hsk.question.dto.BlankAnswerDto;
 import com.hsk.question.dto.FillBlankPayloadDto;
 import com.hsk.question.dto.MatchingPairDto;
 import com.hsk.question.dto.MatchingPayloadDto;
+import com.hsk.exercise.domain.ExerciseEntity;
+import com.hsk.exercise.domain.ExerciseType;
 import com.hsk.question.dto.OrderingPayloadDto;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -156,8 +159,9 @@ public class AssignmentSubmissionService {
 		} else {
 			AssignmentSubmissionEntity latest = existingSubs.get(0);
 			if (latest.getStatus() == SubmissionStatus.IN_PROGRESS) {
-				// QTN-20 / TC-05 / QTN-11: Nếu lượt đang IN_PROGRESS nhưng đã quá hạn -> Tự động nộp
-				if (now.isAfter(effectiveDueTime)) {
+				Instant effectiveDeadline = calculateEffectiveDeadline(assignment, latest, effectiveDueTime);
+				// QTN-20 / TC-03 / TC-05 / HTT-09-CN-002: Nếu lượt đang IN_PROGRESS nhưng đã hết giờ hoặc quá hạn -> Tự động nộp
+				if (now.isAfter(effectiveDeadline)) {
 					autoGradeAndFinalize(latest, assignment, SubmissionStatus.AUTO_SUBMITTED, parseAnswers(latest.getAnswersData()));
 					submission = submissionRepository.save(latest);
 
@@ -166,7 +170,7 @@ public class AssignmentSubmissionService {
 							"AUTO_SUBMIT_ASSIGNMENT",
 							"ASSIGNMENT_SUBMISSION",
 							submission.getId().toString(),
-							"Bài làm của học sinh " + student.getEmail() + " đã tự động nộp do quá hạn (Điểm: " + submission.getScore() + ")"
+							"Bài làm của học sinh " + student.getEmail() + " đã tự động nộp do hết giờ làm bài hoặc quá hạn (Điểm: " + submission.getScore() + ")"
 					);
 				} else {
 					submission = latest;
@@ -215,6 +219,13 @@ public class AssignmentSubmissionService {
 
 		List<StudentAnswerItemDto> savedAnswers = parseAnswers(submission.getAnswersData());
 
+		Instant effectiveDeadline = calculateEffectiveDeadline(assignment, submission, effectiveDueTime);
+		ExerciseEntity exercise = assignment.getExercise();
+		ExerciseType exerciseType = exercise != null && exercise.getExerciseType() != null ? exercise.getExerciseType() : ExerciseType.REGULAR;
+		Integer timeLimitMinutes = exercise != null ? exercise.getTimeLimitMinutes() : null;
+		BigDecimal passingScore = exercise != null ? exercise.getPassingScore() : null;
+		Integer hskLevel = exercise != null ? exercise.getHskLevel() : null;
+
 		return new TakeAssignmentResponse(
 				submission.getId(),
 				assignment.getId(),
@@ -230,8 +241,27 @@ public class AssignmentSubmissionService {
 				submission.getAttemptNumber(),
 				studentQuestions,
 				savedAnswers,
-				now.toEpochMilli()
+				now.toEpochMilli(),
+				exerciseType,
+				timeLimitMinutes,
+				passingScore,
+				hskLevel,
+				effectiveDeadline
 		);
+	}
+
+	/**
+	 * Tính toán thời điểm hết giờ hiệu lực của lượt làm bài (HTT-09-CN-002).
+	 * Thời hạn tối đa = min(startedAt + timeLimitMinutes, effectiveDueTime).
+	 */
+	private Instant calculateEffectiveDeadline(AssignmentEntity assignment, AssignmentSubmissionEntity submission, Instant effectiveDueTime) {
+		ExerciseEntity exercise = assignment.getExercise();
+		Integer timeLimit = exercise != null ? exercise.getTimeLimitMinutes() : null;
+		if (timeLimit != null && timeLimit > 0 && submission != null && submission.getStartedAt() != null) {
+			Instant examExpiry = submission.getStartedAt().plus(timeLimit, ChronoUnit.MINUTES);
+			return examExpiry.isBefore(effectiveDueTime) ? examExpiry : effectiveDueTime;
+		}
+		return effectiveDueTime;
 	}
 
 	/**
@@ -254,8 +284,9 @@ public class AssignmentSubmissionService {
 
 		Instant now = Instant.now();
 		Instant effectiveDueTime = resolveEffectiveDueTime(assignment, studentId);
-		// QTN-20 / TC-05 / QTN-11: Nếu tới hạn nộp khi đang gửi draft -> Tự động nộp
-		if (now.isAfter(effectiveDueTime)) {
+		Instant effectiveDeadline = calculateEffectiveDeadline(assignment, submission, effectiveDueTime);
+		// QTN-20 / TC-03 / TC-05 / HTT-09-CN-002: Nếu tới hạn nộp hoặc hết giờ khi đang gửi draft -> Tự động nộp
+		if (now.isAfter(effectiveDeadline)) {
 			List<StudentAnswerItemDto> answers = request != null && request.answers() != null ? request.answers() : parseAnswers(submission.getAnswersData());
 			autoGradeAndFinalize(submission, assignment, SubmissionStatus.AUTO_SUBMITTED, answers);
 			submissionRepository.save(submission);
@@ -295,7 +326,8 @@ public class AssignmentSubmissionService {
 
 		Instant now = Instant.now();
 		Instant effectiveDueTime = resolveEffectiveDueTime(assignment, studentId);
-		SubmissionStatus targetStatus = now.isAfter(effectiveDueTime)
+		Instant effectiveDeadline = calculateEffectiveDeadline(assignment, submission, effectiveDueTime);
+		SubmissionStatus targetStatus = now.isAfter(effectiveDeadline)
 				? SubmissionStatus.AUTO_SUBMITTED
 				: SubmissionStatus.SUBMITTED;
 

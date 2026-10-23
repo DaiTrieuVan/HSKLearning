@@ -9,6 +9,7 @@ import com.hsk.question.dto.CreateFillBlankQuestionRequest;
 import com.hsk.question.dto.CreateMatchingQuestionRequest;
 import com.hsk.question.dto.CreateOrderingQuestionRequest;
 import com.hsk.question.dto.CreateQuestionRequest;
+import com.hsk.question.dto.ImportQuestionsResult;
 import com.hsk.question.dto.QuestionResponse;
 import com.hsk.question.dto.QuickGeneratePreviewRequest;
 import com.hsk.question.dto.UpdateQuestionRequest;
@@ -19,9 +20,13 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.security.Principal;
 import java.util.List;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -202,5 +207,42 @@ public class QuestionController {
 		UserEntity user = requireUser(principal);
 		questionService.deleteOrHideQuestion(user.getId(), id);
 		return ResponseEntity.noContent().build();
+	}
+
+	@PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
+	@Operation(
+			summary = "Nhập hàng loạt câu hỏi từ file Excel/CSV",
+			description = "Hỗ trợ 4 loại câu hỏi: MCQ, FILL, MATCH, ORDER. Trả về thống kê thành công và lỗi chi tiết."
+	)
+	public ResponseEntity<ImportQuestionsResult> importQuestions(
+			@RequestParam("file") MultipartFile file,
+			Principal principal
+	) {
+		UserEntity user = requireUser(principal);
+		ImportQuestionsResult result = questionService.importQuestionsFromFile(user.getId(), file);
+		return ResponseEntity.status(HttpStatus.CREATED).body(result);
+	}
+
+	@GetMapping("/template/excel")
+	@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
+	@Operation(summary = "Tải file mẫu Excel (.xlsx) nhập câu hỏi")
+	public ResponseEntity<byte[]> downloadExcelTemplate() {
+		byte[] data = questionService.generateQuestionExcelTemplate();
+		return ResponseEntity.ok()
+				.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"HSK_Question_Import_Template.xlsx\"")
+				.contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+				.body(data);
+	}
+
+	@GetMapping("/template/csv")
+	@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
+	@Operation(summary = "Tải file mẫu CSV (.csv) nhập câu hỏi")
+	public ResponseEntity<byte[]> downloadCsvTemplate() {
+		byte[] data = questionService.generateQuestionCsvTemplate();
+		return ResponseEntity.ok()
+				.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"HSK_Question_Import_Template.csv\"")
+				.contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
+				.body(data);
 	}
 }

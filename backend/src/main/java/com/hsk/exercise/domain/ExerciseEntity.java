@@ -46,6 +46,23 @@ public class ExerciseEntity {
 	@Column(name = "total_points", nullable = false, precision = 6, scale = 2)
 	private BigDecimal totalPoints = BigDecimal.ZERO;
 
+	@Enumerated(EnumType.STRING)
+	@Column(name = "exercise_type", nullable = false, length = 50)
+	private ExerciseType exerciseType = ExerciseType.REGULAR;
+
+	@Column(name = "hsk_level")
+	private Integer hskLevel;
+
+	@Column(name = "time_limit_minutes")
+	private Integer timeLimitMinutes;
+
+	@Column(name = "passing_score", precision = 6, scale = 2)
+	private BigDecimal passingScore;
+
+	@OneToMany(mappedBy = "exercise", cascade = CascadeType.ALL, orphanRemoval = true)
+	@OrderBy("sortOrder ASC")
+	private List<ExerciseSectionEntity> sections = new ArrayList<>();
+
 	@OneToMany(mappedBy = "exercise", cascade = CascadeType.ALL, orphanRemoval = true)
 	@OrderBy("sortOrder ASC")
 	private List<ExerciseQuestionEntity> questions = new ArrayList<>();
@@ -129,6 +146,56 @@ public class ExerciseEntity {
 
 	public void setQuestions(List<ExerciseQuestionEntity> questions) {
 		this.questions = questions;
+	}
+
+	public void addSection(ExerciseSectionEntity section) {
+		this.sections.add(section);
+		section.setExercise(this);
+	}
+
+	public void removeSection(ExerciseSectionEntity section) {
+		this.sections.remove(section);
+		section.setExercise(null);
+	}
+
+	public ExerciseType getExerciseType() {
+		return exerciseType;
+	}
+
+	public void setExerciseType(ExerciseType exerciseType) {
+		this.exerciseType = exerciseType;
+	}
+
+	public Integer getHskLevel() {
+		return hskLevel;
+	}
+
+	public void setHskLevel(Integer hskLevel) {
+		this.hskLevel = hskLevel;
+	}
+
+	public Integer getTimeLimitMinutes() {
+		return timeLimitMinutes;
+	}
+
+	public void setTimeLimitMinutes(Integer timeLimitMinutes) {
+		this.timeLimitMinutes = timeLimitMinutes;
+	}
+
+	public BigDecimal getPassingScore() {
+		return passingScore;
+	}
+
+	public void setPassingScore(BigDecimal passingScore) {
+		this.passingScore = passingScore;
+	}
+
+	public List<ExerciseSectionEntity> getSections() {
+		return sections;
+	}
+
+	public void setSections(List<ExerciseSectionEntity> sections) {
+		this.sections = sections;
 	}
 
 	public Instant getCreatedAt() {

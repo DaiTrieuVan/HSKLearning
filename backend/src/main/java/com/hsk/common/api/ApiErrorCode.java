@@ -254,6 +254,24 @@ public enum ApiErrorCode {
 	/** HTT-07-CN-007: No assignment data found for the selected period. */
 	NO_DATA_FOR_PERIOD(HttpStatus.BAD_REQUEST, "Khoảng thời gian đã chọn không có bài tập nào"),
 
+	/** HTT-09-CN-001 / TC-03: HSK Level is required for mock exam. */
+	MOCK_EXAM_HSK_LEVEL_REQUIRED(HttpStatus.BAD_REQUEST, "Cấp độ HSK không được để trống khi tạo đề thi thử"),
+
+	/** HTT-09-CN-001 / TC-03: Time limit is required for mock exam. */
+	MOCK_EXAM_TIME_LIMIT_REQUIRED(HttpStatus.BAD_REQUEST, "Thời gian làm bài không được để trống khi tạo đề thi thử"),
+
+	/** HTT-09-CN-001 / TC-04: Time limit must be positive. */
+	MOCK_EXAM_TIME_LIMIT_INVALID(HttpStatus.BAD_REQUEST, "Thời gian làm bài phải lớn hơn 0"),
+
+	/** HTT-09-CN-001 / TC-04: Passing score must be non-negative and <= total points. */
+	MOCK_EXAM_PASSING_SCORE_INVALID(HttpStatus.BAD_REQUEST, "Điểm đạt không được âm và không được lớn hơn tổng điểm của đề thi"),
+
+	/** HTT-09-CN-001 / TC-05: Ready status requires at least one question in each section. */
+	MOCK_EXAM_SECTION_EMPTY_QUESTIONS(HttpStatus.BAD_REQUEST, "Tất cả các phần của đề thi phải có ít nhất 1 câu hỏi mới được chuyển sang trạng thái sẵn sàng giao"),
+
+	/** HTT-09-CN-001 / TC-05: Sections required for mock exam. */
+	MOCK_EXAM_SECTIONS_REQUIRED(HttpStatus.BAD_REQUEST, "Đề thi thử phải có ít nhất 1 phần thi"),
+
 	/** Unexpected server side failure; the client may retry. */
 	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Hệ thống đang gặp sự cố, vui lòng thử lại sau");
 

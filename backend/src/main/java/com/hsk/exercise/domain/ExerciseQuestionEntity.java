@@ -39,6 +39,10 @@ public class ExerciseQuestionEntity {
 	@JoinColumn(name = "question_id", nullable = false)
 	private QuestionEntity question;
 
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "section_id")
+	private ExerciseSectionEntity section;
+
 	@Column(name = "points", nullable = false, precision = 6, scale = 2)
 	private BigDecimal points = BigDecimal.ONE;
 
@@ -53,7 +57,12 @@ public class ExerciseQuestionEntity {
 	}
 
 	public ExerciseQuestionEntity(ExerciseEntity exercise, QuestionEntity question, BigDecimal points, int sortOrder) {
+		this(exercise, null, question, points, sortOrder);
+	}
+
+	public ExerciseQuestionEntity(ExerciseEntity exercise, ExerciseSectionEntity section, QuestionEntity question, BigDecimal points, int sortOrder) {
 		this.exercise = exercise;
+		this.section = section;
 		this.question = question;
 		this.points = points;
 		this.sortOrder = sortOrder;
@@ -69,6 +78,14 @@ public class ExerciseQuestionEntity {
 
 	public void setExercise(ExerciseEntity exercise) {
 		this.exercise = exercise;
+	}
+
+	public ExerciseSectionEntity getSection() {
+		return section;
+	}
+
+	public void setSection(ExerciseSectionEntity section) {
+		this.section = section;
 	}
 
 	public QuestionEntity getQuestion() {

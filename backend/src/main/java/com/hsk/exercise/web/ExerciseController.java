@@ -122,4 +122,46 @@ public class ExerciseController {
 		ExerciseResponse response = exerciseService.getExerciseDetail(user.getId(), id);
 		return ResponseEntity.ok(response);
 	}
+
+	@PostMapping("/mock-exams")
+	@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
+	@Operation(
+			summary = "HTT-09-CN-001 — Tạo đề thi thử HSK",
+			description = "Giáo viên tạo đề thi thử HSK gồm nhiều phần, giới hạn thời gian, điểm đạt từ ngân hàng câu hỏi (QTN-09, QTN-19)."
+	)
+	public ResponseEntity<com.hsk.exercise.dto.MockExamResponse> createMockExam(
+			@Valid @RequestBody com.hsk.exercise.dto.CreateMockExamRequest request,
+			Principal principal
+	) {
+		UserEntity user = requireUser(principal);
+		com.hsk.exercise.dto.MockExamResponse response = exerciseService.createMockExam(user.getId(), request);
+		return ResponseEntity.status(HttpStatus.CREATED).body(response);
+	}
+
+	@GetMapping("/mock-exams")
+	@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
+	@Operation(
+			summary = "HTT-09-CN-001 — Lấy danh sách đề thi thử của tôi",
+			description = "Chỉ trả về các đề thi thử do chính giáo viên đăng nhập tạo ra (QTN-19)."
+	)
+	public ResponseEntity<List<com.hsk.exercise.dto.MockExamResponse>> getMyMockExams(Principal principal) {
+		UserEntity user = requireUser(principal);
+		List<com.hsk.exercise.dto.MockExamResponse> response = exerciseService.getMyMockExams(user.getId());
+		return ResponseEntity.ok(response);
+	}
+
+	@GetMapping("/mock-exams/{id}")
+	@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
+	@Operation(
+			summary = "HTT-09-CN-001 — Xem chi tiết đề thi thử HSK",
+			description = "Xem cấu trúc đề thi thử kèm các phần thi, câu hỏi và điểm số (QTN-19)."
+	)
+	public ResponseEntity<com.hsk.exercise.dto.MockExamResponse> getMockExamDetail(
+			@PathVariable("id") Long id,
+			Principal principal
+	) {
+		UserEntity user = requireUser(principal);
+		com.hsk.exercise.dto.MockExamResponse response = exerciseService.getMockExamDetail(user.getId(), id);
+		return ResponseEntity.ok(response);
+	}
 }

@@ -11,6 +11,7 @@ import {
   HelpCircle,
   FileCheck,
   ShieldCheck,
+  GraduationCap,
   User,
   LogOut,
   ChevronLeft,
@@ -194,7 +195,18 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ isCollapsed, onToggleCol
                 {!isCollapsed && <span>Quản lý bài tập</span>}
               </button>
 
-              {/* 5. Tra cứu từ vựng (Hỗ trợ soạn bài) */}
+              {/* 5. Đề thi thử HSK (HTT-09-CN-001) */}
+              <button
+                type="button"
+                onClick={() => navigate('/mock-exams')}
+                style={navItemStyle(isActive('/mock-exams'))}
+                title={isCollapsed ? 'Đề thi thử HSK' : undefined}
+              >
+                <GraduationCap size={20} style={{ flexShrink: 0, color: isActive('/mock-exams') ? 'var(--primary)' : '#64748b' }} />
+                {!isCollapsed && <span>Đề thi thử HSK</span>}
+              </button>
+
+              {/* 6. Tra cứu từ vựng (Hỗ trợ soạn bài) */}
               <button
                 type="button"
                 onClick={() => navigate('/vocab-search')}

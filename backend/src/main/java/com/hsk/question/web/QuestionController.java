@@ -4,7 +4,10 @@ import com.hsk.account.domain.UserEntity;
 import com.hsk.account.repository.UserRepository;
 import com.hsk.common.api.ApiErrorCode;
 import com.hsk.common.api.ApiException;
+import com.hsk.question.domain.QuestionType;
 import com.hsk.question.dto.BatchCreateQuestionsRequest;
+import com.hsk.question.dto.BulkDeleteQuestionsRequest;
+import com.hsk.question.dto.BulkDeleteResult;
 import com.hsk.question.dto.CreateFillBlankQuestionRequest;
 import com.hsk.question.dto.CreateMatchingQuestionRequest;
 import com.hsk.question.dto.CreateOrderingQuestionRequest;
@@ -20,6 +23,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.security.Principal;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -161,6 +168,48 @@ public class QuestionController {
 		UserEntity user = requireUser(principal);
 		List<QuestionResponse> response = questionService.getMyQuestions(user.getId());
 		return ResponseEntity.ok(response);
+	}
+
+	@GetMapping("/search")
+	@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
+	@Operation(
+			summary = "Tìm kiếm và phân trang câu hỏi trong ngân hàng của tôi",
+			description = "Hỗ trợ lọc theo từ khóa, loại câu hỏi, phân trang và sắp xếp (QTN-19)."
+	)
+	public ResponseEntity<Page<QuestionResponse>> searchMyQuestions(
+			@RequestParam(required = false) String keyword,
+			@RequestParam(required = false) QuestionType type,
+			@RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "20") int size,
+			@RequestParam(defaultValue = "createdAt") String sortBy,
+			@RequestParam(defaultValue = "desc") String sortDir,
+			Principal principal
+	) {
+		UserEntity user = requireUser(principal);
+		String safeSortBy = switch (sortBy) {
+			case "content" -> "content";
+			case "id" -> "id";
+			default -> "createdAt";
+		};
+		Sort sort = sortDir.equalsIgnoreCase("asc") ? Sort.by(safeSortBy).ascending() : Sort.by(safeSortBy).descending();
+		Pageable pageable = PageRequest.of(Math.max(0, page), Math.min(Math.max(1, size), 100), sort);
+		Page<QuestionResponse> result = questionService.searchMyQuestions(user.getId(), keyword, type, pageable);
+		return ResponseEntity.ok(result);
+	}
+
+	@PostMapping("/bulk-delete")
+	@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
+	@Operation(
+			summary = "Xóa hàng loạt câu hỏi trong ngân hàng của tôi",
+			description = "Xóa an toàn danh sách câu hỏi thuộc sở hữu của giáo viên hiện tại (QTN-14, QTN-19)."
+	)
+	public ResponseEntity<BulkDeleteResult> bulkDeleteQuestions(
+			@RequestBody BulkDeleteQuestionsRequest request,
+			Principal principal
+	) {
+		UserEntity user = requireUser(principal);
+		BulkDeleteResult result = questionService.bulkDeleteQuestions(user.getId(), request.questionIds());
+		return ResponseEntity.ok(result);
 	}
 
 	@GetMapping("/{id}")

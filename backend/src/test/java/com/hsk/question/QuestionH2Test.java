@@ -400,4 +400,99 @@ class QuestionH2Test {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$", hasSize(0)));
 	}
+
+	@Test
+	@DisplayName("Phân trang và tìm kiếm câu hỏi có bộ lọc từ khóa và dạng câu hỏi")
+	void shouldSearchAndPaginateQuestions() throws Exception {
+		// Tạo 3 câu hỏi cho teacher
+		CreateQuestionRequest q1 = new CreateQuestionRequest(
+				"Câu hỏi số 1: Xin chào nghĩa là gì?",
+				"Giải thích chào hỏi",
+				QuestionType.MCQ,
+				null,
+				List.of(
+						new CreateQuestionOptionRequest("Xin chào", true),
+						new CreateQuestionOptionRequest("Tạm biệt", false)
+				)
+		);
+		CreateQuestionRequest q2 = new CreateQuestionRequest(
+				"Câu hỏi số 2: Cảm ơn nghĩa là gì?",
+				"Giải thích cảm ơn",
+				QuestionType.MCQ,
+				null,
+				List.of(
+						new CreateQuestionOptionRequest("Cảm ơn", true),
+						new CreateQuestionOptionRequest("Xin lỗi", false)
+				)
+		);
+		mockMvc.perform(post(QUESTIONS_URL)
+				.header("Authorization", "Bearer " + teacherToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(q1)))
+				.andExpect(status().isCreated());
+
+		mockMvc.perform(post(QUESTIONS_URL)
+				.header("Authorization", "Bearer " + teacherToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(q2)))
+				.andExpect(status().isCreated());
+
+		// Search page 0, size 1 -> totalElements = 2, totalPages = 2, content has 1 item
+		mockMvc.perform(get(QUESTIONS_URL + "/search")
+				.param("page", "0")
+				.param("size", "1")
+				.header("Authorization", "Bearer " + teacherToken))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.totalElements", is(2)))
+				.andExpect(jsonPath("$.totalPages", is(2)))
+				.andExpect(jsonPath("$.content", hasSize(1)));
+
+		// Search with keyword "Cảm ơn"
+		mockMvc.perform(get(QUESTIONS_URL + "/search")
+				.param("keyword", "Cảm ơn")
+				.header("Authorization", "Bearer " + teacherToken))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.totalElements", is(1)))
+				.andExpect(jsonPath("$.content[0].content", is("Câu hỏi số 2: Cảm ơn nghĩa là gì?")));
+	}
+
+	@Test
+	@DisplayName("Xóa hàng loạt câu hỏi thuộc quyền sở hữu của giáo viên (Bulk Delete)")
+	void shouldBulkDeleteQuestions() throws Exception {
+		// Tạo 2 câu hỏi
+		CreateQuestionRequest q1 = new CreateQuestionRequest(
+				"Câu để xóa 1",
+				"Giải thích 1",
+				QuestionType.MCQ,
+				null,
+				List.of(
+						new CreateQuestionOptionRequest("A", true),
+						new CreateQuestionOptionRequest("B", false)
+				)
+		);
+		MvcResult res = mockMvc.perform(post(QUESTIONS_URL)
+				.header("Authorization", "Bearer " + teacherToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(q1)))
+				.andExpect(status().isCreated())
+				.andReturn();
+
+		JsonNode json = objectMapper.readTree(res.getResponse().getContentAsString());
+		long qId = json.get("id").asLong();
+
+		// Bulk delete
+		mockMvc.perform(post(QUESTIONS_URL + "/bulk-delete")
+				.header("Authorization", "Bearer " + teacherToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"questionIds\": [" + qId + "]}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.requestedCount", is(1)))
+				.andExpect(jsonPath("$.deletedCount", is(1)));
+
+		// Kiểm tra câu hỏi đã bị xóa
+		mockMvc.perform(get(QUESTIONS_URL + "/my")
+				.header("Authorization", "Bearer " + teacherToken))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$", hasSize(0)));
+	}
 }

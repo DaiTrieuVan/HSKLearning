@@ -27,6 +27,7 @@ import com.hsk.question.dto.FillBlankPayloadDto;
 import com.hsk.question.dto.MatchingPairDto;
 import com.hsk.question.dto.MatchingPayloadDto;
 import com.hsk.question.dto.OrderingPayloadDto;
+import com.hsk.question.dto.BulkDeleteResult;
 import com.hsk.question.dto.ImportQuestionsResult;
 import com.hsk.question.dto.QuestionOptionResponse;
 import com.hsk.question.dto.QuestionResponse;
@@ -43,6 +44,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.util.Random;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -526,6 +530,46 @@ public class QuestionService {
 		return questions.stream()
 				.map(this::mapToResponse)
 				.toList();
+	}
+
+	/**
+	 * Tìm kiếm câu hỏi trong ngân hàng của giáo viên có phân trang và bộ lọc.
+	 */
+	@Transactional(readOnly = true)
+	public Page<QuestionResponse> searchMyQuestions(Long teacherId, String keyword, QuestionType type, Pageable pageable) {
+		assertTeacherOrAdmin(teacherId);
+		String searchKeyword = (keyword != null && !keyword.trim().isEmpty()) ? keyword.trim() : null;
+		Page<QuestionEntity> page = questionRepository.searchMyQuestions(teacherId, searchKeyword, type, pageable);
+		return page.map(this::mapToResponse);
+	}
+
+	/**
+	 * Xóa hàng loạt câu hỏi thuộc quyền sở hữu của giáo viên (QTN-14, QTN-19).
+	 */
+	@Transactional
+	public BulkDeleteResult bulkDeleteQuestions(Long teacherId, List<Long> questionIds) {
+		assertTeacherOrAdmin(teacherId);
+		if (questionIds == null || questionIds.isEmpty()) {
+			return new BulkDeleteResult(0, 0);
+		}
+		int deletedCount = 0;
+		for (Long qId : questionIds) {
+			if (qId == null) continue;
+			Optional<QuestionEntity> opt = questionRepository.findWithOptionsById(qId);
+			if (opt.isPresent()) {
+				QuestionEntity q = opt.get();
+				if (q.getOwnerId().equals(teacherId) && !q.isHidden()) {
+					if (isQuestionUsedInAnyExercise(qId)) {
+						q.setHidden(true);
+						questionRepository.save(q);
+					} else {
+						questionRepository.delete(q);
+					}
+					deletedCount++;
+				}
+			}
+		}
+		return new BulkDeleteResult(questionIds.size(), deletedCount);
 	}
 
 	public QuestionResponse mapToResponse(QuestionEntity entity) {

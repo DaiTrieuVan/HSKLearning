@@ -10,7 +10,6 @@ import {
   BookMarked,
   CheckCircle2,
   Circle,
-  PlusCircle,
   Lightbulb,
   Activity,
   UserCheck,
@@ -75,93 +74,80 @@ export const AppRightSidebar: React.FC<AppRightSidebarProps> = ({
          ======================================================== */}
       {isTeacher ? (
         <>
-          {/* 1. Hoạt động gần đây (Recent Activities) */}
-          <div
-            className="game-card"
-            style={{
-              padding: '18px',
-              backgroundColor: '#ffffff',
-              border: '1.5px solid var(--border-card)',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Activity size={18} style={{ color: 'var(--primary)' }} />
-                <span style={{ fontSize: '0.8rem', fontWeight: 900, color: 'var(--text-main)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Hoạt động gần đây
+          {/* 1. Hoạt động gần đây (Chỉ hiển thị khi đã có lớp học) */}
+          {teacherClasses.length > 0 && (
+            <div
+              className="game-card"
+              style={{
+                padding: '18px',
+                backgroundColor: '#ffffff',
+                border: '1.5px solid var(--border-card)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Activity size={18} style={{ color: 'var(--primary)' }} />
+                  <span style={{ fontSize: '0.8rem', fontWeight: 900, color: 'var(--text-main)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Hoạt động gần đây
+                  </span>
+                </div>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700 }}>
+                  Lớp học
                 </span>
               </div>
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700 }}>
-                Lớp học
-              </span>
-            </div>
 
-            {loadingTeacherClasses ? (
-              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', textAlign: 'center', padding: '16px 0' }}>
-                Đang tải dữ liệu...
-              </div>
-            ) : teacherClasses.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '20px 10px', color: 'var(--text-muted)' }}>
-                <div style={{ fontSize: '0.82rem', fontWeight: 600, lineHeight: 1.4, marginBottom: '12px' }}>
-                  Chưa có hoạt động mới hôm nay. Hãy tạo lớp đầu tiên để kết nối với học viên!
+              {loadingTeacherClasses ? (
+                <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', textAlign: 'center', padding: '16px 0' }}>
+                  Đang tải dữ liệu...
                 </div>
-                <button
-                  type="button"
-                  onClick={() => navigate('/classes/create')}
-                  className="btn-gamified btn-gold"
-                  style={{ padding: '6px 14px', fontSize: '0.78rem' }}
-                >
-                  <PlusCircle size={14} />
-                  <span>Tạo lớp học ngay</span>
-                </button>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {teacherClasses.slice(0, 4).map((c) => (
-                  <div
-                    key={c.id}
-                    onClick={() => navigate(`/classes/${c.id}`)}
-                    style={{
-                      padding: '10px 12px',
-                      borderRadius: 'var(--radius-md)',
-                      backgroundColor: '#f8fafc',
-                      border: '1px solid var(--border-card)',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <span style={{ fontWeight: 800, fontSize: '0.85rem', color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '170px' }}>
-                        {c.title}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: '0.7rem',
-                          fontWeight: 800,
-                          padding: '2px 6px',
-                          borderRadius: 'var(--radius-sm)',
-                          backgroundColor: c.status === 'ACTIVE' ? '#dcfce7' : '#f1f5f9',
-                          color: c.status === 'ACTIVE' ? '#15803d' : '#64748b',
-                        }}
-                      >
-                        {c.status === 'ACTIVE' ? 'Đang mở' : 'Đã đóng'}
-                      </span>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.76rem', color: 'var(--text-muted)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <UserCheck size={13} style={{ color: 'var(--primary)' }} />
-                        <span>{c.memberCount || 0} học viên</span>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {teacherClasses.slice(0, 4).map((c) => (
+                    <div
+                      key={c.id}
+                      onClick={() => navigate(`/classes/${c.id}`)}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: 'var(--radius-md)',
+                        backgroundColor: '#f8fafc',
+                        border: '1px solid var(--border-card)',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                        <span style={{ fontWeight: 800, fontSize: '0.85rem', color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '170px' }}>
+                          {c.title}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: '0.7rem',
+                            fontWeight: 800,
+                            padding: '2px 6px',
+                            borderRadius: 'var(--radius-sm)',
+                            backgroundColor: c.status === 'ACTIVE' ? '#dcfce7' : '#f1f5f9',
+                            color: c.status === 'ACTIVE' ? '#15803d' : '#64748b',
+                          }}
+                        >
+                          {c.status === 'ACTIVE' ? 'Đang mở' : 'Đã đóng'}
+                        </span>
                       </div>
-                      <span style={{ fontFamily: 'monospace', fontWeight: 800, color: 'var(--primary-hover)' }}>
-                        Mã: {c.joinCode}
-                      </span>
+
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.76rem', color: 'var(--text-muted)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <UserCheck size={13} style={{ color: 'var(--primary)' }} />
+                          <span>{c.memberCount || 0} học viên</span>
+                        </div>
+                        <span style={{ fontFamily: 'monospace', fontWeight: 800, color: 'var(--primary-hover)' }}>
+                          Mã: {c.joinCode}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* 2. Mẹo giảng dạy nhỏ gọn (Mini Tip) */}
           <div

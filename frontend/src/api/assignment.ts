@@ -268,6 +268,11 @@ export interface TakeAssignmentData {
   submittedAt?: string | null
   score?: number | null
   attemptNumber: number
+  exerciseType?: 'EXERCISE' | 'MOCK_EXAM'
+  timeLimitMinutes?: number | null
+  passingScore?: number | null
+  hskLevel?: string | null
+  effectiveDeadline?: string | null
   questions: StudentTakingQuestion[]
   savedAnswers: StudentAnswerItem[]
   serverTimeMillis: number

@@ -45,6 +45,8 @@ import com.hsk.common.api.ApiErrorCode;
 import com.hsk.common.audit.AuditLogEntity;
 import com.hsk.common.audit.AuditLogRepository;
 import com.hsk.content.repository.HskLevelRepository;
+import com.hsk.content.repository.LessonRepository;
+import com.hsk.content.repository.LessonVocabularyRepository;
 import com.hsk.content.repository.VocabSetItemRepository;
 import com.hsk.content.repository.VocabSetRepository;
 import com.hsk.content.repository.VocabularyRepository;
@@ -173,6 +175,12 @@ class TakeTimedMockExamH2Test {
 	private VocabularyRepository vocabularyRepository;
 
 	@Autowired
+	private LessonRepository lessonRepository;
+
+	@Autowired
+	private LessonVocabularyRepository lessonVocabularyRepository;
+
+	@Autowired
 	private HskLevelRepository hskLevelRepository;
 
 	@Autowired
@@ -286,6 +294,8 @@ class TakeTimedMockExamH2Test {
 		classRepository.deleteAll();
 		vocabSetItemRepository.deleteAll();
 		vocabSetRepository.deleteAll();
+		lessonVocabularyRepository.deleteAll();
+		lessonRepository.deleteAll();
 		vocabularyRepository.deleteAll();
 		hskLevelRepository.deleteAll();
 		teacherRequestRepository.deleteAll();

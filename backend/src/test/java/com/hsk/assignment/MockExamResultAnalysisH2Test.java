@@ -285,6 +285,9 @@ class MockExamResultAnalysisH2Test {
 		classRepository.deleteAll();
 		vocabSetItemRepository.deleteAll();
 		vocabSetRepository.deleteAll();
+		lessonVocabularyRepository.deleteAll();
+		lessonRepository.deleteAll();
+		vocabularyRepository.deleteAll();
 		teacherRequestRepository.deleteAll();
 		passwordResetTokenRepository.deleteAll();
 		auditLogRepository.deleteAll();

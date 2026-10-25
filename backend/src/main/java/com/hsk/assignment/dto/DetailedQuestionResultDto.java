@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 /**
- * Chi tiết kết quả của một câu hỏi sau khi nộp bài (kèm đáp án đúng và lời giải).
+ * Chi tiết kết quả của một câu hỏi sau khi nộp bài (kèm đáp án đúng và lời giải) (HTT-09-CN-003).
  */
 public record DetailedQuestionResultDto(
 		Long questionId,
@@ -17,8 +17,26 @@ public record DetailedQuestionResultDto(
 		Long selectedOptionId,
 		String studentTextAnswer,
 		String payload,
-		List<AssignmentSnapshotOptionDto> options
+		List<AssignmentSnapshotOptionDto> options,
+		Long sectionId,
+		String sectionName
 ) {
+	public DetailedQuestionResultDto(
+			Long questionId,
+			String type,
+			String content,
+			String explanation,
+			BigDecimal maxPoints,
+			BigDecimal pointsEarned,
+			Boolean isCorrect,
+			Long selectedOptionId,
+			String studentTextAnswer,
+			String payload,
+			List<AssignmentSnapshotOptionDto> options
+	) {
+		this(questionId, type, content, explanation, maxPoints, pointsEarned, isCorrect, selectedOptionId, studentTextAnswer, payload, options, null, null);
+	}
+
 	public DetailedQuestionResultDto(
 			Long questionId,
 			String type,
@@ -30,6 +48,6 @@ public record DetailedQuestionResultDto(
 			Long selectedOptionId,
 			List<AssignmentSnapshotOptionDto> options
 	) {
-		this(questionId, type, content, explanation, maxPoints, pointsEarned, isCorrect, selectedOptionId, null, null, options);
+		this(questionId, type, content, explanation, maxPoints, pointsEarned, isCorrect, selectedOptionId, null, null, options, null, null);
 	}
 }

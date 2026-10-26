@@ -524,20 +524,34 @@ export async function uploadQuestionMedia(file: File, token: string): Promise<st
   const formData = new FormData()
   formData.append('file', file)
 
-  const response = await fetch(`${API_BASE}/upload-media`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-    body: formData,
-  })
+  let response: Response
+  try {
+    response = await fetch(`${API_BASE}/upload-media`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    })
+  } catch (err: any) {
+    throw new ApiError(
+      0,
+      'NETWORK_ERROR',
+      `Không thể kết nối đến máy chủ khi tải tệp: ${err?.message || 'Lỗi mạng hoặc dung lượng vượt mức cho phép'}`
+    )
+  }
 
   const data = await response.json().catch(() => null)
   if (!response.ok) {
+    const defaultMsg =
+      response.status === 413
+        ? 'Dung lượng tệp vượt quá mức cho phép của hệ thống (tối đa 50MB)'
+        : 'Không thể tải lên tệp đa phương tiện'
     throw new ApiError(
       response.status,
-      data?.code || 'UPLOAD_FAILED',
-      data?.message || 'Không thể tải lên tệp đa phương tiện'
+      data?.code || (response.status === 413 ? 'FILE_TOO_LARGE' : 'UPLOAD_FAILED'),
+      data?.message || defaultMsg,
+      data?.fields
     )
   }
 

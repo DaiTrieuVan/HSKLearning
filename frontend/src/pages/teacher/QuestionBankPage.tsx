@@ -373,9 +373,10 @@ export const QuestionBankPage: React.FC = () => {
       if (isEdit) setEditAudioUrl(url)
       else setAudioUrl(url)
       setSuccessMessage('Tải file âm thanh thành công!')
-    } catch (err) {
+    } catch (err: any) {
       if (err instanceof ApiError) setErrorMessage(err.message)
-      else setErrorMessage('Tải file âm thanh thất bại.')
+      else if (err?.message) setErrorMessage(`Tải file âm thanh thất bại: ${err.message}`)
+      else setErrorMessage('Tải file âm thanh thất bại. Kích thước file có thể quá lớn (tối đa 50MB) hoặc không đúng định dạng.')
     } finally {
       if (isEdit) setEditUploadingAudio(false)
       else setUploadingAudio(false)
@@ -393,8 +394,9 @@ export const QuestionBankPage: React.FC = () => {
       if (isEdit) setEditImageUrl(url)
       else setImageUrl(url)
       setSuccessMessage('Tải hình ảnh thành công!')
-    } catch (err) {
+    } catch (err: any) {
       if (err instanceof ApiError) setErrorMessage(err.message)
+      else if (err?.message) setErrorMessage(`Tải hình ảnh thất bại: ${err.message}`)
       else setErrorMessage('Tải hình ảnh thất bại.')
     } finally {
       if (isEdit) setEditUploadingImage(false)
@@ -424,8 +426,9 @@ export const QuestionBankPage: React.FC = () => {
         setOptions(next)
       }
       setSuccessMessage(`Tải ảnh cho lựa chọn ${optionLetters[index] || index + 1} thành công!`)
-    } catch (err) {
+    } catch (err: any) {
       if (err instanceof ApiError) setErrorMessage(err.message)
+      else if (err?.message) setErrorMessage(`Tải hình ảnh lựa chọn thất bại: ${err.message}`)
       else setErrorMessage('Tải hình ảnh lựa chọn thất bại.')
     } finally {
       if (isEdit) setEditUploadingOptionIdx(null)
@@ -2080,7 +2083,7 @@ export const QuestionBankPage: React.FC = () => {
                         <span>{uploadingAudio ? 'Đang tải...' : 'Tải audio'}</span>
                         <input
                           type="file"
-                          accept="audio/*,.mp3,.wav,.ogg,.m4a"
+                          accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac,.webm"
                           onChange={(e) => handleUploadAudioFile(e, false)}
                           disabled={uploadingAudio}
                           className="hidden"
@@ -2867,7 +2870,7 @@ export const QuestionBankPage: React.FC = () => {
                         <span>{editUploadingAudio ? 'Đang tải...' : 'Tải audio'}</span>
                         <input
                           type="file"
-                          accept="audio/*,.mp3,.wav,.ogg,.m4a"
+                          accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac,.webm"
                           onChange={(e) => handleUploadAudioFile(e, true)}
                           disabled={editUploadingAudio}
                           className="hidden"

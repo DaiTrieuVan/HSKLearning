@@ -13,5 +13,7 @@ public interface QuestionGroupRepository extends JpaRepository<QuestionGroupEnti
 
 	List<QuestionGroupEntity> findBySection_IdOrderBySortOrderAsc(Long sectionId);
 
+	List<QuestionGroupEntity> findBySection_IdOrderByPartNumberAsc(Long sectionId);
+
 	List<QuestionGroupEntity> findBySection_Exercise_IdOrderBySortOrderAsc(Long exerciseId);
 }

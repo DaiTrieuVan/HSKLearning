@@ -72,6 +72,17 @@ public class QuestionGroupEntity {
 			String title,
 			String instruction,
 			String formatCode,
+			String sharedData
+	) {
+		this(section, partNumber, title, instruction, formatCode, sharedData, partNumber);
+	}
+
+	public QuestionGroupEntity(
+			ExerciseSectionEntity section,
+			int partNumber,
+			String title,
+			String instruction,
+			String formatCode,
 			String sharedData,
 			int sortOrder
 	) {

@@ -12,6 +12,7 @@ import {
   FileCheck,
   ShieldCheck,
   GraduationCap,
+  Headphones,
   User,
   LogOut,
   ChevronLeft,
@@ -253,6 +254,17 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ isCollapsed, onToggleCol
               >
                 <BookOpen size={20} style={{ flexShrink: 0, color: isActive('/curriculum') ? 'var(--primary)' : '#64748b' }} />
                 {!isCollapsed && <span>Giáo trình & Bài học</span>}
+              </button>
+
+              {/* 3.1. Luyện nghe hiểu (HTT-10-CN-001) */}
+              <button
+                type="button"
+                onClick={() => navigate('/listening')}
+                style={navItemStyle(isActive('/listening'))}
+                title={isCollapsed ? 'Luyện nghe hiểu' : undefined}
+              >
+                <Headphones size={20} style={{ flexShrink: 0, color: isActive('/listening') ? 'var(--primary)' : '#64748b' }} />
+                {!isCollapsed && <span>Luyện nghe hiểu</span>}
               </button>
 
               {/* 4. Ôn từ SRS */}

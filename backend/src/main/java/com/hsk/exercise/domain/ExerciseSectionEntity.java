@@ -38,6 +38,10 @@ public class ExerciseSectionEntity {
 	@Column(name = "sort_order", nullable = false)
 	private int sortOrder = 1;
 
+	@OneToMany(mappedBy = "section", cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
+	@OrderBy("sortOrder ASC")
+	private List<QuestionGroupEntity> groups = new ArrayList<>();
+
 	@OneToMany(mappedBy = "section")
 	@OrderBy("sortOrder ASC")
 	private List<ExerciseQuestionEntity> questions = new ArrayList<>();
@@ -89,6 +93,24 @@ public class ExerciseSectionEntity {
 
 	public void setQuestions(List<ExerciseQuestionEntity> questions) {
 		this.questions = questions;
+	}
+
+	public List<QuestionGroupEntity> getGroups() {
+		return groups;
+	}
+
+	public void setGroups(List<QuestionGroupEntity> groups) {
+		this.groups = groups;
+	}
+
+	public void addGroup(QuestionGroupEntity group) {
+		this.groups.add(group);
+		group.setSection(this);
+	}
+
+	public void removeGroup(QuestionGroupEntity group) {
+		this.groups.remove(group);
+		group.setSection(null);
 	}
 
 	public Instant getCreatedAt() {

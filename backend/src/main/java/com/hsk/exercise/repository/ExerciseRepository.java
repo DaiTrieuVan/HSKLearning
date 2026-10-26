@@ -44,4 +44,15 @@ public interface ExerciseRepository extends JpaRepository<ExerciseEntity, Long> 
 		ORDER BY e.createdAt DESC
 	""")
 	List<ExerciseEntity> findListeningExercisesWithQuestions(@Param("hskLevel") Integer hskLevel);
+
+	/**
+	 * Lấy danh sách đề thi theo chuẩn HSK (ví dụ: HSK_3_0) kèm bộ lọc cấp độ.
+	 */
+	@Query("""
+		SELECT DISTINCT e FROM ExerciseEntity e
+		WHERE e.hskStandard = :hskStandard
+		  AND (:hskLevel IS NULL OR e.hskLevel = :hskLevel)
+		ORDER BY e.createdAt DESC
+	""")
+	List<ExerciseEntity> findHskExams(@Param("hskStandard") String hskStandard, @Param("hskLevel") Integer hskLevel);
 }

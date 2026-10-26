@@ -59,6 +59,9 @@ public class ExerciseEntity {
 	@Column(name = "passing_score", precision = 6, scale = 2)
 	private BigDecimal passingScore;
 
+	@Column(name = "hsk_standard", length = 20)
+	private String hskStandard = "HSK_3_0";
+
 	@OneToMany(mappedBy = "exercise", cascade = CascadeType.ALL, orphanRemoval = true)
 	@OrderBy("sortOrder ASC")
 	private List<ExerciseSectionEntity> sections = new ArrayList<>();
@@ -188,6 +191,14 @@ public class ExerciseEntity {
 
 	public void setPassingScore(BigDecimal passingScore) {
 		this.passingScore = passingScore;
+	}
+
+	public String getHskStandard() {
+		return hskStandard;
+	}
+
+	public void setHskStandard(String hskStandard) {
+		this.hskStandard = hskStandard;
 	}
 
 	public List<ExerciseSectionEntity> getSections() {

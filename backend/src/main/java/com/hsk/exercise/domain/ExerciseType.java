@@ -5,5 +5,6 @@ package com.hsk.exercise.domain;
  */
 public enum ExerciseType {
 	REGULAR,
-	MOCK_EXAM
+	MOCK_EXAM,
+	LISTENING
 }

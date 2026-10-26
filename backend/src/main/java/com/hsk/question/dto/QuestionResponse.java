@@ -28,5 +28,28 @@ public record QuestionResponse(
 	List<QuestionOptionResponse> options,
 
 	@Schema(description = "Thời gian tạo")
-	Instant createdAt
-) {}
+	Instant createdAt,
+
+	@Schema(description = "Đường dẫn tệp audio của câu hỏi", example = "/uploads/audio/listening_01.mp3")
+	String audioUrl,
+
+	@Schema(description = "Đoạn văn bản phát âm / transcript")
+	String transcript,
+
+	@Schema(description = "Pinyin phiên âm")
+	String pinyin
+) {
+	// Constructor tương thích ngược cho 8 tham số ban đầu
+	public QuestionResponse(
+			Long id,
+			Long ownerId,
+			QuestionType type,
+			String content,
+			String explanation,
+			String payload,
+			List<QuestionOptionResponse> options,
+			Instant createdAt
+	) {
+		this(id, ownerId, type, content, explanation, payload, options, createdAt, null, null, null);
+	}
+}

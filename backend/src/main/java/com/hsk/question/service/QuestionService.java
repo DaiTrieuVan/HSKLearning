@@ -355,12 +355,36 @@ public class QuestionService {
 				? request.explanation().trim()
 				: null;
 
+		String payload = request.payload();
+		if (request.audioUrl() != null || request.transcript() != null || request.pinyin() != null) {
+			try {
+				com.fasterxml.jackson.databind.node.ObjectNode node;
+				if (payload != null && !payload.isBlank()) {
+					com.fasterxml.jackson.databind.JsonNode parsed = objectMapper.readTree(payload);
+					node = parsed.isObject() ? (com.fasterxml.jackson.databind.node.ObjectNode) parsed : objectMapper.createObjectNode();
+				} else {
+					node = objectMapper.createObjectNode();
+				}
+				if (request.audioUrl() != null && !request.audioUrl().isBlank()) {
+					node.put("audioUrl", request.audioUrl().trim());
+				}
+				if (request.transcript() != null && !request.transcript().isBlank()) {
+					node.put("transcript", request.transcript().trim());
+				}
+				if (request.pinyin() != null && !request.pinyin().isBlank()) {
+					node.put("pinyin", request.pinyin().trim());
+				}
+				payload = objectMapper.writeValueAsString(node);
+			} catch (Exception ignored) {
+			}
+		}
+
 		QuestionEntity question = new QuestionEntity(
 				teacherId,
 				questionType,
 				request.content().trim(),
 				explanation,
-				request.payload()
+				payload
 		);
 
 		int order = 1;
@@ -585,6 +609,25 @@ public class QuestionService {
 			}
 		}
 
+		String audioUrl = null;
+		String transcript = null;
+		String pinyin = null;
+		if (entity.getPayload() != null && !entity.getPayload().isBlank()) {
+			try {
+				com.fasterxml.jackson.databind.JsonNode node = objectMapper.readTree(entity.getPayload());
+				if (node.hasNonNull("audioUrl")) {
+					audioUrl = node.get("audioUrl").asText();
+				}
+				if (node.hasNonNull("transcript")) {
+					transcript = node.get("transcript").asText();
+				}
+				if (node.hasNonNull("pinyin")) {
+					pinyin = node.get("pinyin").asText();
+				}
+			} catch (Exception ignored) {
+			}
+		}
+
 		return new QuestionResponse(
 				entity.getId(),
 				entity.getOwnerId(),
@@ -593,7 +636,10 @@ public class QuestionService {
 				entity.getExplanation(),
 				entity.getPayload(),
 				optionResponses,
-				entity.getCreatedAt()
+				entity.getCreatedAt(),
+				audioUrl,
+				transcript,
+				pinyin
 		);
 	}
 

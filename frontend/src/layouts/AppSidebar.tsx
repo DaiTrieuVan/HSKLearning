@@ -329,6 +329,17 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ isCollapsed, onToggleCol
                 <Clock size={20} style={{ flexShrink: 0, color: isActive('/history') ? 'var(--primary)' : '#64748b' }} />
                 {!isCollapsed && <span>Lịch sử nộp bài</span>}
               </button>
+
+              {/* 8. Lịch sử thi thử HSK (HTT-09-CN-004) */}
+              <button
+                type="button"
+                onClick={() => navigate('/mock-exams/history')}
+                style={navItemStyle(isActive('/mock-exams/history'))}
+                title={isCollapsed ? 'Lịch sử thi thử HSK' : undefined}
+              >
+                <GraduationCap size={20} style={{ flexShrink: 0, color: isActive('/mock-exams/history') ? 'var(--primary)' : '#64748b' }} />
+                {!isCollapsed && <span>Lịch sử thi thử HSK</span>}
+              </button>
             </>
           )}
 

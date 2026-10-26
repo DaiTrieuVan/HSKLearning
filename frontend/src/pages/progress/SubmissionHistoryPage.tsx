@@ -143,6 +143,26 @@ export const SubmissionHistoryPage: React.FC = () => {
               <span className="hidden sm:inline">Làm mới</span>
             </button>
           </div>
+
+          {/* Quick tab switcher: Bài tập lớp vs Đề thi thử */}
+          <div className="flex items-center gap-2 mt-4 pt-2 border-t border-slate-100">
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-200/70"
+            >
+              <History className="w-4 h-4 text-indigo-600" />
+              <span>Bài tập lớp học</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate('/mock-exams/history')}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
+            >
+              <GraduationCap className="w-4 h-4 text-slate-400" />
+              <span>Đề thi thử HSK</span>
+            </button>
+          </div>
         </div>
       </header>
 

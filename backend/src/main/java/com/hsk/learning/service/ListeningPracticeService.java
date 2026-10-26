@@ -63,8 +63,7 @@ public class ListeningPracticeService {
 			AssignmentRepository assignmentRepository,
 			AssignmentSubmissionRepository assignmentSubmissionRepository,
 			XpLevelService xpLevelService,
-			StreakService streakService,
-			ObjectMapper objectMapper
+			StreakService streakService
 	) {
 		this.exerciseRepository = exerciseRepository;
 		this.userRepository = userRepository;
@@ -72,7 +71,7 @@ public class ListeningPracticeService {
 		this.assignmentSubmissionRepository = assignmentSubmissionRepository;
 		this.xpLevelService = xpLevelService;
 		this.streakService = streakService;
-		this.objectMapper = objectMapper;
+		this.objectMapper = new ObjectMapper();
 	}
 
 	/**

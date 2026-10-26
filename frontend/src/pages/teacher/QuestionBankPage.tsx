@@ -38,6 +38,9 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Headphones,
+  Image as ImageIcon,
+  Music,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import {
@@ -54,6 +57,7 @@ import {
   downloadQuestionCsvTemplate,
   searchMyQuestions,
   bulkDeleteQuestions,
+  uploadQuestionMedia,
   type QuestionItem,
   type CreateQuestionOptionPayload,
   type CreateQuestionPayload,
@@ -70,6 +74,7 @@ import { ApiError } from '../../api/auth'
 interface DraftOption {
   content: string
   isCorrect: boolean
+  imageUrl?: string
 }
 
 interface DraftBlank {
@@ -101,6 +106,9 @@ export const QuestionBankPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [debouncedKeyword, setDebouncedKeyword] = useState('')
   const [selectedFilterType, setSelectedFilterType] = useState<QuestionFilterType>('ALL')
+  const [filterHskLevel, setFilterHskLevel] = useState<number | 'ALL'>('ALL')
+  const [filterHasAudio, setFilterHasAudio] = useState<boolean | 'ALL'>('ALL')
+  const [filterHasImage, setFilterHasImage] = useState<boolean | 'ALL'>('ALL')
   const [sortBy, setSortBy] = useState<'createdAt' | 'content' | 'id'>('createdAt')
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc')
   const [viewMode, setViewMode] = useState<'TABLE' | 'GRID'>('TABLE')
@@ -119,6 +127,14 @@ export const QuestionBankPage: React.FC = () => {
   // Common fields
   const [questionContent, setQuestionContent] = useState('')
   const [explanation, setExplanation] = useState('')
+  const [audioUrl, setAudioUrl] = useState('')
+  const [transcript, setTranscript] = useState('')
+  const [pinyin, setPinyin] = useState('')
+  const [imageUrl, setImageUrl] = useState('')
+  const [hskLevel, setHskLevel] = useState<number | undefined>(undefined)
+  const [uploadingAudio, setUploadingAudio] = useState(false)
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const [uploadingOptionIdx, setUploadingOptionIdx] = useState<number | null>(null)
   const [formErrors, setFormErrors] = useState<string[]>([])
 
   // MCQ state
@@ -162,6 +178,14 @@ export const QuestionBankPage: React.FC = () => {
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false)
   const [editContent, setEditContent] = useState('')
   const [editExplanation, setEditExplanation] = useState('')
+  const [editAudioUrl, setEditAudioUrl] = useState('')
+  const [editTranscript, setEditTranscript] = useState('')
+  const [editPinyin, setEditPinyin] = useState('')
+  const [editImageUrl, setEditImageUrl] = useState('')
+  const [editHskLevel, setEditHskLevel] = useState<number | undefined>(undefined)
+  const [editUploadingAudio, setEditUploadingAudio] = useState(false)
+  const [editUploadingImage, setEditUploadingImage] = useState(false)
+  const [editUploadingOptionIdx, setEditUploadingOptionIdx] = useState<number | null>(null)
   const [editOptions, setEditOptions] = useState<DraftOption[]>([])
   const [editPayload, setEditPayload] = useState('')
   const [editErrors, setEditErrors] = useState<string[]>([])
@@ -175,6 +199,11 @@ export const QuestionBankPage: React.FC = () => {
     setEditingQuestion(q)
     setEditContent(q.content)
     setEditExplanation(q.explanation || '')
+    setEditAudioUrl(q.audioUrl || '')
+    setEditTranscript(q.transcript || '')
+    setEditPinyin(q.pinyin || '')
+    setEditImageUrl(q.imageUrl || '')
+    setEditHskLevel(q.hskLevel)
     setEditPayload(q.payload || '')
     setEditErrors([])
     if (q.type === 'MCQ' && q.options && q.options.length > 0) {
@@ -182,12 +211,13 @@ export const QuestionBankPage: React.FC = () => {
         q.options.map((opt) => ({
           content: opt.content,
           isCorrect: opt.isCorrect,
+          imageUrl: opt.imageUrl || '',
         }))
       )
     } else {
       setEditOptions([
-        { content: '', isCorrect: true },
-        { content: '', isCorrect: false },
+        { content: '', isCorrect: true, imageUrl: '' },
+        { content: '', isCorrect: false, imageUrl: '' },
       ])
     }
     setIsEditDrawerOpen(true)
@@ -202,7 +232,7 @@ export const QuestionBankPage: React.FC = () => {
   }
 
   const handleAddEditOption = () => {
-    setEditOptions([...editOptions, { content: '', isCorrect: false }])
+    setEditOptions([...editOptions, { content: '', isCorrect: false, imageUrl: '' }])
   }
 
   const handleRemoveEditOption = (index: number) => {
@@ -276,9 +306,18 @@ export const QuestionBankPage: React.FC = () => {
       const payload: UpdateQuestionPayload = {
         content: editContent.trim(),
         explanation: editExplanation.trim() ? editExplanation.trim() : undefined,
+        audioUrl: editAudioUrl.trim() || undefined,
+        transcript: editTranscript.trim() || undefined,
+        pinyin: editPinyin.trim() || undefined,
+        imageUrl: editImageUrl.trim() || undefined,
+        hskLevel: editHskLevel || undefined,
         options:
           editingQuestion.type === 'MCQ'
-            ? editOptions.map((o) => ({ content: o.content.trim(), isCorrect: o.isCorrect }))
+            ? editOptions.map((o) => ({
+                content: o.content.trim(),
+                isCorrect: o.isCorrect,
+                imageUrl: o.imageUrl?.trim() || undefined,
+              }))
             : undefined,
         payload: editPayload.trim() ? editPayload.trim() : undefined,
       }
@@ -324,6 +363,77 @@ export const QuestionBankPage: React.FC = () => {
     }
   }
 
+  const handleUploadAudioFile = async (e: React.ChangeEvent<HTMLInputElement>, isEdit = false) => {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+    if (isEdit) setEditUploadingAudio(true)
+    else setUploadingAudio(true)
+    try {
+      const url = await uploadQuestionMedia(file, user.token)
+      if (isEdit) setEditAudioUrl(url)
+      else setAudioUrl(url)
+      setSuccessMessage('Tải file âm thanh thành công!')
+    } catch (err) {
+      if (err instanceof ApiError) setErrorMessage(err.message)
+      else setErrorMessage('Tải file âm thanh thất bại.')
+    } finally {
+      if (isEdit) setEditUploadingAudio(false)
+      else setUploadingAudio(false)
+      e.target.value = ''
+    }
+  }
+
+  const handleUploadImageFile = async (e: React.ChangeEvent<HTMLInputElement>, isEdit = false) => {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+    if (isEdit) setEditUploadingImage(true)
+    else setUploadingImage(true)
+    try {
+      const url = await uploadQuestionMedia(file, user.token)
+      if (isEdit) setEditImageUrl(url)
+      else setImageUrl(url)
+      setSuccessMessage('Tải hình ảnh thành công!')
+    } catch (err) {
+      if (err instanceof ApiError) setErrorMessage(err.message)
+      else setErrorMessage('Tải hình ảnh thất bại.')
+    } finally {
+      if (isEdit) setEditUploadingImage(false)
+      else setUploadingImage(false)
+      e.target.value = ''
+    }
+  }
+
+  const handleUploadOptionImageFile = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    index: number,
+    isEdit = false
+  ) => {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+    if (isEdit) setEditUploadingOptionIdx(index)
+    else setUploadingOptionIdx(index)
+    try {
+      const url = await uploadQuestionMedia(file, user.token)
+      if (isEdit) {
+        const next = [...editOptions]
+        next[index].imageUrl = url
+        setEditOptions(next)
+      } else {
+        const next = [...options]
+        next[index].imageUrl = url
+        setOptions(next)
+      }
+      setSuccessMessage(`Tải ảnh cho lựa chọn ${optionLetters[index] || index + 1} thành công!`)
+    } catch (err) {
+      if (err instanceof ApiError) setErrorMessage(err.message)
+      else setErrorMessage('Tải hình ảnh lựa chọn thất bại.')
+    } finally {
+      if (isEdit) setEditUploadingOptionIdx(null)
+      else setUploadingOptionIdx(null)
+      e.target.value = ''
+    }
+  }
+
   const loadQuestions = useCallback(async () => {
     if (!user) return
     setLoading(true)
@@ -333,6 +443,9 @@ export const QuestionBankPage: React.FC = () => {
         {
           keyword: debouncedKeyword || undefined,
           type: selectedFilterType === 'ALL' ? undefined : selectedFilterType,
+          hskLevel: filterHskLevel === 'ALL' ? undefined : filterHskLevel,
+          hasAudio: filterHasAudio === 'ALL' ? undefined : filterHasAudio,
+          hasImage: filterHasImage === 'ALL' ? undefined : filterHasImage,
           page,
           size: pageSize,
           sortBy,
@@ -351,7 +464,7 @@ export const QuestionBankPage: React.FC = () => {
     } finally {
       setLoading(false)
     }
-  }, [user, debouncedKeyword, selectedFilterType, page, pageSize, sortBy, sortDir])
+  }, [user, debouncedKeyword, selectedFilterType, filterHskLevel, filterHasAudio, filterHasImage, page, pageSize, sortBy, sortDir])
 
   useEffect(() => {
     if (user) {
@@ -714,6 +827,7 @@ export const QuestionBankPage: React.FC = () => {
         const payloadOptions: CreateQuestionOptionPayload[] = options.map((opt) => ({
           content: opt.content.trim(),
           isCorrect: opt.isCorrect,
+          imageUrl: opt.imageUrl?.trim() || undefined,
         }))
 
         await createMultipleChoiceQuestion(
@@ -722,6 +836,11 @@ export const QuestionBankPage: React.FC = () => {
             explanation: explanation.trim() ? explanation.trim() : undefined,
             type: 'MCQ',
             options: payloadOptions,
+            audioUrl: audioUrl.trim() || undefined,
+            transcript: transcript.trim() || undefined,
+            pinyin: pinyin.trim() || undefined,
+            imageUrl: imageUrl.trim() || undefined,
+            hskLevel: hskLevel || undefined,
           },
           user.token
         )
@@ -774,11 +893,16 @@ export const QuestionBankPage: React.FC = () => {
       // Reset form
       setQuestionContent('')
       setExplanation('')
+      setAudioUrl('')
+      setTranscript('')
+      setPinyin('')
+      setImageUrl('')
+      setHskLevel(undefined)
       setOptions([
-        { content: '', isCorrect: true },
-        { content: '', isCorrect: false },
-        { content: '', isCorrect: false },
-        { content: '', isCorrect: false },
+        { content: '', isCorrect: true, imageUrl: '' },
+        { content: '', isCorrect: false, imageUrl: '' },
+        { content: '', isCorrect: false, imageUrl: '' },
+        { content: '', isCorrect: false, imageUrl: '' },
       ])
       setBlanks([])
       setPairs([
@@ -1882,6 +2006,158 @@ export const QuestionBankPage: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
               {/* Form Input Columns */}
               <form onSubmit={handleSubmitQuestion} className="lg:col-span-7 space-y-6">
+                {/* HSK Level and Multimedia settings */}
+                <div className="bg-indigo-50/60 p-4 rounded-2xl border border-indigo-100 space-y-3.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-indigo-900 uppercase tracking-wider flex items-center space-x-1.5">
+                      <Music className="w-4 h-4 text-indigo-600" />
+                      <span>Cấu hình Đa phương tiện & Cấp độ HSK</span>
+                    </span>
+                    <span className="text-[11px] text-indigo-600 bg-white px-2 py-0.5 rounded-md font-medium border border-indigo-200">
+                      Tái sử dụng cho đề thi HSK 3.0 & Bài tập
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    {/* HSK Level */}
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Cấp độ HSK</label>
+                      <select
+                        value={hskLevel || ''}
+                        onChange={(e) => setHskLevel(e.target.value ? Number(e.target.value) : undefined)}
+                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                      >
+                        <option value="">-- Không quy định cấp độ --</option>
+                        <option value="1">HSK 1 (Chuẩn 3.0)</option>
+                        <option value="2">HSK 2 (Chuẩn 3.0)</option>
+                        <option value="3">HSK 3 (Chuẩn 3.0)</option>
+                        <option value="4">HSK 4 (Chuẩn 3.0)</option>
+                        <option value="5">HSK 5 (Chuẩn 3.0)</option>
+                        <option value="6">HSK 6 (Chuẩn 3.0)</option>
+                      </select>
+                    </div>
+
+                    {/* Pinyin */}
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Phiên âm Pinyin (nếu có)</label>
+                      <input
+                        type="text"
+                        value={pinyin}
+                        onChange={(e) => setPinyin(e.target.value)}
+                        placeholder="Ví dụ: Nǐ hǎo"
+                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Audio File */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-slate-700 flex items-center justify-between">
+                      <span className="flex items-center space-x-1">
+                        <Headphones className="w-3.5 h-3.5 text-purple-600" />
+                        <span>File âm thanh bài nghe (Audio MP3/WAV/M4A)</span>
+                      </span>
+                      {audioUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setAudioUrl('')}
+                          className="text-[11px] text-rose-600 hover:underline"
+                        >
+                          Xóa file nghe
+                        </button>
+                      )}
+                    </label>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="text"
+                        value={audioUrl}
+                        onChange={(e) => setAudioUrl(e.target.value)}
+                        placeholder="URL tệp audio hoặc bấm tải lên từ máy tính..."
+                        className="flex-1 px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                      />
+                      <label className="cursor-pointer px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-semibold rounded-xl border border-purple-200 flex items-center space-x-1.5 transition whitespace-nowrap">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>{uploadingAudio ? 'Đang tải...' : 'Tải audio'}</span>
+                        <input
+                          type="file"
+                          accept="audio/*,.mp3,.wav,.ogg,.m4a"
+                          onChange={(e) => handleUploadAudioFile(e, false)}
+                          disabled={uploadingAudio}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                    {audioUrl && (
+                      <div className="pt-1">
+                        <audio src={audioUrl} controls className="w-full h-8" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Transcript */}
+                  {audioUrl && (
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold text-slate-700">Transcript nội dung bài nghe</label>
+                      <input
+                        type="text"
+                        value={transcript}
+                        onChange={(e) => setTranscript(e.target.value)}
+                        placeholder="Nội dung lời đọc tiếng Trung của audio..."
+                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  )}
+
+                  {/* Question Image */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-slate-700 flex items-center justify-between">
+                      <span className="flex items-center space-x-1">
+                        <ImageIcon className="w-3.5 h-3.5 text-sky-600" />
+                        <span>Ảnh minh họa cho câu hỏi (Hình ảnh đề bài / Tranh vẽ)</span>
+                      </span>
+                      {imageUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setImageUrl('')}
+                          className="text-[11px] text-rose-600 hover:underline"
+                        >
+                          Xóa ảnh
+                        </button>
+                      )}
+                    </label>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="text"
+                        value={imageUrl}
+                        onChange={(e) => setImageUrl(e.target.value)}
+                        placeholder="URL hình ảnh hoặc bấm tải lên từ máy tính..."
+                        className="flex-1 px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                      />
+                      <label className="cursor-pointer px-3 py-2 bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs font-semibold rounded-xl border border-sky-200 flex items-center space-x-1.5 transition whitespace-nowrap">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>{uploadingImage ? 'Đang tải...' : 'Tải ảnh'}</span>
+                        <input
+                          type="file"
+                          accept="image/*,.png,.jpg,.jpeg,.webp,.gif,.svg"
+                          onChange={(e) => handleUploadImageFile(e, false)}
+                          disabled={uploadingImage}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                    {imageUrl && (
+                      <div className="pt-1 flex items-center space-x-3">
+                        <img
+                          src={imageUrl}
+                          alt="Minh họa"
+                          className="w-16 h-16 object-cover rounded-xl border border-slate-200 shadow-xs"
+                        />
+                        <span className="text-xs text-slate-500">Xem trước ảnh câu hỏi</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <label className="block text-sm font-semibold text-slate-700">
@@ -1982,6 +2258,45 @@ export const QuestionBankPage: React.FC = () => {
                             placeholder={`Nội dung lựa chọn ${optionLetters[idx] || idx + 1}`}
                             className="flex-1 px-3 py-2 text-sm bg-transparent border-b border-transparent focus:border-indigo-400 focus:outline-none text-slate-800"
                           />
+
+                          {/* Option Image Attachment */}
+                          <div className="flex items-center space-x-1">
+                            {opt.imageUrl ? (
+                              <div className="relative group">
+                                <img
+                                  src={opt.imageUrl}
+                                  alt="Tranh"
+                                  className="w-8 h-8 rounded-lg object-cover border border-slate-200 shadow-xs"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const next = [...options]
+                                    next[idx].imageUrl = ''
+                                    setOptions(next)
+                                  }}
+                                  className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] hover:bg-rose-600"
+                                  title="Xóa ảnh lựa chọn"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ) : (
+                              <label
+                                className="cursor-pointer p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+                                title="Đính kèm ảnh cho phương án này (phù hợp dạng bài nghe chọn tranh)"
+                              >
+                                <ImageIcon className="w-4 h-4" />
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => handleUploadOptionImageFile(e, idx, false)}
+                                  disabled={uploadingOptionIdx === idx}
+                                  className="hidden"
+                                />
+                              </label>
+                            )}
+                          </div>
 
                           {/* Correct badge */}
                           {opt.isCorrect && (
@@ -2483,6 +2798,153 @@ export const QuestionBankPage: React.FC = () => {
               )}
 
               <div className="space-y-4">
+                {/* Edit HSK & Multimedia */}
+                <div className="bg-indigo-50/60 p-4 rounded-2xl border border-indigo-100 space-y-3.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-indigo-900 uppercase tracking-wider flex items-center space-x-1.5">
+                      <Music className="w-4 h-4 text-indigo-600" />
+                      <span>Cấu hình Đa phương tiện & Cấp độ HSK</span>
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Cấp độ HSK</label>
+                      <select
+                        value={editHskLevel || ''}
+                        onChange={(e) => setEditHskLevel(e.target.value ? Number(e.target.value) : undefined)}
+                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                      >
+                        <option value="">-- Không quy định cấp độ --</option>
+                        <option value="1">HSK 1 (Chuẩn 3.0)</option>
+                        <option value="2">HSK 2 (Chuẩn 3.0)</option>
+                        <option value="3">HSK 3 (Chuẩn 3.0)</option>
+                        <option value="4">HSK 4 (Chuẩn 3.0)</option>
+                        <option value="5">HSK 5 (Chuẩn 3.0)</option>
+                        <option value="6">HSK 6 (Chuẩn 3.0)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Phiên âm Pinyin</label>
+                      <input
+                        type="text"
+                        value={editPinyin}
+                        onChange={(e) => setEditPinyin(e.target.value)}
+                        placeholder="Ví dụ: Nǐ hǎo"
+                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Audio File */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-slate-700 flex items-center justify-between">
+                      <span className="flex items-center space-x-1">
+                        <Headphones className="w-3.5 h-3.5 text-purple-600" />
+                        <span>File âm thanh bài nghe (Audio MP3/WAV/M4A)</span>
+                      </span>
+                      {editAudioUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setEditAudioUrl('')}
+                          className="text-[11px] text-rose-600 hover:underline"
+                        >
+                          Xóa file nghe
+                        </button>
+                      )}
+                    </label>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="text"
+                        value={editAudioUrl}
+                        onChange={(e) => setEditAudioUrl(e.target.value)}
+                        placeholder="URL tệp audio hoặc bấm tải lên từ máy tính..."
+                        className="flex-1 px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                      />
+                      <label className="cursor-pointer px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-semibold rounded-xl border border-purple-200 flex items-center space-x-1.5 transition whitespace-nowrap">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>{editUploadingAudio ? 'Đang tải...' : 'Tải audio'}</span>
+                        <input
+                          type="file"
+                          accept="audio/*,.mp3,.wav,.ogg,.m4a"
+                          onChange={(e) => handleUploadAudioFile(e, true)}
+                          disabled={editUploadingAudio}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                    {editAudioUrl && (
+                      <div className="pt-1">
+                        <audio src={editAudioUrl} controls className="w-full h-8" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Transcript */}
+                  {editAudioUrl && (
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold text-slate-700">Transcript nội dung bài nghe</label>
+                      <input
+                        type="text"
+                        value={editTranscript}
+                        onChange={(e) => setEditTranscript(e.target.value)}
+                        placeholder="Nội dung lời đọc tiếng Trung của audio..."
+                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  )}
+
+                  {/* Question Image */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-slate-700 flex items-center justify-between">
+                      <span className="flex items-center space-x-1">
+                        <ImageIcon className="w-3.5 h-3.5 text-sky-600" />
+                        <span>Ảnh minh họa câu hỏi</span>
+                      </span>
+                      {editImageUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setEditImageUrl('')}
+                          className="text-[11px] text-rose-600 hover:underline"
+                        >
+                          Xóa ảnh
+                        </button>
+                      )}
+                    </label>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="text"
+                        value={editImageUrl}
+                        onChange={(e) => setEditImageUrl(e.target.value)}
+                        placeholder="URL hình ảnh hoặc bấm tải lên từ máy tính..."
+                        className="flex-1 px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                      />
+                      <label className="cursor-pointer px-3 py-2 bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs font-semibold rounded-xl border border-sky-200 flex items-center space-x-1.5 transition whitespace-nowrap">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>{editUploadingImage ? 'Đang tải...' : 'Tải ảnh'}</span>
+                        <input
+                          type="file"
+                          accept="image/*,.png,.jpg,.jpeg,.webp,.gif,.svg"
+                          onChange={(e) => handleUploadImageFile(e, true)}
+                          disabled={editUploadingImage}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                    {editImageUrl && (
+                      <div className="pt-1 flex items-center space-x-3">
+                        <img
+                          src={editImageUrl}
+                          alt="Minh họa"
+                          className="w-16 h-16 object-cover rounded-xl border border-slate-200 shadow-xs"
+                        />
+                        <span className="text-xs text-slate-500">Xem trước ảnh câu hỏi</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 {/* Content field */}
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
@@ -2543,6 +3005,46 @@ export const QuestionBankPage: React.FC = () => {
                             placeholder={`Nội dung lựa chọn ${optionLetters[idx] || idx + 1}`}
                             className="flex-1 px-3 py-1.5 text-sm bg-white rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           />
+
+                          {/* Option Image Attachment */}
+                          <div className="flex items-center space-x-1">
+                            {opt.imageUrl ? (
+                              <div className="relative group">
+                                <img
+                                  src={opt.imageUrl}
+                                  alt="Tranh"
+                                  className="w-8 h-8 rounded-lg object-cover border border-slate-200 shadow-xs"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const next = [...editOptions]
+                                    next[idx].imageUrl = ''
+                                    setEditOptions(next)
+                                  }}
+                                  className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] hover:bg-rose-600"
+                                  title="Xóa ảnh lựa chọn"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ) : (
+                              <label
+                                className="cursor-pointer p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+                                title="Đính kèm ảnh cho phương án này"
+                              >
+                                <ImageIcon className="w-4 h-4" />
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => handleUploadOptionImageFile(e, idx, true)}
+                                  disabled={editUploadingOptionIdx === idx}
+                                  className="hidden"
+                                />
+                              </label>
+                            )}
+                          </div>
+
                           {opt.isCorrect && (
                             <span className="text-xs text-emerald-700 font-bold px-2 py-0.5 bg-emerald-100 rounded-md">
                               Đáp án đúng
@@ -2756,6 +3258,63 @@ export const QuestionBankPage: React.FC = () => {
               </button>
             </div>
 
+            {/* Filter by HSK Level */}
+            <div className="flex items-center space-x-1.5">
+              <span className="text-xs font-semibold text-slate-500">Cấp độ:</span>
+              <select
+                value={filterHskLevel}
+                onChange={(e) => {
+                  setFilterHskLevel(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value))
+                  setPage(0)
+                }}
+                className="px-2.5 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+              >
+                <option value="ALL">Tất cả HSK</option>
+                <option value="1">HSK 1</option>
+                <option value="2">HSK 2</option>
+                <option value="3">HSK 3</option>
+                <option value="4">HSK 4</option>
+                <option value="5">HSK 5</option>
+                <option value="6">HSK 6</option>
+              </select>
+            </div>
+
+            {/* Media Toggles */}
+            <div className="flex items-center space-x-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterHasAudio((prev) => (prev === true ? 'ALL' : true))
+                  setPage(0)
+                }}
+                className={`flex items-center space-x-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition ${
+                  filterHasAudio === true
+                    ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
+                    : 'bg-white text-purple-700 border-purple-200 hover:bg-purple-50'
+                }`}
+                title="Lọc câu hỏi có file âm thanh bài nghe"
+              >
+                <Headphones className="w-3.5 h-3.5" />
+                <span>Có Audio</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterHasImage((prev) => (prev === true ? 'ALL' : true))
+                  setPage(0)
+                }}
+                className={`flex items-center space-x-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition ${
+                  filterHasImage === true
+                    ? 'bg-sky-600 text-white border-sky-600 shadow-xs'
+                    : 'bg-white text-sky-700 border-sky-200 hover:bg-sky-50'
+                }`}
+                title="Lọc câu hỏi có hình ảnh"
+              >
+                <ImageIcon className="w-3.5 h-3.5" />
+                <span>Có Ảnh</span>
+              </button>
+            </div>
+
             <span className="flex items-center space-x-1.5 font-bold text-xs text-slate-600 bg-slate-100 px-3 py-1.5 rounded-xl self-start sm:self-auto">
               <Layers className="w-4 h-4 text-indigo-600" />
               <span>
@@ -2940,9 +3499,45 @@ export const QuestionBankPage: React.FC = () => {
                                 <div className="text-[11px] text-slate-400 font-mono mt-0.5">#{q.id}</div>
                               </td>
                               <td className="py-3.5 px-4">
+                                <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+                                  {q.hskLevel && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300">
+                                      HSK {q.hskLevel}
+                                    </span>
+                                  )}
+                                  {q.audioUrl && (
+                                    <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-purple-100 text-purple-800 border border-purple-200">
+                                      <Headphones className="w-3 h-3" />
+                                      <span>Audio</span>
+                                    </span>
+                                  )}
+                                  {(q.imageUrl || q.options?.some((o) => o.imageUrl)) && (
+                                    <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-sky-100 text-sky-800 border border-sky-200">
+                                      <ImageIcon className="w-3 h-3" />
+                                      <span>Ảnh</span>
+                                    </span>
+                                  )}
+                                  {q.pinyin && (
+                                    <span className="text-[11px] text-indigo-600 font-mono font-medium">[{q.pinyin}]</span>
+                                  )}
+                                </div>
                                 <div className="font-semibold text-slate-900 leading-snug line-clamp-2">
                                   {q.content}
                                 </div>
+                                {q.audioUrl && (
+                                  <div className="mt-1.5">
+                                    <audio src={q.audioUrl} controls className="h-6 w-56" />
+                                  </div>
+                                )}
+                                {q.imageUrl && (
+                                  <div className="mt-1.5">
+                                    <img
+                                      src={q.imageUrl}
+                                      alt="Minh họa"
+                                      className="h-12 w-auto max-w-[120px] object-cover rounded-md border border-slate-200 shadow-2xs"
+                                    />
+                                  </div>
+                                )}
                                 {q.explanation && (
                                   <div className="text-xs text-slate-500 line-clamp-1 mt-1 italic">
                                     <span className="font-medium text-amber-700">Giải thích:</span> {q.explanation}
@@ -2990,8 +3585,15 @@ export const QuestionBankPage: React.FC = () => {
                                 ) : (
                                   <div className="space-y-1">
                                     {q.options?.find((opt) => opt.isCorrect) ? (
-                                      <div className="flex items-center space-x-1.5 text-emerald-700 font-semibold">
+                                      <div className="flex items-center space-x-2 text-emerald-700 font-semibold">
                                         <Check className="w-3.5 h-3.5 flex-shrink-0" />
+                                        {q.options.find((opt) => opt.isCorrect)?.imageUrl && (
+                                          <img
+                                            src={q.options.find((opt) => opt.isCorrect)?.imageUrl}
+                                            alt="Đáp án"
+                                            className="w-6 h-6 object-cover rounded border border-emerald-300 flex-shrink-0"
+                                          />
+                                        )}
                                         <span className="line-clamp-1">
                                           {q.options.find((opt) => opt.isCorrect)?.content}
                                         </span>
@@ -3129,6 +3731,23 @@ export const QuestionBankPage: React.FC = () => {
                                   : 'Trắc nghiệm (MCQ)'}
                               </span>
                             </span>
+                            {q.hskLevel && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300">
+                                HSK {q.hskLevel}
+                              </span>
+                            )}
+                            {q.audioUrl && (
+                              <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-purple-100 text-purple-800 border border-purple-200">
+                                <Headphones className="w-3 h-3" />
+                                <span>Audio</span>
+                              </span>
+                            )}
+                            {(q.imageUrl || q.options?.some((o) => o.imageUrl)) && (
+                              <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-sky-100 text-sky-800 border border-sky-200">
+                                <ImageIcon className="w-3 h-3" />
+                                <span>Ảnh</span>
+                              </span>
+                            )}
                           </div>
 
                           <div className="flex items-center space-x-1">
@@ -3158,6 +3777,28 @@ export const QuestionBankPage: React.FC = () => {
                         <div className="text-base font-bold text-slate-900 leading-snug break-words">
                           {q.content}
                         </div>
+
+                        {q.pinyin && (
+                          <div className="text-xs text-indigo-600 font-mono font-medium">
+                            Pinyin: {q.pinyin}
+                          </div>
+                        )}
+
+                        {q.audioUrl && (
+                          <div className="pt-1">
+                            <audio src={q.audioUrl} controls className="h-7 w-full" />
+                          </div>
+                        )}
+
+                        {q.imageUrl && (
+                          <div className="pt-1">
+                            <img
+                              src={q.imageUrl}
+                              alt="Minh họa"
+                              className="h-28 w-auto max-w-full object-cover rounded-xl border border-slate-200 shadow-2xs"
+                            />
+                          </div>
+                        )}
 
                         {/* Render according to type */}
                         {isFill ? (
@@ -3259,6 +3900,13 @@ export const QuestionBankPage: React.FC = () => {
                                   >
                                     {optionLetters[oIdx] || oIdx + 1}
                                   </span>
+                                  {opt.imageUrl && (
+                                    <img
+                                      src={opt.imageUrl}
+                                      alt="Tranh"
+                                      className="w-7 h-7 rounded-lg object-cover border border-slate-200 flex-shrink-0"
+                                    />
+                                  )}
                                   <span className="flex-1 break-words">{opt.content}</span>
                                   {opt.isCorrect && (
                                     <span className="flex items-center space-x-1 text-emerald-700 font-semibold text-xs">

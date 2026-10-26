@@ -46,7 +46,10 @@ public record QuestionResponse(
 	Integer hskLevel,
 
 	@Schema(description = "ID câu hỏi cha (nếu thuộc đoạn văn / nhóm câu hỏi)", example = "10")
-	Long parentId
+	Long parentId,
+
+	@Schema(description = "Kho ảnh dùng chung (Image Pool) cho câu hỏi cha / nhóm ghép tranh HSK")
+	List<ImagePoolItemDto> imagePool
 ) {
 	// Constructor tương thích ngược cho 8 tham số ban đầu
 	public QuestionResponse(
@@ -59,7 +62,7 @@ public record QuestionResponse(
 			List<QuestionOptionResponse> options,
 			Instant createdAt
 	) {
-		this(id, ownerId, type, content, explanation, payload, options, createdAt, null, null, null, null, null, null);
+		this(id, ownerId, type, content, explanation, payload, options, createdAt, null, null, null, null, null, null, null);
 	}
 
 	// Constructor tương thích ngược cho 11 tham số
@@ -76,6 +79,26 @@ public record QuestionResponse(
 			String transcript,
 			String pinyin
 	) {
-		this(id, ownerId, type, content, explanation, payload, options, createdAt, audioUrl, transcript, pinyin, null, null, null);
+		this(id, ownerId, type, content, explanation, payload, options, createdAt, audioUrl, transcript, pinyin, null, null, null, null);
+	}
+
+	// Constructor tương thích ngược cho 14 tham số
+	public QuestionResponse(
+			Long id,
+			Long ownerId,
+			QuestionType type,
+			String content,
+			String explanation,
+			String payload,
+			List<QuestionOptionResponse> options,
+			Instant createdAt,
+			String audioUrl,
+			String transcript,
+			String pinyin,
+			String imageUrl,
+			Integer hskLevel,
+			Long parentId
+	) {
+		this(id, ownerId, type, content, explanation, payload, options, createdAt, audioUrl, transcript, pinyin, imageUrl, hskLevel, parentId, null);
 	}
 }

@@ -36,7 +36,10 @@ public record CreateQuestionRequest(
 	Integer hskLevel,
 
 	@Schema(description = "ID câu hỏi cha / bài đọc (nếu là câu hỏi chùm)", example = "10")
-	Long parentId
+	Long parentId,
+
+	@Schema(description = "Kho ảnh dùng chung (Image Pool) cho câu hỏi cha / nhóm ghép tranh HSK")
+	List<ImagePoolItemDto> imagePool
 ) {
 	// Constructor tương thích ngược cho 5 tham số ban đầu
 	public CreateQuestionRequest(
@@ -46,7 +49,7 @@ public record CreateQuestionRequest(
 			String payload,
 			List<CreateQuestionOptionRequest> options
 	) {
-		this(content, explanation, type, payload, options, null, null, null, null, null, null);
+		this(content, explanation, type, payload, options, null, null, null, null, null, null, null);
 	}
 
 	// Constructor tương thích ngược cho 8 tham số
@@ -60,6 +63,23 @@ public record CreateQuestionRequest(
 			String transcript,
 			String pinyin
 	) {
-		this(content, explanation, type, payload, options, audioUrl, transcript, pinyin, null, null, null);
+		this(content, explanation, type, payload, options, audioUrl, transcript, pinyin, null, null, null, null);
+	}
+
+	// Constructor tương thích ngược cho 11 tham số
+	public CreateQuestionRequest(
+			String content,
+			String explanation,
+			QuestionType type,
+			String payload,
+			List<CreateQuestionOptionRequest> options,
+			String audioUrl,
+			String transcript,
+			String pinyin,
+			String imageUrl,
+			Integer hskLevel,
+			Long parentId
+	) {
+		this(content, explanation, type, payload, options, audioUrl, transcript, pinyin, imageUrl, hskLevel, parentId, null);
 	}
 }

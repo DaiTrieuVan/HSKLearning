@@ -38,7 +38,10 @@ public record UpdateQuestionRequest(
 		Integer hskLevel,
 
 		@Schema(description = "ID câu hỏi cha (nếu thuộc bài đọc/nghe chung)")
-		Long parentId
+		Long parentId,
+
+		@Schema(description = "Kho ảnh dùng chung (Image Pool) cho câu hỏi cha / nhóm ghép tranh HSK")
+		List<ImagePoolItemDto> imagePool
 ) {
 	// Constructor tương thích ngược cho 4 tham số ban đầu
 	public UpdateQuestionRequest(
@@ -47,6 +50,22 @@ public record UpdateQuestionRequest(
 			List<CreateQuestionOptionRequest> options,
 			String payload
 	) {
-		this(content, explanation, options, payload, null, null, null, null, null, null);
+		this(content, explanation, options, payload, null, null, null, null, null, null, null);
+	}
+
+	// Constructor tương thích ngược cho 10 tham số
+	public UpdateQuestionRequest(
+			String content,
+			String explanation,
+			List<CreateQuestionOptionRequest> options,
+			String payload,
+			String imageUrl,
+			String audioUrl,
+			String transcript,
+			String pinyin,
+			Integer hskLevel,
+			Long parentId
+	) {
+		this(content, explanation, options, payload, imageUrl, audioUrl, transcript, pinyin, hskLevel, parentId, null);
 	}
 }

@@ -12,6 +12,8 @@ import com.hsk.question.dto.CreateFillBlankQuestionRequest;
 import com.hsk.question.dto.CreateMatchingQuestionRequest;
 import com.hsk.question.dto.CreateOrderingQuestionRequest;
 import com.hsk.question.dto.CreateQuestionRequest;
+import com.hsk.question.dto.CreateImageMatchGroupRequest;
+import com.hsk.question.dto.ImageMatchGroupResponse;
 import com.hsk.question.dto.ImportQuestionsResult;
 import com.hsk.question.dto.QuestionResponse;
 import com.hsk.question.dto.QuickGeneratePreviewRequest;
@@ -125,6 +127,21 @@ public class QuestionController {
 	) {
 		UserEntity user = requireUser(principal);
 		QuestionResponse response = questionService.createOrderingQuestion(user.getId(), request);
+		return ResponseEntity.status(HttpStatus.CREATED).body(response);
+	}
+
+	@PostMapping("/image-match-group")
+	@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
+	@Operation(
+			summary = "Tạo Nhóm câu hỏi ghép tranh HSK (Kho ảnh A-F dùng chung)",
+			description = "Tạo câu hỏi cha chứa Kho ảnh dùng chung và tự động tạo danh sách câu hỏi con liên kết (HSK 3.0 Matching)."
+	)
+	public ResponseEntity<ImageMatchGroupResponse> createImageMatchGroup(
+			@Valid @RequestBody CreateImageMatchGroupRequest request,
+			Principal principal
+	) {
+		UserEntity user = requireUser(principal);
+		ImageMatchGroupResponse response = questionService.createImageMatchGroup(user.getId(), request);
 		return ResponseEntity.status(HttpStatus.CREATED).body(response);
 	}
 

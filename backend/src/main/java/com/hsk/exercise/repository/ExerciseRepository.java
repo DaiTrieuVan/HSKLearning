@@ -31,4 +31,28 @@ public interface ExerciseRepository extends JpaRepository<ExerciseEntity, Long> 
 	Optional<ExerciseEntity> findWithQuestionsById(@Param("id") Long id);
 
 	boolean existsByOwnerIdAndId(Long ownerId, Long id);
+
+	/**
+	 * Lấy danh sách bài tập loại LISTENING kèm danh sách câu hỏi (HTT-10-CN-001 / Senior Backend Mode: tránh N+1).
+	 */
+	@Query("""
+		SELECT DISTINCT e FROM ExerciseEntity e
+		LEFT JOIN FETCH e.questions eq
+		LEFT JOIN FETCH eq.question q
+		WHERE e.exerciseType = com.hsk.exercise.domain.ExerciseType.LISTENING
+		  AND (:hskLevel IS NULL OR e.hskLevel = :hskLevel)
+		ORDER BY e.createdAt DESC
+	""")
+	List<ExerciseEntity> findListeningExercisesWithQuestions(@Param("hskLevel") Integer hskLevel);
+
+	/**
+	 * Lấy danh sách đề thi theo chuẩn HSK (ví dụ: HSK_3_0) kèm bộ lọc cấp độ.
+	 */
+	@Query("""
+		SELECT DISTINCT e FROM ExerciseEntity e
+		WHERE e.hskStandard = :hskStandard
+		  AND (:hskLevel IS NULL OR e.hskLevel = :hskLevel)
+		ORDER BY e.createdAt DESC
+	""")
+	List<ExerciseEntity> findHskExams(@Param("hskStandard") String hskStandard, @Param("hskLevel") Integer hskLevel);
 }

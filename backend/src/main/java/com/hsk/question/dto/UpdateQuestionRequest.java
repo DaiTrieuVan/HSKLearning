@@ -20,6 +20,52 @@ public record UpdateQuestionRequest(
 		List<CreateQuestionOptionRequest> options,
 
 		@Schema(description = "Dữ liệu payload JSON mới (dành cho câu hỏi FILL, MATCH, ORDER)")
-		String payload
+		String payload,
+
+		@Schema(description = "URL hình ảnh đính kèm", example = "/uploads/images/q1.png")
+		String imageUrl,
+
+		@Schema(description = "URL âm thanh đính kèm", example = "/uploads/audio/q1.mp3")
+		String audioUrl,
+
+		@Schema(description = "Nội dung bài nghe / transcript")
+		String transcript,
+
+		@Schema(description = "Phiên âm pinyin", example = "Nǐ hǎo")
+		String pinyin,
+
+		@Schema(description = "Cấp độ HSK", example = "1")
+		Integer hskLevel,
+
+		@Schema(description = "ID câu hỏi cha (nếu thuộc bài đọc/nghe chung)")
+		Long parentId,
+
+		@Schema(description = "Kho ảnh dùng chung (Image Pool) cho câu hỏi cha / nhóm ghép tranh HSK")
+		List<ImagePoolItemDto> imagePool
 ) {
+	// Constructor tương thích ngược cho 4 tham số ban đầu
+	public UpdateQuestionRequest(
+			String content,
+			String explanation,
+			List<CreateQuestionOptionRequest> options,
+			String payload
+	) {
+		this(content, explanation, options, payload, null, null, null, null, null, null, null);
+	}
+
+	// Constructor tương thích ngược cho 10 tham số
+	public UpdateQuestionRequest(
+			String content,
+			String explanation,
+			List<CreateQuestionOptionRequest> options,
+			String payload,
+			String imageUrl,
+			String audioUrl,
+			String transcript,
+			String pinyin,
+			Integer hskLevel,
+			Long parentId
+	) {
+		this(content, explanation, options, payload, imageUrl, audioUrl, transcript, pinyin, hskLevel, parentId, null);
+	}
 }

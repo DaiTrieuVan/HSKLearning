@@ -13,5 +13,9 @@ public interface ExerciseSectionRepository extends JpaRepository<ExerciseSection
 
 	List<ExerciseSectionEntity> findByExerciseIdOrderBySortOrderAsc(Long exerciseId);
 
+	default List<ExerciseSectionEntity> findByExercise_IdOrderBySortOrderAsc(Long exerciseId) {
+		return findByExerciseIdOrderBySortOrderAsc(exerciseId);
+	}
+
 	void deleteByExerciseId(Long exerciseId);
 }

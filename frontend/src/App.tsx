@@ -24,9 +24,13 @@ import { MockExamHistoryPage } from './pages/progress/MockExamHistoryPage'
 import { ClassGradebookPage } from './pages/classroom/ClassGradebookPage'
 import { ClassStudentProgressPage } from './pages/classroom/ClassStudentProgressPage'
 import { SrsReviewPage } from './pages/learning/SrsReviewPage'
+import { ListeningPracticeListPage } from './pages/learning/ListeningPracticeListPage'
+import { ListeningPracticeDetailPage } from './pages/learning/ListeningPracticeDetailPage'
 import { PrivateVocabManagementPage } from './pages/teacher/PrivateVocabManagementPage'
 import { AddWordsToVocabSetPage } from './pages/teacher/AddWordsToVocabSetPage'
 import { MockExamManagementPage } from './pages/teacher/MockExamManagementPage'
+import { Hsk30ExamManagementPage } from './pages/teacher/Hsk30ExamManagementPage'
+import { Hsk30TakeExamPage } from './pages/learning/Hsk30TakeExamPage'
 import { AppLayout } from './layouts/AppLayout'
 
 function AppRoutes() {
@@ -44,6 +48,8 @@ function AppRoutes() {
         <Route path="/history" element={<SubmissionHistoryPage />} />
         <Route path="/roadmap" element={<HskRoadmapPage />} />
         <Route path="/srs/review" element={<SrsReviewPage />} />
+        <Route path="/listening" element={<ListeningPracticeListPage />} />
+        <Route path="/listening/:id" element={<ListeningPracticeDetailPage />} />
         <Route path="/curriculum" element={<HskCurriculumPage />} />
         <Route path="/lessons/:lessonId" element={<LessonStudyPage />} />
         <Route path="/vocab-sets" element={<TeacherVocabSetsPage />} />
@@ -54,6 +60,8 @@ function AppRoutes() {
         <Route path="/exercises" element={<ExerciseManagementPage />} />
         <Route path="/mock-exams" element={<MockExamManagementPage />} />
         <Route path="/mock-exams/history" element={<MockExamHistoryPage />} />
+        <Route path="/hsk30/exams" element={<Hsk30ExamManagementPage />} />
+        <Route path="/hsk30/exams/:id/take" element={<Hsk30TakeExamPage />} />
         <Route path="/classes/create" element={<CreateClassPage />} />
         <Route path="/classes/join" element={<JoinClassPage />} />
         <Route path="/classes/:classId" element={<ClassDetailPage />} />

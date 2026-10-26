@@ -5,6 +5,12 @@ export interface QuestionOptionItem {
   content: string
   isCorrect: boolean
   sortOrder: number
+  imageUrl?: string
+}
+
+export interface ImagePoolItem {
+  label: string
+  imageUrl: string
 }
 
 export interface QuestionItem {
@@ -16,11 +22,19 @@ export interface QuestionItem {
   payload?: string
   options: QuestionOptionItem[]
   createdAt: string
+  audioUrl?: string
+  transcript?: string
+  pinyin?: string
+  imageUrl?: string
+  hskLevel?: number
+  parentId?: number
+  imagePool?: ImagePoolItem[]
 }
 
 export interface CreateQuestionOptionPayload {
   content: string
   isCorrect: boolean
+  imageUrl?: string
 }
 
 export interface CreateQuestionPayload {
@@ -29,6 +43,13 @@ export interface CreateQuestionPayload {
   type?: 'MCQ' | 'FILL' | 'MATCH' | 'ORDER'
   payload?: string
   options: CreateQuestionOptionPayload[]
+  audioUrl?: string
+  transcript?: string
+  pinyin?: string
+  imageUrl?: string
+  hskLevel?: number
+  parentId?: number
+  imagePool?: ImagePoolItem[]
 }
 
 export type QuestionFormat = 'HANZI_TO_MEANING' | 'MEANING_TO_HANZI' | 'HANZI_TO_PINYIN'
@@ -69,6 +90,28 @@ export interface CreateOrderingQuestionPayload {
   content: string
   explanation?: string
   items: string[]
+}
+
+export interface ImageMatchSubQuestionPayload {
+  content?: string
+  audioUrl?: string
+  transcript?: string
+  correctLabel: string
+  explanation?: string
+}
+
+export interface CreateImageMatchGroupPayload {
+  title: string
+  hskLevel?: number
+  audioUrl?: string
+  explanation?: string
+  imagePool: ImagePoolItem[]
+  subQuestions: ImageMatchSubQuestionPayload[]
+}
+
+export interface ImageMatchGroupResponse {
+  parentQuestion: QuestionItem
+  subQuestions: QuestionItem[]
 }
 
 const API_BASE = '/api/questions'
@@ -268,6 +311,13 @@ export interface UpdateQuestionPayload {
   explanation?: string
   options?: CreateQuestionOptionPayload[]
   payload?: string
+  audioUrl?: string
+  transcript?: string
+  pinyin?: string
+  imageUrl?: string
+  hskLevel?: number
+  parentId?: number
+  imagePool?: ImagePoolItem[]
 }
 
 export async function getQuestionDetail(id: number, token: string): Promise<QuestionItem> {
@@ -404,6 +454,9 @@ export interface BulkDeleteResult {
 export interface QuestionSearchParams {
   keyword?: string
   type?: 'MCQ' | 'FILL' | 'MATCH' | 'ORDER'
+  hskLevel?: number
+  hasAudio?: boolean
+  hasImage?: boolean
   page?: number
   size?: number
   sortBy?: string
@@ -428,6 +481,15 @@ export async function searchMyQuestions(
   }
   if (params.type) {
     query.set('type', params.type)
+  }
+  if (typeof params.hskLevel === 'number' && params.hskLevel > 0) {
+    query.set('hskLevel', params.hskLevel.toString())
+  }
+  if (typeof params.hasAudio === 'boolean') {
+    query.set('hasAudio', params.hasAudio.toString())
+  }
+  if (typeof params.hasImage === 'boolean') {
+    query.set('hasImage', params.hasImage.toString())
   }
   if (typeof params.page === 'number') {
     query.set('page', params.page.toString())
@@ -488,5 +550,67 @@ export async function bulkDeleteQuestions(
   return data as BulkDeleteResult
 }
 
+export async function uploadQuestionMedia(file: File, token: string): Promise<string> {
+  const formData = new FormData()
+  formData.append('file', file)
 
+  let response: Response
+  try {
+    response = await fetch(`${API_BASE}/upload-media`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    })
+  } catch (err: any) {
+    throw new ApiError(
+      0,
+      'NETWORK_ERROR',
+      `Không thể kết nối đến máy chủ khi tải tệp: ${err?.message || 'Lỗi mạng hoặc dung lượng vượt mức cho phép'}`
+    )
+  }
 
+  const data = await response.json().catch(() => null)
+  if (!response.ok) {
+    const defaultMsg =
+      response.status === 413
+        ? 'Dung lượng tệp vượt quá mức cho phép của hệ thống (tối đa 50MB)'
+        : 'Không thể tải lên tệp đa phương tiện'
+    throw new ApiError(
+      response.status,
+      data?.code || (response.status === 413 ? 'FILE_TOO_LARGE' : 'UPLOAD_FAILED'),
+      data?.message || defaultMsg,
+      data?.fields
+    )
+  }
+
+  return data.url as string
+}
+
+export async function createImageMatchGroup(
+  payload: CreateImageMatchGroupPayload,
+  token: string
+): Promise<ImageMatchGroupResponse> {
+  const response = await fetch(`${API_BASE}/image-match-group`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  const data = await response.json().catch(() => null)
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'IMAGE_MATCH_GROUP_FAILED',
+      data?.message || 'Không thể tạo nhóm câu hỏi ghép tranh HSK',
+      data?.fields
+    )
+  }
+
+  return data as ImageMatchGroupResponse
+}

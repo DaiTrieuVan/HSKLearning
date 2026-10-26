@@ -13,6 +13,17 @@ public interface ExerciseQuestionRepository extends JpaRepository<ExerciseQuesti
 
 	List<ExerciseQuestionEntity> findByExercise_IdOrderBySortOrderAsc(Long exerciseId);
 
+	@org.springframework.data.jpa.repository.Query("""
+		SELECT eq FROM ExerciseQuestionEntity eq
+		LEFT JOIN FETCH eq.question q
+		LEFT JOIN FETCH q.options
+		LEFT JOIN FETCH eq.section s
+		LEFT JOIN FETCH eq.group g
+		WHERE eq.exercise.id = :exerciseId
+		ORDER BY eq.sortOrder ASC
+	""")
+	List<ExerciseQuestionEntity> findByExerciseIdWithDetails(@org.springframework.data.repository.query.Param("exerciseId") Long exerciseId);
+
 	boolean existsByQuestion_Id(Long questionId);
 
 	void deleteByExercise_Id(Long exerciseId);

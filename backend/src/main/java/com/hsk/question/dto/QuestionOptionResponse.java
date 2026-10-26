@@ -13,5 +13,12 @@ public record QuestionOptionResponse(
 	boolean isCorrect,
 
 	@Schema(description = "Thứ tự hiển thị", example = "1")
-	int sortOrder
-) {}
+	int sortOrder,
+
+	@Schema(description = "Hình ảnh minh họa cho lựa chọn", example = "/uploads/images/apple.png")
+	String imageUrl
+) {
+	public QuestionOptionResponse(Long id, String content, boolean isCorrect, int sortOrder) {
+		this(id, content, isCorrect, sortOrder, null);
+	}
+}

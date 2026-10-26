@@ -38,6 +38,23 @@ public interface QuestionRepository extends JpaRepository<QuestionEntity, Long> 
 				WHERE q.ownerId = :ownerId
 				  AND q.isHidden = false
 				  AND (:type IS NULL OR q.type = :type)
+				  AND (:hskLevel IS NULL OR q.hskLevel = :hskLevel)
+				  AND (
+				    :hasAudio IS NULL
+				    OR (:hasAudio = true AND q.payload LIKE '%"audioUrl":%')
+				    OR (:hasAudio = false AND (q.payload IS NULL OR q.payload NOT LIKE '%"audioUrl":%'))
+				  )
+				  AND (
+				    :hasImage IS NULL
+				    OR (:hasImage = true AND (
+				        q.payload LIKE '%"imageUrl":%' 
+				        OR EXISTS (SELECT 1 FROM QuestionOptionEntity o WHERE o.question = q AND o.imageUrl IS NOT NULL AND o.imageUrl <> '')
+				    ))
+				    OR (:hasImage = false AND (
+				        (q.payload IS NULL OR q.payload NOT LIKE '%"imageUrl":%')
+				        AND NOT EXISTS (SELECT 1 FROM QuestionOptionEntity o WHERE o.question = q AND o.imageUrl IS NOT NULL AND o.imageUrl <> '')
+				    ))
+				  )
 				  AND (
 				    :keyword IS NULL OR :keyword = ''
 				    OR LOWER(q.content) LIKE LOWER(CONCAT('%', :keyword, '%'))
@@ -49,6 +66,23 @@ public interface QuestionRepository extends JpaRepository<QuestionEntity, Long> 
 				WHERE q.ownerId = :ownerId
 				  AND q.isHidden = false
 				  AND (:type IS NULL OR q.type = :type)
+				  AND (:hskLevel IS NULL OR q.hskLevel = :hskLevel)
+				  AND (
+				    :hasAudio IS NULL
+				    OR (:hasAudio = true AND q.payload LIKE '%"audioUrl":%')
+				    OR (:hasAudio = false AND (q.payload IS NULL OR q.payload NOT LIKE '%"audioUrl":%'))
+				  )
+				  AND (
+				    :hasImage IS NULL
+				    OR (:hasImage = true AND (
+				        q.payload LIKE '%"imageUrl":%' 
+				        OR EXISTS (SELECT 1 FROM QuestionOptionEntity o WHERE o.question = q AND o.imageUrl IS NOT NULL AND o.imageUrl <> '')
+				    ))
+				    OR (:hasImage = false AND (
+				        (q.payload IS NULL OR q.payload NOT LIKE '%"imageUrl":%')
+				        AND NOT EXISTS (SELECT 1 FROM QuestionOptionEntity o WHERE o.question = q AND o.imageUrl IS NOT NULL AND o.imageUrl <> '')
+				    ))
+				  )
 				  AND (
 				    :keyword IS NULL OR :keyword = ''
 				    OR LOWER(q.content) LIKE LOWER(CONCAT('%', :keyword, '%'))
@@ -60,6 +94,18 @@ public interface QuestionRepository extends JpaRepository<QuestionEntity, Long> 
 			@Param("ownerId") Long ownerId,
 			@Param("keyword") String keyword,
 			@Param("type") QuestionType type,
+			@Param("hskLevel") Integer hskLevel,
+			@Param("hasAudio") Boolean hasAudio,
+			@Param("hasImage") Boolean hasImage,
 			Pageable pageable
 	);
+
+	default Page<QuestionEntity> searchMyQuestions(
+			Long ownerId,
+			String keyword,
+			QuestionType type,
+			Pageable pageable
+	) {
+		return searchMyQuestions(ownerId, keyword, type, null, null, null, pageable);
+	}
 }

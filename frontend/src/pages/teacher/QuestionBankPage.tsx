@@ -38,6 +38,11 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Headphones,
+  Image as ImageIcon,
+  Images,
+  ZoomIn,
+  Music,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import {
@@ -45,6 +50,7 @@ import {
   createFillBlankQuestion,
   createMatchingQuestion,
   createOrderingQuestion,
+  createImageMatchGroup,
   quickGeneratePreview,
   batchCreateQuestions,
   updateQuestion,
@@ -54,6 +60,7 @@ import {
   downloadQuestionCsvTemplate,
   searchMyQuestions,
   bulkDeleteQuestions,
+  uploadQuestionMedia,
   type QuestionItem,
   type CreateQuestionOptionPayload,
   type CreateQuestionPayload,
@@ -61,6 +68,8 @@ import {
   type QuestionFormat,
   type BlankAnswerItem,
   type MatchingPairItem,
+  type ImagePoolItem,
+  type ImageMatchSubQuestionPayload,
   type ImportQuestionsResult,
   type QuestionPageResponse,
 } from '../../api/question'
@@ -70,6 +79,7 @@ import { ApiError } from '../../api/auth'
 interface DraftOption {
   content: string
   isCorrect: boolean
+  imageUrl?: string
 }
 
 interface DraftBlank {
@@ -79,7 +89,7 @@ interface DraftBlank {
   newAcceptableInput?: string
 }
 
-export type QuestionTabType = 'MCQ' | 'FILL' | 'MATCH' | 'ORDER'
+export type QuestionTabType = 'MCQ' | 'FILL' | 'MATCH' | 'ORDER' | 'IMAGE_MATCH'
 export type QuestionFilterType = 'ALL' | 'MCQ' | 'FILL' | 'MATCH' | 'ORDER'
 
 export const QuestionBankPage: React.FC = () => {
@@ -101,6 +111,9 @@ export const QuestionBankPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [debouncedKeyword, setDebouncedKeyword] = useState('')
   const [selectedFilterType, setSelectedFilterType] = useState<QuestionFilterType>('ALL')
+  const [filterHskLevel, setFilterHskLevel] = useState<number | 'ALL'>('ALL')
+  const [filterHasAudio, setFilterHasAudio] = useState<boolean | 'ALL'>('ALL')
+  const [filterHasImage, setFilterHasImage] = useState<boolean | 'ALL'>('ALL')
   const [sortBy, setSortBy] = useState<'createdAt' | 'content' | 'id'>('createdAt')
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc')
   const [viewMode, setViewMode] = useState<'TABLE' | 'GRID'>('TABLE')
@@ -119,6 +132,14 @@ export const QuestionBankPage: React.FC = () => {
   // Common fields
   const [questionContent, setQuestionContent] = useState('')
   const [explanation, setExplanation] = useState('')
+  const [audioUrl, setAudioUrl] = useState('')
+  const [transcript, setTranscript] = useState('')
+  const [pinyin, setPinyin] = useState('')
+  const [imageUrl, setImageUrl] = useState('')
+  const [hskLevel, setHskLevel] = useState<number | undefined>(undefined)
+  const [uploadingAudio, setUploadingAudio] = useState(false)
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const [uploadingOptionIdx, setUploadingOptionIdx] = useState<number | null>(null)
   const [formErrors, setFormErrors] = useState<string[]>([])
 
   // MCQ state
@@ -142,6 +163,31 @@ export const QuestionBankPage: React.FC = () => {
   const [orderItems, setOrderItems] = useState<string[]>(['', '', ''])
   const [quickSentenceInput, setQuickSentenceInput] = useState('')
 
+  // IMAGE_MATCH state (HSK 3.0 Matching Gallery A-F)
+  const [imageMatchTitle, setImageMatchTitle] = useState('Phần 1: Nghe và chọn tranh tương ứng (Câu 1 - 5)')
+  const [imageMatchHskLevel, setImageMatchHskLevel] = useState<number>(1)
+  const [imageMatchAudioUrl, setImageMatchAudioUrl] = useState('')
+  const [imageMatchExplanation, setImageMatchExplanation] = useState('')
+  const [imageMatchPool, setImageMatchPool] = useState<ImagePoolItem[]>([
+    { label: 'A', imageUrl: '' },
+    { label: 'B', imageUrl: '' },
+    { label: 'C', imageUrl: '' },
+    { label: 'D', imageUrl: '' },
+    { label: 'E', imageUrl: '' },
+    { label: 'F', imageUrl: '' },
+  ])
+  const [imageMatchSubs, setImageMatchSubs] = useState<ImageMatchSubQuestionPayload[]>([
+    { content: 'Câu 1', audioUrl: '', transcript: '', correctLabel: 'A', explanation: '' },
+    { content: 'Câu 2', audioUrl: '', transcript: '', correctLabel: 'B', explanation: '' },
+    { content: 'Câu 3', audioUrl: '', transcript: '', correctLabel: 'C', explanation: '' },
+    { content: 'Câu 4', audioUrl: '', transcript: '', correctLabel: 'D', explanation: '' },
+    { content: 'Câu 5', audioUrl: '', transcript: '', correctLabel: 'E', explanation: '' },
+  ])
+  const [uploadingPoolIdx, setUploadingPoolIdx] = useState<number | null>(null)
+  const [uploadingBatchPool, setUploadingBatchPool] = useState(false)
+  const [uploadingSubAudioIdx, setUploadingSubAudioIdx] = useState<number | null>(null)
+  const [expandedImagePreview, setExpandedImagePreview] = useState<{ url: string; label?: string } | null>(null)
+
   // Quick Generate Panel state (HTT-05-CN-004)
   const [isQuickGenOpen, setIsQuickGenOpen] = useState(false)
   const [selectedVocabSetId, setSelectedVocabSetId] = useState<number | null>(null)
@@ -162,6 +208,14 @@ export const QuestionBankPage: React.FC = () => {
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false)
   const [editContent, setEditContent] = useState('')
   const [editExplanation, setEditExplanation] = useState('')
+  const [editAudioUrl, setEditAudioUrl] = useState('')
+  const [editTranscript, setEditTranscript] = useState('')
+  const [editPinyin, setEditPinyin] = useState('')
+  const [editImageUrl, setEditImageUrl] = useState('')
+  const [editHskLevel, setEditHskLevel] = useState<number | undefined>(undefined)
+  const [editUploadingAudio, setEditUploadingAudio] = useState(false)
+  const [editUploadingImage, setEditUploadingImage] = useState(false)
+  const [editUploadingOptionIdx, setEditUploadingOptionIdx] = useState<number | null>(null)
   const [editOptions, setEditOptions] = useState<DraftOption[]>([])
   const [editPayload, setEditPayload] = useState('')
   const [editErrors, setEditErrors] = useState<string[]>([])
@@ -175,6 +229,11 @@ export const QuestionBankPage: React.FC = () => {
     setEditingQuestion(q)
     setEditContent(q.content)
     setEditExplanation(q.explanation || '')
+    setEditAudioUrl(q.audioUrl || '')
+    setEditTranscript(q.transcript || '')
+    setEditPinyin(q.pinyin || '')
+    setEditImageUrl(q.imageUrl || '')
+    setEditHskLevel(q.hskLevel)
     setEditPayload(q.payload || '')
     setEditErrors([])
     if (q.type === 'MCQ' && q.options && q.options.length > 0) {
@@ -182,12 +241,13 @@ export const QuestionBankPage: React.FC = () => {
         q.options.map((opt) => ({
           content: opt.content,
           isCorrect: opt.isCorrect,
+          imageUrl: opt.imageUrl || '',
         }))
       )
     } else {
       setEditOptions([
-        { content: '', isCorrect: true },
-        { content: '', isCorrect: false },
+        { content: '', isCorrect: true, imageUrl: '' },
+        { content: '', isCorrect: false, imageUrl: '' },
       ])
     }
     setIsEditDrawerOpen(true)
@@ -202,7 +262,7 @@ export const QuestionBankPage: React.FC = () => {
   }
 
   const handleAddEditOption = () => {
-    setEditOptions([...editOptions, { content: '', isCorrect: false }])
+    setEditOptions([...editOptions, { content: '', isCorrect: false, imageUrl: '' }])
   }
 
   const handleRemoveEditOption = (index: number) => {
@@ -276,9 +336,18 @@ export const QuestionBankPage: React.FC = () => {
       const payload: UpdateQuestionPayload = {
         content: editContent.trim(),
         explanation: editExplanation.trim() ? editExplanation.trim() : undefined,
+        audioUrl: editAudioUrl.trim() || undefined,
+        transcript: editTranscript.trim() || undefined,
+        pinyin: editPinyin.trim() || undefined,
+        imageUrl: editImageUrl.trim() || undefined,
+        hskLevel: editHskLevel || undefined,
         options:
           editingQuestion.type === 'MCQ'
-            ? editOptions.map((o) => ({ content: o.content.trim(), isCorrect: o.isCorrect }))
+            ? editOptions.map((o) => ({
+                content: o.content.trim(),
+                isCorrect: o.isCorrect,
+                imageUrl: o.imageUrl?.trim() || undefined,
+              }))
             : undefined,
         payload: editPayload.trim() ? editPayload.trim() : undefined,
       }
@@ -324,6 +393,220 @@ export const QuestionBankPage: React.FC = () => {
     }
   }
 
+  const handleUploadAudioFile = async (e: React.ChangeEvent<HTMLInputElement>, isEdit = false) => {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+    if (isEdit) setEditUploadingAudio(true)
+    else setUploadingAudio(true)
+    try {
+      const url = await uploadQuestionMedia(file, user.token)
+      if (isEdit) setEditAudioUrl(url)
+      else setAudioUrl(url)
+      setSuccessMessage('Tải file âm thanh thành công!')
+    } catch (err: any) {
+      if (err instanceof ApiError) setErrorMessage(err.message)
+      else if (err?.message) setErrorMessage(`Tải file âm thanh thất bại: ${err.message}`)
+      else setErrorMessage('Tải file âm thanh thất bại. Kích thước file có thể quá lớn (tối đa 50MB) hoặc không đúng định dạng.')
+    } finally {
+      if (isEdit) setEditUploadingAudio(false)
+      else setUploadingAudio(false)
+      e.target.value = ''
+    }
+  }
+
+  const handleUploadImageFile = async (e: React.ChangeEvent<HTMLInputElement>, isEdit = false) => {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+    if (isEdit) setEditUploadingImage(true)
+    else setUploadingImage(true)
+    try {
+      const url = await uploadQuestionMedia(file, user.token)
+      if (isEdit) setEditImageUrl(url)
+      else setImageUrl(url)
+      setSuccessMessage('Tải hình ảnh thành công!')
+    } catch (err: any) {
+      if (err instanceof ApiError) setErrorMessage(err.message)
+      else if (err?.message) setErrorMessage(`Tải hình ảnh thất bại: ${err.message}`)
+      else setErrorMessage('Tải hình ảnh thất bại.')
+    } finally {
+      if (isEdit) setEditUploadingImage(false)
+      else setUploadingImage(false)
+      e.target.value = ''
+    }
+  }
+
+  const handleUploadOptionImageFile = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    index: number,
+    isEdit = false
+  ) => {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+    if (isEdit) setEditUploadingOptionIdx(index)
+    else setUploadingOptionIdx(index)
+    try {
+      const url = await uploadQuestionMedia(file, user.token)
+      if (isEdit) {
+        const next = [...editOptions]
+        next[index].imageUrl = url
+        setEditOptions(next)
+      } else {
+        const next = [...options]
+        next[index].imageUrl = url
+        setOptions(next)
+      }
+      setSuccessMessage(`Tải ảnh cho lựa chọn ${optionLetters[index] || index + 1} thành công!`)
+    } catch (err: any) {
+      if (err instanceof ApiError) setErrorMessage(err.message)
+      else if (err?.message) setErrorMessage(`Tải hình ảnh lựa chọn thất bại: ${err.message}`)
+      else setErrorMessage('Tải hình ảnh lựa chọn thất bại.')
+    } finally {
+      if (isEdit) setEditUploadingOptionIdx(null)
+      else setUploadingOptionIdx(null)
+      e.target.value = ''
+    }
+  }
+
+  const handleBatchUploadPoolImages = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0 || !user) return
+    setUploadingBatchPool(true)
+    try {
+      const nextPool = [...imageMatchPool]
+      const count = Math.min(files.length, nextPool.length)
+      for (let i = 0; i < count; i++) {
+        const file = files[i]
+        const url = await uploadQuestionMedia(file, user.token)
+        nextPool[i].imageUrl = url
+      }
+      setImageMatchPool(nextPool)
+      setSuccessMessage(`Đã tải lên thành công ${count} ảnh vào Kho ảnh A–F!`)
+    } catch (err: any) {
+      if (err instanceof ApiError) setErrorMessage(err.message)
+      else if (err?.message) setErrorMessage(`Tải ảnh hàng loạt thất bại: ${err.message}`)
+      else setErrorMessage('Tải ảnh hàng loạt thất bại.')
+    } finally {
+      setUploadingBatchPool(false)
+      e.target.value = ''
+    }
+  }
+
+  const handleUploadSinglePoolImage = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+    setUploadingPoolIdx(index)
+    try {
+      const url = await uploadQuestionMedia(file, user.token)
+      const nextPool = [...imageMatchPool]
+      nextPool[index].imageUrl = url
+      setImageMatchPool(nextPool)
+      setSuccessMessage(`Đã tải ảnh cho mục ${nextPool[index].label} thành công!`)
+    } catch (err: any) {
+      if (err instanceof ApiError) setErrorMessage(err.message)
+      else if (err?.message) setErrorMessage(`Tải ảnh mục ${imageMatchPool[index].label} thất bại: ${err.message}`)
+      else setErrorMessage(`Tải ảnh cho mục ${imageMatchPool[index].label} thất bại.`)
+    } finally {
+      setUploadingPoolIdx(null)
+      e.target.value = ''
+    }
+  }
+
+  const handleRemovePoolImage = (index: number) => {
+    const nextPool = [...imageMatchPool]
+    nextPool[index].imageUrl = ''
+    setImageMatchPool(nextPool)
+  }
+
+  const handleUploadSubQuestionAudio = async (e: React.ChangeEvent<HTMLInputElement>, subIndex: number) => {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+    setUploadingSubAudioIdx(subIndex)
+    try {
+      const url = await uploadQuestionMedia(file, user.token)
+      const nextSubs = [...imageMatchSubs]
+      nextSubs[subIndex].audioUrl = url
+      setImageMatchSubs(nextSubs)
+      setSuccessMessage(`Đã tải audio cho Câu ${subIndex + 1} thành công!`)
+    } catch (err: any) {
+      if (err instanceof ApiError) setErrorMessage(err.message)
+      else if (err?.message) setErrorMessage(`Tải audio thất bại: ${err.message}`)
+      else setErrorMessage(`Tải audio cho câu ${subIndex + 1} thất bại.`)
+    } finally {
+      setUploadingSubAudioIdx(null)
+      e.target.value = ''
+    }
+  }
+
+  const handleAddSubQuestion = () => {
+    setImageMatchSubs((prev) => [
+      ...prev,
+      {
+        content: `Câu ${prev.length + 1}`,
+        audioUrl: '',
+        transcript: '',
+        correctLabel: imageMatchPool[Math.min(prev.length, imageMatchPool.length - 1)]?.label || 'A',
+        explanation: '',
+      },
+    ])
+  }
+
+  const handleRemoveSubQuestion = (index: number) => {
+    setImageMatchSubs((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const handleSubmitImageMatchGroup = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!user) return
+
+    const errors: string[] = []
+    if (!imageMatchTitle.trim()) {
+      errors.push('Vui lòng nhập tiêu đề nhóm câu hỏi ghép tranh')
+    }
+    const uploadedImages = imageMatchPool.filter((p) => p.imageUrl.trim())
+    if (uploadedImages.length < 2) {
+      errors.push('Kho ảnh cần ít nhất 2 ảnh minh họa (khuyến nghị đủ 6 ảnh A–F)')
+    }
+    if (imageMatchSubs.length === 0) {
+      errors.push('Cần ít nhất 1 câu hỏi con trong nhóm')
+    }
+
+    if (errors.length > 0) {
+      setFormErrors(errors)
+      return
+    }
+
+    setSubmitting(true)
+    setFormErrors([])
+    try {
+      await createImageMatchGroup(
+        {
+          title: imageMatchTitle.trim(),
+          hskLevel: imageMatchHskLevel,
+          audioUrl: imageMatchAudioUrl.trim() || undefined,
+          explanation: imageMatchExplanation.trim() || undefined,
+          imagePool: uploadedImages,
+          subQuestions: imageMatchSubs.map((s, idx) => ({
+            content: s.content?.trim() || `Câu ${idx + 1}`,
+            audioUrl: s.audioUrl?.trim() || undefined,
+            transcript: s.transcript?.trim() || undefined,
+            correctLabel: s.correctLabel,
+            explanation: s.explanation?.trim() || undefined,
+          })),
+        },
+        user.token
+      )
+      setSuccessMessage('Đã tạo thành công Nhóm ghép tranh HSK (Kho ảnh A-F và các câu hỏi con)!')
+      setIsDrawerOpen(false)
+      loadQuestions()
+    } catch (err: any) {
+      if (err instanceof ApiError) setErrorMessage(err.message)
+      else if (err?.message) setErrorMessage(`Lỗi tạo nhóm: ${err.message}`)
+      else setErrorMessage('Không thể tạo nhóm câu hỏi ghép tranh HSK')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   const loadQuestions = useCallback(async () => {
     if (!user) return
     setLoading(true)
@@ -333,6 +616,9 @@ export const QuestionBankPage: React.FC = () => {
         {
           keyword: debouncedKeyword || undefined,
           type: selectedFilterType === 'ALL' ? undefined : selectedFilterType,
+          hskLevel: filterHskLevel === 'ALL' ? undefined : filterHskLevel,
+          hasAudio: filterHasAudio === 'ALL' ? undefined : filterHasAudio,
+          hasImage: filterHasImage === 'ALL' ? undefined : filterHasImage,
           page,
           size: pageSize,
           sortBy,
@@ -351,7 +637,7 @@ export const QuestionBankPage: React.FC = () => {
     } finally {
       setLoading(false)
     }
-  }, [user, debouncedKeyword, selectedFilterType, page, pageSize, sortBy, sortDir])
+  }, [user, debouncedKeyword, selectedFilterType, filterHskLevel, filterHasAudio, filterHasImage, page, pageSize, sortBy, sortDir])
 
   useEffect(() => {
     if (user) {
@@ -714,6 +1000,7 @@ export const QuestionBankPage: React.FC = () => {
         const payloadOptions: CreateQuestionOptionPayload[] = options.map((opt) => ({
           content: opt.content.trim(),
           isCorrect: opt.isCorrect,
+          imageUrl: opt.imageUrl?.trim() || undefined,
         }))
 
         await createMultipleChoiceQuestion(
@@ -722,6 +1009,11 @@ export const QuestionBankPage: React.FC = () => {
             explanation: explanation.trim() ? explanation.trim() : undefined,
             type: 'MCQ',
             options: payloadOptions,
+            audioUrl: audioUrl.trim() || undefined,
+            transcript: transcript.trim() || undefined,
+            pinyin: pinyin.trim() || undefined,
+            imageUrl: imageUrl.trim() || undefined,
+            hskLevel: hskLevel || undefined,
           },
           user.token
         )
@@ -774,11 +1066,16 @@ export const QuestionBankPage: React.FC = () => {
       // Reset form
       setQuestionContent('')
       setExplanation('')
+      setAudioUrl('')
+      setTranscript('')
+      setPinyin('')
+      setImageUrl('')
+      setHskLevel(undefined)
       setOptions([
-        { content: '', isCorrect: true },
-        { content: '', isCorrect: false },
-        { content: '', isCorrect: false },
-        { content: '', isCorrect: false },
+        { content: '', isCorrect: true, imageUrl: '' },
+        { content: '', isCorrect: false, imageUrl: '' },
+        { content: '', isCorrect: false, imageUrl: '' },
+        { content: '', isCorrect: false, imageUrl: '' },
       ])
       setBlanks([])
       setPairs([
@@ -1133,6 +1430,480 @@ export const QuestionBankPage: React.FC = () => {
     )
   }
 
+  const renderImageMatchGroupForm = () => {
+    return (
+      <form onSubmit={handleSubmitImageMatchGroup} className="lg:col-span-7 space-y-6">
+        {/* Header: Title, HSK Level, Group Audio */}
+        <div className="bg-rose-50/60 p-4 rounded-2xl border border-rose-100 space-y-3.5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-rose-900 uppercase tracking-wider flex items-center space-x-1.5">
+              <Images className="w-4 h-4 text-rose-600" />
+              <span>Cấu hình Nhóm ghép tranh HSK 3.0</span>
+            </span>
+            <span className="text-[11px] text-rose-700 bg-white px-2 py-0.5 rounded-md font-medium border border-rose-200">
+              1 Kho ảnh A–F dùng chung cho nhóm 5 câu con
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {/* HSK Level */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Cấp độ HSK</label>
+              <select
+                value={imageMatchHskLevel}
+                onChange={(e) => setImageMatchHskLevel(Number(e.target.value))}
+                className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 font-medium"
+              >
+                <option value="1">HSK 1 (Chuẩn 3.0)</option>
+                <option value="2">HSK 2 (Chuẩn 3.0)</option>
+                <option value="3">HSK 3 (Chuẩn 3.0)</option>
+                <option value="4">HSK 4 (Chuẩn 3.0)</option>
+                <option value="5">HSK 5 (Chuẩn 3.0)</option>
+                <option value="6">HSK 6 (Chuẩn 3.0)</option>
+              </select>
+            </div>
+
+            {/* Group Audio */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-slate-700">Audio chung cả nhóm (nếu có)</label>
+                {imageMatchAudioUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setImageMatchAudioUrl('')}
+                    className="text-[11px] text-rose-600 hover:underline"
+                  >
+                    Xóa audio
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="text"
+                  value={imageMatchAudioUrl}
+                  onChange={(e) => setImageMatchAudioUrl(e.target.value)}
+                  placeholder="URL audio chung của bài nghe..."
+                  className="flex-1 px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 font-mono"
+                />
+                <label className="cursor-pointer px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold rounded-xl border border-rose-200 flex items-center space-x-1.5 transition whitespace-nowrap">
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Tải audio</span>
+                  <input
+                    type="file"
+                    accept="audio/*,.mp3,.wav,.ogg,.m4a"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0]
+                      if (!file || !user) return
+                      try {
+                        const url = await uploadQuestionMedia(file, user.token)
+                        setImageMatchAudioUrl(url)
+                        setSuccessMessage('Tải audio chung thành công!')
+                      } catch (err: any) {
+                        setErrorMessage(err?.message || 'Tải audio thất bại.')
+                      } finally {
+                        e.target.value = ''
+                      }
+                    }}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+              {imageMatchAudioUrl && (
+                <div className="pt-1.5">
+                  <audio src={imageMatchAudioUrl} controls className="w-full h-8" />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Tiêu đề nhóm câu hỏi */}
+        <div>
+          <label className="block text-sm font-semibold text-slate-700 mb-2">
+            Tiêu đề nhóm câu hỏi <span className="text-rose-500">*</span>
+          </label>
+          <input
+            type="text"
+            value={imageMatchTitle}
+            onChange={(e) => setImageMatchTitle(e.target.value)}
+            placeholder="Ví dụ: Phần 1: Nghe và ghép tranh tương ứng (Câu 1 - 5)"
+            className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-900 font-medium text-sm"
+          />
+        </div>
+
+        {/* Kho ảnh dùng chung A-F */}
+        <div className="p-4 bg-purple-50/50 border border-purple-200 rounded-2xl space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h3 className="text-sm font-bold text-purple-900 flex items-center space-x-2">
+                <Images className="w-4 h-4 text-purple-600" />
+                <span>Kho ảnh dùng chung (6 ảnh A–F)</span>
+              </h3>
+              <p className="text-xs text-purple-700">
+                Tỉ lệ vuông 1:1, tự căn giữa không méo hình. Có thể tải cùng lúc 6 file.
+              </p>
+            </div>
+            <label className="cursor-pointer inline-flex items-center space-x-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-xl shadow-xs transition">
+              <Upload className="w-3.5 h-3.5" />
+              <span>{uploadingBatchPool ? 'Đang tải lên...' : 'Tải cùng lúc 6 ảnh'}</span>
+              <input
+                type="file"
+                multiple
+                accept="image/*,.png,.jpg,.jpeg,.webp"
+                onChange={handleBatchUploadPoolImages}
+                disabled={uploadingBatchPool}
+                className="hidden"
+              />
+            </label>
+          </div>
+
+          {/* Lưới 6 ô ảnh A-F */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {imageMatchPool.map((poolItem, idx) => (
+              <div
+                key={poolItem.label}
+                className={`relative aspect-square rounded-2xl border-2 flex flex-col items-center justify-between p-2 transition bg-white ${
+                  poolItem.imageUrl
+                    ? 'border-purple-300 shadow-xs'
+                    : 'border-dashed border-slate-300 hover:border-purple-300 bg-slate-50'
+                }`}
+              >
+                {/* Badge nhãn A-F */}
+                <span className="absolute top-2 left-2 z-10 w-6 h-6 rounded-lg bg-purple-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
+                  {poolItem.label}
+                </span>
+
+                {poolItem.imageUrl ? (
+                  <>
+                    <div className="w-full h-full flex items-center justify-center pt-5 pb-7">
+                      <img
+                        src={poolItem.imageUrl}
+                        alt={`Mục ${poolItem.label}`}
+                        className="max-h-full max-w-full object-contain rounded-lg"
+                      />
+                    </div>
+                    <div className="absolute bottom-2 inset-x-2 flex items-center justify-between bg-white/90 backdrop-blur-xs px-2 py-1 rounded-lg border border-purple-100 shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedImagePreview({ url: poolItem.imageUrl, label: `Ảnh ${poolItem.label}` })}
+                        className="text-[11px] font-semibold text-purple-700 hover:text-purple-900 flex items-center space-x-1 cursor-pointer"
+                        title="Xem to ảnh"
+                      >
+                        <ZoomIn className="w-3 h-3" />
+                        <span>Xem</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePoolImage(idx)}
+                        className="text-[11px] font-semibold text-rose-600 hover:text-rose-800 flex items-center space-x-1 cursor-pointer"
+                        title="Xóa ảnh"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span>Xóa</span>
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer text-slate-400 hover:text-purple-600 transition">
+                    <ImageIcon className="w-7 h-7 mb-1 text-slate-300" />
+                    <span className="text-[11px] font-semibold text-center">
+                      {uploadingPoolIdx === idx ? 'Đang tải...' : `Chọn ảnh ${poolItem.label}`}
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*,.png,.jpg,.jpeg,.webp"
+                      onChange={(e) => handleUploadSinglePoolImage(e, idx)}
+                      disabled={uploadingPoolIdx === idx}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Danh sách 5 câu hỏi con */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 flex items-center space-x-2">
+                <Layers className="w-4 h-4 text-indigo-600" />
+                <span>Danh sách câu hỏi con ({imageMatchSubs.length} câu)</span>
+              </h3>
+              <p className="text-xs text-slate-500">
+                Gán nội dung câu hỏi, file audio bài nghe và chọn đáp án tương ứng A–F.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleAddSubQuestion}
+              className="inline-flex items-center space-x-1.5 text-xs font-semibold text-indigo-700 hover:text-indigo-800 px-3 py-1 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Thêm câu con</span>
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            {imageMatchSubs.map((sub, sIdx) => {
+              const selectedPoolItem = imageMatchPool.find((p) => p.label === sub.correctLabel)
+              return (
+                <div
+                  key={sIdx}
+                  className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3 transition hover:border-indigo-300"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <span className="w-6 h-6 rounded-md bg-indigo-600 text-white flex items-center justify-center font-bold text-xs flex-shrink-0">
+                        {sIdx + 1}
+                      </span>
+                      <span className="text-xs font-bold text-slate-800">Câu hỏi #{sIdx + 1}</span>
+                    </div>
+                    {imageMatchSubs.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSubQuestion(sIdx)}
+                        className="text-xs text-rose-500 hover:text-rose-700 flex items-center space-x-1"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Xóa</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Tên câu hỏi */}
+                  <div>
+                    <input
+                      type="text"
+                      value={sub.content || ''}
+                      onChange={(e) => {
+                        const next = [...imageMatchSubs]
+                        next[sIdx].content = e.target.value
+                        setImageMatchSubs(next)
+                      }}
+                      placeholder={`Ví dụ: Câu ${sIdx + 1}: 苹果 (Quả táo)`}
+                      className="w-full px-3 py-2 text-xs bg-white rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                    />
+                  </div>
+
+                  {/* Audio riêng của câu con */}
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="text"
+                      value={sub.audioUrl || ''}
+                      onChange={(e) => {
+                        const next = [...imageMatchSubs]
+                        next[sIdx].audioUrl = e.target.value
+                        setImageMatchSubs(next)
+                      }}
+                      placeholder="URL audio riêng của câu này (nếu có)..."
+                      className="flex-1 px-3 py-1.5 text-xs bg-white rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                    />
+                    <label className="cursor-pointer px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-xl border border-indigo-200 flex items-center space-x-1 transition whitespace-nowrap">
+                      <Headphones className="w-3.5 h-3.5" />
+                      <span>{uploadingSubAudioIdx === sIdx ? 'Đang tải...' : 'Tải audio'}</span>
+                      <input
+                        type="file"
+                        accept="audio/*,.mp3,.wav,.ogg,.m4a"
+                        onChange={(e) => handleUploadSubQuestionAudio(e, sIdx)}
+                        disabled={uploadingSubAudioIdx === sIdx}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+                  {sub.audioUrl && (
+                    <audio src={sub.audioUrl} controls className="w-full h-7" />
+                  )}
+
+                  {/* Chọn đáp án đúng trong kho ảnh A-F */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white p-2.5 rounded-xl border border-slate-200">
+                    <div className="flex items-center space-x-3">
+                      <label className="text-xs font-bold text-slate-700 whitespace-nowrap">
+                        Đáp án đúng:
+                      </label>
+                      <select
+                        value={sub.correctLabel}
+                        onChange={(e) => {
+                          const next = [...imageMatchSubs]
+                          next[sIdx].correctLabel = e.target.value
+                          setImageMatchSubs(next)
+                        }}
+                        className="px-3 py-1 text-xs font-bold bg-purple-50 text-purple-900 border border-purple-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      >
+                        {imageMatchPool.map((p) => (
+                          <option key={p.label} value={p.label}>
+                            Hình {p.label} {p.imageUrl ? '(Đã có ảnh)' : '(Chưa tải ảnh)'}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Preview ảnh tương ứng với đáp án được chọn */}
+                    {selectedPoolItem && selectedPoolItem.imageUrl && (
+                      <div className="flex items-center space-x-2 pl-2 sm:border-l border-slate-200">
+                        <img
+                          src={selectedPoolItem.imageUrl}
+                          alt={`Đáp án ${sub.correctLabel}`}
+                          className="w-8 h-8 rounded-lg object-contain border border-purple-200 bg-slate-50"
+                        />
+                        <span className="text-[11px] text-purple-700 font-medium">
+                          Đáp án đúng: Hình {sub.correctLabel}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Giải thích chung */}
+        <div>
+          <label className="block text-sm font-semibold text-slate-700 mb-2">
+            Giải thích đáp án hoặc hướng dẫn làm bài (tùy chọn)
+          </label>
+          <textarea
+            rows={2}
+            value={imageMatchExplanation}
+            onChange={(e) => setImageMatchExplanation(e.target.value)}
+            placeholder="Hướng dẫn học sinh phương pháp nghe, dịch nghĩa từ vựng..."
+            className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-900 text-sm"
+          />
+        </div>
+
+        {/* Nút hành động */}
+        <div className="pt-2 flex items-center justify-end space-x-3">
+          <button
+            type="button"
+            onClick={() => setIsDrawerOpen(false)}
+            className="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-100 font-medium text-sm transition"
+          >
+            Hủy bỏ
+          </button>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="px-6 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-sm shadow-sm transition disabled:opacity-50 flex items-center space-x-2"
+          >
+            <Images className="w-4 h-4" />
+            <span>{submitting ? 'Đang lưu nhóm câu hỏi...' : 'Lưu nhóm câu hỏi ghép tranh HSK'}</span>
+          </button>
+        </div>
+      </form>
+    )
+  }
+
+  const renderImageMatchPreview = () => {
+    return (
+      <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-100 space-y-4">
+        {/* Header Preview */}
+        <div>
+          <div className="flex items-center space-x-2 mb-1">
+            <span className="px-2 py-0.5 rounded-md bg-rose-100 text-rose-700 font-bold text-[11px]">
+              HSK {imageMatchHskLevel}
+            </span>
+            <span className="text-xs font-bold text-rose-600 uppercase tracking-wider">
+              Nhóm ghép tranh (IMAGE_MATCH)
+            </span>
+          </div>
+          <div className="text-base font-bold text-slate-900 leading-snug break-words">
+            {imageMatchTitle.trim() || 'Chưa nhập tiêu đề nhóm...'}
+          </div>
+          {imageMatchAudioUrl && (
+            <div className="mt-2">
+              <audio src={imageMatchAudioUrl} controls className="w-full h-8" />
+            </div>
+          )}
+        </div>
+
+        {/* Kho ảnh A-F */}
+        <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+          <span className="text-xs font-bold text-slate-600 uppercase tracking-wider block">
+            Kho ảnh A–F dùng chung ({imageMatchPool.filter((p) => p.imageUrl).length}/6 ảnh):
+          </span>
+          <div className="grid grid-cols-3 gap-2">
+            {imageMatchPool.map((poolItem) => (
+              <div
+                key={poolItem.label}
+                className="relative aspect-square rounded-xl border border-slate-200 bg-white flex flex-col items-center justify-center p-1.5 overflow-hidden group shadow-2xs"
+              >
+                <span className="absolute top-1 left-1 w-5 h-5 rounded-md bg-purple-600 text-white font-bold text-[10px] flex items-center justify-center shadow-xs">
+                  {poolItem.label}
+                </span>
+                {poolItem.imageUrl ? (
+                  <img
+                    src={poolItem.imageUrl}
+                    alt={`Mục ${poolItem.label}`}
+                    className="w-full h-full object-contain rounded-md cursor-pointer hover:scale-105 transition"
+                    onClick={() => setExpandedImagePreview({ url: poolItem.imageUrl, label: `Ảnh ${poolItem.label}` })}
+                  />
+                ) : (
+                  <span className="text-[10px] text-slate-300 font-semibold italic text-center">
+                    Chưa có ảnh
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Danh sách các câu con mô phỏng giao diện học sinh */}
+        <div className="space-y-2.5 pt-2 border-t border-slate-100">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+            Mô phỏng các câu hỏi con học sinh làm bài:
+          </span>
+          <div className="space-y-2">
+            {imageMatchSubs.map((sub, idx) => (
+              <div key={idx} className="p-3 bg-white border border-slate-200 rounded-xl space-y-2 shadow-2xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-800">
+                    {sub.content || `Câu ${idx + 1}`}
+                  </span>
+                  <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                    Đáp án: {sub.correctLabel}
+                  </span>
+                </div>
+                {sub.audioUrl && (
+                  <audio src={sub.audioUrl} controls className="w-full h-6" />
+                )}
+                {/* Lựa chọn A-F */}
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {imageMatchPool.map((p) => {
+                    const isSelected = p.label === sub.correctLabel
+                    return (
+                      <span
+                        key={p.label}
+                        className={`w-7 h-7 rounded-lg text-xs font-bold flex items-center justify-center border transition ${
+                          isSelected
+                            ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
+                            : 'bg-slate-50 text-slate-600 border-slate-200'
+                        }`}
+                      >
+                        {p.label}
+                      </span>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {imageMatchExplanation.trim() && (
+          <div className="mt-3 p-3 bg-amber-50 border border-amber-100 rounded-lg text-xs text-amber-900 space-y-1">
+            <span className="font-bold flex items-center space-x-1 text-amber-800">
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>Giải thích / Hướng dẫn:</span>
+            </span>
+            <p>{imageMatchExplanation}</p>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col">
       {/* Top Navbar */}
@@ -1267,6 +2038,33 @@ export const QuestionBankPage: React.FC = () => {
             >
               <X className="w-4 h-4" />
             </button>
+          </div>
+        )}
+
+        {/* INLINE IMAGE ZOOM CARD (NO MODAL) */}
+        {expandedImagePreview && (
+          <div className="bg-white border-2 border-purple-300 rounded-2xl shadow-lg p-5 animate-fadeIn space-y-3">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center space-x-2 text-purple-900 font-bold text-sm">
+                <ZoomIn className="w-4 h-4 text-purple-600" />
+                <span>Xem chi tiết ảnh: {expandedImagePreview.label}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setExpandedImagePreview(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition"
+                title="Đóng xem ảnh"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex justify-center bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <img
+                src={expandedImagePreview.url}
+                alt={expandedImagePreview.label}
+                className="max-h-96 max-w-full object-contain rounded-lg shadow-sm"
+              />
+            </div>
           </div>
         )}
 
@@ -1853,6 +2651,21 @@ export const QuestionBankPage: React.FC = () => {
                     <ArrowUpDown className="w-4 h-4" />
                     <span>Sắp xếp câu (ORDER)</span>
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('IMAGE_MATCH')
+                      setFormErrors([])
+                    }}
+                    className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                      activeTab === 'IMAGE_MATCH'
+                        ? 'bg-white text-rose-700 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Images className="w-4 h-4" />
+                    <span>Ghép tranh HSK (A–F)</span>
+                  </button>
                 </div>
 
                 <button
@@ -1879,9 +2692,180 @@ export const QuestionBankPage: React.FC = () => {
               </div>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              {/* Form Input Columns */}
-              <form onSubmit={handleSubmitQuestion} className="lg:col-span-7 space-y-6">
+            {activeTab === 'IMAGE_MATCH' ? (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                <div className="lg:col-span-7">
+                  {renderImageMatchGroupForm()}
+                </div>
+                <div className="lg:col-span-5 bg-slate-50 border border-slate-200 rounded-2xl p-5 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center space-x-2 text-xs font-bold text-slate-400 tracking-wider uppercase mb-4">
+                      <Eye className="w-4 h-4 text-rose-500" />
+                      <span>Xem trước giao diện học sinh</span>
+                    </div>
+                    {renderImageMatchPreview()}
+                  </div>
+                  <div className="mt-6 text-xs text-slate-400 text-center">
+                    Tạo 1 câu hỏi nhóm MATCH (Kho ảnh A–F) và các câu hỏi con trắc nghiệm liên kết tự động trong đề thi HSK 3.0.
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                {/* Form Input Columns */}
+                <form onSubmit={handleSubmitQuestion} className="lg:col-span-7 space-y-6">
+                {/* HSK Level and Multimedia settings */}
+                <div className="bg-indigo-50/60 p-4 rounded-2xl border border-indigo-100 space-y-3.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-indigo-900 uppercase tracking-wider flex items-center space-x-1.5">
+                      <Music className="w-4 h-4 text-indigo-600" />
+                      <span>Cấu hình Đa phương tiện & Cấp độ HSK</span>
+                    </span>
+                    <span className="text-[11px] text-indigo-600 bg-white px-2 py-0.5 rounded-md font-medium border border-indigo-200">
+                      Tái sử dụng cho đề thi HSK 3.0 & Bài tập
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    {/* HSK Level */}
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Cấp độ HSK</label>
+                      <select
+                        value={hskLevel || ''}
+                        onChange={(e) => setHskLevel(e.target.value ? Number(e.target.value) : undefined)}
+                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                      >
+                        <option value="">-- Không quy định cấp độ --</option>
+                        <option value="1">HSK 1 (Chuẩn 3.0)</option>
+                        <option value="2">HSK 2 (Chuẩn 3.0)</option>
+                        <option value="3">HSK 3 (Chuẩn 3.0)</option>
+                        <option value="4">HSK 4 (Chuẩn 3.0)</option>
+                        <option value="5">HSK 5 (Chuẩn 3.0)</option>
+                        <option value="6">HSK 6 (Chuẩn 3.0)</option>
+                      </select>
+                    </div>
+
+                    {/* Pinyin */}
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Phiên âm Pinyin (nếu có)</label>
+                      <input
+                        type="text"
+                        value={pinyin}
+                        onChange={(e) => setPinyin(e.target.value)}
+                        placeholder="Ví dụ: Nǐ hǎo"
+                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Audio File */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-slate-700 flex items-center justify-between">
+                      <span className="flex items-center space-x-1">
+                        <Headphones className="w-3.5 h-3.5 text-purple-600" />
+                        <span>File âm thanh bài nghe (Audio MP3/WAV/M4A)</span>
+                      </span>
+                      {audioUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setAudioUrl('')}
+                          className="text-[11px] text-rose-600 hover:underline"
+                        >
+                          Xóa file nghe
+                        </button>
+                      )}
+                    </label>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="text"
+                        value={audioUrl}
+                        onChange={(e) => setAudioUrl(e.target.value)}
+                        placeholder="URL tệp audio hoặc bấm tải lên từ máy tính..."
+                        className="flex-1 px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                      />
+                      <label className="cursor-pointer px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-semibold rounded-xl border border-purple-200 flex items-center space-x-1.5 transition whitespace-nowrap">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>{uploadingAudio ? 'Đang tải...' : 'Tải audio'}</span>
+                        <input
+                          type="file"
+                          accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac,.webm"
+                          onChange={(e) => handleUploadAudioFile(e, false)}
+                          disabled={uploadingAudio}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                    {audioUrl && (
+                      <div className="pt-1">
+                        <audio src={audioUrl} controls className="w-full h-8" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Transcript */}
+                  {audioUrl && (
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold text-slate-700">Transcript nội dung bài nghe</label>
+                      <input
+                        type="text"
+                        value={transcript}
+                        onChange={(e) => setTranscript(e.target.value)}
+                        placeholder="Nội dung lời đọc tiếng Trung của audio..."
+                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  )}
+
+                  {/* Question Image */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-slate-700 flex items-center justify-between">
+                      <span className="flex items-center space-x-1">
+                        <ImageIcon className="w-3.5 h-3.5 text-sky-600" />
+                        <span>Ảnh minh họa cho câu hỏi (Hình ảnh đề bài / Tranh vẽ)</span>
+                      </span>
+                      {imageUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setImageUrl('')}
+                          className="text-[11px] text-rose-600 hover:underline"
+                        >
+                          Xóa ảnh
+                        </button>
+                      )}
+                    </label>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="text"
+                        value={imageUrl}
+                        onChange={(e) => setImageUrl(e.target.value)}
+                        placeholder="URL hình ảnh hoặc bấm tải lên từ máy tính..."
+                        className="flex-1 px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                      />
+                      <label className="cursor-pointer px-3 py-2 bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs font-semibold rounded-xl border border-sky-200 flex items-center space-x-1.5 transition whitespace-nowrap">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>{uploadingImage ? 'Đang tải...' : 'Tải ảnh'}</span>
+                        <input
+                          type="file"
+                          accept="image/*,.png,.jpg,.jpeg,.webp,.gif,.svg"
+                          onChange={(e) => handleUploadImageFile(e, false)}
+                          disabled={uploadingImage}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                    {imageUrl && (
+                      <div className="pt-1 flex items-center space-x-3">
+                        <img
+                          src={imageUrl}
+                          alt="Minh họa"
+                          className="w-16 h-16 object-cover rounded-xl border border-slate-200 shadow-xs"
+                        />
+                        <span className="text-xs text-slate-500">Xem trước ảnh câu hỏi</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <label className="block text-sm font-semibold text-slate-700">
@@ -1982,6 +2966,45 @@ export const QuestionBankPage: React.FC = () => {
                             placeholder={`Nội dung lựa chọn ${optionLetters[idx] || idx + 1}`}
                             className="flex-1 px-3 py-2 text-sm bg-transparent border-b border-transparent focus:border-indigo-400 focus:outline-none text-slate-800"
                           />
+
+                          {/* Option Image Attachment */}
+                          <div className="flex items-center space-x-1">
+                            {opt.imageUrl ? (
+                              <div className="relative group">
+                                <img
+                                  src={opt.imageUrl}
+                                  alt="Tranh"
+                                  className="w-8 h-8 rounded-lg object-cover border border-slate-200 shadow-xs"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const next = [...options]
+                                    next[idx].imageUrl = ''
+                                    setOptions(next)
+                                  }}
+                                  className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] hover:bg-rose-600"
+                                  title="Xóa ảnh lựa chọn"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ) : (
+                              <label
+                                className="cursor-pointer p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+                                title="Đính kèm ảnh cho phương án này (phù hợp dạng bài nghe chọn tranh)"
+                              >
+                                <ImageIcon className="w-4 h-4" />
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => handleUploadOptionImageFile(e, idx, false)}
+                                  disabled={uploadingOptionIdx === idx}
+                                  className="hidden"
+                                />
+                              </label>
+                            )}
+                          </div>
 
                           {/* Correct badge */}
                           {opt.isCorrect && (
@@ -2428,6 +3451,7 @@ export const QuestionBankPage: React.FC = () => {
                 </div>
               </div>
             </div>
+            )}
           </div>
         )}
 
@@ -2483,6 +3507,153 @@ export const QuestionBankPage: React.FC = () => {
               )}
 
               <div className="space-y-4">
+                {/* Edit HSK & Multimedia */}
+                <div className="bg-indigo-50/60 p-4 rounded-2xl border border-indigo-100 space-y-3.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-indigo-900 uppercase tracking-wider flex items-center space-x-1.5">
+                      <Music className="w-4 h-4 text-indigo-600" />
+                      <span>Cấu hình Đa phương tiện & Cấp độ HSK</span>
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Cấp độ HSK</label>
+                      <select
+                        value={editHskLevel || ''}
+                        onChange={(e) => setEditHskLevel(e.target.value ? Number(e.target.value) : undefined)}
+                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                      >
+                        <option value="">-- Không quy định cấp độ --</option>
+                        <option value="1">HSK 1 (Chuẩn 3.0)</option>
+                        <option value="2">HSK 2 (Chuẩn 3.0)</option>
+                        <option value="3">HSK 3 (Chuẩn 3.0)</option>
+                        <option value="4">HSK 4 (Chuẩn 3.0)</option>
+                        <option value="5">HSK 5 (Chuẩn 3.0)</option>
+                        <option value="6">HSK 6 (Chuẩn 3.0)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Phiên âm Pinyin</label>
+                      <input
+                        type="text"
+                        value={editPinyin}
+                        onChange={(e) => setEditPinyin(e.target.value)}
+                        placeholder="Ví dụ: Nǐ hǎo"
+                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Audio File */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-slate-700 flex items-center justify-between">
+                      <span className="flex items-center space-x-1">
+                        <Headphones className="w-3.5 h-3.5 text-purple-600" />
+                        <span>File âm thanh bài nghe (Audio MP3/WAV/M4A)</span>
+                      </span>
+                      {editAudioUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setEditAudioUrl('')}
+                          className="text-[11px] text-rose-600 hover:underline"
+                        >
+                          Xóa file nghe
+                        </button>
+                      )}
+                    </label>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="text"
+                        value={editAudioUrl}
+                        onChange={(e) => setEditAudioUrl(e.target.value)}
+                        placeholder="URL tệp audio hoặc bấm tải lên từ máy tính..."
+                        className="flex-1 px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                      />
+                      <label className="cursor-pointer px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-semibold rounded-xl border border-purple-200 flex items-center space-x-1.5 transition whitespace-nowrap">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>{editUploadingAudio ? 'Đang tải...' : 'Tải audio'}</span>
+                        <input
+                          type="file"
+                          accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac,.webm"
+                          onChange={(e) => handleUploadAudioFile(e, true)}
+                          disabled={editUploadingAudio}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                    {editAudioUrl && (
+                      <div className="pt-1">
+                        <audio src={editAudioUrl} controls className="w-full h-8" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Transcript */}
+                  {editAudioUrl && (
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold text-slate-700">Transcript nội dung bài nghe</label>
+                      <input
+                        type="text"
+                        value={editTranscript}
+                        onChange={(e) => setEditTranscript(e.target.value)}
+                        placeholder="Nội dung lời đọc tiếng Trung của audio..."
+                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  )}
+
+                  {/* Question Image */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-slate-700 flex items-center justify-between">
+                      <span className="flex items-center space-x-1">
+                        <ImageIcon className="w-3.5 h-3.5 text-sky-600" />
+                        <span>Ảnh minh họa câu hỏi</span>
+                      </span>
+                      {editImageUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setEditImageUrl('')}
+                          className="text-[11px] text-rose-600 hover:underline"
+                        >
+                          Xóa ảnh
+                        </button>
+                      )}
+                    </label>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="text"
+                        value={editImageUrl}
+                        onChange={(e) => setEditImageUrl(e.target.value)}
+                        placeholder="URL hình ảnh hoặc bấm tải lên từ máy tính..."
+                        className="flex-1 px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                      />
+                      <label className="cursor-pointer px-3 py-2 bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs font-semibold rounded-xl border border-sky-200 flex items-center space-x-1.5 transition whitespace-nowrap">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>{editUploadingImage ? 'Đang tải...' : 'Tải ảnh'}</span>
+                        <input
+                          type="file"
+                          accept="image/*,.png,.jpg,.jpeg,.webp,.gif,.svg"
+                          onChange={(e) => handleUploadImageFile(e, true)}
+                          disabled={editUploadingImage}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                    {editImageUrl && (
+                      <div className="pt-1 flex items-center space-x-3">
+                        <img
+                          src={editImageUrl}
+                          alt="Minh họa"
+                          className="w-16 h-16 object-cover rounded-xl border border-slate-200 shadow-xs"
+                        />
+                        <span className="text-xs text-slate-500">Xem trước ảnh câu hỏi</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 {/* Content field */}
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
@@ -2543,6 +3714,46 @@ export const QuestionBankPage: React.FC = () => {
                             placeholder={`Nội dung lựa chọn ${optionLetters[idx] || idx + 1}`}
                             className="flex-1 px-3 py-1.5 text-sm bg-white rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           />
+
+                          {/* Option Image Attachment */}
+                          <div className="flex items-center space-x-1">
+                            {opt.imageUrl ? (
+                              <div className="relative group">
+                                <img
+                                  src={opt.imageUrl}
+                                  alt="Tranh"
+                                  className="w-8 h-8 rounded-lg object-cover border border-slate-200 shadow-xs"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const next = [...editOptions]
+                                    next[idx].imageUrl = ''
+                                    setEditOptions(next)
+                                  }}
+                                  className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] hover:bg-rose-600"
+                                  title="Xóa ảnh lựa chọn"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ) : (
+                              <label
+                                className="cursor-pointer p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+                                title="Đính kèm ảnh cho phương án này"
+                              >
+                                <ImageIcon className="w-4 h-4" />
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => handleUploadOptionImageFile(e, idx, true)}
+                                  disabled={editUploadingOptionIdx === idx}
+                                  className="hidden"
+                                />
+                              </label>
+                            )}
+                          </div>
+
                           {opt.isCorrect && (
                             <span className="text-xs text-emerald-700 font-bold px-2 py-0.5 bg-emerald-100 rounded-md">
                               Đáp án đúng
@@ -2756,6 +3967,63 @@ export const QuestionBankPage: React.FC = () => {
               </button>
             </div>
 
+            {/* Filter by HSK Level */}
+            <div className="flex items-center space-x-1.5">
+              <span className="text-xs font-semibold text-slate-500">Cấp độ:</span>
+              <select
+                value={filterHskLevel}
+                onChange={(e) => {
+                  setFilterHskLevel(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value))
+                  setPage(0)
+                }}
+                className="px-2.5 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+              >
+                <option value="ALL">Tất cả HSK</option>
+                <option value="1">HSK 1</option>
+                <option value="2">HSK 2</option>
+                <option value="3">HSK 3</option>
+                <option value="4">HSK 4</option>
+                <option value="5">HSK 5</option>
+                <option value="6">HSK 6</option>
+              </select>
+            </div>
+
+            {/* Media Toggles */}
+            <div className="flex items-center space-x-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterHasAudio((prev) => (prev === true ? 'ALL' : true))
+                  setPage(0)
+                }}
+                className={`flex items-center space-x-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition ${
+                  filterHasAudio === true
+                    ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
+                    : 'bg-white text-purple-700 border-purple-200 hover:bg-purple-50'
+                }`}
+                title="Lọc câu hỏi có file âm thanh bài nghe"
+              >
+                <Headphones className="w-3.5 h-3.5" />
+                <span>Có Audio</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterHasImage((prev) => (prev === true ? 'ALL' : true))
+                  setPage(0)
+                }}
+                className={`flex items-center space-x-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition ${
+                  filterHasImage === true
+                    ? 'bg-sky-600 text-white border-sky-600 shadow-xs'
+                    : 'bg-white text-sky-700 border-sky-200 hover:bg-sky-50'
+                }`}
+                title="Lọc câu hỏi có hình ảnh"
+              >
+                <ImageIcon className="w-3.5 h-3.5" />
+                <span>Có Ảnh</span>
+              </button>
+            </div>
+
             <span className="flex items-center space-x-1.5 font-bold text-xs text-slate-600 bg-slate-100 px-3 py-1.5 rounded-xl self-start sm:self-auto">
               <Layers className="w-4 h-4 text-indigo-600" />
               <span>
@@ -2940,9 +4208,72 @@ export const QuestionBankPage: React.FC = () => {
                                 <div className="text-[11px] text-slate-400 font-mono mt-0.5">#{q.id}</div>
                               </td>
                               <td className="py-3.5 px-4">
+                                <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+                                  {q.hskLevel && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300">
+                                      HSK {q.hskLevel}
+                                    </span>
+                                  )}
+                                  {q.audioUrl && (
+                                    <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-purple-100 text-purple-800 border border-purple-200">
+                                      <Headphones className="w-3 h-3" />
+                                      <span>Audio</span>
+                                    </span>
+                                  )}
+                                  {q.imagePool && q.imagePool.length > 0 && (
+                                    <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-rose-100 text-rose-800 border border-rose-200">
+                                      <Images className="w-3 h-3" />
+                                      <span>Kho ảnh ({q.imagePool.length} ảnh A–F)</span>
+                                    </span>
+                                  )}
+                                  {(q.imageUrl || q.options?.some((o) => o.imageUrl)) && !(q.imagePool && q.imagePool.length > 0) && (
+                                    <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-sky-100 text-sky-800 border border-sky-200">
+                                      <ImageIcon className="w-3 h-3" />
+                                      <span>Ảnh</span>
+                                    </span>
+                                  )}
+                                  {q.pinyin && (
+                                    <span className="text-[11px] text-indigo-600 font-mono font-medium">[{q.pinyin}]</span>
+                                  )}
+                                </div>
                                 <div className="font-semibold text-slate-900 leading-snug line-clamp-2">
                                   {q.content}
                                 </div>
+                                {q.audioUrl && (
+                                  <div className="mt-1.5">
+                                    <audio src={q.audioUrl} controls className="h-6 w-56" />
+                                  </div>
+                                )}
+                                {q.imageUrl && (
+                                  <div className="mt-1.5">
+                                    <img
+                                      src={q.imageUrl}
+                                      alt="Minh họa"
+                                      className="h-12 w-auto max-w-[120px] object-cover rounded-md border border-slate-200 shadow-2xs"
+                                    />
+                                  </div>
+                                )}
+                                {q.imagePool && q.imagePool.length > 0 && (
+                                  <div className="mt-2 flex items-center space-x-1.5 overflow-x-auto py-1">
+                                    {q.imagePool.map((poolItem, pIdx) => (
+                                      <div
+                                        key={pIdx}
+                                        onClick={() => poolItem.imageUrl && setExpandedImagePreview({ url: poolItem.imageUrl, label: `Ảnh ${poolItem.label}` })}
+                                        className="relative flex-shrink-0 w-10 h-10 rounded-lg border border-slate-200 bg-slate-50 overflow-hidden cursor-pointer hover:border-purple-400 group"
+                                        title={`Ảnh ${poolItem.label} - Nhấp để xem phóng to`}
+                                      >
+                                        <span className="absolute top-0.5 left-0.5 bg-purple-600 text-white text-[9px] font-bold px-1 rounded">
+                                          {poolItem.label}
+                                        </span>
+                                        {poolItem.imageUrl ? (
+                                          <img src={poolItem.imageUrl} alt={poolItem.label} className="w-full h-full object-contain" />
+                                        ) : (
+                                          <div className="w-full h-full flex items-center justify-center text-[9px] text-slate-300">N/A</div>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
                                 {q.explanation && (
                                   <div className="text-xs text-slate-500 line-clamp-1 mt-1 italic">
                                     <span className="font-medium text-amber-700">Giải thích:</span> {q.explanation}
@@ -2990,8 +4321,15 @@ export const QuestionBankPage: React.FC = () => {
                                 ) : (
                                   <div className="space-y-1">
                                     {q.options?.find((opt) => opt.isCorrect) ? (
-                                      <div className="flex items-center space-x-1.5 text-emerald-700 font-semibold">
+                                      <div className="flex items-center space-x-2 text-emerald-700 font-semibold">
                                         <Check className="w-3.5 h-3.5 flex-shrink-0" />
+                                        {q.options.find((opt) => opt.isCorrect)?.imageUrl && (
+                                          <img
+                                            src={q.options.find((opt) => opt.isCorrect)?.imageUrl}
+                                            alt="Đáp án"
+                                            className="w-6 h-6 object-cover rounded border border-emerald-300 flex-shrink-0"
+                                          />
+                                        )}
                                         <span className="line-clamp-1">
                                           {q.options.find((opt) => opt.isCorrect)?.content}
                                         </span>
@@ -3129,6 +4467,29 @@ export const QuestionBankPage: React.FC = () => {
                                   : 'Trắc nghiệm (MCQ)'}
                               </span>
                             </span>
+                            {q.hskLevel && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300">
+                                HSK {q.hskLevel}
+                              </span>
+                            )}
+                            {q.audioUrl && (
+                              <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-purple-100 text-purple-800 border border-purple-200">
+                                <Headphones className="w-3 h-3" />
+                                <span>Audio</span>
+                              </span>
+                            )}
+                            {q.imagePool && q.imagePool.length > 0 && (
+                              <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-rose-100 text-rose-800 border border-rose-200">
+                                <Images className="w-3 h-3" />
+                                <span>Kho ảnh ({q.imagePool.length} ảnh A–F)</span>
+                              </span>
+                            )}
+                            {(q.imageUrl || q.options?.some((o) => o.imageUrl)) && !(q.imagePool && q.imagePool.length > 0) && (
+                              <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-sky-100 text-sky-800 border border-sky-200">
+                                <ImageIcon className="w-3 h-3" />
+                                <span>Ảnh</span>
+                              </span>
+                            )}
                           </div>
 
                           <div className="flex items-center space-x-1">
@@ -3158,6 +4519,57 @@ export const QuestionBankPage: React.FC = () => {
                         <div className="text-base font-bold text-slate-900 leading-snug break-words">
                           {q.content}
                         </div>
+
+                        {q.pinyin && (
+                          <div className="text-xs text-indigo-600 font-mono font-medium">
+                            Pinyin: {q.pinyin}
+                          </div>
+                        )}
+
+                        {q.audioUrl && (
+                          <div className="pt-1">
+                            <audio src={q.audioUrl} controls className="h-7 w-full" />
+                          </div>
+                        )}
+
+                        {q.imageUrl && (
+                          <div className="pt-1">
+                            <img
+                              src={q.imageUrl}
+                              alt="Minh họa"
+                              className="h-28 w-auto max-w-full object-cover rounded-xl border border-slate-200 shadow-2xs"
+                            />
+                          </div>
+                        )}
+
+                        {q.imagePool && q.imagePool.length > 0 && (
+                          <div className="pt-2">
+                            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+                              Kho ảnh chung A–F ({q.imagePool.filter((p) => p.imageUrl).length}/6 ảnh):
+                            </span>
+                            <div className="grid grid-cols-6 gap-1.5">
+                              {q.imagePool.map((poolItem, pIdx) => (
+                                <div
+                                  key={pIdx}
+                                  onClick={() => poolItem.imageUrl && setExpandedImagePreview({ url: poolItem.imageUrl, label: `Ảnh ${poolItem.label}` })}
+                                  className="relative aspect-square rounded-lg border border-slate-200 bg-slate-50 overflow-hidden cursor-pointer hover:border-purple-500 transition group shadow-2xs"
+                                  title={`Ảnh ${poolItem.label} - Bấm để phóng to`}
+                                >
+                                  <span className="absolute top-0.5 left-0.5 bg-purple-600 text-white text-[9px] font-bold px-1 rounded shadow-xs">
+                                    {poolItem.label}
+                                  </span>
+                                  {poolItem.imageUrl ? (
+                                    <img src={poolItem.imageUrl} alt={poolItem.label} className="w-full h-full object-contain" />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-[9px] text-slate-300 italic">
+                                      -
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
 
                         {/* Render according to type */}
                         {isFill ? (
@@ -3259,6 +4671,13 @@ export const QuestionBankPage: React.FC = () => {
                                   >
                                     {optionLetters[oIdx] || oIdx + 1}
                                   </span>
+                                  {opt.imageUrl && (
+                                    <img
+                                      src={opt.imageUrl}
+                                      alt="Tranh"
+                                      className="w-7 h-7 rounded-lg object-cover border border-slate-200 flex-shrink-0"
+                                    />
+                                  )}
                                   <span className="flex-1 break-words">{opt.content}</span>
                                   {opt.isCorrect && (
                                     <span className="flex items-center space-x-1 text-emerald-700 font-semibold text-xs">

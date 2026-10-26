@@ -23,6 +23,10 @@ import com.hsk.question.dto.CreateMatchingQuestionRequest;
 import com.hsk.question.dto.CreateOrderingQuestionRequest;
 import com.hsk.question.dto.CreateQuestionOptionRequest;
 import com.hsk.question.dto.CreateQuestionRequest;
+import com.hsk.question.dto.CreateImageMatchGroupRequest;
+import com.hsk.question.dto.ImageMatchGroupResponse;
+import com.hsk.question.dto.ImageMatchSubQuestionDto;
+import com.hsk.question.dto.ImagePoolItemDto;
 import com.hsk.question.dto.FillBlankPayloadDto;
 import com.hsk.question.dto.MatchingPairDto;
 import com.hsk.question.dto.MatchingPayloadDto;
@@ -40,11 +44,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import java.util.Random;
@@ -355,13 +364,55 @@ public class QuestionService {
 				? request.explanation().trim()
 				: null;
 
+		String payload = request.payload();
+		if (request.audioUrl() != null || request.transcript() != null || request.pinyin() != null || request.imageUrl() != null || request.imagePool() != null) {
+			try {
+				com.fasterxml.jackson.databind.node.ObjectNode node;
+				if (payload != null && !payload.isBlank()) {
+					com.fasterxml.jackson.databind.JsonNode parsed = objectMapper.readTree(payload);
+					node = parsed.isObject() ? (com.fasterxml.jackson.databind.node.ObjectNode) parsed : objectMapper.createObjectNode();
+				} else {
+					node = objectMapper.createObjectNode();
+				}
+				if (request.audioUrl() != null && !request.audioUrl().isBlank()) {
+					node.put("audioUrl", request.audioUrl().trim());
+				}
+				if (request.transcript() != null && !request.transcript().isBlank()) {
+					node.put("transcript", request.transcript().trim());
+				}
+				if (request.pinyin() != null && !request.pinyin().isBlank()) {
+					node.put("pinyin", request.pinyin().trim());
+				}
+				if (request.imageUrl() != null && !request.imageUrl().isBlank()) {
+					node.put("imageUrl", request.imageUrl().trim());
+				}
+				if (request.imagePool() != null) {
+					com.fasterxml.jackson.databind.node.ArrayNode poolArr = node.putArray("imagePool");
+					for (ImagePoolItemDto item : request.imagePool()) {
+						if (item == null) continue;
+						com.fasterxml.jackson.databind.node.ObjectNode itemNode = poolArr.addObject();
+						itemNode.put("label", item.label() != null ? item.label().trim().toUpperCase() : "");
+						itemNode.put("imageUrl", item.imageUrl() != null ? item.imageUrl().trim() : "");
+					}
+				}
+				payload = objectMapper.writeValueAsString(node);
+			} catch (Exception ignored) {
+			}
+		}
+
 		QuestionEntity question = new QuestionEntity(
 				teacherId,
 				questionType,
 				request.content().trim(),
 				explanation,
-				request.payload()
+				payload
 		);
+		if (request.hskLevel() != null) {
+			question.setHskLevel(request.hskLevel());
+		}
+		if (request.parentId() != null) {
+			questionRepository.findById(request.parentId()).ifPresent(question::setParent);
+		}
 
 		int order = 1;
 		for (CreateQuestionOptionRequest opt : request.options()) {
@@ -370,6 +421,9 @@ public class QuestionService {
 					Boolean.TRUE.equals(opt.isCorrect()),
 					order++
 			);
+			if (opt.imageUrl() != null && !opt.imageUrl().isBlank()) {
+				optionEntity.setImageUrl(opt.imageUrl().trim());
+			}
 			question.addOption(optionEntity);
 		}
 
@@ -536,11 +590,24 @@ public class QuestionService {
 	 * Tìm kiếm câu hỏi trong ngân hàng của giáo viên có phân trang và bộ lọc.
 	 */
 	@Transactional(readOnly = true)
-	public Page<QuestionResponse> searchMyQuestions(Long teacherId, String keyword, QuestionType type, Pageable pageable) {
+	public Page<QuestionResponse> searchMyQuestions(
+			Long teacherId,
+			String keyword,
+			QuestionType type,
+			Integer hskLevel,
+			Boolean hasAudio,
+			Boolean hasImage,
+			Pageable pageable
+	) {
 		assertTeacherOrAdmin(teacherId);
 		String searchKeyword = (keyword != null && !keyword.trim().isEmpty()) ? keyword.trim() : null;
-		Page<QuestionEntity> page = questionRepository.searchMyQuestions(teacherId, searchKeyword, type, pageable);
+		Page<QuestionEntity> page = questionRepository.searchMyQuestions(teacherId, searchKeyword, type, hskLevel, hasAudio, hasImage, pageable);
 		return page.map(this::mapToResponse);
+	}
+
+	@Transactional(readOnly = true)
+	public Page<QuestionResponse> searchMyQuestions(Long teacherId, String keyword, QuestionType type, Pageable pageable) {
+		return searchMyQuestions(teacherId, keyword, type, null, null, null, pageable);
 	}
 
 	/**
@@ -580,8 +647,41 @@ public class QuestionService {
 						opt.getId(),
 						opt.getContent(),
 						opt.isCorrect(),
-						opt.getSortOrder()
+						opt.getSortOrder(),
+						opt.getImageUrl()
 				));
+			}
+		}
+
+		String audioUrl = null;
+		String transcript = null;
+		String pinyin = null;
+		String imageUrl = null;
+		List<ImagePoolItemDto> imagePool = null;
+		if (entity.getPayload() != null && !entity.getPayload().isBlank()) {
+			try {
+				com.fasterxml.jackson.databind.JsonNode node = objectMapper.readTree(entity.getPayload());
+				if (node.hasNonNull("audioUrl")) {
+					audioUrl = node.get("audioUrl").asText();
+				}
+				if (node.hasNonNull("transcript")) {
+					transcript = node.get("transcript").asText();
+				}
+				if (node.hasNonNull("pinyin")) {
+					pinyin = node.get("pinyin").asText();
+				}
+				if (node.hasNonNull("imageUrl")) {
+					imageUrl = node.get("imageUrl").asText();
+				}
+				if (node.hasNonNull("imagePool") && node.get("imagePool").isArray()) {
+					imagePool = new ArrayList<>();
+					for (com.fasterxml.jackson.databind.JsonNode item : node.get("imagePool")) {
+						String label = item.hasNonNull("label") ? item.get("label").asText() : "";
+						String imgUrl = item.hasNonNull("imageUrl") ? item.get("imageUrl").asText() : "";
+						imagePool.add(new ImagePoolItemDto(label, imgUrl));
+					}
+				}
+			} catch (Exception ignored) {
 			}
 		}
 
@@ -593,7 +693,14 @@ public class QuestionService {
 				entity.getExplanation(),
 				entity.getPayload(),
 				optionResponses,
-				entity.getCreatedAt()
+				entity.getCreatedAt(),
+				audioUrl,
+				transcript,
+				pinyin,
+				imageUrl,
+				entity.getHskLevel(),
+				entity.getParent() != null ? entity.getParent().getId() : null,
+				imagePool
 		);
 	}
 
@@ -720,6 +827,9 @@ public class QuestionService {
 						Boolean.TRUE.equals(optReq.isCorrect()),
 						order++
 				);
+				if (optReq.imageUrl() != null && !optReq.imageUrl().isBlank()) {
+					opt.setImageUrl(optReq.imageUrl().trim());
+				}
 				question.addOption(opt);
 			}
 		} else {
@@ -729,9 +839,232 @@ public class QuestionService {
 			}
 		}
 
+		if (request.audioUrl() != null || request.transcript() != null || request.pinyin() != null || request.imageUrl() != null || request.imagePool() != null) {
+			try {
+				com.fasterxml.jackson.databind.node.ObjectNode node;
+				String curPayload = question.getPayload();
+				if (curPayload != null && !curPayload.isBlank()) {
+					com.fasterxml.jackson.databind.JsonNode parsed = objectMapper.readTree(curPayload);
+					node = parsed.isObject() ? (com.fasterxml.jackson.databind.node.ObjectNode) parsed : objectMapper.createObjectNode();
+				} else {
+					node = objectMapper.createObjectNode();
+				}
+				if (request.audioUrl() != null) {
+					if (request.audioUrl().isBlank()) node.remove("audioUrl");
+					else node.put("audioUrl", request.audioUrl().trim());
+				}
+				if (request.imageUrl() != null) {
+					if (request.imageUrl().isBlank()) node.remove("imageUrl");
+					else node.put("imageUrl", request.imageUrl().trim());
+				}
+				if (request.transcript() != null) {
+					if (request.transcript().isBlank()) node.remove("transcript");
+					else node.put("transcript", request.transcript().trim());
+				}
+				if (request.pinyin() != null) {
+					if (request.pinyin().isBlank()) node.remove("pinyin");
+					else node.put("pinyin", request.pinyin().trim());
+				}
+				if (request.imagePool() != null) {
+					com.fasterxml.jackson.databind.node.ArrayNode poolArr = node.putArray("imagePool");
+					for (ImagePoolItemDto item : request.imagePool()) {
+						if (item == null) continue;
+						com.fasterxml.jackson.databind.node.ObjectNode itemNode = poolArr.addObject();
+						itemNode.put("label", item.label() != null ? item.label().trim().toUpperCase() : "");
+						itemNode.put("imageUrl", item.imageUrl() != null ? item.imageUrl().trim() : "");
+					}
+				}
+				question.setPayload(objectMapper.writeValueAsString(node));
+			} catch (Exception ignored) {
+			}
+		}
+
+		if (request.hskLevel() != null) {
+			question.setHskLevel(request.hskLevel());
+		}
+		if (request.parentId() != null) {
+			questionRepository.findById(request.parentId()).ifPresent(question::setParent);
+		}
+
 		// QTN-10: Sửa câu hỏi trong ngân hàng không ảnh hưởng nội dung snapshot đã chụp trong các lần giao bài trước
 		QuestionEntity saved = questionRepository.save(question);
 		return mapToResponse(saved);
+	}
+
+	/**
+	 * Tạo Nhóm câu hỏi ghép tranh HSK (1 kho ảnh A-F dùng chung cho nhóm các câu hỏi con).
+	 */
+	@Transactional
+	public ImageMatchGroupResponse createImageMatchGroup(Long teacherId, CreateImageMatchGroupRequest request) {
+		assertTeacherOrAdmin(teacherId);
+
+		if (request == null) {
+			throw new ApiException(ApiErrorCode.MALFORMED_REQUEST_BODY);
+		}
+		if (request.title() == null || request.title().trim().isEmpty()) {
+			throw new ApiException(ApiErrorCode.QUESTION_CONTENT_BLANK);
+		}
+		if (request.imagePool() == null || request.imagePool().isEmpty()) {
+			throw new ApiException(ApiErrorCode.VALIDATION_FAILED);
+		}
+		if (request.subQuestions() == null || request.subQuestions().isEmpty()) {
+			throw new ApiException(ApiErrorCode.VALIDATION_FAILED);
+		}
+
+		// Tạo payload JSON cho câu hỏi cha chứa imagePool
+		com.fasterxml.jackson.databind.node.ObjectNode parentPayloadNode = objectMapper.createObjectNode();
+		if (request.audioUrl() != null && !request.audioUrl().isBlank()) {
+			parentPayloadNode.put("audioUrl", request.audioUrl().trim());
+		}
+		com.fasterxml.jackson.databind.node.ArrayNode poolArray = parentPayloadNode.putArray("imagePool");
+		for (ImagePoolItemDto item : request.imagePool()) {
+			if (item == null) continue;
+			com.fasterxml.jackson.databind.node.ObjectNode itemNode = poolArray.addObject();
+			itemNode.put("label", item.label() != null ? item.label().trim().toUpperCase() : "");
+			itemNode.put("imageUrl", item.imageUrl() != null ? item.imageUrl().trim() : "");
+		}
+
+		String parentPayload;
+		try {
+			parentPayload = objectMapper.writeValueAsString(parentPayloadNode);
+		} catch (JsonProcessingException e) {
+			parentPayload = "{}";
+		}
+
+		// 1. Tạo câu hỏi Cha (Context / Shared Image Pool)
+		QuestionEntity parent = new QuestionEntity(
+				teacherId,
+				QuestionType.MATCH,
+				request.title().trim(),
+				request.explanation() != null && !request.explanation().isBlank() ? request.explanation().trim() : null,
+				parentPayload
+		);
+		if (request.hskLevel() != null) {
+			parent.setHskLevel(request.hskLevel());
+		}
+		QuestionEntity savedParent = questionRepository.save(parent);
+
+		// 2. Tạo từng câu hỏi con liên kết với câu hỏi cha
+		List<QuestionEntity> savedChildren = new ArrayList<>();
+		int subIndex = 1;
+		for (ImageMatchSubQuestionDto sub : request.subQuestions()) {
+			if (sub == null) continue;
+			String subContent = sub.content() != null && !sub.content().isBlank()
+					? sub.content().trim()
+					: "Câu " + subIndex;
+
+			com.fasterxml.jackson.databind.node.ObjectNode subPayloadNode = objectMapper.createObjectNode();
+			if (sub.audioUrl() != null && !sub.audioUrl().isBlank()) {
+				subPayloadNode.put("audioUrl", sub.audioUrl().trim());
+			}
+			if (sub.transcript() != null && !sub.transcript().isBlank()) {
+				subPayloadNode.put("transcript", sub.transcript().trim());
+			}
+
+			String subPayload;
+			try {
+				subPayload = objectMapper.writeValueAsString(subPayloadNode);
+			} catch (JsonProcessingException e) {
+				subPayload = "{}";
+			}
+
+			QuestionEntity child = new QuestionEntity(
+					teacherId,
+					QuestionType.MCQ,
+					subContent,
+					sub.explanation() != null && !sub.explanation().isBlank() ? sub.explanation().trim() : null,
+					subPayload
+			);
+			child.setParent(savedParent);
+			if (request.hskLevel() != null) {
+				child.setHskLevel(request.hskLevel());
+			}
+
+			// Thêm các phương án lựa chọn A..F tương ứng với các ảnh trong imagePool
+			int optOrder = 1;
+			String targetCorrect = sub.correctLabel() != null ? sub.correctLabel().trim().toUpperCase() : "A";
+			for (ImagePoolItemDto poolItem : request.imagePool()) {
+				if (poolItem == null) continue;
+				String label = poolItem.label() != null ? poolItem.label().trim().toUpperCase() : String.valueOf((char) ('A' + optOrder - 1));
+				boolean isCorrect = label.equalsIgnoreCase(targetCorrect);
+				QuestionOptionEntity option = new QuestionOptionEntity(
+						label,
+						isCorrect,
+						optOrder++
+				);
+				if (poolItem.imageUrl() != null && !poolItem.imageUrl().isBlank()) {
+					option.setImageUrl(poolItem.imageUrl().trim());
+				}
+				child.addOption(option);
+			}
+
+			savedChildren.add(questionRepository.save(child));
+			subIndex++;
+		}
+
+		List<QuestionResponse> childResponses = savedChildren.stream()
+				.map(this::mapToResponse)
+				.toList();
+
+		return new ImageMatchGroupResponse(mapToResponse(savedParent), childResponses);
+	}
+
+	private static final long MAX_MEDIA_BYTES = 50 * 1024 * 1024; // 50MB
+
+	/**
+	 * Tải lên tệp media (ảnh/audio) phục vụ ngân hàng câu hỏi.
+	 */
+	public String uploadMedia(Long teacherId, MultipartFile file) {
+		assertTeacherOrAdmin(teacherId);
+
+		if (file == null || file.isEmpty()) {
+			throw new ApiException(ApiErrorCode.VALIDATION_FAILED);
+		}
+
+		if (file.getSize() > MAX_MEDIA_BYTES) {
+			throw new ApiException(ApiErrorCode.FILE_TOO_LARGE);
+		}
+
+		String originalName = file.getOriginalFilename();
+		String ext = "";
+		if (originalName != null && originalName.contains(".")) {
+			ext = originalName.substring(originalName.lastIndexOf(".")).toLowerCase().trim();
+		}
+
+		String contentType = file.getContentType() != null ? file.getContentType().toLowerCase().trim() : "";
+
+		boolean isImage = List.of(".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg", ".bmp").contains(ext)
+				|| contentType.startsWith("image/");
+		boolean isAudio = List.of(".mp3", ".wav", ".ogg", ".m4a", ".aac", ".flac", ".wma", ".webm", ".weba", ".opus", ".mp4", ".m4p").contains(ext)
+				|| contentType.startsWith("audio/")
+				|| contentType.equals("video/mp4")
+				|| contentType.equals("video/webm");
+
+		if (!isImage && !isAudio) {
+			throw new ApiException(ApiErrorCode.INVALID_FILE_FORMAT);
+		}
+
+		if (ext.isEmpty()) {
+			ext = isImage ? ".jpg" : ".mp3";
+		}
+
+		try {
+			Path baseDir = Paths.get("uploads").toAbsolutePath();
+			Path dir = baseDir.resolve(isImage ? "images" : "audio");
+			if (!Files.exists(dir)) {
+				Files.createDirectories(dir);
+			}
+
+			String prefix = isImage ? "img_" : "audio_";
+			String filename = prefix + UUID.randomUUID() + ext;
+			Path targetPath = dir.resolve(filename);
+			Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
+
+			return "/uploads/" + (isImage ? "images" : "audio") + "/" + filename;
+		} catch (IOException e) {
+			log.error("Failed to save uploaded question media file", e);
+			throw new ApiException(ApiErrorCode.INTERNAL_ERROR);
+		}
 	}
 
 	/**

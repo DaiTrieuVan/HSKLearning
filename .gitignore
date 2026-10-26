@@ -19,4 +19,6 @@ Thumbs.db
 .env.*
 !.env.example
 
-
+### Uploaded media ###
+uploads/*
+!uploads/.gitkeep

@@ -12,6 +12,8 @@ import {
   FileCheck,
   ShieldCheck,
   GraduationCap,
+  Headphones,
+  Award,
   User,
   LogOut,
   ChevronLeft,
@@ -206,6 +208,17 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ isCollapsed, onToggleCol
                 {!isCollapsed && <span>Đề thi thử HSK</span>}
               </button>
 
+              {/* 5.1. Thi thử Chuẩn HSK 3.0 */}
+              <button
+                type="button"
+                onClick={() => navigate('/hsk30/exams')}
+                style={navItemStyle(isActive('/hsk30/exams'))}
+                title={isCollapsed ? 'Thi thử HSK 3.0' : undefined}
+              >
+                <Award size={20} style={{ flexShrink: 0, color: isActive('/hsk30/exams') ? 'var(--primary)' : '#64748b' }} />
+                {!isCollapsed && <span>Thi thử HSK 3.0</span>}
+              </button>
+
               {/* 6. Tra cứu từ vựng (Hỗ trợ soạn bài) */}
               <button
                 type="button"
@@ -253,6 +266,28 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ isCollapsed, onToggleCol
               >
                 <BookOpen size={20} style={{ flexShrink: 0, color: isActive('/curriculum') ? 'var(--primary)' : '#64748b' }} />
                 {!isCollapsed && <span>Giáo trình & Bài học</span>}
+              </button>
+
+              {/* 3.1. Luyện nghe hiểu (HTT-10-CN-001) */}
+              <button
+                type="button"
+                onClick={() => navigate('/listening')}
+                style={navItemStyle(isActive('/listening'))}
+                title={isCollapsed ? 'Luyện nghe hiểu' : undefined}
+              >
+                <Headphones size={20} style={{ flexShrink: 0, color: isActive('/listening') ? 'var(--primary)' : '#64748b' }} />
+                {!isCollapsed && <span>Luyện nghe hiểu</span>}
+              </button>
+
+              {/* 3.2. Thi thử Chuẩn HSK 3.0 */}
+              <button
+                type="button"
+                onClick={() => navigate('/hsk30/exams')}
+                style={navItemStyle(isActive('/hsk30/exams'))}
+                title={isCollapsed ? 'Thi thử HSK 3.0' : undefined}
+              >
+                <Award size={20} style={{ flexShrink: 0, color: isActive('/hsk30/exams') ? 'var(--primary)' : '#64748b' }} />
+                {!isCollapsed && <span>Thi thử HSK 3.0</span>}
               </button>
 
               {/* 4. Ôn từ SRS */}

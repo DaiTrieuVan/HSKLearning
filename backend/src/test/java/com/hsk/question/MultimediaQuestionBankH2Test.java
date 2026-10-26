@@ -35,6 +35,9 @@ import com.hsk.common.audit.AuditLogRepository;
 import com.hsk.question.domain.QuestionType;
 import com.hsk.question.dto.CreateQuestionOptionRequest;
 import com.hsk.question.dto.CreateQuestionRequest;
+import com.hsk.question.dto.CreateImageMatchGroupRequest;
+import com.hsk.question.dto.ImageMatchSubQuestionDto;
+import com.hsk.question.dto.ImagePoolItemDto;
 import com.hsk.question.dto.UpdateQuestionRequest;
 import com.hsk.question.repository.QuestionOptionRepository;
 import com.hsk.question.repository.QuestionRepository;
@@ -308,5 +311,63 @@ class MultimediaQuestionBankH2Test {
 				.andExpect(jsonPath("$.imageUrl", is("/uploads/images/updated_q2.png")))
 				.andExpect(jsonPath("$.hskLevel", is(3)))
 				.andExpect(jsonPath("$.options[0].imageUrl", is("/uploads/images/opt_new.png")));
+	}
+
+	@Test
+	@DisplayName("Tạo Nhóm câu hỏi ghép tranh HSK: 1 kho ảnh A-F dùng chung cho 5 câu hỏi con")
+	void testCreateImageMatchGroup_SharedImagePool() throws Exception {
+		// Tạo request nhóm ghép tranh HSK 1 với 6 ảnh A-F và 5 câu con
+		List<ImagePoolItemDto> pool = List.of(
+				new ImagePoolItemDto("A", "/uploads/images/hsk_apple.png"),
+				new ImagePoolItemDto("B", "/uploads/images/hsk_car.png"),
+				new ImagePoolItemDto("C", "/uploads/images/hsk_hospital.png"),
+				new ImagePoolItemDto("D", "/uploads/images/hsk_bowl.png"),
+				new ImagePoolItemDto("E", "/uploads/images/hsk_book.png"),
+				new ImagePoolItemDto("F", "/uploads/images/hsk_house.png")
+		);
+
+		List<ImageMatchSubQuestionDto> subs = List.of(
+				new ImageMatchSubQuestionDto("Câu 1: 苹果", "/uploads/audio/sub1.mp3", "píngguǒ", "A", "A là quả táo"),
+				new ImageMatchSubQuestionDto("Câu 2: 出租车", "/uploads/audio/sub2.mp3", "chūzūchē", "B", "B là xe taxi"),
+				new ImageMatchSubQuestionDto("Câu 3: 医院", "/uploads/audio/sub3.mp3", "yīyuàn", "C", "C là bệnh viện"),
+				new ImageMatchSubQuestionDto("Câu 4: 米饭", "/uploads/audio/sub4.mp3", "mǐfàn", "D", "D là bát cơm"),
+				new ImageMatchSubQuestionDto("Câu 5: 看书", "/uploads/audio/sub5.mp3", "kànshū", "E", "E là đọc sách")
+		);
+
+		CreateImageMatchGroupRequest groupReq = new CreateImageMatchGroupRequest(
+				"Phần 1: Nghe và ghép tranh (Câu 1 - 5)",
+				1,
+				"/uploads/audio/group_listening.mp3",
+				"Hướng dẫn làm bài ghép tranh HSK 1",
+				pool,
+				subs
+		);
+
+		MvcResult result = mockMvc.perform(post(QUESTIONS_URL + "/image-match-group")
+						.contentType(MediaType.APPLICATION_JSON)
+						.header("Authorization", "Bearer " + teacherToken)
+						.content(objectMapper.writeValueAsString(groupReq)))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.parentQuestion.content", is("Phần 1: Nghe và ghép tranh (Câu 1 - 5)")))
+				.andExpect(jsonPath("$.parentQuestion.hskLevel", is(1)))
+				.andExpect(jsonPath("$.parentQuestion.audioUrl", is("/uploads/audio/group_listening.mp3")))
+				.andExpect(jsonPath("$.parentQuestion.imagePool", hasSize(6)))
+				.andExpect(jsonPath("$.parentQuestion.imagePool[0].label", is("A")))
+				.andExpect(jsonPath("$.parentQuestion.imagePool[0].imageUrl", is("/uploads/images/hsk_apple.png")))
+				.andExpect(jsonPath("$.subQuestions", hasSize(5)))
+				.andExpect(jsonPath("$.subQuestions[0].content", is("Câu 1: 苹果")))
+				.andExpect(jsonPath("$.subQuestions[0].audioUrl", is("/uploads/audio/sub1.mp3")))
+				.andExpect(jsonPath("$.subQuestions[0].options", hasSize(6)))
+				.andExpect(jsonPath("$.subQuestions[0].options[0].content", is("A")))
+				.andExpect(jsonPath("$.subQuestions[0].options[0].isCorrect", is(true)))
+				.andExpect(jsonPath("$.subQuestions[0].options[0].imageUrl", is("/uploads/images/hsk_apple.png")))
+				.andExpect(jsonPath("$.subQuestions[0].options[1].isCorrect", is(false)))
+				.andReturn();
+
+		JsonNode json = objectMapper.readTree(result.getResponse().getContentAsString());
+		Long parentId = json.get("parentQuestion").get("id").asLong();
+		assertNotNull(parentId);
+		Long child1ParentId = json.get("subQuestions").get(0).get("parentId").asLong();
+		assertEquals(parentId, child1ParentId);
 	}
 }

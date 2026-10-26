@@ -26,13 +26,23 @@ import com.hsk.question.domain.QuestionEntity;
 import com.hsk.question.repository.QuestionRepository;
 import com.hsk.question.service.QuestionService;
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import com.hsk.account.repository.UserRepository;
+import com.hsk.assignment.domain.AssignmentEntity;
+import com.hsk.assignment.domain.AssignmentSubmissionEntity;
+import com.hsk.assignment.domain.SubmissionStatus;
+import com.hsk.assignment.repository.AssignmentSubmissionRepository;
+import com.hsk.classroom.domain.ClassEntity;
+import com.hsk.exercise.dto.MockExamHistoryItemDto;
+import com.hsk.exercise.dto.MockExamHistoryResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,6 +59,8 @@ public class ExerciseService {
 	private final QuestionRepository questionRepository;
 	private final QuestionService questionService;
 	private final UserRoleRepository userRoleRepository;
+	private final AssignmentSubmissionRepository assignmentSubmissionRepository;
+	private final UserRepository userRepository;
 
 	public ExerciseService(
 			ExerciseRepository exerciseRepository,
@@ -56,7 +68,9 @@ public class ExerciseService {
 			ExerciseSectionRepository exerciseSectionRepository,
 			QuestionRepository questionRepository,
 			QuestionService questionService,
-			UserRoleRepository userRoleRepository
+			UserRoleRepository userRoleRepository,
+			AssignmentSubmissionRepository assignmentSubmissionRepository,
+			UserRepository userRepository
 	) {
 		this.exerciseRepository = exerciseRepository;
 		this.exerciseQuestionRepository = exerciseQuestionRepository;
@@ -64,6 +78,8 @@ public class ExerciseService {
 		this.questionRepository = questionRepository;
 		this.questionService = questionService;
 		this.userRoleRepository = userRoleRepository;
+		this.assignmentSubmissionRepository = assignmentSubmissionRepository;
+		this.userRepository = userRepository;
 	}
 
 	/**
@@ -592,6 +608,109 @@ public class ExerciseService {
 				sectionResponses,
 				entity.getCreatedAt(),
 				entity.getUpdatedAt()
+		);
+	}
+
+	/**
+	 * Lấy lịch sử các đề thi thử HSK đã làm của học sinh (HTT-09-CN-004 / QTN-02).
+	 */
+	@Transactional(readOnly = true)
+	public MockExamHistoryResponse getMockExamHistory(Long studentId) {
+		userRepository.findById(studentId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.UNAUTHORIZED));
+
+		List<AssignmentSubmissionEntity> submissions = assignmentSubmissionRepository.findStudentMockExamHistory(
+				studentId,
+				List.of(SubmissionStatus.SUBMITTED, SubmissionStatus.AUTO_SUBMITTED, SubmissionStatus.GRADED)
+		);
+
+		if (submissions.isEmpty()) {
+			return new MockExamHistoryResponse(0, 0, BigDecimal.ZERO, Collections.emptyList());
+		}
+
+		List<MockExamHistoryItemDto> items = new ArrayList<>();
+		int totalPassed = 0;
+		BigDecimal sumEffectiveScore = BigDecimal.ZERO;
+
+		for (AssignmentSubmissionEntity sub : submissions) {
+			AssignmentEntity assignment = sub.getAssignment();
+			ExerciseEntity exercise = assignment != null ? assignment.getExercise() : null;
+			ClassEntity classroom = assignment != null ? assignment.getClassroom() : null;
+
+			Long assignmentId = assignment != null ? assignment.getId() : null;
+			Long mockExamId = exercise != null ? exercise.getId() : null;
+			String title = assignment != null && assignment.getTitle() != null ? assignment.getTitle()
+					: (exercise != null ? exercise.getTitle() : "Đề thi thử HSK");
+			Integer hskLevel = exercise != null ? exercise.getHskLevel() : null;
+			Long classId = classroom != null ? classroom.getId() : null;
+			String className = classroom != null ? classroom.getTitle() : null;
+
+			BigDecimal score = sub.getScore();
+			BigDecimal adjustedScore = sub.getAdjustedScore();
+			BigDecimal effectiveScore = adjustedScore != null ? adjustedScore : (score != null ? score : BigDecimal.ZERO);
+			BigDecimal maxScore = (assignment != null && assignment.getTotalPoints() != null)
+					? assignment.getTotalPoints()
+					: (exercise != null && exercise.getTotalPoints() != null ? exercise.getTotalPoints() : BigDecimal.ZERO);
+
+			int percentage = 0;
+			if (maxScore.compareTo(BigDecimal.ZERO) > 0) {
+				percentage = effectiveScore.multiply(new BigDecimal(100))
+						.divide(maxScore, 0, java.math.RoundingMode.HALF_UP)
+						.intValue();
+			}
+
+			BigDecimal passingScore = exercise != null ? exercise.getPassingScore() : null;
+			boolean isPassed;
+			if (passingScore != null) {
+				isPassed = effectiveScore.compareTo(passingScore) >= 0;
+			} else {
+				isPassed = percentage >= 60;
+			}
+
+			if (isPassed) {
+				totalPassed++;
+			}
+			sumEffectiveScore = sumEffectiveScore.add(effectiveScore);
+
+			Integer timeSpentSeconds = null;
+			if (sub.getStartedAt() != null && sub.getSubmittedAt() != null) {
+				long seconds = Duration.between(sub.getStartedAt(), sub.getSubmittedAt()).getSeconds();
+				timeSpentSeconds = (int) Math.max(0, seconds);
+			}
+
+			items.add(new MockExamHistoryItemDto(
+					sub.getId(),
+					assignmentId,
+					mockExamId,
+					title,
+					hskLevel,
+					classId,
+					className,
+					sub.getAttemptNumber(),
+					score,
+					adjustedScore,
+					effectiveScore,
+					maxScore,
+					percentage,
+					passingScore,
+					isPassed,
+					sub.getStartedAt(),
+					sub.getSubmittedAt(),
+					timeSpentSeconds
+			));
+		}
+
+		BigDecimal averageScore = sumEffectiveScore.divide(
+				BigDecimal.valueOf(submissions.size()),
+				2,
+				java.math.RoundingMode.HALF_UP
+		);
+
+		return new MockExamHistoryResponse(
+				submissions.size(),
+				totalPassed,
+				averageScore,
+				items
 		);
 	}
 }

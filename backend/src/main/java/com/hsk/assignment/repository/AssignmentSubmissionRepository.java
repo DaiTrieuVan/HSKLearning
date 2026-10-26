@@ -104,4 +104,23 @@ public interface AssignmentSubmissionRepository extends JpaRepository<Assignment
 			@org.springframework.data.repository.query.Param("startOfDay") java.time.Instant startOfDay,
 			@org.springframework.data.repository.query.Param("endOfDay") java.time.Instant endOfDay
 	);
+	/**
+	 * Lấy lịch sử làm đề thi thử HSK của học sinh (kèm join fetch assignment, exercise, classroom)
+	 * sắp xếp theo thời gian nộp giảm dần (HTT-09-CN-004 / QTN-02).
+	 * Tránh N+1 query triệt để (Senior Backend Mode).
+	 */
+	@org.springframework.data.jpa.repository.Query("""
+		SELECT s FROM AssignmentSubmissionEntity s
+		JOIN FETCH s.assignment a
+		JOIN FETCH a.exercise e
+		LEFT JOIN FETCH a.classroom c
+		WHERE s.student.id = :studentId
+		  AND e.exerciseType = com.hsk.exercise.domain.ExerciseType.MOCK_EXAM
+		  AND s.status IN :statuses
+		ORDER BY s.submittedAt DESC, s.id DESC
+	""")
+	List<AssignmentSubmissionEntity> findStudentMockExamHistory(
+			@org.springframework.data.repository.query.Param("studentId") Long studentId,
+			@org.springframework.data.repository.query.Param("statuses") java.util.Collection<com.hsk.assignment.domain.SubmissionStatus> statuses
+	);
 }

@@ -150,6 +150,18 @@ public class ExerciseController {
 		return ResponseEntity.ok(response);
 	}
 
+	@GetMapping("/mock-exams/history")
+	@PreAuthorize("isAuthenticated()")
+	@Operation(
+			summary = "HTT-09-CN-004 — Xem lịch sử các đề thi thử đã làm",
+			description = "Học sinh xem lại danh sách đề thi thử đã làm, điểm số, ngày làm và kết quả đạt/chưa đạt (QTN-02)."
+	)
+	public ResponseEntity<com.hsk.exercise.dto.MockExamHistoryResponse> getMockExamHistory(Principal principal) {
+		UserEntity user = requireUser(principal);
+		com.hsk.exercise.dto.MockExamHistoryResponse response = exerciseService.getMockExamHistory(user.getId());
+		return ResponseEntity.ok(response);
+	}
+
 	@GetMapping("/mock-exams/{id}")
 	@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
 	@Operation(

@@ -116,3 +116,53 @@ export async function getMockExamDetail(id: number, token: string): Promise<Mock
 
   return data as MockExamItem
 }
+
+export interface MockExamHistoryItem {
+  submissionId: number
+  assignmentId: number
+  mockExamId: number
+  title: string
+  hskLevel: number
+  classId?: number
+  className?: string
+  attemptNumber: number
+  score: number
+  adjustedScore?: number
+  effectiveScore: number
+  maxScore: number
+  percentage: number
+  passingScore?: number
+  isPassed: boolean
+  startedAt?: string
+  submittedAt?: string
+  timeSpentSeconds?: number
+}
+
+export interface MockExamHistoryResponse {
+  totalExamsTaken: number
+  totalPassed: number
+  averageScore: number
+  items: MockExamHistoryItem[]
+}
+
+export async function getMockExamHistory(token: string): Promise<MockExamHistoryResponse> {
+  const response = await fetch(`${API_BASE}/history`, {
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  const data = await response.json().catch(() => null)
+
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'UNKNOWN_ERROR',
+      data?.message || 'Không thể lấy lịch sử thi thử HSK',
+      data?.fields
+    )
+  }
+
+  return data as MockExamHistoryResponse
+}

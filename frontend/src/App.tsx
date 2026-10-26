@@ -19,6 +19,7 @@ import { AssignmentSubmissionsPage } from './pages/classroom/AssignmentSubmissio
 import { StudentSubmissionDetailPage } from './pages/classroom/StudentSubmissionDetailPage'
 import { PersonalProgressPage } from './pages/progress/PersonalProgressPage'
 import { SubmissionHistoryPage } from './pages/progress/SubmissionHistoryPage'
+import { MockExamHistoryPage } from './pages/progress/MockExamHistoryPage'
 
 import { ClassGradebookPage } from './pages/classroom/ClassGradebookPage'
 import { ClassStudentProgressPage } from './pages/classroom/ClassStudentProgressPage'
@@ -52,6 +53,7 @@ function AppRoutes() {
         <Route path="/questions" element={<QuestionBankPage />} />
         <Route path="/exercises" element={<ExerciseManagementPage />} />
         <Route path="/mock-exams" element={<MockExamManagementPage />} />
+        <Route path="/mock-exams/history" element={<MockExamHistoryPage />} />
         <Route path="/classes/create" element={<CreateClassPage />} />
         <Route path="/classes/join" element={<JoinClassPage />} />
         <Route path="/classes/:classId" element={<ClassDetailPage />} />

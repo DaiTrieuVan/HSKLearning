@@ -17,4 +17,6 @@ public interface AssignmentRepository extends JpaRepository<AssignmentEntity, Lo
 	List<AssignmentEntity> findByTeacher_IdOrderByCreatedAtDesc(Long teacherId);
 
 	boolean existsByExercise_Id(Long exerciseId);
+
+	java.util.Optional<AssignmentEntity> findFirstByExercise_Id(Long exerciseId);
 }

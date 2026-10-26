@@ -36,6 +36,9 @@ public class QuestionOptionEntity {
 	@Column(name = "sort_order", nullable = false)
 	private int sortOrder = 1;
 
+	@Column(name = "image_url", length = 500)
+	private String imageUrl;
+
 	@CreationTimestamp
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private Instant createdAt;
@@ -44,9 +47,14 @@ public class QuestionOptionEntity {
 	}
 
 	public QuestionOptionEntity(String content, boolean isCorrect, int sortOrder) {
+		this(content, isCorrect, sortOrder, null);
+	}
+
+	public QuestionOptionEntity(String content, boolean isCorrect, int sortOrder, String imageUrl) {
 		this.content = content;
 		this.isCorrect = isCorrect;
 		this.sortOrder = sortOrder;
+		this.imageUrl = imageUrl;
 	}
 
 	public Long getId() {
@@ -83,6 +91,14 @@ public class QuestionOptionEntity {
 
 	public void setSortOrder(int sortOrder) {
 		this.sortOrder = sortOrder;
+	}
+
+	public String getImageUrl() {
+		return imageUrl;
+	}
+
+	public void setImageUrl(String imageUrl) {
+		this.imageUrl = imageUrl;
 	}
 
 	public Instant getCreatedAt() {

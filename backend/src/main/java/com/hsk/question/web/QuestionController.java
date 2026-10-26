@@ -170,15 +170,18 @@ public class QuestionController {
 		return ResponseEntity.ok(response);
 	}
 
-	@GetMapping("/search")
+	@GetMapping({"/search", "/my-questions"})
 	@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
 	@Operation(
 			summary = "Tìm kiếm và phân trang câu hỏi trong ngân hàng của tôi",
-			description = "Hỗ trợ lọc theo từ khóa, loại câu hỏi, phân trang và sắp xếp (QTN-19)."
+			description = "Hỗ trợ lọc theo từ khóa, loại câu hỏi, cấp độ HSK, âm thanh/hình ảnh, phân trang và sắp xếp (QTN-19)."
 	)
 	public ResponseEntity<Page<QuestionResponse>> searchMyQuestions(
 			@RequestParam(required = false) String keyword,
 			@RequestParam(required = false) QuestionType type,
+			@RequestParam(required = false) Integer hskLevel,
+			@RequestParam(required = false) Boolean hasAudio,
+			@RequestParam(required = false) Boolean hasImage,
 			@RequestParam(defaultValue = "0") int page,
 			@RequestParam(defaultValue = "20") int size,
 			@RequestParam(defaultValue = "createdAt") String sortBy,
@@ -193,8 +196,23 @@ public class QuestionController {
 		};
 		Sort sort = sortDir.equalsIgnoreCase("asc") ? Sort.by(safeSortBy).ascending() : Sort.by(safeSortBy).descending();
 		Pageable pageable = PageRequest.of(Math.max(0, page), Math.min(Math.max(1, size), 100), sort);
-		Page<QuestionResponse> result = questionService.searchMyQuestions(user.getId(), keyword, type, pageable);
+		Page<QuestionResponse> result = questionService.searchMyQuestions(user.getId(), keyword, type, hskLevel, hasAudio, hasImage, pageable);
 		return ResponseEntity.ok(result);
+	}
+
+	@PostMapping(value = "/upload-media", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
+	@Operation(
+			summary = "Upload tệp media (ảnh/audio) cho câu hỏi trong ngân hàng",
+			description = "Hỗ trợ tải lên hình ảnh (PNG, JPG, WEBP, SVG) hoặc âm thanh (MP3, WAV, M4A) lưu vào hệ thống."
+	)
+	public ResponseEntity<java.util.Map<String, String>> uploadMedia(
+			@RequestParam("file") MultipartFile file,
+			Principal principal
+	) {
+		UserEntity user = requireUser(principal);
+		String url = questionService.uploadMedia(user.getId(), file);
+		return ResponseEntity.ok(java.util.Map.of("url", url));
 	}
 
 	@PostMapping("/bulk-delete")
@@ -212,7 +230,7 @@ public class QuestionController {
 		return ResponseEntity.ok(result);
 	}
 
-	@GetMapping("/{id}")
+	@GetMapping("/{id:\\d+}")
 	@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
 	@Operation(
 			summary = "HTT-05-CN-005 / TC-06 — Xem chi tiết câu hỏi",
@@ -227,7 +245,7 @@ public class QuestionController {
 		return ResponseEntity.ok(response);
 	}
 
-	@PutMapping("/{id}")
+	@PutMapping("/{id:\\d+}")
 	@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
 	@Operation(
 			summary = "HTT-05-CN-005 / TC-02, TC-03 — Cập nhật câu hỏi trong ngân hàng",
@@ -243,7 +261,7 @@ public class QuestionController {
 		return ResponseEntity.ok(response);
 	}
 
-	@DeleteMapping("/{id}")
+	@DeleteMapping("/{id:\\d+}")
 	@PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
 	@Operation(
 			summary = "HTT-05-CN-005 / TC-04, TC-05 — Xóa hoặc ẩn câu hỏi",

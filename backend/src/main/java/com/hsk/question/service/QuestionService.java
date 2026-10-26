@@ -40,11 +40,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import java.util.Random;
@@ -356,7 +361,7 @@ public class QuestionService {
 				: null;
 
 		String payload = request.payload();
-		if (request.audioUrl() != null || request.transcript() != null || request.pinyin() != null) {
+		if (request.audioUrl() != null || request.transcript() != null || request.pinyin() != null || request.imageUrl() != null) {
 			try {
 				com.fasterxml.jackson.databind.node.ObjectNode node;
 				if (payload != null && !payload.isBlank()) {
@@ -374,6 +379,9 @@ public class QuestionService {
 				if (request.pinyin() != null && !request.pinyin().isBlank()) {
 					node.put("pinyin", request.pinyin().trim());
 				}
+				if (request.imageUrl() != null && !request.imageUrl().isBlank()) {
+					node.put("imageUrl", request.imageUrl().trim());
+				}
 				payload = objectMapper.writeValueAsString(node);
 			} catch (Exception ignored) {
 			}
@@ -386,6 +394,12 @@ public class QuestionService {
 				explanation,
 				payload
 		);
+		if (request.hskLevel() != null) {
+			question.setHskLevel(request.hskLevel());
+		}
+		if (request.parentId() != null) {
+			questionRepository.findById(request.parentId()).ifPresent(question::setParent);
+		}
 
 		int order = 1;
 		for (CreateQuestionOptionRequest opt : request.options()) {
@@ -394,6 +408,9 @@ public class QuestionService {
 					Boolean.TRUE.equals(opt.isCorrect()),
 					order++
 			);
+			if (opt.imageUrl() != null && !opt.imageUrl().isBlank()) {
+				optionEntity.setImageUrl(opt.imageUrl().trim());
+			}
 			question.addOption(optionEntity);
 		}
 
@@ -560,11 +577,24 @@ public class QuestionService {
 	 * Tìm kiếm câu hỏi trong ngân hàng của giáo viên có phân trang và bộ lọc.
 	 */
 	@Transactional(readOnly = true)
-	public Page<QuestionResponse> searchMyQuestions(Long teacherId, String keyword, QuestionType type, Pageable pageable) {
+	public Page<QuestionResponse> searchMyQuestions(
+			Long teacherId,
+			String keyword,
+			QuestionType type,
+			Integer hskLevel,
+			Boolean hasAudio,
+			Boolean hasImage,
+			Pageable pageable
+	) {
 		assertTeacherOrAdmin(teacherId);
 		String searchKeyword = (keyword != null && !keyword.trim().isEmpty()) ? keyword.trim() : null;
-		Page<QuestionEntity> page = questionRepository.searchMyQuestions(teacherId, searchKeyword, type, pageable);
+		Page<QuestionEntity> page = questionRepository.searchMyQuestions(teacherId, searchKeyword, type, hskLevel, hasAudio, hasImage, pageable);
 		return page.map(this::mapToResponse);
+	}
+
+	@Transactional(readOnly = true)
+	public Page<QuestionResponse> searchMyQuestions(Long teacherId, String keyword, QuestionType type, Pageable pageable) {
+		return searchMyQuestions(teacherId, keyword, type, null, null, null, pageable);
 	}
 
 	/**
@@ -604,7 +634,8 @@ public class QuestionService {
 						opt.getId(),
 						opt.getContent(),
 						opt.isCorrect(),
-						opt.getSortOrder()
+						opt.getSortOrder(),
+						opt.getImageUrl()
 				));
 			}
 		}
@@ -612,6 +643,7 @@ public class QuestionService {
 		String audioUrl = null;
 		String transcript = null;
 		String pinyin = null;
+		String imageUrl = null;
 		if (entity.getPayload() != null && !entity.getPayload().isBlank()) {
 			try {
 				com.fasterxml.jackson.databind.JsonNode node = objectMapper.readTree(entity.getPayload());
@@ -623,6 +655,9 @@ public class QuestionService {
 				}
 				if (node.hasNonNull("pinyin")) {
 					pinyin = node.get("pinyin").asText();
+				}
+				if (node.hasNonNull("imageUrl")) {
+					imageUrl = node.get("imageUrl").asText();
 				}
 			} catch (Exception ignored) {
 			}
@@ -639,7 +674,10 @@ public class QuestionService {
 				entity.getCreatedAt(),
 				audioUrl,
 				transcript,
-				pinyin
+				pinyin,
+				imageUrl,
+				entity.getHskLevel(),
+				entity.getParent() != null ? entity.getParent().getId() : null
 		);
 	}
 
@@ -766,6 +804,9 @@ public class QuestionService {
 						Boolean.TRUE.equals(optReq.isCorrect()),
 						order++
 				);
+				if (optReq.imageUrl() != null && !optReq.imageUrl().isBlank()) {
+					opt.setImageUrl(optReq.imageUrl().trim());
+				}
 				question.addOption(opt);
 			}
 		} else {
@@ -775,9 +816,97 @@ public class QuestionService {
 			}
 		}
 
+		if (request.audioUrl() != null || request.transcript() != null || request.pinyin() != null || request.imageUrl() != null) {
+			try {
+				com.fasterxml.jackson.databind.node.ObjectNode node;
+				String curPayload = question.getPayload();
+				if (curPayload != null && !curPayload.isBlank()) {
+					com.fasterxml.jackson.databind.JsonNode parsed = objectMapper.readTree(curPayload);
+					node = parsed.isObject() ? (com.fasterxml.jackson.databind.node.ObjectNode) parsed : objectMapper.createObjectNode();
+				} else {
+					node = objectMapper.createObjectNode();
+				}
+				if (request.audioUrl() != null) {
+					if (request.audioUrl().isBlank()) node.remove("audioUrl");
+					else node.put("audioUrl", request.audioUrl().trim());
+				}
+				if (request.imageUrl() != null) {
+					if (request.imageUrl().isBlank()) node.remove("imageUrl");
+					else node.put("imageUrl", request.imageUrl().trim());
+				}
+				if (request.transcript() != null) {
+					if (request.transcript().isBlank()) node.remove("transcript");
+					else node.put("transcript", request.transcript().trim());
+				}
+				if (request.pinyin() != null) {
+					if (request.pinyin().isBlank()) node.remove("pinyin");
+					else node.put("pinyin", request.pinyin().trim());
+				}
+				question.setPayload(objectMapper.writeValueAsString(node));
+			} catch (Exception ignored) {
+			}
+		}
+
+		if (request.hskLevel() != null) {
+			question.setHskLevel(request.hskLevel());
+		}
+		if (request.parentId() != null) {
+			questionRepository.findById(request.parentId()).ifPresent(question::setParent);
+		}
+
 		// QTN-10: Sửa câu hỏi trong ngân hàng không ảnh hưởng nội dung snapshot đã chụp trong các lần giao bài trước
 		QuestionEntity saved = questionRepository.save(question);
 		return mapToResponse(saved);
+	}
+
+	private static final long MAX_MEDIA_BYTES = 15 * 1024 * 1024; // 15MB
+	private static final String UPLOAD_IMAGES_DIR = "uploads/images";
+	private static final String UPLOAD_AUDIO_DIR = "uploads/audio";
+
+	/**
+	 * Tải lên tệp media (ảnh/audio) phục vụ ngân hàng câu hỏi.
+	 */
+	public String uploadMedia(Long teacherId, MultipartFile file) {
+		assertTeacherOrAdmin(teacherId);
+
+		if (file == null || file.isEmpty()) {
+			throw new ApiException(ApiErrorCode.VALIDATION_FAILED);
+		}
+
+		if (file.getSize() > MAX_MEDIA_BYTES) {
+			throw new ApiException(ApiErrorCode.FILE_TOO_LARGE);
+		}
+
+		String originalName = file.getOriginalFilename();
+		String ext = "";
+		if (originalName != null && originalName.contains(".")) {
+			ext = originalName.substring(originalName.lastIndexOf(".")).toLowerCase();
+		}
+
+		boolean isImage = List.of(".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg").contains(ext);
+		boolean isAudio = List.of(".mp3", ".wav", ".ogg", ".m4a").contains(ext);
+
+		if (!isImage && !isAudio) {
+			throw new ApiException(ApiErrorCode.INVALID_FILE_FORMAT);
+		}
+
+		try {
+			String subDir = isImage ? UPLOAD_IMAGES_DIR : UPLOAD_AUDIO_DIR;
+			Path dir = Paths.get(subDir);
+			if (!Files.exists(dir)) {
+				Files.createDirectories(dir);
+			}
+
+			String prefix = isImage ? "img_" : "audio_";
+			String filename = prefix + UUID.randomUUID() + ext;
+			Path targetPath = dir.resolve(filename);
+			Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
+
+			return "/" + subDir + "/" + filename;
+		} catch (IOException e) {
+			log.error("Failed to save uploaded question media file", e);
+			throw new ApiException(ApiErrorCode.INTERNAL_ERROR);
+		}
 	}
 
 	/**

@@ -35,6 +35,17 @@ public class QuestionEntity {
 	@Column(name = "type", nullable = false, length = 50)
 	private QuestionType type = QuestionType.MCQ;
 
+	@Column(name = "hsk_level")
+	private Integer hskLevel;
+
+	@jakarta.persistence.ManyToOne(fetch = jakarta.persistence.FetchType.LAZY)
+	@jakarta.persistence.JoinColumn(name = "parent_id")
+	private QuestionEntity parent;
+
+	@OneToMany(mappedBy = "parent", cascade = CascadeType.ALL)
+	@OrderBy("id ASC")
+	private List<QuestionEntity> children = new ArrayList<>();
+
 	@Column(name = "content", nullable = false, columnDefinition = "TEXT")
 	private String content;
 
@@ -139,6 +150,30 @@ public class QuestionEntity {
 
 	public void setOptions(List<QuestionOptionEntity> options) {
 		this.options = options;
+	}
+
+	public Integer getHskLevel() {
+		return hskLevel;
+	}
+
+	public void setHskLevel(Integer hskLevel) {
+		this.hskLevel = hskLevel;
+	}
+
+	public QuestionEntity getParent() {
+		return parent;
+	}
+
+	public void setParent(QuestionEntity parent) {
+		this.parent = parent;
+	}
+
+	public List<QuestionEntity> getChildren() {
+		return children;
+	}
+
+	public void setChildren(List<QuestionEntity> children) {
+		this.children = children;
 	}
 
 	public Instant getCreatedAt() {

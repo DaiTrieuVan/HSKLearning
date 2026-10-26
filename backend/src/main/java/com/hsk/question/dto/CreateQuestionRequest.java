@@ -27,7 +27,16 @@ public record CreateQuestionRequest(
 	String transcript,
 
 	@Schema(description = "Phiên âm pinyin")
-	String pinyin
+	String pinyin,
+
+	@Schema(description = "Đường dẫn ảnh minh họa cho câu hỏi", example = "/uploads/images/question_01.png")
+	String imageUrl,
+
+	@Schema(description = "Cấp độ HSK", example = "1")
+	Integer hskLevel,
+
+	@Schema(description = "ID câu hỏi cha / bài đọc (nếu là câu hỏi chùm)", example = "10")
+	Long parentId
 ) {
 	// Constructor tương thích ngược cho 5 tham số ban đầu
 	public CreateQuestionRequest(
@@ -37,6 +46,20 @@ public record CreateQuestionRequest(
 			String payload,
 			List<CreateQuestionOptionRequest> options
 	) {
-		this(content, explanation, type, payload, options, null, null, null);
+		this(content, explanation, type, payload, options, null, null, null, null, null, null);
+	}
+
+	// Constructor tương thích ngược cho 8 tham số
+	public CreateQuestionRequest(
+			String content,
+			String explanation,
+			QuestionType type,
+			String payload,
+			List<CreateQuestionOptionRequest> options,
+			String audioUrl,
+			String transcript,
+			String pinyin
+	) {
+		this(content, explanation, type, payload, options, audioUrl, transcript, pinyin, null, null, null);
 	}
 }

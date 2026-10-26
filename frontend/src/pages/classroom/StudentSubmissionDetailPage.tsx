@@ -6,9 +6,15 @@ import {
   AlertCircle,
   Edit3,
   Check,
+  X,
   ChevronLeft,
   ChevronRight,
   RefreshCw,
+  BarChart2,
+  BookOpen,
+  Sparkles,
+  Award,
+  ArrowRight,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import {
@@ -341,6 +347,47 @@ export const StudentSubmissionDetailPage: React.FC = () => {
                 Điểm gốc tự động: <strong>{submission.score}</strong> điểm • Lý do điều chỉnh: "{submission.adjustReason}"
               </div>
             )}
+            {submission.passingScore != null && (
+              <div style={{ marginTop: '10px' }}>
+                {submission.isPassed ? (
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '4px 12px',
+                      borderRadius: 'var(--radius-full)',
+                      backgroundColor: '#ecfdf5',
+                      border: '1.5px solid #10b981',
+                      color: '#047857',
+                      fontWeight: 800,
+                      fontSize: '0.8rem',
+                    }}
+                  >
+                    <Check size={14} />
+                    <span>KẾT QUẢ THI THỬ: ĐẠT (≥ {submission.passingScore} điểm)</span>
+                  </span>
+                ) : (
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '4px 12px',
+                      borderRadius: 'var(--radius-full)',
+                      backgroundColor: '#fef2f2',
+                      border: '1.5px solid #ef4444',
+                      color: '#b91c1c',
+                      fontWeight: 800,
+                      fontSize: '0.8rem',
+                    }}
+                  >
+                    <X size={14} />
+                    <span>KẾT QUẢ THI THỬ: CHƯA ĐẠT (&lt; {submission.passingScore} điểm)</span>
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           <div>
@@ -476,6 +523,329 @@ export const StudentSubmissionDetailPage: React.FC = () => {
         )}
       </div>
 
+      {/* 2.1 PHÂN TÍCH KẾT QUẢ THEO PHẦN THI (HTT-09-CN-003) */}
+      {submission.sectionResults && submission.sectionResults.length > 0 && (
+        <div
+          className="game-card"
+          style={{
+            padding: '24px 28px',
+            backgroundColor: '#ffffff',
+            marginBottom: '24px',
+            borderRadius: 'var(--radius-lg)',
+            border: '1px solid #e2e8f0',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+            <div
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: 'var(--primary-light)',
+                color: 'var(--primary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <BarChart2 size={20} />
+            </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                Phân tích kết quả theo phần thi
+              </h3>
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                Bóc tách năng lực và tỷ lệ chính xác của học sinh theo từng kỹ năng đề thi
+              </div>
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+              gap: '16px',
+            }}
+          >
+            {submission.sectionResults.map((sec, sIdx) => {
+              const pct = Math.round(sec.percentage ?? 0)
+              const isGood = pct >= 80
+              const isPass = pct >= 60
+
+              const themeColor = isGood ? '#10b981' : isPass ? '#3b82f6' : '#ef4444'
+              const themeBg = isGood ? '#ecfdf5' : isPass ? '#eff6ff' : '#fef2f2'
+              const statusLabel = isGood ? 'Tốt' : isPass ? 'Đạt' : 'Cần cải thiện'
+
+              return (
+                <div
+                  key={sec.sectionId ?? sIdx}
+                  style={{
+                    padding: '16px 20px',
+                    borderRadius: 'var(--radius-md)',
+                    backgroundColor: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
+                      <div style={{ fontWeight: 800, fontSize: '0.98rem', color: 'var(--text-main)' }}>
+                        {sec.title}
+                      </div>
+                      <span
+                        style={{
+                          fontSize: '0.72rem',
+                          fontWeight: 800,
+                          padding: '2px 8px',
+                          borderRadius: 'var(--radius-full)',
+                          backgroundColor: themeBg,
+                          color: themeColor,
+                          border: `1px solid ${themeColor}`,
+                        }}
+                      >
+                        {statusLabel}
+                      </span>
+                    </div>
+                    {sec.instruction && (
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '10px', lineHeight: 1.4 }}>
+                        {sec.instruction}
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ marginTop: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '6px' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>
+                        Đúng: <strong>{sec.correctQuestions}</strong>/{sec.totalQuestions} câu
+                      </span>
+                      <span style={{ fontWeight: 800, color: themeColor }}>
+                        {sec.totalScore} / {sec.maxScore} điểm ({pct}%)
+                      </span>
+                    </div>
+
+                    <div
+                      style={{
+                        width: '100%',
+                        height: '8px',
+                        borderRadius: 'var(--radius-full)',
+                        backgroundColor: '#e2e8f0',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: `${Math.min(100, Math.max(0, pct))}%`,
+                          height: '100%',
+                          backgroundColor: themeColor,
+                          borderRadius: 'var(--radius-full)',
+                          transition: 'width 0.5s ease',
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 2.2 GỢI Ý BÀI HỌC ÔN TẬP THEO PHẦN YẾU (HTT-09-CN-003) */}
+      {(() => {
+        const isFullScore = submission.maxScore > 0 && submission.score >= submission.maxScore
+        const isAllCorrect = submission.questions.length > 0 && submission.questions.every((q) => q.isCorrect)
+        const hasRecommendations = submission.recommendedLessons && submission.recommendedLessons.length > 0
+
+        if (isFullScore || isAllCorrect) {
+          return (
+            <div
+              className="game-card"
+              style={{
+                padding: '24px 28px',
+                backgroundColor: '#f0fdf4',
+                border: '1.5px solid #86efac',
+                borderRadius: 'var(--radius-lg)',
+                marginBottom: '24px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '16px',
+              }}
+            >
+              <div
+                style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: 'var(--radius-full)',
+                  backgroundColor: '#dcfce7',
+                  color: '#16a34a',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <Award size={26} />
+              </div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#166534' }}>
+                    Xuất sắc! Học sinh trả lời chính xác tất cả các câu hỏi
+                  </h3>
+                  <Sparkles size={18} color="#16a34a" />
+                </div>
+                <p style={{ margin: 0, fontSize: '0.88rem', color: '#15803d', lineHeight: 1.5 }}>
+                  Học sinh nắm vững toàn bộ kiến thức trong đề thi và không có phần yếu cần gợi ý ôn tập bổ trợ.
+                </p>
+              </div>
+            </div>
+          )
+        }
+
+        if (hasRecommendations) {
+          return (
+            <div
+              className="game-card"
+              style={{
+                padding: '24px 28px',
+                backgroundColor: '#ffffff',
+                marginBottom: '24px',
+                borderRadius: 'var(--radius-lg)',
+                border: '1px solid #e2e8f0',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                <div
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: 'var(--radius-md)',
+                    backgroundColor: '#eff6ff',
+                    color: '#2563eb',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <BookOpen size={20} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                    Gợi ý bài học ôn tập theo phần yếu của học sinh
+                  </h3>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                    Các bài học tương ứng với từ vựng và câu hỏi học sinh làm chưa đúng để giáo viên định hướng kèm cặp
+                  </div>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                  gap: '16px',
+                  marginTop: '16px',
+                }}
+              >
+                {submission.recommendedLessons!.map((rec) => (
+                  <div
+                    key={rec.lessonId}
+                    style={{
+                      padding: '18px 20px',
+                      borderRadius: 'var(--radius-md)',
+                      backgroundColor: '#f8fafc',
+                      border: '1.5px solid #e2e8f0',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <span
+                          style={{
+                            fontSize: '0.74rem',
+                            fontWeight: 800,
+                            padding: '2px 8px',
+                            borderRadius: 'var(--radius-full)',
+                            backgroundColor: '#dbeafe',
+                            color: '#1e40af',
+                          }}
+                        >
+                          HSK {rec.hskLevel || 1}
+                        </span>
+                      </div>
+
+                      <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-main)', marginBottom: '6px' }}>
+                        {rec.title}
+                      </div>
+
+                      {rec.description && (
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '12px', lineHeight: 1.4 }}>
+                          {rec.description}
+                        </div>
+                      )}
+
+                      {rec.missedVocabularies && rec.missedVocabularies.length > 0 && (
+                        <div style={{ marginBottom: '14px' }}>
+                          <div style={{ fontSize: '0.76rem', fontWeight: 700, color: '#64748b', marginBottom: '6px' }}>
+                            Từ vựng liên quan trong câu sai:
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                            {rec.missedVocabularies.map((vocab) => (
+                              <span
+                                key={vocab}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  padding: '2px 8px',
+                                  borderRadius: 'var(--radius-sm)',
+                                  backgroundColor: '#fee2e2',
+                                  color: '#991b1b',
+                                  border: '1px solid #fecaca',
+                                  fontSize: '0.78rem',
+                                  fontWeight: 700,
+                                }}
+                              >
+                                {vocab}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/lessons/${rec.lessonId}`)}
+                      className="btn btn-secondary"
+                      style={{
+                        width: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        padding: '8px 12px',
+                        fontSize: '0.84rem',
+                        marginTop: '8px',
+                      }}
+                    >
+                      <span>Xem nội dung bài học</span>
+                      <ArrowRight size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        }
+
+        return null
+      })()}
+
       {/* 3. BỐ CỤC CHÍNH: NỘI DUNG CÂU HỎI (75%) & BẢNG CÂU HỎI NHANH (25%) */}
       <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
         {/* CỘT TRÁI (75%): NỘI DUNG CHI TIẾT TỪNG CÂU HỎI */}
@@ -522,6 +892,21 @@ export const StudentSubmissionDetailPage: React.FC = () => {
                     >
                       {q.type}
                     </span>
+                    {q.sectionTitle && (
+                      <span
+                        style={{
+                          padding: '3px 8px',
+                          borderRadius: 'var(--radius-sm)',
+                          backgroundColor: '#f1f5f9',
+                          color: '#475569',
+                          fontWeight: 700,
+                          fontSize: '0.74rem',
+                          border: '1px solid #e2e8f0',
+                        }}
+                      >
+                        {q.sectionTitle}
+                      </span>
+                    )}
                   </div>
 
                   <div

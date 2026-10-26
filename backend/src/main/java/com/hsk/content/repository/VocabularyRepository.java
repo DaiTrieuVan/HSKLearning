@@ -23,6 +23,8 @@ public interface VocabularyRepository extends JpaRepository<VocabularyEntity, Lo
 
 	List<VocabularyEntity> findAllByOwnerIdAndHiddenFalse(Long ownerId);
 
+	List<VocabularyEntity> findByHanziInAndHiddenFalse(java.util.Collection<String> hanzis);
+
 	@Query("SELECT v FROM VocabularyEntity v WHERE v.hidden = false AND (v.ownerId IS NULL OR v.ownerId = :ownerId) " +
 		   "AND (:query IS NULL OR :query = '' OR LOWER(v.hanzi) LIKE LOWER(CONCAT('%', :query, '%')) " +
 		   "OR LOWER(v.pinyin) LIKE LOWER(CONCAT('%', :query, '%')) " +

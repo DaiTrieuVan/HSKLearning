@@ -515,6 +515,9 @@ public class AssignmentService {
 				}
 			}
 
+			Long sectionId = eq.getSection() != null ? eq.getSection().getId() : null;
+			String sectionName = eq.getSection() != null ? eq.getSection().getName() : null;
+
 			result.add(new AssignmentSnapshotQuestionDto(
 					q.getId(),
 					q.getType() != null ? q.getType().name() : "MCQ",
@@ -523,7 +526,9 @@ public class AssignmentService {
 					q.getPayload(),
 					eq.getPoints(),
 					eq.getSortOrder(),
-					options
+					options,
+					sectionId,
+					sectionName
 			));
 		}
 		return result;

@@ -280,6 +280,8 @@ export interface TakeAssignmentData {
 
 export interface DetailedQuestionResult {
   questionId: number
+  sectionId?: number | null
+  sectionTitle?: string | null
   type: string
   content: string
   explanation?: string
@@ -290,6 +292,26 @@ export interface DetailedQuestionResult {
   studentTextAnswer?: string | null
   payload?: string | null
   options: AssignmentSnapshotOption[]
+}
+
+export interface MockExamSectionResult {
+  sectionId?: number | null
+  title: string
+  instruction?: string | null
+  sortOrder: number
+  totalQuestions: number
+  correctQuestions: number
+  totalScore: number
+  maxScore: number
+  percentage: number
+}
+
+export interface RecommendedLesson {
+  lessonId: number
+  title: string
+  hskLevel?: number | null
+  description?: string | null
+  missedVocabularies: string[]
 }
 
 export interface SubmissionResultData {
@@ -307,6 +329,11 @@ export interface SubmissionResultData {
   dueTime?: string | null
   adjustedScore?: number | null
   adjustReason?: string | null
+  isMockExam?: boolean
+  passingScore?: number | null
+  isPassed?: boolean | null
+  sectionResults?: MockExamSectionResult[]
+  recommendedLessons?: RecommendedLesson[]
   questions: DetailedQuestionResult[]
 }
 

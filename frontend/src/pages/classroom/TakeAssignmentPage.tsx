@@ -30,6 +30,10 @@ import {
   Unlock,
   Award,
   GraduationCap,
+  BarChart2,
+  BookOpen,
+  Sparkles,
+  ArrowRight,
 } from 'lucide-react'
 
 interface MatchingPair {
@@ -556,49 +560,380 @@ export const TakeAssignmentPage: React.FC = () => {
             Thời điểm nộp: {new Date(resultData.submittedAt).toLocaleString('vi-VN')}
           </div>
 
-          {/* Đánh giá Đạt / Chưa đạt đối với Đề thi thử HSK */}
-          {assignmentData?.passingScore != null && (
-            <div style={{ marginTop: '16px' }}>
-              {(resultData.adjustedScore ?? resultData.score) >= assignmentData.passingScore ? (
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '6px 16px',
-                    borderRadius: 'var(--radius-full)',
-                    backgroundColor: '#ecfdf5',
-                    border: '1.5px solid #10b981',
-                    color: '#047857',
-                    fontWeight: 800,
-                    fontSize: '0.88rem',
-                  }}
-                >
-                  <Check size={16} />
-                  <span>KẾT QUẢ THI THỬ: ĐẠT (≥ {assignmentData.passingScore} điểm)</span>
-                </span>
-              ) : (
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '6px 16px',
-                    borderRadius: 'var(--radius-full)',
-                    backgroundColor: '#fef2f2',
-                    border: '1.5px solid #ef4444',
-                    color: '#b91c1c',
-                    fontWeight: 800,
-                    fontSize: '0.88rem',
-                  }}
-                >
-                  <X size={16} />
-                  <span>KẾT QUẢ THI THỬ: CHƯA ĐẠT (&lt; {assignmentData.passingScore} điểm)</span>
-                </span>
-              )}
-            </div>
-          )}
+          {/* Đánh giá Đạt / Chưa đạt đối với Đề thi thử HSK (HTT-09-CN-003) */}
+          {((resultData.isMockExam && resultData.passingScore != null) || assignmentData?.passingScore != null) && (() => {
+            const passingScore = resultData.passingScore ?? assignmentData?.passingScore ?? 0
+            const effectiveScore = resultData.adjustedScore ?? resultData.score
+            const isPassed = resultData.isPassed !== undefined && resultData.isPassed !== null
+              ? resultData.isPassed
+              : effectiveScore >= passingScore
+
+            return (
+              <div style={{ marginTop: '16px' }}>
+                {isPassed ? (
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '6px 16px',
+                      borderRadius: 'var(--radius-full)',
+                      backgroundColor: '#ecfdf5',
+                      border: '1.5px solid #10b981',
+                      color: '#047857',
+                      fontWeight: 800,
+                      fontSize: '0.88rem',
+                    }}
+                  >
+                    <Check size={16} />
+                    <span>KẾT QUẢ THI THỬ: ĐẠT (≥ {passingScore} điểm)</span>
+                  </span>
+                ) : (
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '6px 16px',
+                      borderRadius: 'var(--radius-full)',
+                      backgroundColor: '#fef2f2',
+                      border: '1.5px solid #ef4444',
+                      color: '#b91c1c',
+                      fontWeight: 800,
+                      fontSize: '0.88rem',
+                    }}
+                  >
+                    <X size={16} />
+                    <span>KẾT QUẢ THI THỬ: CHƯA ĐẠT (&lt; {passingScore} điểm)</span>
+                  </span>
+                )}
+              </div>
+            )
+          })()}
         </div>
+
+        {/* 1. Phân tích kết quả theo từng phần thi (HTT-09-CN-003) */}
+        {resultData.sectionResults && resultData.sectionResults.length > 0 && (
+          <div
+            className="game-card"
+            style={{
+              padding: '24px 28px',
+              backgroundColor: '#ffffff',
+              marginBottom: '24px',
+              borderRadius: 'var(--radius-lg)',
+              border: '1px solid #e2e8f0',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+              <div
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: 'var(--radius-md)',
+                  backgroundColor: 'var(--primary-light)',
+                  color: 'var(--primary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <BarChart2 size={20} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                  Phân tích kết quả theo phần thi
+                </h3>
+                <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                  Đánh giá chi tiết năng lực và tỷ lệ chính xác theo từng kỹ năng thi thử
+                </div>
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                gap: '16px',
+              }}
+            >
+              {resultData.sectionResults.map((sec, sIdx) => {
+                const pct = Math.round(sec.percentage ?? 0)
+                const isGood = pct >= 80
+                const isPass = pct >= 60
+
+                const themeColor = isGood ? '#10b981' : isPass ? '#3b82f6' : '#ef4444'
+                const themeBg = isGood ? '#ecfdf5' : isPass ? '#eff6ff' : '#fef2f2'
+                const statusLabel = isGood ? 'Tốt' : isPass ? 'Đạt' : 'Cần cải thiện'
+
+                return (
+                  <div
+                    key={sec.sectionId ?? sIdx}
+                    style={{
+                      padding: '16px 20px',
+                      borderRadius: 'var(--radius-md)',
+                      backgroundColor: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
+                        <div style={{ fontWeight: 800, fontSize: '0.98rem', color: 'var(--text-main)' }}>
+                          {sec.title}
+                        </div>
+                        <span
+                          style={{
+                            fontSize: '0.72rem',
+                            fontWeight: 800,
+                            padding: '2px 8px',
+                            borderRadius: 'var(--radius-full)',
+                            backgroundColor: themeBg,
+                            color: themeColor,
+                            border: `1px solid ${themeColor}`,
+                          }}
+                        >
+                          {statusLabel}
+                        </span>
+                      </div>
+                      {sec.instruction && (
+                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '10px', lineHeight: 1.4 }}>
+                          {sec.instruction}
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ marginTop: '12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '6px' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>
+                          Đúng: <strong>{sec.correctQuestions}</strong>/{sec.totalQuestions} câu
+                        </span>
+                        <span style={{ fontWeight: 800, color: themeColor }}>
+                          {sec.totalScore} / {sec.maxScore} điểm ({pct}%)
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          width: '100%',
+                          height: '8px',
+                          borderRadius: 'var(--radius-full)',
+                          backgroundColor: '#e2e8f0',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: `${Math.min(100, Math.max(0, pct))}%`,
+                            height: '100%',
+                            backgroundColor: themeColor,
+                            borderRadius: 'var(--radius-full)',
+                            transition: 'width 0.5s ease',
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* 2. Gợi ý bài học ôn tập theo phần yếu (HTT-09-CN-003) */}
+        {(() => {
+          const isFullScore = resultData.maxScore > 0 && resultData.score >= resultData.maxScore
+          const isAllCorrect = resultData.questions.length > 0 && resultData.questions.every((q) => q.isCorrect)
+          const hasRecommendations = resultData.recommendedLessons && resultData.recommendedLessons.length > 0
+
+          if (isFullScore || isAllCorrect) {
+            return (
+              <div
+                className="game-card"
+                style={{
+                  padding: '24px 28px',
+                  backgroundColor: '#f0fdf4',
+                  border: '1.5px solid #86efac',
+                  borderRadius: 'var(--radius-lg)',
+                  marginBottom: '24px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '16px',
+                }}
+              >
+                <div
+                  style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: 'var(--radius-full)',
+                    backgroundColor: '#dcfce7',
+                    color: '#16a34a',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <Award size={26} />
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#166534' }}>
+                      Xuất sắc! Không phát hiện phần yếu cần ôn tập
+                    </h3>
+                    <Sparkles size={18} color="#16a34a" />
+                  </div>
+                  <p style={{ margin: 0, fontSize: '0.88rem', color: '#15803d', lineHeight: 1.5 }}>
+                    Chúc mừng bạn đã hoàn thành xuất sắc tất cả các câu hỏi trong đề thi thử! Bạn đã nắm rất vững toàn bộ kiến thức trọng tâm của cấp độ này. Hãy tiếp tục phát huy và tự tin thử sức với các cấp độ HSK cao hơn nhé!
+                  </p>
+                </div>
+              </div>
+            )
+          }
+
+          if (hasRecommendations) {
+            return (
+              <div
+                className="game-card"
+                style={{
+                  padding: '24px 28px',
+                  backgroundColor: '#ffffff',
+                  marginBottom: '24px',
+                  borderRadius: 'var(--radius-lg)',
+                  border: '1px solid #e2e8f0',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                  <div
+                    style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: 'var(--radius-md)',
+                      backgroundColor: '#eff6ff',
+                      color: '#2563eb',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <BookOpen size={20} />
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                      Gợi ý bài học ôn tập theo phần yếu
+                    </h3>
+                    <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                      Hệ thống tự động phân tích từ vựng và chủ điểm trong những câu trả lời sai để đề xuất bài học bổ trợ
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                    gap: '16px',
+                    marginTop: '16px',
+                  }}
+                >
+                  {resultData.recommendedLessons!.map((rec) => (
+                    <div
+                      key={rec.lessonId}
+                      style={{
+                        padding: '18px 20px',
+                        borderRadius: 'var(--radius-md)',
+                        backgroundColor: '#f8fafc',
+                        border: '1.5px solid #e2e8f0',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                          <span
+                            style={{
+                              fontSize: '0.74rem',
+                              fontWeight: 800,
+                              padding: '2px 8px',
+                              borderRadius: 'var(--radius-full)',
+                              backgroundColor: '#dbeafe',
+                              color: '#1e40af',
+                            }}
+                          >
+                            HSK {rec.hskLevel || 1}
+                          </span>
+                        </div>
+
+                        <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-main)', marginBottom: '6px' }}>
+                          {rec.title}
+                        </div>
+
+                        {rec.description && (
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '12px', lineHeight: 1.4 }}>
+                            {rec.description}
+                          </div>
+                        )}
+
+                        {rec.missedVocabularies && rec.missedVocabularies.length > 0 && (
+                          <div style={{ marginBottom: '14px' }}>
+                            <div style={{ fontSize: '0.76rem', fontWeight: 700, color: '#64748b', marginBottom: '6px' }}>
+                              Từ vựng liên quan trong câu sai:
+                            </div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                              {rec.missedVocabularies.map((vocab) => (
+                                <span
+                                  key={vocab}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    padding: '2px 8px',
+                                    borderRadius: 'var(--radius-sm)',
+                                    backgroundColor: '#fee2e2',
+                                    color: '#991b1b',
+                                    border: '1px solid #fecaca',
+                                    fontSize: '0.78rem',
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  {vocab}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/lessons/${rec.lessonId}`)}
+                        className="game-btn game-btn-primary"
+                        style={{
+                          width: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          padding: '8px 12px',
+                          fontSize: '0.84rem',
+                          marginTop: '8px',
+                        }}
+                      >
+                        <span>Ôn tập bài này</span>
+                        <ArrowRight size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          }
+
+          return null
+        })()}
 
         {/* Banner kiểm soát hiển thị đáp án chống lộ đề (Anti-Cheating Policy - HTT-06-CN-005) */}
         {resultData.showSolutions === false ? (
@@ -674,9 +1009,26 @@ export const TakeAssignmentPage: React.FC = () => {
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                  <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--primary)' }}>
-                    Câu {idx + 1} ({q.type || 'MCQ'})
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--primary)' }}>
+                      Câu {idx + 1} ({q.type || 'MCQ'})
+                    </span>
+                    {q.sectionTitle && (
+                      <span
+                        style={{
+                          fontSize: '0.74rem',
+                          fontWeight: 700,
+                          color: '#475569',
+                          backgroundColor: '#f1f5f9',
+                          padding: '2px 8px',
+                          borderRadius: 'var(--radius-sm)',
+                          border: '1px solid #e2e8f0',
+                        }}
+                      >
+                        {q.sectionTitle}
+                      </span>
+                    )}
+                  </div>
                   <div>
                     {q.isCorrect ? (
                       <span

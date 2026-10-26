@@ -6,8 +6,8 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * Kết quả chấm điểm bài tập trả về sau khi nộp hoặc khi học sinh/giáo viên xem lại bài nộp
- * (HTT-06-CN-003, HTT-06-CN-004, HTT-06-CN-005).
+ * Kết quả chấm điểm bài tập và phân tích đề thi thử trả về sau khi nộp hoặc khi học sinh/giáo viên xem lại bài nộp
+ * (HTT-06-CN-003, HTT-06-CN-004, HTT-06-CN-005, HTT-09-CN-003).
  */
 public record SubmissionResultResponse(
 		Long submissionId,
@@ -24,8 +24,54 @@ public record SubmissionResultResponse(
 		Instant dueTime,
 		BigDecimal adjustedScore,
 		String adjustReason,
-		List<DetailedQuestionResultDto> questions
+		List<DetailedQuestionResultDto> questions,
+		boolean isMockExam,
+		BigDecimal passingScore,
+		Boolean isPassed,
+		List<MockExamSectionResultDto> sectionResults,
+		List<RecommendedLessonDto> recommendedLessons
 ) {
+	public SubmissionResultResponse(
+			Long submissionId,
+			Long assignmentId,
+			String title,
+			String description,
+			SubmissionStatus status,
+			Instant startedAt,
+			Instant submittedAt,
+			BigDecimal score,
+			BigDecimal maxScore,
+			int attemptNumber,
+			boolean showSolutions,
+			Instant dueTime,
+			BigDecimal adjustedScore,
+			String adjustReason,
+			List<DetailedQuestionResultDto> questions
+	) {
+		this(
+				submissionId,
+				assignmentId,
+				title,
+				description,
+				status,
+				startedAt,
+				submittedAt,
+				score,
+				maxScore,
+				attemptNumber,
+				showSolutions,
+				dueTime,
+				adjustedScore,
+				adjustReason,
+				questions,
+				false,
+				null,
+				null,
+				List.of(),
+				List.of()
+		);
+	}
+
 	public SubmissionResultResponse(
 			Long submissionId,
 			Long assignmentId,
@@ -39,6 +85,22 @@ public record SubmissionResultResponse(
 			int attemptNumber,
 			List<DetailedQuestionResultDto> questions
 	) {
-		this(submissionId, assignmentId, title, description, status, startedAt, submittedAt, score, maxScore, attemptNumber, true, null, null, null, questions);
+		this(
+				submissionId,
+				assignmentId,
+				title,
+				description,
+				status,
+				startedAt,
+				submittedAt,
+				score,
+				maxScore,
+				attemptNumber,
+				true,
+				null,
+				null,
+				null,
+				questions
+		);
 	}
 }

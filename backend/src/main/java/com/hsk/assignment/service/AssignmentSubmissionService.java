@@ -42,7 +42,16 @@ import com.hsk.question.dto.BlankAnswerDto;
 import com.hsk.question.dto.FillBlankPayloadDto;
 import com.hsk.question.dto.MatchingPairDto;
 import com.hsk.question.dto.MatchingPayloadDto;
+import com.hsk.assignment.dto.MockExamSectionResultDto;
+import com.hsk.assignment.dto.RecommendedLessonDto;
+import com.hsk.content.domain.LessonEntity;
+import com.hsk.content.domain.LessonVocabularyEntity;
+import com.hsk.content.domain.VocabularyEntity;
+import com.hsk.content.repository.LessonVocabularyRepository;
+import com.hsk.content.repository.VocabularyRepository;
 import com.hsk.exercise.domain.ExerciseEntity;
+import com.hsk.exercise.domain.ExerciseQuestionEntity;
+import com.hsk.exercise.domain.ExerciseSectionEntity;
 import com.hsk.exercise.domain.ExerciseType;
 import com.hsk.question.dto.OrderingPayloadDto;
 import java.math.BigDecimal;
@@ -52,15 +61,20 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service xử lý nghiệp vụ Học sinh làm bài tập và nộp bài (HTT-06-CN-003).
+ * Service xử lý nghiệp vụ Học sinh làm bài tập và nộp bài (HTT-06-CN-003, HTT-09-CN-003).
  * Tuân thủ nghiêm ngặt các quy tắc:
  * - QTN-02: Học sinh chỉ xem bài nộp và điểm của chính mình.
  * - QTN-11: Chỉ làm bài trong hạn nộp (hoặc hạn đã gia hạn).
@@ -79,6 +93,8 @@ public class AssignmentSubmissionService {
 	private final UserRoleRepository userRoleRepository;
 	private final AuditLogService auditLogService;
 	private final com.hsk.learning.service.XpLevelService xpLevelService;
+	private final VocabularyRepository vocabularyRepository;
+	private final LessonVocabularyRepository lessonVocabularyRepository;
 	private final ObjectMapper objectMapper;
 
 	public AssignmentSubmissionService(
@@ -89,7 +105,9 @@ public class AssignmentSubmissionService {
 			UserRepository userRepository,
 			UserRoleRepository userRoleRepository,
 			AuditLogService auditLogService,
-			com.hsk.learning.service.XpLevelService xpLevelService
+			com.hsk.learning.service.XpLevelService xpLevelService,
+			VocabularyRepository vocabularyRepository,
+			LessonVocabularyRepository lessonVocabularyRepository
 	) {
 		this.assignmentRepository = assignmentRepository;
 		this.submissionRepository = submissionRepository;
@@ -99,6 +117,8 @@ public class AssignmentSubmissionService {
 		this.userRoleRepository = userRoleRepository;
 		this.auditLogService = auditLogService;
 		this.xpLevelService = xpLevelService;
+		this.vocabularyRepository = vocabularyRepository;
+		this.lessonVocabularyRepository = lessonVocabularyRepository;
 		this.objectMapper = new ObjectMapper();
 	}
 
@@ -368,32 +388,7 @@ public class AssignmentSubmissionService {
 				"Hoàn thành nộp bài tập: " + assignment.getTitle()
 		);
 
-		boolean isPastDue = (assignment.getDueTime() == null) || !now.isBefore(assignment.getDueTime());
-		boolean showSolutions = isPastDue; // Khi vừa nộp bài, nếu chưa hết hạn -> ẩn đáp án và giải thích (TC-02)
-
-		List<AssignmentSnapshotQuestionDto> snapshotQuestions = parseSnapshotQuestions(assignment.getSnapshotData());
-		Map<Long, StudentAnswerItemDto> answerMap = parseAnswers(saved.getAnswersData()).stream()
-				.filter(a -> a.questionId() != null)
-				.collect(Collectors.toMap(StudentAnswerItemDto::questionId, a -> a, (a1, a2) -> a1));
-		List<DetailedQuestionResultDto> maskedResults = buildDetailedResults(snapshotQuestions, answerMap, showSolutions);
-
-		return new SubmissionResultResponse(
-				saved.getId(),
-				assignment.getId(),
-				assignment.getTitle(),
-				assignment.getDescription(),
-				saved.getStatus(),
-				saved.getStartedAt(),
-				saved.getSubmittedAt(),
-				saved.getScore(),
-				assignment.getTotalPoints(),
-				saved.getAttemptNumber(),
-				showSolutions,
-				assignment.getDueTime(),
-				saved.getAdjustedScore(),
-				saved.getAdjustReason(),
-				maskedResults
-		);
+		return toSubmissionResultResponse(saved, assignment, studentId, false, false);
 	}
 
 	/**
@@ -844,7 +839,19 @@ public class AssignmentSubmissionService {
 				.filter(a -> a.questionId() != null)
 				.collect(Collectors.toMap(StudentAnswerItemDto::questionId, a -> a, (a1, a2) -> a1));
 
-		List<DetailedQuestionResultDto> detailedResults = buildDetailedResults(snapshotQuestions, answerMap, showSolutions);
+		List<DetailedQuestionResultDto> detailedResults = buildDetailedResults(assignment, snapshotQuestions, answerMap, showSolutions);
+
+		ExerciseEntity exercise = assignment.getExercise();
+		boolean isMockExam = exercise != null && (exercise.getExerciseType() == ExerciseType.MOCK_EXAM || (exercise.getSections() != null && !exercise.getSections().isEmpty()));
+		BigDecimal passingScore = exercise != null ? exercise.getPassingScore() : null;
+		BigDecimal effectiveScore = submission.getEffectiveScore();
+		Boolean isPassed = null;
+		if (passingScore != null && effectiveScore != null) {
+			isPassed = effectiveScore.compareTo(passingScore) >= 0;
+		}
+
+		List<MockExamSectionResultDto> sectionResults = computeSectionResults(assignment, detailedResults, snapshotQuestions);
+		List<RecommendedLessonDto> recommendedLessons = computeRecommendedLessons(detailedResults);
 
 		return new SubmissionResultResponse(
 				submission.getId(),
@@ -861,8 +868,283 @@ public class AssignmentSubmissionService {
 				dueTime,
 				submission.getAdjustedScore(),
 				submission.getAdjustReason(),
-				detailedResults
+				detailedResults,
+				isMockExam,
+				passingScore,
+				isPassed,
+				sectionResults,
+				recommendedLessons
 		);
+	}
+
+	/**
+	 * HTT-09-CN-003 / TC-01: Phân tích điểm số, số câu đúng và tỷ lệ đúng theo từng phần của đề thi thử.
+	 */
+	public List<MockExamSectionResultDto> computeSectionResults(
+			AssignmentEntity assignment,
+			List<DetailedQuestionResultDto> detailedResults,
+			List<AssignmentSnapshotQuestionDto> snapshotQuestions
+	) {
+		if (detailedResults == null || detailedResults.isEmpty()) {
+			return Collections.emptyList();
+		}
+
+		ExerciseEntity exercise = assignment.getExercise();
+		List<ExerciseSectionEntity> exerciseSections = (exercise != null && exercise.getSections() != null)
+				? exercise.getSections()
+				: Collections.emptyList();
+
+		Map<Long, ExerciseSectionEntity> questionToSectionMap = new HashMap<>();
+		if (exercise != null && exercise.getQuestions() != null) {
+			for (ExerciseQuestionEntity eq : exercise.getQuestions()) {
+				if (eq.getQuestion() != null && eq.getSection() != null) {
+					questionToSectionMap.put(eq.getQuestion().getId(), eq.getSection());
+				}
+			}
+		}
+
+		Map<Long, Long> snapshotSectionIds = new HashMap<>();
+		Map<Long, String> snapshotSectionNames = new HashMap<>();
+		if (snapshotQuestions != null) {
+			for (AssignmentSnapshotQuestionDto sq : snapshotQuestions) {
+				if (sq.sectionId() != null) {
+					snapshotSectionIds.put(sq.questionId(), sq.sectionId());
+				}
+				if (sq.sectionName() != null) {
+					snapshotSectionNames.put(sq.questionId(), sq.sectionName());
+				}
+			}
+		}
+
+		if (!exerciseSections.isEmpty()) {
+			List<MockExamSectionResultDto> sectionDtos = new ArrayList<>();
+			for (ExerciseSectionEntity sec : exerciseSections) {
+				Long secId = sec.getId();
+				String secName = sec.getName();
+				int sOrder = sec.getSortOrder();
+
+				BigDecimal secScore = BigDecimal.ZERO;
+				BigDecimal secMaxScore = BigDecimal.ZERO;
+				int correctCount = 0;
+				int totalQuestions = 0;
+
+				for (DetailedQuestionResultDto dq : detailedResults) {
+					Long qId = dq.questionId();
+					boolean belongsToSec = false;
+
+					if (questionToSectionMap.containsKey(qId)) {
+						belongsToSec = secId.equals(questionToSectionMap.get(qId).getId());
+					} else if (snapshotSectionIds.containsKey(qId)) {
+						belongsToSec = secId.equals(snapshotSectionIds.get(qId));
+					} else if (dq.sectionId() != null) {
+						belongsToSec = secId.equals(dq.sectionId());
+					} else if (dq.sectionName() != null && dq.sectionName().trim().equalsIgnoreCase(secName.trim())) {
+						belongsToSec = true;
+					}
+
+					if (belongsToSec) {
+						totalQuestions++;
+						secMaxScore = secMaxScore.add(dq.maxPoints() != null ? dq.maxPoints() : BigDecimal.ZERO);
+						secScore = secScore.add(dq.pointsEarned() != null ? dq.pointsEarned() : BigDecimal.ZERO);
+						if (Boolean.TRUE.equals(dq.isCorrect())) {
+							correctCount++;
+						}
+					}
+				}
+
+				secScore = secScore.setScale(1, RoundingMode.HALF_UP);
+				secMaxScore = secMaxScore.setScale(1, RoundingMode.HALF_UP);
+				int percentage = 0;
+				if (secMaxScore.compareTo(BigDecimal.ZERO) > 0) {
+					percentage = secScore.multiply(BigDecimal.valueOf(100))
+							.divide(secMaxScore, 0, RoundingMode.HALF_UP)
+							.intValue();
+				}
+
+				sectionDtos.add(new MockExamSectionResultDto(
+						secId,
+						secName,
+						sOrder,
+						secScore,
+						secMaxScore,
+						correctCount,
+						totalQuestions,
+						percentage
+				));
+			}
+			return sectionDtos;
+		}
+
+		// Fallback: Nếu không có exerciseSections liên kết trong entity, kiểm tra theo sectionName
+		Map<String, List<DetailedQuestionResultDto>> groupedBySecName = new LinkedHashMap<>();
+		for (DetailedQuestionResultDto dq : detailedResults) {
+			String sName = dq.sectionName();
+			if (sName == null || sName.trim().isEmpty()) {
+				sName = snapshotSectionNames.get(dq.questionId());
+			}
+			if (sName != null && !sName.trim().isEmpty()) {
+				groupedBySecName.computeIfAbsent(sName.trim(), k -> new ArrayList<>()).add(dq);
+			}
+		}
+
+		if (!groupedBySecName.isEmpty()) {
+			List<MockExamSectionResultDto> sectionDtos = new ArrayList<>();
+			int order = 1;
+			for (Map.Entry<String, List<DetailedQuestionResultDto>> entry : groupedBySecName.entrySet()) {
+				String secName = entry.getKey();
+				List<DetailedQuestionResultDto> qs = entry.getValue();
+
+				BigDecimal secScore = BigDecimal.ZERO;
+				BigDecimal secMaxScore = BigDecimal.ZERO;
+				int correctCount = 0;
+
+				for (DetailedQuestionResultDto dq : qs) {
+					secMaxScore = secMaxScore.add(dq.maxPoints() != null ? dq.maxPoints() : BigDecimal.ZERO);
+					secScore = secScore.add(dq.pointsEarned() != null ? dq.pointsEarned() : BigDecimal.ZERO);
+					if (Boolean.TRUE.equals(dq.isCorrect())) {
+						correctCount++;
+					}
+				}
+
+				secScore = secScore.setScale(1, RoundingMode.HALF_UP);
+				secMaxScore = secMaxScore.setScale(1, RoundingMode.HALF_UP);
+				int percentage = 0;
+				if (secMaxScore.compareTo(BigDecimal.ZERO) > 0) {
+					percentage = secScore.multiply(BigDecimal.valueOf(100))
+							.divide(secMaxScore, 0, RoundingMode.HALF_UP)
+							.intValue();
+				}
+
+				sectionDtos.add(new MockExamSectionResultDto(
+						(long) order,
+						secName,
+						order++,
+						secScore,
+						secMaxScore,
+						correctCount,
+						qs.size(),
+						percentage
+				));
+			}
+			return sectionDtos;
+		}
+
+		return Collections.emptyList();
+	}
+
+	/**
+	 * HTT-09-CN-003 / TC-02 & TC-03: Phân tích các câu hỏi làm sai và gợi ý bài học cần ôn tập.
+	 */
+	public List<RecommendedLessonDto> computeRecommendedLessons(List<DetailedQuestionResultDto> detailedResults) {
+		if (detailedResults == null || detailedResults.isEmpty()) {
+			return Collections.emptyList();
+		}
+
+		// Lọc ra các câu hỏi mà học sinh làm sai
+		List<DetailedQuestionResultDto> wrongQuestions = detailedResults.stream()
+				.filter(q -> !Boolean.TRUE.equals(q.isCorrect()))
+				.toList();
+
+		// HTT-09-CN-003-TC-03: Học sinh trả lời đúng mọi câu (100%) -> Không hiển thị gợi ý ôn tập
+		if (wrongQuestions.isEmpty()) {
+			return Collections.emptyList();
+		}
+
+		// Trích xuất các chữ Hán xuất hiện trong nội dung câu sai
+		Pattern hanziPattern = Pattern.compile("[\\u4e00-\\u9fa5]+");
+		Set<String> candidateHanzis = new LinkedHashSet<>();
+
+		for (DetailedQuestionResultDto q : wrongQuestions) {
+			extractHanzis(q.content(), hanziPattern, candidateHanzis);
+			extractHanzis(q.explanation(), hanziPattern, candidateHanzis);
+			extractHanzis(q.studentTextAnswer(), hanziPattern, candidateHanzis);
+			extractHanzis(q.payload(), hanziPattern, candidateHanzis);
+			if (q.options() != null) {
+				for (AssignmentSnapshotOptionDto opt : q.options()) {
+					extractHanzis(opt.content(), hanziPattern, candidateHanzis);
+				}
+			}
+		}
+
+		if (candidateHanzis.isEmpty()) {
+			return Collections.emptyList();
+		}
+
+		// Tra cứu các từ vựng tương ứng trong DB
+		List<VocabularyEntity> matchedVocabs = vocabularyRepository.findByHanziInAndHiddenFalse(candidateHanzis);
+		if (matchedVocabs.isEmpty()) {
+			return Collections.emptyList();
+		}
+
+		List<Long> vocabIds = matchedVocabs.stream().map(VocabularyEntity::getId).toList();
+		Map<Long, VocabularyEntity> vocabMap = matchedVocabs.stream()
+				.collect(Collectors.toMap(VocabularyEntity::getId, v -> v, (v1, v2) -> v1));
+
+		List<LessonVocabularyEntity> lessonVocabs = lessonVocabularyRepository.findAllByVocabularyIdIn(vocabIds);
+		if (lessonVocabs.isEmpty()) {
+			return Collections.emptyList();
+		}
+
+		// Gom nhóm theo bài học (LessonEntity)
+		Map<Long, LessonEntity> lessonMap = new LinkedHashMap<>();
+		Map<Long, Set<String>> lessonWordsMap = new LinkedHashMap<>();
+		Map<Long, Integer> lessonScoreMap = new LinkedHashMap<>();
+
+		for (LessonVocabularyEntity lve : lessonVocabs) {
+			LessonEntity lesson = lve.getLesson();
+			if (lesson == null || lesson.isHidden()) {
+				continue;
+			}
+			VocabularyEntity vocab = vocabMap.get(lve.getId().getVocabularyId());
+			if (vocab == null) {
+				vocab = lve.getVocabulary();
+			}
+
+			Long lessonId = lesson.getId();
+			lessonMap.putIfAbsent(lessonId, lesson);
+			lessonWordsMap.computeIfAbsent(lessonId, k -> new LinkedHashSet<>());
+			if (vocab != null) {
+				lessonWordsMap.get(lessonId).add(vocab.getHanzi());
+			}
+			lessonScoreMap.put(lessonId, lessonScoreMap.getOrDefault(lessonId, 0) + 1);
+		}
+
+		List<RecommendedLessonDto> recommendations = new ArrayList<>();
+		List<Long> sortedLessonIds = new ArrayList<>(lessonMap.keySet());
+		sortedLessonIds.sort((id1, id2) -> Integer.compare(lessonScoreMap.getOrDefault(id2, 0), lessonScoreMap.getOrDefault(id1, 0)));
+
+		for (Long lessonId : sortedLessonIds) {
+			LessonEntity lesson = lessonMap.get(lessonId);
+			List<String> words = new ArrayList<>(lessonWordsMap.getOrDefault(lessonId, Collections.emptySet()));
+			Integer level = (lesson.getHskLevel() != null) ? lesson.getHskLevel().getLevelNumber() : null;
+			String wordsStr = String.join(", ", words);
+			String reason = "Liên quan đến câu trả lời sai về từ vựng: " + wordsStr;
+
+			recommendations.add(new RecommendedLessonDto(
+					lesson.getId(),
+					lesson.getTitle(),
+					level,
+					words,
+					reason
+			));
+
+			if (recommendations.size() >= 5) {
+				break;
+			}
+		}
+
+		return recommendations;
+	}
+
+	private void extractHanzis(String text, Pattern pattern, Set<String> targetSet) {
+		if (text == null || text.trim().isEmpty()) return;
+		Matcher m = pattern.matcher(text);
+		while (m.find()) {
+			String matched = m.group();
+			if (matched.length() >= 1) {
+				targetSet.add(matched);
+			}
+		}
 	}
 
 	// -------------------------------------------------------------------------
@@ -907,6 +1189,18 @@ public class AssignmentSubmissionService {
 					graded.pointsEarned()
 			));
 
+			Long secId = q.sectionId();
+			String secName = q.sectionName();
+			if (secId == null && assignment != null && assignment.getExercise() != null && assignment.getExercise().getQuestions() != null) {
+				for (ExerciseQuestionEntity eq : assignment.getExercise().getQuestions()) {
+					if (eq.getQuestion() != null && eq.getQuestion().getId().equals(q.questionId()) && eq.getSection() != null) {
+						secId = eq.getSection().getId();
+						secName = eq.getSection().getName();
+						break;
+					}
+				}
+			}
+
 			detailedResults.add(new DetailedQuestionResultDto(
 					q.questionId(),
 					q.type(),
@@ -918,7 +1212,9 @@ public class AssignmentSubmissionService {
 					ans != null ? ans.selectedOptionId() : null,
 					ans != null ? ans.textAnswer() : null,
 					q.payload(),
-					q.options()
+					q.options(),
+					secId,
+					secName
 			));
 		}
 
@@ -1149,6 +1445,24 @@ public class AssignmentSubmissionService {
 			Map<Long, StudentAnswerItemDto> answerMap,
 			boolean showSolutions
 	) {
+		return buildDetailedResults(null, snapshotQuestions, answerMap, showSolutions);
+	}
+
+	private List<DetailedQuestionResultDto> buildDetailedResults(
+			AssignmentEntity assignment,
+			List<AssignmentSnapshotQuestionDto> snapshotQuestions,
+			Map<Long, StudentAnswerItemDto> answerMap,
+			boolean showSolutions
+	) {
+		Map<Long, ExerciseSectionEntity> eqSectionMap = new HashMap<>();
+		if (assignment != null && assignment.getExercise() != null && assignment.getExercise().getQuestions() != null) {
+			for (ExerciseQuestionEntity eq : assignment.getExercise().getQuestions()) {
+				if (eq.getQuestion() != null && eq.getSection() != null) {
+					eqSectionMap.put(eq.getQuestion().getId(), eq.getSection());
+				}
+			}
+		}
+
 		List<DetailedQuestionResultDto> results = new ArrayList<>();
 		for (AssignmentSnapshotQuestionDto q : snapshotQuestions) {
 			BigDecimal questionPoints = q.points() != null ? q.points() : BigDecimal.ZERO;
@@ -1169,6 +1483,14 @@ public class AssignmentSubmissionService {
 						.toList();
 			}
 
+			Long secId = q.sectionId();
+			String secName = q.sectionName();
+			if (secId == null && eqSectionMap.containsKey(q.questionId())) {
+				ExerciseSectionEntity sec = eqSectionMap.get(q.questionId());
+				secId = sec.getId();
+				secName = sec.getName();
+			}
+
 			results.add(new DetailedQuestionResultDto(
 					q.questionId(),
 					q.type(),
@@ -1180,7 +1502,9 @@ public class AssignmentSubmissionService {
 					selectedOptId,
 					textAns,
 					payload,
-					options
+					options,
+					secId,
+					secName
 			));
 		}
 		return results;

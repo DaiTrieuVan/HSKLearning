@@ -13,6 +13,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import jakarta.validation.ConstraintViolationException;
 
@@ -87,6 +88,16 @@ public class GlobalExceptionHandler {
 			WebRequest request) {
 		log.warn("Data integrity violation on {}", pathOf(request), exception);
 		return build(ApiErrorCode.RESOURCE_ALREADY_EXISTS, pathOf(request), Map.of());
+	}
+
+	/**
+	 * Tệp tải lên vượt quá dung lượng tối đa được cấu hình trong hệ thống.
+	 */
+	@ExceptionHandler(MaxUploadSizeExceededException.class)
+	public ResponseEntity<ErrorResponse> handleMaxUploadSize(MaxUploadSizeExceededException exception,
+			WebRequest request) {
+		log.warn("Uploaded file exceeds configured limit on {}", pathOf(request));
+		return build(ApiErrorCode.FILE_TOO_LARGE, "Kích thước tệp vượt quá dung lượng cho phép (tối đa 50 MB)", pathOf(request), Map.of());
 	}
 
 	/**

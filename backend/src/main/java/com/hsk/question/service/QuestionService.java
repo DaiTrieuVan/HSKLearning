@@ -859,9 +859,7 @@ public class QuestionService {
 		return mapToResponse(saved);
 	}
 
-	private static final long MAX_MEDIA_BYTES = 15 * 1024 * 1024; // 15MB
-	private static final String UPLOAD_IMAGES_DIR = "uploads/images";
-	private static final String UPLOAD_AUDIO_DIR = "uploads/audio";
+	private static final long MAX_MEDIA_BYTES = 50 * 1024 * 1024; // 50MB
 
 	/**
 	 * Tải lên tệp media (ảnh/audio) phục vụ ngân hàng câu hỏi.
@@ -880,19 +878,29 @@ public class QuestionService {
 		String originalName = file.getOriginalFilename();
 		String ext = "";
 		if (originalName != null && originalName.contains(".")) {
-			ext = originalName.substring(originalName.lastIndexOf(".")).toLowerCase();
+			ext = originalName.substring(originalName.lastIndexOf(".")).toLowerCase().trim();
 		}
 
-		boolean isImage = List.of(".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg").contains(ext);
-		boolean isAudio = List.of(".mp3", ".wav", ".ogg", ".m4a").contains(ext);
+		String contentType = file.getContentType() != null ? file.getContentType().toLowerCase().trim() : "";
+
+		boolean isImage = List.of(".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg", ".bmp").contains(ext)
+				|| contentType.startsWith("image/");
+		boolean isAudio = List.of(".mp3", ".wav", ".ogg", ".m4a", ".aac", ".flac", ".wma", ".webm", ".weba", ".opus", ".mp4", ".m4p").contains(ext)
+				|| contentType.startsWith("audio/")
+				|| contentType.equals("video/mp4")
+				|| contentType.equals("video/webm");
 
 		if (!isImage && !isAudio) {
 			throw new ApiException(ApiErrorCode.INVALID_FILE_FORMAT);
 		}
 
+		if (ext.isEmpty()) {
+			ext = isImage ? ".jpg" : ".mp3";
+		}
+
 		try {
-			String subDir = isImage ? UPLOAD_IMAGES_DIR : UPLOAD_AUDIO_DIR;
-			Path dir = Paths.get(subDir);
+			Path baseDir = Paths.get("uploads").toAbsolutePath();
+			Path dir = baseDir.resolve(isImage ? "images" : "audio");
 			if (!Files.exists(dir)) {
 				Files.createDirectories(dir);
 			}
@@ -902,7 +910,7 @@ public class QuestionService {
 			Path targetPath = dir.resolve(filename);
 			Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
 
-			return "/" + subDir + "/" + filename;
+			return "/uploads/" + (isImage ? "images" : "audio") + "/" + filename;
 		} catch (IOException e) {
 			log.error("Failed to save uploaded question media file", e);
 			throw new ApiException(ApiErrorCode.INTERNAL_ERROR);

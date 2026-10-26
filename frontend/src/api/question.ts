@@ -8,6 +8,11 @@ export interface QuestionOptionItem {
   imageUrl?: string
 }
 
+export interface ImagePoolItem {
+  label: string
+  imageUrl: string
+}
+
 export interface QuestionItem {
   id: number
   ownerId: number
@@ -23,6 +28,7 @@ export interface QuestionItem {
   imageUrl?: string
   hskLevel?: number
   parentId?: number
+  imagePool?: ImagePoolItem[]
 }
 
 export interface CreateQuestionOptionPayload {
@@ -43,6 +49,7 @@ export interface CreateQuestionPayload {
   imageUrl?: string
   hskLevel?: number
   parentId?: number
+  imagePool?: ImagePoolItem[]
 }
 
 export type QuestionFormat = 'HANZI_TO_MEANING' | 'MEANING_TO_HANZI' | 'HANZI_TO_PINYIN'
@@ -83,6 +90,28 @@ export interface CreateOrderingQuestionPayload {
   content: string
   explanation?: string
   items: string[]
+}
+
+export interface ImageMatchSubQuestionPayload {
+  content?: string
+  audioUrl?: string
+  transcript?: string
+  correctLabel: string
+  explanation?: string
+}
+
+export interface CreateImageMatchGroupPayload {
+  title: string
+  hskLevel?: number
+  audioUrl?: string
+  explanation?: string
+  imagePool: ImagePoolItem[]
+  subQuestions: ImageMatchSubQuestionPayload[]
+}
+
+export interface ImageMatchGroupResponse {
+  parentQuestion: QuestionItem
+  subQuestions: QuestionItem[]
 }
 
 const API_BASE = '/api/questions'
@@ -288,6 +317,7 @@ export interface UpdateQuestionPayload {
   imageUrl?: string
   hskLevel?: number
   parentId?: number
+  imagePool?: ImagePoolItem[]
 }
 
 export async function getQuestionDetail(id: number, token: string): Promise<QuestionItem> {
@@ -556,4 +586,31 @@ export async function uploadQuestionMedia(file: File, token: string): Promise<st
   }
 
   return data.url as string
+}
+
+export async function createImageMatchGroup(
+  payload: CreateImageMatchGroupPayload,
+  token: string
+): Promise<ImageMatchGroupResponse> {
+  const response = await fetch(`${API_BASE}/image-match-group`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  const data = await response.json().catch(() => null)
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      data?.code || 'IMAGE_MATCH_GROUP_FAILED',
+      data?.message || 'Không thể tạo nhóm câu hỏi ghép tranh HSK',
+      data?.fields
+    )
+  }
+
+  return data as ImageMatchGroupResponse
 }

@@ -279,7 +279,16 @@ public enum ApiErrorCode {
 	HANZI_STROKE_DATA_NOT_FOUND(HttpStatus.NOT_FOUND, "Chưa hỗ trợ chữ này"),
 
 	/** HTT-10-CN-002: Input is not a single valid Han ideograph character. */
-	INVALID_HANZI_CHARACTER(HttpStatus.BAD_REQUEST, "Ký tự không phải là chữ Hán hợp lệ");
+	INVALID_HANZI_CHARACTER(HttpStatus.BAD_REQUEST, "Ký tự không phải là chữ Hán hợp lệ"),
+
+	/** HTT-10-CN-003 / TC-04: Audio is too short (<0.5s), silence, or invalid format. */
+	INVALID_AUDIO(HttpStatus.BAD_REQUEST, "Bản ghi âm không hợp lệ, quá ngắn hoặc chỉ có tiếng ồn"),
+
+	/** HTT-10-CN-003 / TC-03: External speech recognition service error or timeout. */
+	PRONUNCIATION_PROVIDER_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "Dịch vụ nhận dạng giọng nói tạm thời không khả dụng, vui lòng thử lại sau"),
+
+	/** HTT-10-CN-003: Reference text must be 1-200 chars and contain Chinese characters. */
+	INVALID_REFERENCE_TEXT(HttpStatus.BAD_REQUEST, "Nội dung chuẩn phải từ 1-200 ký tự và chứa chữ Hán");
 
 	private final HttpStatus status;
 

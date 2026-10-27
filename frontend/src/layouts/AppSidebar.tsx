@@ -14,6 +14,7 @@ import {
   GraduationCap,
   Headphones,
   PenTool,
+  Mic,
   Award,
   User,
   LogOut,
@@ -289,6 +290,17 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ isCollapsed, onToggleCol
               >
                 <PenTool size={20} style={{ flexShrink: 0, color: isActive('/writing') ? 'var(--primary)' : '#64748b' }} />
                 {!isCollapsed && <span>Luyện viết chữ Hán</span>}
+              </button>
+
+              {/* 3.1.2. Luyện phát âm (HTT-10-CN-003) */}
+              <button
+                type="button"
+                onClick={() => navigate('/pronunciation')}
+                style={navItemStyle(isActive('/pronunciation'))}
+                title={isCollapsed ? 'Luyện phát âm' : undefined}
+              >
+                <Mic size={20} style={{ flexShrink: 0, color: isActive('/pronunciation') ? 'var(--primary)' : '#64748b' }} />
+                {!isCollapsed && <span>Luyện phát âm</span>}
               </button>
 
               {/* 3.2. Thi thử Chuẩn HSK 3.0 */}

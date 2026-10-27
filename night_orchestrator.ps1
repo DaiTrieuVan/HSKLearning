@@ -2,7 +2,9 @@
 param(
     [string]$AgyCommand = "agy",
     [ValidateRange(0, 2)][int]$MaxRetries = 2,
-    [string]$ReportPath = "night_execution_report.log"
+    [string]$ReportPath = "night_execution_report.log",
+    [string]$StartStory = "HTT-10-CN-001",
+    [switch]$AllowDirty
 )
 
 $ErrorActionPreference = "Stop"
@@ -28,7 +30,9 @@ function Invoke-LoggedNative {
     param([string]$Label, [string]$WorkingDirectory, [string]$FilePath, [string[]]$Arguments)
     Write-NightLog "START $Label"
     Push-Location $WorkingDirectory
+    $savedErrorPreference = $ErrorActionPreference
     try {
+        $ErrorActionPreference = "Continue"
         & $FilePath @Arguments 2>&1 | ForEach-Object {
             Write-Host $_
             Add-Content -LiteralPath $reportFile -Value $_.ToString() -Encoding utf8
@@ -37,7 +41,10 @@ function Invoke-LoggedNative {
     } catch {
         Add-Content -LiteralPath $reportFile -Value $_.Exception.ToString() -Encoding utf8
         $code = 1
-    } finally { Pop-Location }
+    } finally {
+        $ErrorActionPreference = $savedErrorPreference
+        Pop-Location
+    }
     $level = if ($code -eq 0) { "PASS" } else { "FAIL" }
     Write-NightLog "END $Label (exit=$code)" $level
     return $code
@@ -54,7 +61,7 @@ You are the implementation agent for HSK Master. Work only on story $($Story.Id)
 Read hsk_agent_automation/docs/user-stories/$($Story.Id).md, $($Story.Plan), applicable AGENTS.md, and existing code completely.
 Implement the full plan. Do not change requirements, generated story Markdown, commit/push, or use real secrets.
 Preserve the Spring Boot/React architecture. Migrations must follow the highest existing version. Audit existing implementation and change only gaps.
-Run targeted tests, backend tests, frontend lint/build, and git diff --check. End with changed files, tests, and remaining risks. Attempt $Attempt.
+Run targeted tests, backend tests, lint only frontend files changed by this story, frontend build, and git diff --check. Full-repository lint has known legacy debt and is informational. End with changed files, tests, and remaining risks. Attempt $Attempt.
 "@
     return Invoke-LoggedNative "agy $($Story.Id) attempt $Attempt" $repoRoot $AgyCommand @(
         "--print", $prompt, "--mode", "accept-edits", "--dangerously-skip-permissions",
@@ -67,12 +74,20 @@ function Invoke-AcceptanceGates {
     $steps = @(
         @{ L="targeted backend"; D=(Join-Path $repoRoot "backend"); F=".\mvnw.cmd"; A=@("-B","-Dtest=$($Story.Test)","test") },
         @{ L="backend regression"; D=(Join-Path $repoRoot "backend"); F=".\mvnw.cmd"; A=@("-B","test") },
-        @{ L="frontend lint"; D=(Join-Path $repoRoot "frontend"); F="npm.cmd"; A=@("run","lint") },
         @{ L="frontend build"; D=(Join-Path $repoRoot "frontend"); F="npm.cmd"; A=@("run","build") },
         @{ L="whitespace check"; D=$repoRoot; F="git.exe"; A=@("diff","--check") }
     )
     foreach ($step in $steps) {
         if ((Invoke-LoggedNative "$($Story.Id) $($step.L)" $step.D $step.F $step.A) -ne 0) { return $false }
+    }
+    $changedFrontend = @(git -C $repoRoot diff --name-only HEAD -- "frontend/src/**/*.ts" "frontend/src/**/*.tsx")
+    if ($changedFrontend.Count -gt 0) {
+        $relativeFrontend = @($changedFrontend | ForEach-Object { $_ -replace '^frontend/', '' })
+        if ((Invoke-LoggedNative "$($Story.Id) changed frontend lint" (Join-Path $repoRoot "frontend") "npx.cmd" (@("oxlint") + $relativeFrontend)) -ne 0) {
+            return $false
+        }
+    } else {
+        Write-NightLog "$($Story.Id) has no changed frontend source files; scoped lint skipped."
     }
     $package = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "frontend\package.json") | ConvertFrom-Json
     if ($null -ne $package.scripts.test) {
@@ -88,9 +103,16 @@ Set-Content -LiteralPath $reportFile -Value "HSK Master overnight report`nStarte
 
 try {
     if (-not (Get-Command $AgyCommand -ErrorAction SilentlyContinue)) { throw "agy CLI not found: $AgyCommand" }
-    $dirty = @(git status --porcelain=v1)
+    $dirty = @(git status --porcelain=v1 | Where-Object { $_ -notmatch [regex]::Escape($ReportPath) })
     if ($LASTEXITCODE -ne 0) { throw "Cannot read Git status." }
-    if ($dirty.Count -gt 0) { throw "Worktree must be clean. Commit/stash plans and script first. Dirty: $($dirty -join '; ')" }
+    if ($dirty.Count -gt 0 -and -not $AllowDirty) { throw "Worktree must be clean. Commit/stash plans and script first, or use -AllowDirty for an intentional resume. Dirty: $($dirty -join '; ')" }
+
+    $startIndex = -1
+    for ($index = 0; $index -lt $stories.Count; $index++) {
+        if ($stories[$index].Id -eq $StartStory) { $startIndex = $index; break }
+    }
+    if ($startIndex -lt 0) { throw "Unknown StartStory: $StartStory" }
+    $stories = @($stories[$startIndex..($stories.Count - 1)])
 
     $summary = [System.Collections.Generic.List[object]]::new()
     foreach ($story in $stories) {
@@ -107,27 +129,26 @@ try {
         if ($passed) {
             & git add --all
             if ($LASTEXITCODE -ne 0) { throw "git add failed for $($story.Id)" }
+            & git reset --quiet HEAD -- $ReportPath
             $staged = @(git diff --cached --name-only)
             if ($staged.Count -eq 0) {
                 Write-NightLog "$($story.Id) passed with no new changes to commit." "PASS"
             } else {
                 $commitTemplate = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String("ZmVhdChTVE9SWSk6IEhvw6BuIHRow6BuaCB0cmnhu4NuIGtoYWkgc3RvcnkgU1RPUlk="))
                 $commitMessage = $commitTemplate.Replace("STORY", $story.Id)
-                & git commit -m $commitMessage 2>&1 | ForEach-Object {
-                    Write-Host $_; Add-Content -LiteralPath $reportFile -Value $_.ToString() -Encoding utf8
+                if ((Invoke-LoggedNative "$($story.Id) git commit" $repoRoot "git.exe" @("commit","-m",$commitMessage)) -ne 0) {
+                    throw "git commit failed for $($story.Id)"
                 }
-                if ($LASTEXITCODE -ne 0) { throw "git commit failed for $($story.Id)" }
                 Write-NightLog "$($story.Id) tests passed and commit succeeded." "PASS"
             }
             $summary.Add([pscustomobject]@{ Story=$story.Id; Result="PASS"; Attempts=$attemptUsed })
         } else {
-            $failedChanges = @(git status --porcelain=v1)
+            $failedChanges = @(git status --porcelain=v1 | Where-Object { $_ -notmatch [regex]::Escape($ReportPath) })
             if ($failedChanges.Count -gt 0) {
                 $stash = "night-failed-$($story.Id)-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
-                & git stash push --include-untracked --message $stash 2>&1 | ForEach-Object {
-                    Write-Host $_; Add-Content -LiteralPath $reportFile -Value $_.ToString() -Encoding utf8
+                if ((Invoke-LoggedNative "$($story.Id) git stash" $repoRoot "git.exe" @("stash","push","--include-untracked","--message",$stash,"--",":(exclude)$ReportPath")) -ne 0) {
+                    throw "Failed to stash $($story.Id); stopping to avoid mixed story changes."
                 }
-                if ($LASTEXITCODE -ne 0) { throw "Failed to stash $($story.Id); stopping to avoid mixed story changes." }
                 Write-NightLog "$($story.Id) failed; recoverable changes saved in stash '$stash'." "FAIL"
             } else { Write-NightLog "$($story.Id) failed without changes." "FAIL" }
             $summary.Add([pscustomobject]@{ Story=$story.Id; Result="FAIL"; Attempts=$attemptUsed })

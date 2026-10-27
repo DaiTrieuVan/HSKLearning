@@ -26,6 +26,7 @@ import { ClassStudentProgressPage } from './pages/classroom/ClassStudentProgress
 import { SrsReviewPage } from './pages/learning/SrsReviewPage'
 import { ListeningPracticeListPage } from './pages/learning/ListeningPracticeListPage'
 import { ListeningPracticeDetailPage } from './pages/learning/ListeningPracticeDetailPage'
+import { HanziWritingPracticePage } from './pages/learning/HanziWritingPracticePage'
 import { PrivateVocabManagementPage } from './pages/teacher/PrivateVocabManagementPage'
 import { AddWordsToVocabSetPage } from './pages/teacher/AddWordsToVocabSetPage'
 import { MockExamManagementPage } from './pages/teacher/MockExamManagementPage'
@@ -50,6 +51,7 @@ function AppRoutes() {
         <Route path="/srs/review" element={<SrsReviewPage />} />
         <Route path="/listening" element={<ListeningPracticeListPage />} />
         <Route path="/listening/:id" element={<ListeningPracticeDetailPage />} />
+        <Route path="/writing" element={<HanziWritingPracticePage />} />
         <Route path="/curriculum" element={<HskCurriculumPage />} />
         <Route path="/lessons/:lessonId" element={<LessonStudyPage />} />
         <Route path="/vocab-sets" element={<TeacherVocabSetsPage />} />

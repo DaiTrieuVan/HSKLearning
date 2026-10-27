@@ -273,7 +273,13 @@ public enum ApiErrorCode {
 	MOCK_EXAM_SECTIONS_REQUIRED(HttpStatus.BAD_REQUEST, "Đề thi thử phải có ít nhất 1 phần thi"),
 
 	/** Unexpected server side failure; the client may retry. */
-	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Hệ thống đang gặp sự cố, vui lòng thử lại sau");
+	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Hệ thống đang gặp sự cố, vui lòng thử lại sau"),
+
+	/** HTT-10-CN-002: Stroke order data not found for character. */
+	HANZI_STROKE_DATA_NOT_FOUND(HttpStatus.NOT_FOUND, "Chưa hỗ trợ chữ này"),
+
+	/** HTT-10-CN-002: Input is not a single valid Han ideograph character. */
+	INVALID_HANZI_CHARACTER(HttpStatus.BAD_REQUEST, "Ký tự không phải là chữ Hán hợp lệ");
 
 	private final HttpStatus status;
 

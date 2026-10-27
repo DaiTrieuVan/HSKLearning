@@ -15,6 +15,7 @@ import {
   Headphones,
   PenTool,
   Mic,
+  Bot,
   Award,
   User,
   LogOut,
@@ -301,6 +302,17 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ isCollapsed, onToggleCol
               >
                 <Mic size={20} style={{ flexShrink: 0, color: isActive('/pronunciation') ? 'var(--primary)' : '#64748b' }} />
                 {!isCollapsed && <span>Luyện phát âm</span>}
+              </button>
+
+              {/* 3.1.3. Trợ lý AI tiếng Việt (HTT-10-CN-004) */}
+              <button
+                type="button"
+                onClick={() => navigate('/ai-assistant')}
+                style={navItemStyle(isActive('/ai-assistant'))}
+                title={isCollapsed ? 'Trợ lý AI' : undefined}
+              >
+                <Bot size={20} style={{ flexShrink: 0, color: isActive('/ai-assistant') ? 'var(--primary)' : '#64748b' }} />
+                {!isCollapsed && <span>Trợ lý AI</span>}
               </button>
 
               {/* 3.2. Thi thử Chuẩn HSK 3.0 */}

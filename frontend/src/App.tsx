@@ -28,6 +28,7 @@ import { ListeningPracticeListPage } from './pages/learning/ListeningPracticeLis
 import { ListeningPracticeDetailPage } from './pages/learning/ListeningPracticeDetailPage'
 import { HanziWritingPracticePage } from './pages/learning/HanziWritingPracticePage'
 import { PronunciationPracticePage } from './pages/learning/PronunciationPracticePage'
+import { AiLearningAssistantPage } from './pages/learning/AiLearningAssistantPage'
 import { PrivateVocabManagementPage } from './pages/teacher/PrivateVocabManagementPage'
 import { AddWordsToVocabSetPage } from './pages/teacher/AddWordsToVocabSetPage'
 import { MockExamManagementPage } from './pages/teacher/MockExamManagementPage'
@@ -54,6 +55,7 @@ function AppRoutes() {
         <Route path="/listening/:id" element={<ListeningPracticeDetailPage />} />
         <Route path="/writing" element={<HanziWritingPracticePage />} />
         <Route path="/pronunciation" element={<PronunciationPracticePage />} />
+        <Route path="/ai-assistant" element={<AiLearningAssistantPage />} />
         <Route path="/curriculum" element={<HskCurriculumPage />} />
         <Route path="/lessons/:lessonId" element={<LessonStudyPage />} />
         <Route path="/vocab-sets" element={<TeacherVocabSetsPage />} />

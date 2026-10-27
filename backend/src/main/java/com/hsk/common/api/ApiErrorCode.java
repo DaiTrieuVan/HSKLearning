@@ -288,7 +288,16 @@ public enum ApiErrorCode {
 	PRONUNCIATION_PROVIDER_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "Dịch vụ nhận dạng giọng nói tạm thời không khả dụng, vui lòng thử lại sau"),
 
 	/** HTT-10-CN-003: Reference text must be 1-200 chars and contain Chinese characters. */
-	INVALID_REFERENCE_TEXT(HttpStatus.BAD_REQUEST, "Nội dung chuẩn phải từ 1-200 ký tự và chứa chữ Hán");
+	INVALID_REFERENCE_TEXT(HttpStatus.BAD_REQUEST, "Nội dung chuẩn phải từ 1-200 ký tự và chứa chữ Hán"),
+
+	/** HTT-10-CN-004 / TC-02: Question blank or exceeds 1000 characters. */
+	INVALID_AI_QUESTION(HttpStatus.BAD_REQUEST, "Câu hỏi không được để trống và không được vượt quá 1000 ký tự"),
+
+	/** HTT-10-CN-004 / TC-03: Daily question limit reached (20 questions/day). */
+	AI_DAILY_LIMIT_REACHED(HttpStatus.TOO_MANY_REQUESTS, "Bạn đã dùng hết 20 lượt hỏi trong ngày. Vui lòng quay lại vào ngày mai"),
+
+	/** HTT-10-CN-004 / TC-04: AI provider error or timeout. */
+	AI_PROVIDER_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "Dịch vụ trợ lý AI tạm thời không khả dụng, vui lòng thử lại sau");
 
 	private final HttpStatus status;
 

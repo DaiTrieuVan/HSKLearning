@@ -70,6 +70,7 @@ import org.springframework.test.web.servlet.MvcResult;
  * - TC-01: Luồng thành công (3 câu hỏi nghe, nộp bài, chấm điểm và lưu kết quả).
  * - TC-02: Ngoại lệ audio (API xử lý ổn định, không ghi nhận submission lỗi).
  * - TC-03: Dữ liệu rỗng (Bài nghe thiếu audio tự động bị ẩn khỏi danh sách học sinh).
+ * - TC-04..09: Regression tests cho validation hskLevel, duplicate questions, foreign questions/options, 404 & 401.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -445,5 +446,135 @@ class ListeningPracticeH2Test {
 						.header("Authorization", "Bearer " + studentToken))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$", hasSize(0)));
+	}
+
+	@Test
+	@DisplayName("IMP-01 / TC-04: Lọc HSK không hợp lệ (hskLevel < 1 hoặc > 6) bị từ chối với HTTP 400")
+	void tc04_listeningPractice_rejectInvalidHskLevel() throws Exception {
+		mockMvc.perform(get(LISTENING_PRACTICES_URL)
+						.param("hskLevel", "0")
+						.header("Authorization", "Bearer " + studentToken))
+				.andExpect(status().isBadRequest());
+
+		mockMvc.perform(get(LISTENING_PRACTICES_URL)
+						.param("hskLevel", "7")
+						.header("Authorization", "Bearer " + studentToken))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	@DisplayName("IMP-01 / TC-05: Lấy chi tiết bài nghe không tồn tại hoặc không phải loại LISTENING trả về 404")
+	void tc05_listeningPractice_detailNotFoundOrWrongTypeReturns404() throws Exception {
+		// Exercise không tồn tại
+		mockMvc.perform(get(LISTENING_PRACTICES_URL + "/999999")
+						.header("Authorization", "Bearer " + studentToken))
+				.andExpect(status().isNotFound());
+
+		// Exercise loại khác (ví dụ: REGULAR)
+		ExerciseEntity regularExercise = new ExerciseEntity();
+		regularExercise.setOwnerId(teacherId);
+		regularExercise.setTitle("Bài tập thông thường");
+		regularExercise.setStatus(ExerciseStatus.READY);
+		regularExercise.setExerciseType(ExerciseType.REGULAR);
+		regularExercise.setHskLevel(1);
+		ExerciseEntity saved = exerciseRepository.save(regularExercise);
+
+		mockMvc.perform(get(LISTENING_PRACTICES_URL + "/" + saved.getId())
+						.header("Authorization", "Bearer " + studentToken))
+				.andExpect(status().isNotFound());
+	}
+
+	@Test
+	@DisplayName("IMP-02 / TC-06: Nộp bài bị từ chối 400 khi chứa questionId trùng lặp")
+	void tc06_listeningPractice_submitDuplicateQuestionId_rejectedWith400() throws Exception {
+		ExerciseEntity exercise = createSampleListeningExercise();
+
+		Long questionId = exercise.getQuestions().get(0).getQuestion().getId();
+		Long optId = questionOptionRepository.findByQuestion_IdOrderBySortOrderAsc(questionId).get(0).getId();
+
+		SubmitListeningPracticeRequest duplicateRequest = new SubmitListeningPracticeRequest(List.of(
+				new ListeningAnswerItemDto(questionId, optId),
+				new ListeningAnswerItemDto(questionId, optId)
+		));
+
+		mockMvc.perform(post(LISTENING_PRACTICES_URL + "/" + exercise.getId() + "/submit")
+						.header("Authorization", "Bearer " + studentToken)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(objectMapper.writeValueAsString(duplicateRequest)))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	@DisplayName("IMP-02 / TC-07: Nộp bài bị từ chối 400 khi chứa questionId không thuộc bài tập")
+	void tc07_listeningPractice_submitQuestionNotBelonging_rejectedWith400() throws Exception {
+		ExerciseEntity exercise = createSampleListeningExercise();
+
+		SubmitListeningPracticeRequest foreignQuestionRequest = new SubmitListeningPracticeRequest(List.of(
+				new ListeningAnswerItemDto(999999L, 1L)
+		));
+
+		mockMvc.perform(post(LISTENING_PRACTICES_URL + "/" + exercise.getId() + "/submit")
+						.header("Authorization", "Bearer " + studentToken)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(objectMapper.writeValueAsString(foreignQuestionRequest)))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	@DisplayName("IMP-02 / TC-08: Nộp bài bị từ chối 400 khi selectedOptionId không thuộc câu hỏi")
+	void tc08_listeningPractice_submitInvalidOptionId_rejectedWith400() throws Exception {
+		ExerciseEntity exercise = createSampleListeningExercise();
+
+		Long questionId = exercise.getQuestions().get(0).getQuestion().getId();
+
+		SubmitListeningPracticeRequest invalidOptionRequest = new SubmitListeningPracticeRequest(List.of(
+				new ListeningAnswerItemDto(questionId, 999999L)
+		));
+
+		mockMvc.perform(post(LISTENING_PRACTICES_URL + "/" + exercise.getId() + "/submit")
+						.header("Authorization", "Bearer " + studentToken)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(objectMapper.writeValueAsString(invalidOptionRequest)))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	@DisplayName("IMP-01 / TC-09: Nộp bài không có JWT token bị từ chối 401 Unauthorized")
+	void tc09_listeningPractice_submitWithoutJwt_returns401() throws Exception {
+		ExerciseEntity exercise = createSampleListeningExercise();
+
+		SubmitListeningPracticeRequest request = new SubmitListeningPracticeRequest(List.of());
+
+		mockMvc.perform(post(LISTENING_PRACTICES_URL + "/" + exercise.getId() + "/submit")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(objectMapper.writeValueAsString(request)))
+				.andExpect(status().isUnauthorized());
+	}
+
+	private ExerciseEntity createSampleListeningExercise() {
+		QuestionResponse q = questionService.createMultipleChoiceQuestion(teacherId, new CreateQuestionRequest(
+				"Câu hỏi mẫu",
+				"Giải thích",
+				QuestionType.MCQ,
+				null,
+				List.of(
+						new CreateQuestionOptionRequest("Lựa chọn A", true),
+						new CreateQuestionOptionRequest("Lựa chọn B", false)
+				),
+				"/uploads/audio/sample.mp3",
+				"Transcript",
+				"Pinyin"
+		));
+
+		ExerciseEntity exercise = new ExerciseEntity();
+		exercise.setOwnerId(teacherId);
+		exercise.setTitle("Bài nghe mẫu");
+		exercise.setStatus(ExerciseStatus.READY);
+		exercise.setExerciseType(ExerciseType.LISTENING);
+		exercise.setHskLevel(1);
+
+		QuestionEntity entity = questionRepository.findById(q.id()).orElseThrow();
+		exercise.addQuestion(new ExerciseQuestionEntity(exercise, entity, BigDecimal.TEN, 1));
+		return exerciseRepository.save(exercise);
 	}
 }

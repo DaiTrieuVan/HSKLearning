@@ -23,23 +23,45 @@ export const ListeningPracticeListPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
 
-  const loadPractices = async (hskLevel?: number | null) => {
-    if (!user) return
+  const handleSelectHsk = (level: number | null) => {
+    setSelectedHsk(level)
     setIsLoading(true)
     setError(null)
-    try {
-      const data = await getListeningPractices(user.token, hskLevel || undefined)
-      setPractices(data)
-    } catch (err: any) {
-      setError(err?.message || 'Không thể tải danh sách bài nghe. Vui lòng thử lại.')
-    } finally {
-      setIsLoading(false)
-    }
   }
 
   useEffect(() => {
-    loadPractices(selectedHsk)
+    let ignore = false
+    if (!user) return
+    getListeningPractices(user.token, selectedHsk || undefined)
+      .then((data) => {
+        if (!ignore) {
+          setPractices(data)
+        }
+      })
+      .catch((err: any) => {
+        if (!ignore) {
+          setError(err?.message || 'Không thể tải danh sách bài nghe. Vui lòng thử lại.')
+        }
+      })
+      .finally(() => {
+        if (!ignore) {
+          setIsLoading(false)
+        }
+      })
+    return () => {
+      ignore = true
+    }
   }, [selectedHsk, user])
+
+  const handleRetry = () => {
+    if (!user) return
+    setIsLoading(true)
+    setError(null)
+    getListeningPractices(user.token, selectedHsk || undefined)
+      .then((data) => setPractices(data))
+      .catch((err: any) => setError(err?.message || 'Không thể tải danh sách bài nghe. Vui lòng thử lại.'))
+      .finally(() => setIsLoading(false))
+  }
 
   const hskTabs = [
     { label: 'Tất cả', value: null },
@@ -120,7 +142,7 @@ export const ListeningPracticeListPage: React.FC = () => {
               <button
                 key={tab.label}
                 type="button"
-                onClick={() => setSelectedHsk(tab.value)}
+                onClick={() => handleSelectHsk(tab.value)}
                 className={`rounded-xl px-4 py-2 text-xs font-semibold transition ${
                   active
                     ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
@@ -142,7 +164,7 @@ export const ListeningPracticeListPage: React.FC = () => {
             <p className="text-sm font-medium">{error}</p>
             <button
               type="button"
-              onClick={() => loadPractices(selectedHsk)}
+              onClick={handleRetry}
               className="mt-2 inline-flex items-center space-x-1.5 text-xs font-semibold text-rose-600 underline hover:text-rose-700 dark:text-rose-400"
             >
               <RefreshCw className="h-3.5 w-3.5" />
@@ -190,7 +212,7 @@ export const ListeningPracticeListPage: React.FC = () => {
           {selectedHsk && (
             <button
               type="button"
-              onClick={() => setSelectedHsk(null)}
+              onClick={() => handleSelectHsk(null)}
               className="mt-4 inline-flex items-center space-x-1.5 rounded-xl bg-indigo-50 px-4 py-2 text-xs font-semibold text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:text-indigo-300"
             >
               <span>Xem tất cả cấp độ</span>

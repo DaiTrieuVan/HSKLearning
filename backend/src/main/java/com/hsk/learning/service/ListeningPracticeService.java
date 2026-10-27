@@ -32,9 +32,11 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -80,6 +82,10 @@ public class ListeningPracticeService {
 	 */
 	@Transactional(readOnly = true)
 	public List<ListeningPracticeItemDto> getListeningPractices(Integer hskLevel) {
+		if (hskLevel != null && (hskLevel < 1 || hskLevel > 6)) {
+			throw new ApiException(ApiErrorCode.VALIDATION_FAILED, "hskLevel", "Cấp độ HSK phải từ 1 đến 6");
+		}
+
 		List<ExerciseEntity> exercises = exerciseRepository.findListeningExercisesWithQuestions(hskLevel);
 		if (exercises.isEmpty()) {
 			return Collections.emptyList();
@@ -199,11 +205,37 @@ public class ListeningPracticeService {
 			throw new ApiException(ApiErrorCode.MALFORMED_REQUEST_BODY);
 		}
 
+		// HTT-10-CN-001 / IMP-02: Kiểm tra câu hỏi thuộc bài tập, chống trùng lặp câu trả lời
+		Map<Long, QuestionEntity> exerciseQuestionsMap = new HashMap<>();
+		if (exercise.getQuestions() != null) {
+			for (ExerciseQuestionEntity eq : exercise.getQuestions()) {
+				if (eq.getQuestion() != null) {
+					exerciseQuestionsMap.put(eq.getQuestion().getId(), eq.getQuestion());
+				}
+			}
+		}
+
+		Set<Long> seenQuestionIds = new HashSet<>();
 		Map<Long, Long> answersMap = new HashMap<>();
 		for (ListeningAnswerItemDto ans : request.answers()) {
-			if (ans != null && ans.questionId() != null) {
-				answersMap.put(ans.questionId(), ans.selectedOptionId());
+			if (ans == null || ans.questionId() == null) {
+				throw new ApiException(ApiErrorCode.MALFORMED_REQUEST_BODY);
 			}
+			if (!seenQuestionIds.add(ans.questionId())) {
+				throw new ApiException(ApiErrorCode.VALIDATION_FAILED, "answers", "Danh sách câu trả lời chứa câu hỏi trùng lặp: " + ans.questionId());
+			}
+			if (!exerciseQuestionsMap.containsKey(ans.questionId())) {
+				throw new ApiException(ApiErrorCode.VALIDATION_FAILED, "answers", "Câu hỏi không thuộc bài luyện nghe này: " + ans.questionId());
+			}
+			if (ans.selectedOptionId() != null) {
+				QuestionEntity q = exerciseQuestionsMap.get(ans.questionId());
+				boolean optionBelongs = q.getOptions() != null && q.getOptions().stream()
+						.anyMatch(opt -> opt.getId().equals(ans.selectedOptionId()));
+				if (!optionBelongs) {
+					throw new ApiException(ApiErrorCode.VALIDATION_FAILED, "answers", "Lựa chọn không hợp lệ cho câu hỏi: " + ans.questionId());
+				}
+			}
+			answersMap.put(ans.questionId(), ans.selectedOptionId());
 		}
 
 		List<ListeningGradedQuestionDto> gradedQuestions = new ArrayList<>();
@@ -329,20 +361,21 @@ public class ListeningPracticeService {
 			BigDecimal earnedPoints,
 			SubmitListeningPracticeRequest request
 	) {
-		try {
-			int nextAttempt = assignmentSubmissionRepository.findFirstByAssignment_IdAndStudent_IdOrderByAttemptNumberDesc(
-							assignment.getId(), student.getId())
-					.map(s -> s.getAttemptNumber() + 1)
-					.orElse(1);
+		int nextAttempt = assignmentSubmissionRepository.findFirstByAssignment_IdAndStudent_IdOrderByAttemptNumberDesc(
+						assignment.getId(), student.getId())
+				.map(s -> s.getAttemptNumber() + 1)
+				.orElse(1);
 
-			AssignmentSubmissionEntity submission = AssignmentSubmissionEntity.createAttempt(assignment, student, nextAttempt);
-			String answersJson = objectMapper.writeValueAsString(request.answers());
-			submission.submit(earnedPoints, answersJson);
-			submission.setStatus(SubmissionStatus.SUBMITTED);
-			assignmentSubmissionRepository.save(submission);
+		AssignmentSubmissionEntity submission = AssignmentSubmissionEntity.createAttempt(assignment, student, nextAttempt);
+		String answersJson;
+		try {
+			answersJson = objectMapper.writeValueAsString(request.answers());
 		} catch (Exception e) {
-			log.warn("Could not save assignment submission for exercise {}: {}", assignment.getExercise().getId(), e.getMessage());
+			throw new ApiException(ApiErrorCode.MALFORMED_REQUEST_BODY);
 		}
+		submission.submit(earnedPoints, answersJson);
+		submission.setStatus(SubmissionStatus.SUBMITTED);
+		assignmentSubmissionRepository.save(submission);
 	}
 
 	private String extractPrimaryAudioUrl(ExerciseEntity exercise) {

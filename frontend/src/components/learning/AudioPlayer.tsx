@@ -18,6 +18,7 @@ interface AudioPlayerProps {
   autoPlay?: boolean
   className?: string
   onErrorOccurred?: (err: string) => void
+  onLoadedSuccess?: () => void
 }
 
 export const AudioPlayer: React.FC<AudioPlayerProps> = ({
@@ -26,6 +27,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   autoPlay = false,
   className = '',
   onErrorOccurred,
+  onLoadedSuccess,
 }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -38,18 +40,20 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   const [errorMessage, setErrorMessage] = useState('')
   const [isLoading, setIsLoading] = useState(true)
 
-  // Reset khi src thay đổi
+  // Reset audio khi src thay đổi
   useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.load()
+    }
+  }, [src])
+
+  const handleLoadStart = () => {
     setHasError(false)
     setErrorMessage('')
     setIsPlaying(false)
     setCurrentTime(0)
     setIsLoading(true)
-
-    if (audioRef.current) {
-      audioRef.current.load()
-    }
-  }, [src])
+  }
 
   const togglePlay = () => {
     if (!audioRef.current || hasError) return
@@ -78,6 +82,9 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
       setDuration(audioRef.current.duration || 0)
       setIsLoading(false)
       setHasError(false)
+      if (onLoadedSuccess) {
+        onLoadedSuccess()
+      }
     }
   }
 
@@ -108,7 +115,12 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
       audioRef.current.load()
       audioRef.current
         .play()
-        .then(() => setIsPlaying(true))
+        .then(() => {
+          setIsPlaying(true)
+          if (onLoadedSuccess) {
+            onLoadedSuccess()
+          }
+        })
         .catch(() => {
           handleAudioError('Thử lại thất bại. Tệp âm thanh không khả dụng trên máy chủ.')
         })
@@ -170,6 +182,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
         ref={audioRef}
         src={src}
         autoPlay={autoPlay}
+        onLoadStart={handleLoadStart}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onEnded={handleEnded}

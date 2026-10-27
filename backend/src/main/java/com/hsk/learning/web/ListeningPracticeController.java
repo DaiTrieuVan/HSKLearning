@@ -10,9 +10,12 @@ import com.hsk.learning.dto.ListeningPracticeResultResponse;
 import com.hsk.learning.dto.SubmitListeningPracticeRequest;
 import com.hsk.learning.service.ListeningPracticeService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import java.security.Principal;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -25,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
  * Controller phục vụ luyện nghe hiểu (HTT-10-CN-001).
  * Tuân thủ Senior Backend Mode: DTO boundary validation, RFC standardized errors, structured logging.
  */
+@Validated
 @RestController
 @RequestMapping({"/api/listening-practices", "/api/v1/listening-practices"})
 public class ListeningPracticeController {
@@ -54,7 +58,7 @@ public class ListeningPracticeController {
 	 */
 	@GetMapping
 	public ResponseEntity<List<ListeningPracticeItemDto>> getListeningPractices(
-			@RequestParam(required = false) Integer hskLevel
+			@RequestParam(required = false) @Min(value = 1, message = "Cấp độ HSK phải từ 1 đến 6") @Max(value = 6, message = "Cấp độ HSK phải từ 1 đến 6") Integer hskLevel
 	) {
 		List<ListeningPracticeItemDto> result = listeningPracticeService.getListeningPractices(hskLevel);
 		return ResponseEntity.ok(result);

@@ -23,10 +23,11 @@ export const HanziTraceCanvas: React.FC<HanziTraceCanvasProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
+  const innerAreaRef = useRef<HTMLDivElement | null>(null)
 
   const [currentStrokeIndex, setCurrentStrokeIndex] = useState<number>(0)
-  const [isDrawing, setIsDrawing] = useState<boolean>(false)
-  const [drawnPoints, setDrawnPoints] = useState<Point[]>([])
+  const pointsRef = useRef<Point[]>([])
+  const isDrawingRef = useRef<boolean>(false)
   const [feedbackStatus, setFeedbackStatus] = useState<
     'idle' | 'drawing' | 'success_stroke' | 'error_stroke' | 'completed'
   >('idle')
@@ -51,7 +52,9 @@ export const HanziTraceCanvas: React.FC<HanziTraceCanvasProps> = ({
 
       if (points.length < 2) return
 
+      const dpr = window.devicePixelRatio || 1
       ctx.save()
+      ctx.scale(dpr, dpr)
       ctx.strokeStyle = '#059669' // Màu mực viết xanh ngọc
       ctx.lineWidth = 14
       ctx.lineCap = 'round'
@@ -70,27 +73,35 @@ export const HanziTraceCanvas: React.FC<HanziTraceCanvasProps> = ({
 
   // Xử lý bắt đầu vẽ
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    e.preventDefault()
     if (feedbackStatus === 'completed') return
 
     const canvas = canvasRef.current
     if (!canvas) return
 
-    canvas.setPointerCapture(e.pointerId)
+    try {
+      canvas.setPointerCapture(e.pointerId)
+    } catch {
+      // ignore
+    }
+
     const rect = canvas.getBoundingClientRect()
     const startPoint: Point = {
       x: e.clientX - rect.left,
       y: e.clientY - rect.top,
     }
 
-    setIsDrawing(true)
-    setDrawnPoints([startPoint])
+    isDrawingRef.current = true
+    pointsRef.current = [startPoint]
     setFeedbackStatus('drawing')
     setFlashColor('none')
+    redrawDrawing([startPoint])
   }
 
-  // Xử lý đang vẽ
+  // Xử lý đang vẽ (sử dụng ref để tránh re-render liên tục gây giật lag & reflow)
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return
+    if (!isDrawingRef.current) return
+    e.preventDefault()
 
     const canvas = canvasRef.current
     if (!canvas) return
@@ -101,23 +112,23 @@ export const HanziTraceCanvas: React.FC<HanziTraceCanvasProps> = ({
       y: e.clientY - rect.top,
     }
 
-    setDrawnPoints(prev => {
-      const updated = [...prev, newPoint]
-      redrawDrawing(updated)
-      return updated
-    })
+    pointsRef.current.push(newPoint)
+    redrawDrawing(pointsRef.current)
   }
 
   // Xử lý nhấc bút / kết thúc nét
   const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return
-    setIsDrawing(false)
+    if (!isDrawingRef.current) return
+    e.preventDefault()
+    isDrawingRef.current = false
 
     const canvas = canvasRef.current
     if (!canvas) return
 
     try {
-      canvas.releasePointerCapture(e.pointerId)
+      if (canvas.hasPointerCapture(e.pointerId)) {
+        canvas.releasePointerCapture(e.pointerId)
+      }
     } catch {
       // ignore
     }
@@ -125,6 +136,7 @@ export const HanziTraceCanvas: React.FC<HanziTraceCanvasProps> = ({
     const rect = canvas.getBoundingClientRect()
     const width = rect.width
     const height = rect.height
+    const drawnPoints = pointsRef.current
 
     if (drawnPoints.length < 2) {
       redrawDrawing([])
@@ -179,41 +191,59 @@ export const HanziTraceCanvas: React.FC<HanziTraceCanvasProps> = ({
 
   // Reset về trạng thái ban đầu
   const handleReset = () => {
+    isDrawingRef.current = false
+    pointsRef.current = []
     setCurrentStrokeIndex(0)
     setFeedbackStatus('idle')
     setErrorMessage('')
     setStrokeScores([])
-    setDrawnPoints([])
     redrawDrawing([])
   }
 
   // Xóa nét vừa viết
   const handleUndo = () => {
     if (currentStrokeIndex > 0) {
+      isDrawingRef.current = false
+      pointsRef.current = []
       setCurrentStrokeIndex(prev => prev - 1)
       setStrokeScores(prev => prev.slice(0, -1))
       setFeedbackStatus('idle')
       setErrorMessage('')
-      setDrawnPoints([])
       redrawDrawing([])
     }
   }
 
-  // Resize canvas theo kích thước container
-  useEffect(() => {
-    const handleResize = () => {
-      const canvas = canvasRef.current
-      const container = containerRef.current
-      if (!canvas || !container) return
-      const rect = container.getBoundingClientRect()
-      canvas.width = rect.width
-      canvas.height = rect.height
+  // Cập nhật kích thước canvas theo đúng tỷ lệ pixel thiết bị (DPI) và container
+  const updateCanvasSize = useCallback(() => {
+    const canvas = canvasRef.current
+    const area = innerAreaRef.current
+    if (!canvas || !area) return
+    const rect = area.getBoundingClientRect()
+    if (rect.width > 0 && rect.height > 0) {
+      const dpr = window.devicePixelRatio || 1
+      canvas.width = Math.round(rect.width * dpr)
+      canvas.height = Math.round(rect.height * dpr)
     }
-
-    handleResize()
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
   }, [])
+
+  useEffect(() => {
+    updateCanvasSize()
+    const area = innerAreaRef.current
+    if (!area) return
+
+    const ro = new ResizeObserver(() => {
+      if (!isDrawingRef.current) {
+        updateCanvasSize()
+      }
+    })
+    ro.observe(area)
+
+    window.addEventListener('resize', updateCanvasSize)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', updateCanvasSize)
+    }
+  }, [updateCanvasSize])
 
   // Điểm bắt đầu gợi ý cho nét hiện tại trong hệ tọa độ font
   const currentMedian = medians[currentStrokeIndex]
@@ -233,7 +263,7 @@ export const HanziTraceCanvas: React.FC<HanziTraceCanvasProps> = ({
         margin: '0 auto',
       }}
     >
-      {/* Vùng canvas tương tác tập viết */}
+      {/* Vùng card viền ngoài tương tác tập viết */}
       <div
         ref={containerRef}
         style={{
@@ -254,150 +284,178 @@ export const HanziTraceCanvas: React.FC<HanziTraceCanvasProps> = ({
           transition: 'border-color 0.25s ease',
           overflow: 'hidden',
           userSelect: 'none',
+          WebkitUserSelect: 'none',
           touchAction: 'none',
+          boxSizing: 'border-box',
+          padding: '12px',
         }}
       >
-        {/* Layer 1: Lưới ô chữ & Nét hoàn thành dạng SVG */}
-        <svg
-          viewBox="0 0 1024 1024"
+        {/* Khung nội dung tập viết chung toạ độ 1:1 cho cả SVG và Canvas */}
+        <div
+          ref={innerAreaRef}
           style={{
-            position: 'absolute',
-            top: '4%',
-            left: '4%',
-            width: '92%',
-            height: '92%',
-            pointerEvents: 'none',
-          }}
-          aria-hidden="true"
-        >
-          {/* Lưới ô chữ Mễ tự / Điền tự */}
-          {gridType !== 'none' && (
-            <g stroke="#cbd5e1" strokeWidth="2" strokeDasharray="8 8">
-              <rect
-                x="2"
-                y="2"
-                width="1020"
-                height="1020"
-                fill="none"
-                stroke="#94a3b8"
-                strokeWidth="4"
-                strokeDasharray="none"
-              />
-              <line x1="512" y1="0" x2="512" y2="1024" />
-              <line x1="0" y1="512" x2="1024" y2="512" />
-              {gridType === 'mi' && (
-                <>
-                  <line x1="0" y1="0" x2="1024" y2="1024" />
-                  <line x1="0" y1="1024" x2="1024" y2="0" />
-                </>
-              )}
-            </g>
-          )}
-
-          {/* SVG các nét chữ Hán */}
-          <g transform="scale(1, -1) translate(0, -900)">
-            {/* 1. Bóng mờ toàn bộ chữ (Ghost) */}
-            <g fill="#f1f5f9" opacity="0.8">
-              {strokes.map((path, idx) => (
-                <path key={`ghost-${idx}`} d={path} />
-              ))}
-            </g>
-
-            {/* 2. Gợi ý nét hiện tại khi bật showHint */}
-            {showHint && currentStrokeIndex < totalStrokes && (
-              <path
-                d={strokes[currentStrokeIndex]}
-                fill="#dcfce7"
-                stroke="#86efac"
-                strokeWidth="8"
-                strokeDasharray="16 8"
-                opacity="0.9"
-              />
-            )}
-
-            {/* 3. Các nét đã viết đúng hoàn chỉnh (Mực đen chuẩn) */}
-            <g fill="#0f172a">
-              {strokes.slice(0, currentStrokeIndex).map((path, idx) => (
-                <path key={`done-${idx}`} d={path} />
-              ))}
-            </g>
-
-            {/* 4. Điểm chấm gợi ý vị trí bắt đầu nét trong hệ tọa độ font */}
-            {hintStartFont && (
-              <g>
-                <circle
-                  cx={hintStartFont[0]}
-                  cy={hintStartFont[1]}
-                  r="38"
-                  fill="none"
-                  stroke="#10b981"
-                  strokeWidth="5"
-                  opacity="0.75"
-                />
-                <circle
-                  cx={hintStartFont[0]}
-                  cy={hintStartFont[1]}
-                  r="22"
-                  fill="#10b981"
-                  stroke="#ffffff"
-                  strokeWidth="6"
-                />
-              </g>
-            )}
-          </g>
-        </svg>
-
-        {/* Layer 2: HTML5 Canvas nhận thao tác vẽ của người dùng */}
-        <canvas
-          ref={canvasRef}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerUp}
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
+            position: 'relative',
             width: '100%',
             height: '100%',
-            cursor: feedbackStatus === 'completed' ? 'default' : 'crosshair',
-          }}
-        />
-
-        {/* Badge thứ tự nét góc dưới */}
-        <div
-          style={{
-            position: 'absolute',
-            bottom: '10px',
-            right: '10px',
-            backgroundColor: 'rgba(255, 255, 255, 0.92)',
-            backdropFilter: 'blur(4px)',
-            border: '1px solid #e2e8f0',
-            borderRadius: '16px',
-            padding: '3px 10px',
-            fontSize: '0.78rem',
-            fontWeight: 700,
-            color: currentStrokeIndex >= totalStrokes ? '#10b981' : '#475569',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+            touchAction: 'none',
           }}
         >
-          {currentStrokeIndex >= totalStrokes ? (
-            <>
-              <CheckCircle2 size={14} color="#10b981" />
-              <span>Hoàn thành ({totalStrokes} nét)</span>
-            </>
-          ) : (
-            <span>
-              Nét {currentStrokeIndex + 1} / {totalStrokes}
-            </span>
-          )}
+          {/* Layer 1: Lưới ô chữ & Nét hoàn thành dạng SVG */}
+          <svg
+            viewBox="0 0 1024 1024"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              pointerEvents: 'none',
+            }}
+            aria-hidden="true"
+          >
+            {/* Lưới ô chữ Mễ tự / Điền tự */}
+            {gridType !== 'none' && (
+              <g stroke="#cbd5e1" strokeWidth="2" strokeDasharray="8 8">
+                <rect
+                  x="2"
+                  y="2"
+                  width="1020"
+                  height="1020"
+                  fill="none"
+                  stroke="#94a3b8"
+                  strokeWidth="4"
+                  strokeDasharray="none"
+                />
+                <line x1="512" y1="0" x2="512" y2="1024" />
+                <line x1="0" y1="512" x2="1024" y2="512" />
+                {gridType === 'mi' && (
+                  <>
+                    <line x1="0" y1="0" x2="1024" y2="1024" />
+                    <line x1="0" y1="1024" x2="1024" y2="0" />
+                  </>
+                )}
+              </g>
+            )}
+
+            {/* SVG các nét chữ Hán */}
+            <g transform="scale(1, -1) translate(0, -900)">
+              {/* 1. Bóng mờ toàn bộ chữ (Ghost) */}
+              <g fill="#f1f5f9" opacity="0.8">
+                {strokes.map((path, idx) => (
+                  <path key={`ghost-${idx}`} d={path} />
+                ))}
+              </g>
+
+              {/* 2. Gợi ý nét hiện tại khi bật showHint */}
+              {showHint && currentStrokeIndex < totalStrokes && (
+                <path
+                  d={strokes[currentStrokeIndex]}
+                  fill="#dcfce7"
+                  stroke="#86efac"
+                  strokeWidth="8"
+                  strokeDasharray="16 8"
+                  opacity="0.9"
+                />
+              )}
+
+              {/* 3. Các nét đã viết đúng hoàn chỉnh (Mực đen chuẩn) */}
+              <g fill="#0f172a">
+                {strokes.slice(0, currentStrokeIndex).map((path, idx) => (
+                  <path key={`done-${idx}`} d={path} />
+                ))}
+              </g>
+
+              {/* 4. Điểm chấm gợi ý vị trí bắt đầu nét trong hệ tọa độ font */}
+              {hintStartFont && (
+                <g>
+                  <circle
+                    cx={hintStartFont[0]}
+                    cy={hintStartFont[1]}
+                    r="38"
+                    fill="none"
+                    stroke="#10b981"
+                    strokeWidth="5"
+                    opacity="0.75"
+                  />
+                  <circle
+                    cx={hintStartFont[0]}
+                    cy={hintStartFont[1]}
+                    r="22"
+                    fill="#10b981"
+                    stroke="#ffffff"
+                    strokeWidth="6"
+                  />
+                </g>
+              )}
+            </g>
+          </svg>
+
+          {/* Layer 2: HTML5 Canvas nhận thao tác vẽ của người dùng */}
+          <canvas
+            ref={canvasRef}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              cursor: feedbackStatus === 'completed' ? 'default' : 'crosshair',
+              userSelect: 'none',
+              WebkitUserSelect: 'none',
+              touchAction: 'none',
+            }}
+          />
+
+          {/* Badge thứ tự nét góc dưới */}
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '8px',
+              right: '8px',
+              backgroundColor: 'rgba(255, 255, 255, 0.92)',
+              backdropFilter: 'blur(4px)',
+              border: '1px solid #e2e8f0',
+              borderRadius: '16px',
+              padding: '3px 10px',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              color: currentStrokeIndex >= totalStrokes ? '#10b981' : '#475569',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              pointerEvents: 'none',
+            }}
+          >
+            {currentStrokeIndex >= totalStrokes ? (
+              <>
+                <CheckCircle2 size={14} color="#10b981" />
+                <span>Hoàn thành ({totalStrokes} nét)</span>
+              </>
+            ) : (
+              <span>
+                Nét {currentStrokeIndex + 1} / {totalStrokes}
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Thông điệp phản hồi kết quả nét vẽ */}
-      <div style={{ width: '100%' }}>
+      {/* Thông điệp phản hồi kết quả nét vẽ - giữ chiều cao cố định để không giật layout */}
+      <div
+        style={{
+          width: '100%',
+          minHeight: '68px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+        }}
+      >
         <StrokeFeedback
           status={feedbackStatus}
           currentStrokeIndex={currentStrokeIndex}

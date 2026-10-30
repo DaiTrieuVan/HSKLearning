@@ -1,5 +1,5 @@
 import React from 'react'
-import { CheckCircle2, AlertCircle, Sparkles, Info, RotateCcw } from 'lucide-react'
+import { CheckCircle2, AlertCircle, Sparkles, Info, RotateCcw, PenTool } from 'lucide-react'
 import type { StrokeErrorReason } from '../../utils/strokeMatching'
 
 export interface StrokeFeedbackProps {
@@ -22,6 +22,32 @@ export const StrokeFeedback: React.FC<StrokeFeedbackProps> = ({
   score,
   onReset,
 }) => {
+  if (status === 'drawing') {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          padding: '10px 16px',
+          backgroundColor: '#f8fafc',
+          border: '1.5px solid #cbd5e1',
+          borderRadius: '10px',
+          fontSize: '0.88rem',
+          color: '#334155',
+          fontWeight: 600,
+          boxSizing: 'border-box',
+          minHeight: '44px',
+        }}
+      >
+        <PenTool size={18} color="#10b981" style={{ flexShrink: 0 }} />
+        <span>
+          Đang viết nét thứ <strong>{currentStrokeIndex + 1}</strong>... Hãy vẽ theo đúng hướng và hình dạng gợi ý.
+        </span>
+      </div>
+    )
+  }
+
   if (status === 'idle') {
     return (
       <div

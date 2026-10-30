@@ -92,16 +92,18 @@ export const StrokeOrderAnimator: React.FC<StrokeOrderAnimatorProps> = ({
           backgroundColor: '#ffffff',
           borderRadius: '16px',
           boxShadow: '0 4px 20px rgba(0, 0, 0, 0.06)',
-          border: '2px solid #e2e8f0',
+          border: '2.5px solid #e2e8f0',
           overflow: 'hidden',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          boxSizing: 'border-box',
+          padding: '12px',
         }}
       >
         <svg
           viewBox="0 0 1024 1024"
-          style={{ width: '92%', height: '92%' }}
+          style={{ width: '100%', height: '100%' }}
           role="img"
           aria-label={`Hoạt ảnh thứ tự nét của chữ ${hanzi}`}
         >

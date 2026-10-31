@@ -11,6 +11,14 @@ import {
   FileText,
   Layers,
   Check,
+  PenTool,
+  Mic,
+  Headphones,
+  Award,
+  BrainCircuit,
+  Target,
+  Compass,
+  ChevronRight,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import {
@@ -138,50 +146,52 @@ export const HskRoadmapPage: React.FC = () => {
         </div>
       </header>
 
-      {/* Main Container */}
-      <main style={{ flex: 1, maxWidth: '1100px', width: '100%', margin: '0 auto', padding: '28px 20px' }}>
+      {/* Main Container - Tối ưu độ rộng lên 1440px */}
+      <main style={{ flex: 1, maxWidth: '1440px', width: '100%', margin: '0 auto', padding: '24px 28px' }}>
         {/* Banner with Mascot and Overall Progress */}
         <div
           className="game-card"
           style={{
-            padding: '24px 28px',
+            padding: '20px 28px',
             backgroundColor: '#ffffff',
             marginBottom: '24px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: '24px',
+            borderRadius: '16px',
+            border: '1.5px solid var(--border-card)',
           }}
         >
           <div style={{ flex: 1 }}>
             <div
               style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              backgroundColor: 'var(--jade-green-light)',
-              color: 'var(--jade-green-shadow)',
-              padding: '4px 12px',
-              borderRadius: 'var(--radius-full)',
-              fontWeight: 800,
-              fontSize: '0.78rem',
-              marginBottom: '10px',
-            }}
-          >
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                backgroundColor: 'var(--jade-green-light)',
+                color: 'var(--jade-green-shadow)',
+                padding: '4px 12px',
+                borderRadius: 'var(--radius-full)',
+                fontWeight: 800,
+                fontSize: '0.78rem',
+                marginBottom: '8px',
+              }}
+            >
               <Sparkles size={14} />
               <span>Lộ trình cá nhân hóa</span>
             </div>
 
-            <h2 style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '6px' }}>
+            <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '4px' }}>
               Chinh phục HSK từng bước vững chắc
             </h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '18px', lineHeight: 1.5 }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginBottom: '14px', lineHeight: 1.5 }}>
               Học theo thứ tự các bài học chuẩn, ôn tập từ vựng kèm ngữ pháp và tích lũy từng mốc hoàn thành.
             </p>
 
             {/* Overall Progress Bar */}
             {roadmap && (
-              <div style={{ maxWidth: '480px' }}>
+              <div style={{ maxWidth: '540px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '6px' }}>
                   <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>
                     Tổng số bài đã hoàn thành: <strong style={{ color: 'var(--primary)' }}>{roadmap.totalCompletedLessons}</strong> bài
@@ -213,7 +223,7 @@ export const HskRoadmapPage: React.FC = () => {
           </div>
 
           <div className="animate-float" style={{ flexShrink: 0 }}>
-            <PandaMascot size={80} />
+            <PandaMascot size={76} />
           </div>
         </div>
 
@@ -251,126 +261,372 @@ export const HskRoadmapPage: React.FC = () => {
           </div>
         )}
 
-        {/* Content Section: Level Selection Tabs & Lessons */}
+        {/* Content Section: 2-Column Responsive Layout */}
         {!loading && !error && roadmap && (
-          <div>
-            {/* Level Selector Tabs */}
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
-                gap: '10px',
-                marginBottom: '24px',
-              }}
-            >
-              {roadmap.levels.map((lvl) => {
-                const isSelected = lvl.id === selectedLevelId
-                const isDone = lvl.totalLessons > 0 && lvl.completedLessons === lvl.totalLessons
-                const isEmpty = lvl.totalLessons === 0
-
-                return (
-                  <button
-                    key={lvl.id}
-                    type="button"
-                    onClick={() => setSelectedLevelId(lvl.id)}
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'flex-start',
-                      padding: '12px 14px',
-                      borderRadius: 'var(--radius-md)',
-                      border: isSelected ? '2px solid var(--primary)' : '1.5px solid var(--border-card)',
-                      backgroundColor: isSelected ? 'var(--primary-light)' : '#ffffff',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                      boxShadow: isSelected ? '0 4px 12px rgba(16, 185, 129, 0.12)' : 'none',
-                      textAlign: 'left',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: '4px' }}>
-                      <span
-                        style={{
-                          fontWeight: 800,
-                          fontSize: '0.92rem',
-                          color: isSelected ? 'var(--primary-shadow)' : 'var(--text-main)',
-                        }}
-                      >
-                        {lvl.code.replace('_', ' ')}
-                      </span>
-                      {isDone && <CheckCircle2 size={16} color="var(--primary)" />}
-                    </div>
-
-                    <div style={{ fontSize: '0.75rem', color: isSelected ? 'var(--primary-shadow)' : 'var(--text-muted)' }}>
-                      {isEmpty ? (
-                        <span style={{ color: '#94a3b8' }}>Đang cập nhật</span>
-                      ) : (
-                        <span>
-                          {lvl.completedLessons}/{lvl.totalLessons} bài ({lvl.progressPercent}%)
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-
-            {/* Selected Level View */}
-            {selectedLevel && (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'minmax(0, 1fr) 340px',
+              gap: '24px',
+              alignItems: 'start',
+            }}
+          >
+            {/* CỘT CHÍNH (BÊN TRÁI): Chọn cấp độ & Danh sách bài học */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {/* Level Selector Tabs */}
               <div
-                className="game-card"
                 style={{
-                  padding: '24px',
-                  backgroundColor: '#ffffff',
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+                  gap: '10px',
                 }}
               >
-                {/* Level Summary Header */}
-                <div
-                  style={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '16px',
-                    paddingBottom: '20px',
-                    borderBottom: '1.5px solid var(--border-card)',
-                    marginBottom: '20px',
-                  }}
-                >
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                      <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)' }}>
-                        {selectedLevel.title}
-                      </h2>
-                      {selectedLevel.available && (
+                {roadmap.levels.map((lvl) => {
+                  const isSelected = lvl.id === selectedLevelId
+                  const isDone = lvl.totalLessons > 0 && lvl.completedLessons === lvl.totalLessons
+                  const isEmpty = lvl.totalLessons === 0
+
+                  return (
+                    <button
+                      key={lvl.id}
+                      type="button"
+                      onClick={() => setSelectedLevelId(lvl.id)}
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'flex-start',
+                        padding: '12px 14px',
+                        borderRadius: 'var(--radius-md)',
+                        border: isSelected ? '2px solid var(--primary)' : '1.5px solid var(--border-card)',
+                        backgroundColor: isSelected ? 'var(--primary-light)' : '#ffffff',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                        boxShadow: isSelected ? '0 4px 12px rgba(16, 185, 129, 0.12)' : 'none',
+                        textAlign: 'left',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: '4px' }}>
                         <span
                           style={{
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            padding: '2px 8px',
-                            borderRadius: 'var(--radius-full)',
-                            backgroundColor: 'var(--jade-green-light)',
-                            color: 'var(--jade-green-shadow)',
+                            fontWeight: 800,
+                            fontSize: '0.92rem',
+                            color: isSelected ? 'var(--primary-shadow)' : 'var(--text-main)',
                           }}
                         >
-                          Mục tiêu {selectedLevel.targetVocabCount} từ
+                          {lvl.code.replace('_', ' ')}
                         </span>
-                      )}
+                        {isDone && <CheckCircle2 size={16} color="var(--primary)" />}
+                      </div>
+
+                      <div style={{ fontSize: '0.75rem', color: isSelected ? 'var(--primary-shadow)' : 'var(--text-muted)' }}>
+                        {isEmpty ? (
+                          <span style={{ color: '#94a3b8' }}>Đang cập nhật</span>
+                        ) : (
+                          <span>
+                            {lvl.completedLessons}/{lvl.totalLessons} bài ({lvl.progressPercent}%)
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Selected Level View */}
+              {selectedLevel && (
+                <div
+                  className="game-card"
+                  style={{
+                    padding: '24px',
+                    backgroundColor: '#ffffff',
+                    borderRadius: '16px',
+                    border: '1.5px solid var(--border-card)',
+                  }}
+                >
+                  {/* Level Summary Header */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '16px',
+                      paddingBottom: '18px',
+                      borderBottom: '1.5px solid var(--border-card)',
+                      marginBottom: '20px',
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                        <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                          {selectedLevel.title}
+                        </h2>
+                        {selectedLevel.available && (
+                          <span
+                            style={{
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              padding: '2px 8px',
+                              borderRadius: 'var(--radius-full)',
+                              backgroundColor: 'var(--jade-green-light)',
+                              color: 'var(--jade-green-shadow)',
+                            }}
+                          >
+                            Mục tiêu {selectedLevel.targetVocabCount} từ
+                          </span>
+                        )}
+                      </div>
+                      <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)', margin: 0 }}>
+                        {selectedLevel.description || 'Học và hoàn thành các bài học bên dưới để đạt tiến độ cấp độ này.'}
+                      </p>
                     </div>
-                    <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)' }}>
-                      {selectedLevel.description || 'Học và hoàn thành các bài học bên dưới để đạt tiến độ cấp độ này.'}
-                    </p>
+
+                    {/* Level Progress */}
+                    {selectedLevel.available && (
+                      <div style={{ minWidth: '200px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '6px' }}>
+                          <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>
+                            Tiến độ: {selectedLevel.completedLessons}/{selectedLevel.totalLessons} bài
+                          </span>
+                          <span style={{ fontWeight: 800, color: 'var(--primary)' }}>
+                            {selectedLevel.progressPercent}%
+                          </span>
+                        </div>
+                        <div
+                          style={{
+                            height: '8px',
+                            backgroundColor: '#e2e8f0',
+                            borderRadius: 'var(--radius-full)',
+                            overflow: 'hidden',
+                          }}
+                        >
+                          <div
+                            style={{
+                              height: '100%',
+                              width: `${selectedLevel.progressPercent}%`,
+                              backgroundColor: 'var(--primary)',
+                              borderRadius: 'var(--radius-full)',
+                              transition: 'width 0.4s ease',
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Level Progress Circle / Bar */}
+                  {/* TC-04: Empty state when level has 0 lessons */}
+                  {!selectedLevel.available && (
+                    <div
+                      style={{
+                        padding: '48px 24px',
+                        textAlign: 'center',
+                        backgroundColor: '#f8fafc',
+                        borderRadius: 'var(--radius-md)',
+                        border: '1.5px dashed var(--border-card)',
+                        margin: '12px 0',
+                      }}
+                    >
+                      <div style={{ marginBottom: '14px', display: 'flex', justifyContent: 'center' }}>
+                        <PandaMascot size={64} />
+                      </div>
+                      <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '8px' }}>
+                        Nội dung đang được cập nhật
+                      </h3>
+                      <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', maxWidth: '500px', margin: '0 auto 16px', lineHeight: 1.5 }}>
+                        Cấp độ <strong>{selectedLevel.title}</strong> đang trong quá trình biên soạn học liệu chuẩn. Hãy tiếp tục củng cố các bài học ở các cấp độ trước nhé!
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Lessons List: TC-01, TC-02, TC-03 */}
                   {selectedLevel.available && (
-                    <div style={{ minWidth: '220px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '6px' }}>
-                        <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>
-                          Tiến độ: {selectedLevel.completedLessons}/{selectedLevel.totalLessons} bài
-                        </span>
-                        <span style={{ fontWeight: 800, color: 'var(--primary)' }}>
-                          {selectedLevel.progressPercent}%
-                        </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {selectedLevel.lessons.map((lesson) => {
+                        const isUpdating = updatingLessonId === lesson.id
+
+                        return (
+                          <div
+                            key={lesson.id}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '16px 20px',
+                              borderRadius: 'var(--radius-md)',
+                              border: lesson.completed ? '1.5px solid #a7f3d0' : '1.5px solid var(--border-card)',
+                              backgroundColor: lesson.completed ? '#f0fdf4' : '#ffffff',
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1 }}>
+                              {/* Completion Checkmark Button */}
+                              <button
+                                type="button"
+                                onClick={() => handleToggleCompletion(lesson.id, lesson.completed)}
+                                disabled={isUpdating}
+                                style={{
+                                  width: '32px',
+                                  height: '32px',
+                                  borderRadius: '50%',
+                                  border: lesson.completed ? 'none' : '2px solid #cbd5e1',
+                                  backgroundColor: lesson.completed ? 'var(--primary)' : '#ffffff',
+                                  color: '#ffffff',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  cursor: 'pointer',
+                                  flexShrink: 0,
+                                  transition: 'all 0.15s ease',
+                                }}
+                                title={lesson.completed ? 'Bấm để đánh dấu chưa hoàn thành' : 'Bấm để đánh dấu đã hoàn thành'}
+                              >
+                                {isUpdating ? (
+                                  <Loader2 size={16} className="animate-spin" color={lesson.completed ? '#ffffff' : 'var(--primary)'} />
+                                ) : lesson.completed ? (
+                                  <Check size={18} strokeWidth={3} />
+                                ) : (
+                                  <Circle size={16} color="#cbd5e1" />
+                                )}
+                              </button>
+
+                              {/* Lesson Info */}
+                              <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
+                                  <span
+                                    style={{
+                                      fontSize: '0.72rem',
+                                      fontWeight: 800,
+                                      padding: '2px 6px',
+                                      borderRadius: 'var(--radius-sm)',
+                                      backgroundColor: lesson.completed ? '#dcfce7' : '#f1f5f9',
+                                      color: lesson.completed ? '#166534' : 'var(--text-muted)',
+                                    }}
+                                  >
+                                    Thứ tự #{lesson.sortOrder}
+                                  </span>
+                                  <h4
+                                    style={{
+                                      fontSize: '0.98rem',
+                                      fontWeight: 700,
+                                      color: 'var(--text-main)',
+                                      margin: 0,
+                                    }}
+                                  >
+                                    {lesson.title}
+                                  </h4>
+                                </div>
+
+                                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '4px 0' }}>
+                                  {lesson.description || 'Nội dung bài học chuẩn theo khung HSK.'}
+                                </p>
+
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.75rem', color: 'var(--text-sub)' }}>
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                    <Layers size={13} /> {lesson.vocabCount} từ vựng
+                                  </span>
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                    <FileText size={13} /> {lesson.grammarCount} ngữ pháp
+                                  </span>
+                                  {lesson.completed && (
+                                    <span style={{ color: '#16a34a', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                      <CheckCircle2 size={13} /> Đã hoàn thành
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Action Button */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <button
+                                type="button"
+                                onClick={() => navigate(`/lessons/${lesson.id}`)}
+                                className={`btn-gamified ${lesson.completed ? 'btn-green' : 'btn-primary'}`}
+                                style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+                              >
+                                <span>{lesson.completed ? 'Ôn lại bài' : 'Vào học'}</span>
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* CỘT PHỤ (BÊN PHẢI): Bảng tổng quan năng lực & Lối tắt công cụ luyện tập */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {/* Widget 1: Tổng quan Năng lực Cấp độ */}
+              {selectedLevel && (
+                <div
+                  className="game-card"
+                  style={{
+                    padding: '20px',
+                    backgroundColor: '#ffffff',
+                    borderRadius: '16px',
+                    border: '1.5px solid var(--border-card)',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+                    <div
+                      style={{
+                        padding: '6px',
+                        borderRadius: '8px',
+                        backgroundColor: '#ecfdf5',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Target size={18} color="#10b981" />
+                    </div>
+                    <h3 style={{ fontSize: '0.98rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
+                      Năng lực {selectedLevel.code.replace('_', ' ')}
+                    </h3>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {/* Mục tiêu từ vựng */}
+                    <div
+                      style={{
+                        padding: '12px',
+                        backgroundColor: '#f8fafc',
+                        borderRadius: '10px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <div style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600 }}>Mục tiêu tích lũy</div>
+                      <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#1e293b' }}>
+                        {selectedLevel.targetVocabCount} từ vựng
+                      </div>
+                    </div>
+
+                    {/* Số bài đã pass */}
+                    <div
+                      style={{
+                        padding: '12px',
+                        backgroundColor: '#f8fafc',
+                        borderRadius: '10px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <div style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600 }}>Bài đã hoàn thành</div>
+                      <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#10b981' }}>
+                        {selectedLevel.completedLessons} / {selectedLevel.totalLessons} bài
+                      </div>
+                    </div>
+
+                    {/* Thanh tiến độ */}
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', marginBottom: '6px' }}>
+                        <span style={{ color: '#64748b', fontWeight: 600 }}>Tỷ lệ hoàn thành</span>
+                        <span style={{ fontWeight: 800, color: '#10b981' }}>{selectedLevel.progressPercent}%</span>
                       </div>
                       <div
                         style={{
@@ -384,155 +640,220 @@ export const HskRoadmapPage: React.FC = () => {
                           style={{
                             height: '100%',
                             width: `${selectedLevel.progressPercent}%`,
-                            backgroundColor: 'var(--primary)',
+                            backgroundColor: '#10b981',
                             borderRadius: 'var(--radius-full)',
                             transition: 'width 0.4s ease',
                           }}
                         />
                       </div>
                     </div>
-                  )}
+                  </div>
                 </div>
+              )}
 
-                {/* TC-04: Empty state when level has 0 lessons */}
-                {!selectedLevel.available && (
+              {/* Widget 2: Công cụ luyện tập bổ trợ */}
+              <div
+                className="game-card"
+                style={{
+                  padding: '20px',
+                  backgroundColor: '#ffffff',
+                  borderRadius: '16px',
+                  border: '1.5px solid var(--border-card)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
                   <div
                     style={{
-                      padding: '48px 24px',
-                      textAlign: 'center',
-                      backgroundColor: '#f8fafc',
-                      borderRadius: 'var(--radius-md)',
-                      border: '1.5px dashed var(--border-card)',
-                      margin: '12px 0',
+                      padding: '6px',
+                      borderRadius: '8px',
+                      backgroundColor: '#eff6ff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
                     }}
                   >
-                    <div style={{ marginBottom: '14px', display: 'flex', justifyContent: 'center' }}>
-                      <PandaMascot size={64} />
-                    </div>
-                    <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '8px' }}>
-                      Nội dung đang được cập nhật
-                    </h3>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', maxWidth: '500px', margin: '0 auto 16px', lineHeight: 1.5 }}>
-                      Cấp độ <strong>{selectedLevel.title}</strong> đang trong quá trình biên soạn học liệu chuẩn. Hãy tiếp tục củng cố các bài học ở các cấp độ trước nhé!
-                    </p>
+                    <Compass size={18} color="#3b82f6" />
                   </div>
-                )}
+                  <h3 style={{ fontSize: '0.98rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
+                    Thực hành bổ trợ
+                  </h3>
+                </div>
 
-                {/* Lessons List: TC-01, TC-02, TC-03 */}
-                {selectedLevel.available && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {selectedLevel.lessons.map((lesson) => {
-                      const isUpdating = updatingLessonId === lesson.id
-
-                      return (
-                        <div
-                          key={lesson.id}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '16px 20px',
-                            borderRadius: 'var(--radius-md)',
-                            border: lesson.completed ? '1.5px solid #a7f3d0' : '1.5px solid var(--border-card)',
-                            backgroundColor: lesson.completed ? '#f0fdf4' : '#ffffff',
-                            transition: 'all 0.15s ease',
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1 }}>
-                            {/* Completion Checkmark Button */}
-                            <button
-                              type="button"
-                              onClick={() => handleToggleCompletion(lesson.id, lesson.completed)}
-                              disabled={isUpdating}
-                              style={{
-                                width: '32px',
-                                height: '32px',
-                                borderRadius: '50%',
-                                border: lesson.completed ? 'none' : '2px solid #cbd5e1',
-                                backgroundColor: lesson.completed ? 'var(--primary)' : '#ffffff',
-                                color: '#ffffff',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer',
-                                flexShrink: 0,
-                                transition: 'all 0.15s ease',
-                              }}
-                              title={lesson.completed ? 'Bấm để đánh dấu chưa hoàn thành' : 'Bấm để đánh dấu đã hoàn thành'}
-                            >
-                              {isUpdating ? (
-                                <Loader2 size={16} className="animate-spin" color={lesson.completed ? '#ffffff' : 'var(--primary)'} />
-                              ) : lesson.completed ? (
-                                <Check size={18} strokeWidth={3} />
-                              ) : (
-                                <Circle size={16} color="#cbd5e1" />
-                              )}
-                            </button>
-
-                            {/* Lesson Info */}
-                            <div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
-                                <span
-                                  style={{
-                                    fontSize: '0.72rem',
-                                    fontWeight: 800,
-                                    padding: '2px 6px',
-                                    borderRadius: 'var(--radius-sm)',
-                                    backgroundColor: lesson.completed ? '#dcfce7' : '#f1f5f9',
-                                    color: lesson.completed ? '#166534' : 'var(--text-muted)',
-                                  }}
-                                >
-                                  Thứ tự #{lesson.sortOrder}
-                                </span>
-                                <h4
-                                  style={{
-                                    fontSize: '0.98rem',
-                                    fontWeight: 700,
-                                    color: 'var(--text-main)',
-                                  }}
-                                >
-                                  {lesson.title}
-                                </h4>
-                              </div>
-
-                              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '4px' }}>
-                                {lesson.description || 'Nội dung bài học chuẩn theo khung HSK.'}
-                              </p>
-
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.75rem', color: 'var(--text-sub)' }}>
-                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                  <Layers size={13} /> {lesson.vocabCount} từ vựng
-                                </span>
-                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                  <FileText size={13} /> {lesson.grammarCount} ngữ pháp
-                                </span>
-                                {lesson.completed && (
-                                  <span style={{ color: '#16a34a', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                                    <CheckCircle2 size={13} /> Đã hoàn thành
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Action Button */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <button
-                              type="button"
-                              onClick={() => navigate(`/lessons/${lesson.id}`)}
-                              className={`btn-gamified ${lesson.completed ? 'btn-green' : 'btn-primary'}`}
-                              style={{ padding: '8px 16px', fontSize: '0.85rem' }}
-                            >
-                              <span>{lesson.completed ? 'Ôn lại bài' : 'Vào học'}</span>
-                            </button>
-                          </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {/* Luyện viết chữ Hán */}
+                  <button
+                    type="button"
+                    onClick={() => navigate('/writing')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '10px 14px',
+                      borderRadius: '10px',
+                      border: '1px solid #e2e8f0',
+                      backgroundColor: '#ffffff',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      textAlign: 'left',
+                    }}
+                    className="hover:border-emerald-400 hover:bg-emerald-50/50"
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <PenTool size={16} color="#10b981" />
+                      <div>
+                        <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#1e293b' }}>
+                          Luyện viết chữ Hán
                         </div>
-                      )
-                    })}
-                  </div>
-                )}
+                        <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                          Tập viết chữ nét chuẩn
+                        </div>
+                      </div>
+                    </div>
+                    <ChevronRight size={16} color="#94a3b8" />
+                  </button>
+
+                  {/* Luyện phát âm */}
+                  <button
+                    type="button"
+                    onClick={() => navigate('/pronunciation')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '10px 14px',
+                      borderRadius: '10px',
+                      border: '1px solid #e2e8f0',
+                      backgroundColor: '#ffffff',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      textAlign: 'left',
+                    }}
+                    className="hover:border-emerald-400 hover:bg-emerald-50/50"
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <Mic size={16} color="#059669" />
+                      <div>
+                        <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#1e293b' }}>
+                          Luyện phát âm AI
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                          Nhận diện giọng nói
+                        </div>
+                      </div>
+                    </div>
+                    <ChevronRight size={16} color="#94a3b8" />
+                  </button>
+
+                  {/* Luyện nghe hiểu */}
+                  <button
+                    type="button"
+                    onClick={() => navigate('/listening')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '10px 14px',
+                      borderRadius: '10px',
+                      border: '1px solid #e2e8f0',
+                      backgroundColor: '#ffffff',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      textAlign: 'left',
+                    }}
+                    className="hover:border-emerald-400 hover:bg-emerald-50/50"
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <Headphones size={16} color="#0284c7" />
+                      <div>
+                        <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#1e293b' }}>
+                          Luyện nghe hiểu
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                          Hội thoại và nhận diện âm
+                        </div>
+                      </div>
+                    </div>
+                    <ChevronRight size={16} color="#94a3b8" />
+                  </button>
+
+                  {/* Thi thử HSK 3.0 */}
+                  <button
+                    type="button"
+                    onClick={() => navigate('/hsk30/exams')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '10px 14px',
+                      borderRadius: '10px',
+                      border: '1px solid #e2e8f0',
+                      backgroundColor: '#ffffff',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      textAlign: 'left',
+                    }}
+                    className="hover:border-emerald-400 hover:bg-emerald-50/50"
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <Award size={16} color="#eab308" />
+                      <div>
+                        <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#1e293b' }}>
+                          Thi thử HSK 3.0
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                          Đề thi chuẩn quốc tế
+                        </div>
+                      </div>
+                    </div>
+                    <ChevronRight size={16} color="#94a3b8" />
+                  </button>
+                </div>
               </div>
-            )}
+
+              {/* Widget 3: Ôn từ SRS */}
+              <div
+                style={{
+                  padding: '18px 20px',
+                  backgroundColor: '#f0fdf4',
+                  borderRadius: '16px',
+                  border: '1.5px solid #bbf7d0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '12px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <BrainCircuit size={22} color="#16a34a" style={{ flexShrink: 0 }} />
+                  <div>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#166534' }}>
+                      Ôn tập ngắt quãng SRS
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#15803d' }}>
+                      Củng cố trí nhớ dài hạn
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => navigate('/srs/review')}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    backgroundColor: '#16a34a',
+                    color: '#ffffff',
+                    fontWeight: 700,
+                    fontSize: '0.78rem',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Ôn ngay
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </main>

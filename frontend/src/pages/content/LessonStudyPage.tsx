@@ -431,8 +431,8 @@ export const LessonStudyPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 text-gray-800 pb-16">
       {/* Top sticky header */}
-      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-emerald-100/80 shadow-sm">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-emerald-100/80 shadow-sm">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-8 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/curriculum')}
@@ -484,26 +484,26 @@ export const LessonStudyPage: React.FC = () => {
         </div>
       </header>
 
-      {/* Main Content Container */}
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 pt-6">
-        {/* Lesson Banner */}
-        <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-emerald-700/10 mb-6 relative overflow-hidden">
-          <div className="absolute right-0 bottom-0 opacity-10 pointer-events-none transform translate-x-8 translate-y-8">
-            <GraduationCap className="w-64 h-64 text-white" />
-          </div>
-          <div className="relative z-10 max-w-2xl">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-semibold tracking-wide uppercase mb-3">
+      {/* Main Content Container - Tối ưu maxWidth lên 1440px */}
+      <main className="max-w-[1440px] mx-auto px-4 sm:px-8 pt-6">
+        {/* Lesson Banner - Thiết kế Compact và thanh lịch */}
+        <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 rounded-2xl p-5 sm:p-6 text-white shadow-lg shadow-emerald-700/10 mb-6 relative overflow-hidden flex items-center justify-between gap-6">
+          <div className="relative z-10 max-w-3xl">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-xs font-semibold tracking-wide uppercase mb-2">
               <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
               <span>Chương trình học HSK chuẩn</span>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight mb-2">
+            <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight mb-1">
               {lessonData.title}
             </h2>
             {lessonData.description && (
-              <p className="text-emerald-50 text-sm sm:text-base leading-relaxed line-clamp-2">
+              <p className="text-emerald-50 text-xs sm:text-sm leading-relaxed line-clamp-1">
                 {lessonData.description}
               </p>
             )}
+          </div>
+          <div className="hidden sm:block opacity-15 flex-shrink-0">
+            <GraduationCap className="w-24 h-24 text-white" />
           </div>
         </div>
 
@@ -567,7 +567,7 @@ export const LessonStudyPage: React.FC = () => {
           )}
         </div>
 
-        {/* TAB 1: DANH SÁCH TỪ VỰNG */}
+        {/* TAB 1: DANH SÁCH TỪ VỰNG - Lưới hiển thị 3-4 cột tiết kiệm không gian */}
         {activeTab === 'VOCAB' && (
           <div className="space-y-4">
             {filteredVocabs.length === 0 ? (
@@ -576,28 +576,28 @@ export const LessonStudyPage: React.FC = () => {
                 <p className="text-gray-500 font-medium">Không tìm thấy từ vựng phù hợp</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {filteredVocabs.map((vocab, index) => (
                   <div
                     key={vocab.id}
-                    className="bg-white rounded-2xl p-5 border border-gray-200/80 shadow-sm hover:shadow-md hover:border-emerald-300 transition-all group flex flex-col justify-between"
+                    className="bg-white rounded-2xl p-4 border border-gray-200/90 shadow-sm hover:shadow-md hover:border-emerald-400 transition-all group flex flex-col justify-between"
                   >
                     <div>
-                      {/* Top row: Index & Pronunciation button */}
+                      {/* Top row: Index, Part of speech & Pronunciation button */}
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-bold text-slate-400">#{index + 1}</span>
-                        <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-bold text-slate-400">#{index + 1}</span>
+                        <div className="flex items-center gap-1.5">
                           {vocab.partOfSpeech && (
-                            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">
                               {vocab.partOfSpeech}
                             </span>
                           )}
-                          {/* TC-02: Ẩn nút nghe nếu từ vựng chưa có audio */}
+                          {/* TC-02: Nút nghe phát âm nếu từ vựng có audio */}
                           {vocab.audioUrl && vocab.audioUrl.trim() && (
                             <button
                               type="button"
                               onClick={() => togglePronunciation(vocab)}
-                              className={`p-2 rounded-xl transition-all ${
+                              className={`p-1.5 rounded-lg transition-all ${
                                 playingAudioId === vocab.id
                                   ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30 ring-2 ring-emerald-400'
                                   : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
@@ -606,41 +606,41 @@ export const LessonStudyPage: React.FC = () => {
                               aria-label={playingAudioId === vocab.id ? `Dừng phát âm từ ${vocab.hanzi}` : `Nghe phát âm từ ${vocab.hanzi}`}
                             >
                               {playingAudioId === vocab.id ? (
-                                <VolumeX className="w-4 h-4" />
+                                <VolumeX className="w-3.5 h-3.5" />
                               ) : (
-                                <Volume2 className="w-4 h-4" />
+                                <Volume2 className="w-3.5 h-3.5" />
                               )}
                             </button>
                           )}
                         </div>
                       </div>
 
-                      {/* Main Hanzi & Pinyin (TC-02: Font và Pinyin có dấu thanh điệu chuẩn) */}
-                      <div className="mb-3">
-                        <div className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-wide font-sans mb-1">
+                      {/* Main Hanzi & Pinyin (Font chuẩn, kích thước cân đối) */}
+                      <div className="mb-2">
+                        <div className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-wide font-sans mb-0.5">
                           {vocab.hanzi}
                         </div>
-                        <div className="text-base font-semibold text-emerald-700 tracking-wider">
+                        <div className="text-sm font-semibold text-emerald-700 tracking-wider">
                           {vocab.pinyin}
                         </div>
                       </div>
 
                       {/* Vietnamese Meaning */}
-                      <div className="text-sm font-medium text-gray-800 leading-snug mb-3">
+                      <div className="text-xs sm:text-sm font-medium text-gray-800 leading-snug mb-2.5">
                         {vocab.meaning}
                       </div>
 
                       {/* Example sentence if present */}
                       {vocab.exampleSentence && (
-                        <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 text-xs space-y-1">
-                          <div className="font-semibold text-gray-900 font-sans text-sm">
+                        <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100 text-xs space-y-1">
+                          <div className="font-semibold text-gray-900 font-sans text-xs">
                             {vocab.exampleSentence}
                           </div>
                           {vocab.examplePinyin && (
-                            <div className="text-emerald-700 font-medium">{vocab.examplePinyin}</div>
+                            <div className="text-emerald-700 font-medium text-[11px]">{vocab.examplePinyin}</div>
                           )}
                           {vocab.exampleMeaning && (
-                            <div className="text-gray-600">{vocab.exampleMeaning}</div>
+                            <div className="text-gray-600 text-[11px]">{vocab.exampleMeaning}</div>
                           )}
                         </div>
                       )}

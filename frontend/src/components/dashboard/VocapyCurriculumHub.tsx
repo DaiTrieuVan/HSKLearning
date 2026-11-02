@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import {
   Layers,
   BookOpen,
@@ -8,6 +8,8 @@ import {
   Bot,
   FileCheck2,
   GraduationCap,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react'
 
 interface CurriculumCard {
@@ -27,6 +29,330 @@ interface CurriculumCard {
 
 interface VocapyCurriculumHubProps {
   onNavigate: (path: string) => void
+}
+
+const getDifficultyColor = (diff: number) => {
+  if (diff <= 1) return '#10b981'
+  if (diff <= 2) return '#059669'
+  if (diff <= 3) return '#eab308'
+  if (diff <= 4) return '#f97316'
+  return '#ef4444'
+}
+
+// Subcomponent for each category row with horizontal scrolling & progress indicator
+const CurriculumScrollRow: React.FC<{
+  label: string
+  items: CurriculumCard[]
+  onNavigate: (path: string) => void
+}> = ({ label, items, onNavigate }) => {
+  const rowRef = useRef<HTMLDivElement>(null)
+  const [scrollProgress, setScrollProgress] = useState(0)
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
+
+  const checkScroll = () => {
+    const el = rowRef.current
+    if (!el) return
+    const maxScroll = el.scrollWidth - el.clientWidth
+    if (maxScroll <= 0) {
+      setScrollProgress(0)
+      setCanScrollLeft(false)
+      setCanScrollRight(false)
+      return
+    }
+    const current = el.scrollLeft
+    setScrollProgress(Math.min(100, Math.max(0, (current / maxScroll) * 100)))
+    setCanScrollLeft(current > 10)
+    setCanScrollRight(current < maxScroll - 10)
+  }
+
+  useEffect(() => {
+    checkScroll()
+    const el = rowRef.current
+    if (el) {
+      el.addEventListener('scroll', checkScroll, { passive: true })
+      window.addEventListener('resize', checkScroll)
+      return () => {
+        el.removeEventListener('scroll', checkScroll)
+        window.removeEventListener('resize', checkScroll)
+      }
+    }
+  }, [items])
+
+  const handleScroll = (direction: 'left' | 'right') => {
+    const el = rowRef.current
+    if (!el) return
+    const amount = 300
+    el.scrollBy({
+      left: direction === 'left' ? -amount : amount,
+      behavior: 'smooth',
+    })
+  }
+
+  return (
+    <div>
+      {/* Category Header with Title, Count & Scroll Arrows */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '12px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h4
+            style={{
+              fontSize: '0.94rem',
+              fontWeight: 800,
+              color: 'var(--text-main)',
+              margin: 0,
+            }}
+          >
+            {label}
+          </h4>
+          <span
+            style={{
+              fontSize: '0.74rem',
+              fontWeight: 700,
+              color: 'var(--text-muted)',
+            }}
+          >
+            {items.length} lộ trình
+          </span>
+        </div>
+
+        {/* Scroll Controls (prev / next buttons) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <button
+            type="button"
+            onClick={() => handleScroll('left')}
+            disabled={!canScrollLeft}
+            style={{
+              width: '28px',
+              height: '28px',
+              borderRadius: '50%',
+              border: '1px solid var(--border-card)',
+              backgroundColor: canScrollLeft ? '#ffffff' : '#f1f5f9',
+              color: canScrollLeft ? 'var(--text-main)' : '#94a3b8',
+              cursor: canScrollLeft ? 'pointer' : 'default',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.2s ease',
+              opacity: canScrollLeft ? 1 : 0.4,
+            }}
+            title="Cuộn sang trái"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <button
+            type="button"
+            onClick={() => handleScroll('right')}
+            disabled={!canScrollRight}
+            style={{
+              width: '28px',
+              height: '28px',
+              borderRadius: '50%',
+              border: '1px solid var(--border-card)',
+              backgroundColor: canScrollRight ? '#ffffff' : '#f1f5f9',
+              color: canScrollRight ? 'var(--text-main)' : '#94a3b8',
+              cursor: canScrollRight ? 'pointer' : 'default',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.2s ease',
+              opacity: canScrollRight ? 1 : 0.4,
+            }}
+            title="Cuộn sang phải"
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      </div>
+
+      {/* Horizontal Scrolling Card Track (Vocapy Thanh Kéo) */}
+      <div
+        ref={rowRef}
+        style={{
+          display: 'flex',
+          gap: '14px',
+          overflowX: 'auto',
+          overflowY: 'hidden',
+          flexWrap: 'nowrap',
+          scrollSnapType: 'x mandatory',
+          paddingBottom: '8px',
+          scrollbarWidth: 'none', // Firefox
+          msOverflowStyle: 'none', // IE
+          WebkitOverflowScrolling: 'touch',
+        }}
+      >
+        {items.map((item) => {
+          const IconComp = item.icon
+          const diffColor = getDifficultyColor(item.difficulty)
+
+          return (
+            <div
+              key={item.id}
+              onClick={() => onNavigate(item.path)}
+              className="game-card"
+              style={{
+                minWidth: '270px',
+                maxWidth: '280px',
+                flexShrink: 0,
+                scrollSnapAlign: 'start',
+                padding: '16px 18px',
+                backgroundColor: '#ffffff',
+                border: '1.5px solid var(--border-card)',
+                borderRadius: '16px',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                userSelect: 'none',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)'
+                e.currentTarget.style.transform = 'translateY(-2px)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border-card)'
+                e.currentTarget.style.transform = 'translateY(0)'
+              }}
+            >
+              <div>
+                {/* Header: Icon + Badge */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: '10px',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '10px',
+                      backgroundColor: item.iconBg,
+                      color: item.iconColor,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <IconComp size={18} />
+                  </div>
+
+                  <span
+                    style={{
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      padding: '2px 8px',
+                      borderRadius: '8px',
+                      backgroundColor: '#f1f5f9',
+                      color: '#475569',
+                    }}
+                  >
+                    {item.badgeText}
+                  </span>
+                </div>
+
+                {/* Title & Desc */}
+                <h5
+                  style={{
+                    fontSize: '0.94rem',
+                    fontWeight: 800,
+                    color: 'var(--text-main)',
+                    margin: '0 0 6px',
+                    lineHeight: 1.3,
+                  }}
+                >
+                  {item.title}
+                </h5>
+                <p
+                  style={{
+                    fontSize: '0.78rem',
+                    color: 'var(--text-muted)',
+                    lineHeight: 1.45,
+                    margin: '0 0 14px',
+                    height: '34px',
+                    overflow: 'hidden',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                  }}
+                >
+                  {item.description}
+                </p>
+              </div>
+
+              {/* Footer: Difficulty Meter (Vocapy style) */}
+              <div>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: '6px',
+                  }}
+                >
+                  <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>
+                    Độ khó
+                  </span>
+                  <span style={{ fontSize: '0.74rem', fontWeight: 800, color: diffColor }}>
+                    {item.difficulty}/5
+                  </span>
+                </div>
+
+                {/* Visual 5-segment bar */}
+                <div style={{ display: 'flex', gap: '3px', height: '4px' }}>
+                  {[1, 2, 3, 4, 5].map((seg) => (
+                    <div
+                      key={seg}
+                      style={{
+                        flex: 1,
+                        height: '100%',
+                        borderRadius: '3px',
+                        backgroundColor:
+                          seg <= item.difficulty ? diffColor : '#e2e8f0',
+                        transition: 'all 0.2s ease',
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Vocapy-style Horizontal Progress Indicator Track */}
+      <div
+        style={{
+          height: '4px',
+          backgroundColor: '#f1f5f9',
+          borderRadius: '4px',
+          marginTop: '6px',
+          overflow: 'hidden',
+          position: 'relative',
+        }}
+      >
+        <div
+          style={{
+            height: '100%',
+            width: '28%',
+            backgroundColor: 'var(--primary)',
+            borderRadius: '4px',
+            transform: `translateX(${scrollProgress * 2.5}%)`,
+            transition: 'transform 0.15s ease-out',
+          }}
+        />
+      </div>
+    </div>
+  )
 }
 
 export const VocapyCurriculumHub: React.FC<VocapyCurriculumHubProps> = ({ onNavigate }) => {
@@ -203,19 +529,11 @@ export const VocapyCurriculumHub: React.FC<VocapyCurriculumHubProps> = ({ onNavi
         },
       ]
 
-  const getDifficultyColor = (diff: number) => {
-    if (diff <= 1) return '#10b981'
-    if (diff <= 2) return '#059669'
-    if (diff <= 3) return '#eab308'
-    if (diff <= 4) return '#f97316'
-    return '#ef4444'
-  }
-
   return (
     <div>
       {/* Title & Pill Filters */}
-      <div style={{ marginBottom: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+      <div style={{ marginBottom: '18px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
           <Layers size={20} color="var(--primary)" />
           <h3
             style={{
@@ -238,7 +556,8 @@ export const VocapyCurriculumHub: React.FC<VocapyCurriculumHubProps> = ({ onNavi
             alignItems: 'center',
             gap: '8px',
             overflowX: 'auto',
-            paddingBottom: '6px',
+            paddingBottom: '4px',
+            scrollbarWidth: 'none',
           }}
         >
           {[
@@ -257,7 +576,7 @@ export const VocapyCurriculumHub: React.FC<VocapyCurriculumHubProps> = ({ onNavi
                   border: isSelected ? '1.5px solid var(--primary)' : '1px solid var(--border-card)',
                   backgroundColor: isSelected ? 'var(--primary)' : '#ffffff',
                   color: isSelected ? '#ffffff' : 'var(--text-main)',
-                  padding: '7px 16px',
+                  padding: '6px 16px',
                   borderRadius: 'var(--radius-full)',
                   fontSize: '0.82rem',
                   fontWeight: 700,
@@ -274,183 +593,19 @@ export const VocapyCurriculumHub: React.FC<VocapyCurriculumHubProps> = ({ onNavi
         </div>
       </div>
 
-      {/* Grouped Curriculum Lists */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+      {/* Grouped Horizontal Scroll Tracks (Vocapy style) */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
         {categoriesList.map((cat) => {
           const itemsInCat = filteredItems.filter((i) => i.category === cat.key)
           if (itemsInCat.length === 0) return null
 
           return (
-            <div key={cat.key}>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  marginBottom: '14px',
-                }}
-              >
-                <h4
-                  style={{
-                    fontSize: '0.92rem',
-                    fontWeight: 800,
-                    color: 'var(--text-main)',
-                    margin: 0,
-                  }}
-                >
-                  {cat.label}
-                </h4>
-                <span
-                  style={{
-                    fontSize: '0.74rem',
-                    fontWeight: 700,
-                    color: 'var(--text-muted)',
-                  }}
-                >
-                  {itemsInCat.length} lộ trình
-                </span>
-              </div>
-
-              {/* Cards Grid */}
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                  gap: '16px',
-                }}
-              >
-                {itemsInCat.map((item) => {
-                  const IconComp = item.icon
-                  const diffColor = getDifficultyColor(item.difficulty)
-
-                  return (
-                    <div
-                      key={item.id}
-                      onClick={() => onNavigate(item.path)}
-                      className="game-card"
-                      style={{
-                        padding: '18px 20px',
-                        backgroundColor: '#ffffff',
-                        border: '1.5px solid var(--border-card)',
-                        borderRadius: '16px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'space-between',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        position: 'relative',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = 'var(--primary)'
-                        e.currentTarget.style.transform = 'translateY(-2px)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = 'var(--border-card)'
-                        e.currentTarget.style.transform = 'translateY(0)'
-                      }}
-                    >
-                      <div>
-                        {/* Header: Icon + Badge */}
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            marginBottom: '12px',
-                          }}
-                        >
-                          <div
-                            style={{
-                              width: '38px',
-                              height: '38px',
-                              borderRadius: '10px',
-                              backgroundColor: item.iconBg,
-                              color: item.iconColor,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
-                          >
-                            <IconComp size={18} />
-                          </div>
-
-                          <span
-                            style={{
-                              fontSize: '0.72rem',
-                              fontWeight: 700,
-                              padding: '2px 8px',
-                              borderRadius: '8px',
-                              backgroundColor: '#f1f5f9',
-                              color: '#475569',
-                            }}
-                          >
-                            {item.badgeText}
-                          </span>
-                        </div>
-
-                        {/* Title & Desc */}
-                        <h5
-                          style={{
-                            fontSize: '0.98rem',
-                            fontWeight: 800,
-                            color: 'var(--text-main)',
-                            margin: '0 0 6px',
-                          }}
-                        >
-                          {item.title}
-                        </h5>
-                        <p
-                          style={{
-                            fontSize: '0.8rem',
-                            color: 'var(--text-muted)',
-                            lineHeight: 1.45,
-                            margin: '0 0 16px',
-                          }}
-                        >
-                          {item.description}
-                        </p>
-                      </div>
-
-                      {/* Footer: Difficulty Meter (Vocapy style) */}
-                      <div>
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            marginBottom: '6px',
-                          }}
-                        >
-                          <span style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 600 }}>
-                            Độ khó
-                          </span>
-                          <span style={{ fontSize: '0.76rem', fontWeight: 800, color: diffColor }}>
-                            {item.difficulty}/5
-                          </span>
-                        </div>
-
-                        {/* Visual 5-segment bar */}
-                        <div style={{ display: 'flex', gap: '4px', height: '5px' }}>
-                          {[1, 2, 3, 4, 5].map((seg) => (
-                            <div
-                              key={seg}
-                              style={{
-                                flex: 1,
-                                height: '100%',
-                                borderRadius: '4px',
-                                backgroundColor:
-                                  seg <= item.difficulty ? diffColor : '#e2e8f0',
-                                transition: 'all 0.2s ease',
-                              }}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
+            <CurriculumScrollRow
+              key={cat.key}
+              label={cat.label}
+              items={itemsInCat}
+              onNavigate={onNavigate}
+            />
           )
         })}
       </div>

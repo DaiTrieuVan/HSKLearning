@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Outlet, useLocation } from 'react-router-dom'
+import { Outlet } from 'react-router-dom'
 import { AppSidebar } from './AppSidebar'
 import { AppHeader } from './AppHeader'
 import { AppRightSidebar } from './AppRightSidebar'
@@ -10,7 +10,6 @@ import { getDailyChallenge, type DailyChallengeData } from '../api/gamification'
 
 export const AppLayout: React.FC = () => {
   const { user } = useAuth()
-  const location = useLocation()
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
     try {
@@ -59,9 +58,8 @@ export const AppLayout: React.FC = () => {
     }
   }, [user])
 
-  // Show right sidebar primarily on Dashboard ('/') for students/teachers
-  const isDashboard = location.pathname === '/'
-  const showRightSidebar = isDashboard && !user?.roles.includes('ADMIN')
+  // Vocapy Full-Width Layout: Dashboard has its own Hero Trio & Widgets without duplicate right sidebar
+  const showRightSidebar = false
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-page)' }}>

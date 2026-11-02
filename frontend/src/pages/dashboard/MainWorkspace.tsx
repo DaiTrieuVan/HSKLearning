@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  BookOpen,
   Copy,
   Check,
-  Flame,
   ArrowRight,
   PlusCircle,
   GraduationCap,
@@ -13,11 +11,8 @@ import {
   CheckCircle2,
   Users,
   LayoutDashboard,
-  BookMarked,
   FileCheck,
-  TrendingUp,
   BarChart3,
-  BrainCircuit,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { PandaMascot } from '../../components/common/PandaMascot'
@@ -33,6 +28,9 @@ import { getStreak, type StreakData } from '../../api/streak'
 import { getUserLevel, getRecentXpHistory, type UserLevelData, type XpTransactionItem } from '../../api/gamificationLevel'
 import { DailyChallengeWidget } from '../../components/gamification/DailyChallengeWidget'
 import { LevelProgressCard } from '../../components/gamification/LevelProgressCard'
+import { VocapyHeroTrio } from '../../components/dashboard/VocapyHeroTrio'
+import { VocapyQuickActions } from '../../components/dashboard/VocapyQuickActions'
+import { VocapyCurriculumHub } from '../../components/dashboard/VocapyCurriculumHub'
 
 interface MainWorkspaceProps {
   onJoinClassClick?: () => void
@@ -1034,457 +1032,94 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
                   PHÂN VÙNG 2: KHÔNG GIAN HỌC SINH (!isTeacher && !isAdmin)
                  ======================================================== */
               <>
-                {/* Top Quick Stats: Student Mode */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-                  {/* Card 1: Tổng từ vựng */}
-                  <div
-                    className="game-card"
-                    style={{
-                      padding: '16px 20px',
-                      backgroundColor: '#ffffff',
-                      border: '1.5px solid var(--border-card)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '14px',
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: '42px',
-                        height: '42px',
-                        borderRadius: 'var(--radius-md)',
-                        backgroundColor: 'var(--primary-light)',
-                        color: 'var(--primary)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                      }}
-                    >
-                      <BookOpen size={22} />
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--text-main)', lineHeight: 1.1 }}>
-                        {(srsSummary?.learningCount || 0) + (srsSummary?.masteredCount || 0)}
-                      </div>
-                      <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>
-                        Tổng từ đang học
-                      </div>
-                    </div>
-                  </div>
+                {/* 1. VOCAPY HERO TRIO (Mascot Greeting + 4 Stats Matrix + Orange Streak Card) */}
+                <VocapyHeroTrio
+                  fullName={user?.fullName || ''}
+                  srsSummary={srsSummary}
+                  streak={streak}
+                  userLevel={userLevel}
+                  onNavigate={navigate}
+                />
 
-                  {/* Card 2: Đã thuộc */}
-                  <div
-                    className="game-card"
-                    style={{
-                      padding: '16px 20px',
-                      backgroundColor: '#ffffff',
-                      border: '1.5px solid var(--border-card)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '14px',
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: '42px',
-                        height: '42px',
-                        borderRadius: 'var(--radius-md)',
-                        backgroundColor: '#dcfce7',
-                        color: '#15803d',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                      }}
-                    >
-                      <CheckCircle2 size={22} />
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#15803d', lineHeight: 1.1 }}>
-                        {srsSummary?.masteredCount || 0}
-                      </div>
-                      <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>
-                        Từ vựng đã thuộc
-                      </div>
-                    </div>
-                  </div>
+                {/* 2. VOCAPY QUICK ACTIONS (4 Action Shortcuts) */}
+                <VocapyQuickActions onNavigate={navigate} />
 
-                  {/* Card 3: Cần ôn SRS */}
-                  <div
-                    className="game-card"
-                    style={{
-                      padding: '16px 20px',
-                      backgroundColor: '#ffffff',
-                      border: '1.5px solid var(--border-card)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '14px',
-                      cursor: 'pointer',
-                    }}
-                    onClick={() => navigate('/srs/review')}
-                    title="Bấm để vào ôn từ SRS ngay"
-                  >
-                    <div
-                      style={{
-                        width: '42px',
-                        height: '42px',
-                        borderRadius: 'var(--radius-md)',
-                        backgroundColor: (srsSummary?.dueTodayCount || 0) > 0 ? '#fee2e2' : '#f1f5f9',
-                        color: (srsSummary?.dueTodayCount || 0) > 0 ? '#b91c1c' : '#64748b',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                      }}
-                    >
-                      <BrainCircuit size={22} />
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '1.4rem', fontWeight: 900, color: (srsSummary?.dueTodayCount || 0) > 0 ? '#b91c1c' : 'var(--text-main)', lineHeight: 1.1 }}>
-                        {srsSummary?.dueTodayCount || 0}
-                      </div>
-                      <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>
-                        Từ cần ôn hôm nay
-                      </div>
-                    </div>
-                  </div>
+                {/* 3. VOCAPY CURRICULUM HUB (Categorized Roadmap with Difficulty Meters) */}
+                <VocapyCurriculumHub onNavigate={navigate} />
 
-                  {/* Card 4: Lớp học */}
-                  <div
-                    className="game-card"
-                    style={{
-                      padding: '16px 20px',
-                      backgroundColor: '#ffffff',
-                      border: '1.5px solid var(--border-card)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '14px',
+                {/* 4. Gamification Daily Challenge & Level Progress */}
+                <div style={{ marginTop: '32px' }}>
+                  <DailyChallengeWidget
+                    data={dailyChallenge}
+                    streak={streak}
+                    loading={loadingChallenge}
+                    onRefresh={() => {
+                      loadDailyChallenge()
+                      loadStreak()
+                      loadLevelData()
                     }}
-                  >
-                    <div
-                      style={{
-                        width: '42px',
-                        height: '42px',
-                        borderRadius: 'var(--radius-md)',
-                        backgroundColor: '#dbeafe',
-                        color: '#1d4ed8',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                      }}
-                    >
-                      <GraduationCap size={22} />
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#1d4ed8', lineHeight: 1.1 }}>
-                        {classesList.length}
-                      </div>
-                      <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>
-                        Lớp đã tham gia
-                      </div>
-                    </div>
-                  </div>
+                  />
+
+                  <LevelProgressCard
+                    levelData={userLevel}
+                    recentXp={recentXp}
+                  />
                 </div>
 
-                {/* Daily Challenge Widget & Streak */}
-                <DailyChallengeWidget
-                  data={dailyChallenge}
-                  streak={streak}
-                  loading={loadingChallenge}
-                  onRefresh={() => {
-                    loadDailyChallenge()
-                    loadStreak()
-                    loadLevelData()
-                  }}
-                />
-
-                {/* Level Progress and XP History Card */}
-                <LevelProgressCard
-                  levelData={userLevel}
-                  recentXp={recentXp}
-                />
-
-                {/* Student Feature Cards Grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
-                  {/* Card 1: HSK Roadmap */}
+                {/* 5. Nâng quyền Giáo viên (Callout cho học viên nếu chưa là giáo viên) */}
+                {!user?.roles.includes('TEACHER') && (
                   <div
                     className="game-card"
                     style={{
-                      padding: '24px',
+                      marginTop: '24px',
+                      padding: '20px 24px',
                       backgroundColor: '#ffffff',
+                      border: '1.5px solid var(--border-card)',
+                      borderRadius: '16px',
                       display: 'flex',
-                      flexDirection: 'column',
+                      alignItems: 'center',
                       justifyContent: 'space-between',
+                      gap: '20px',
+                      flexWrap: 'wrap',
                     }}
                   >
-                    <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', minWidth: '280px', flex: 1 }}>
                       <div
                         style={{
-                          width: '44px',
-                          height: '44px',
-                          borderRadius: 'var(--radius-md)',
+                          width: '46px',
+                          height: '46px',
+                          borderRadius: '12px',
                           backgroundColor: 'var(--jade-green-light)',
                           color: 'var(--jade-green-shadow)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          marginBottom: '16px',
-                        }}
-                      >
-                        <BookMarked size={24} />
-                      </div>
-                      <h3 style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: '6px' }}>
-                        Lộ trình học HSK
-                      </h3>
-                      <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '16px' }}>
-                        Theo dõi tiến độ từ HSK 1 đến các cấp độ nâng cao, kiểm tra danh sách bài học và % hoàn thành bài học.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => navigate('/roadmap')}
-                      className="btn-gamified btn-green"
-                      style={{ width: '100%', fontSize: '0.92rem', padding: '10px' }}
-                    >
-                      <span>Xem lộ trình HSK</span>
-                      <ArrowRight size={18} />
-                    </button>
-                  </div>
-
-                  {/* Card 1.5: Personal Progress */}
-                  <div
-                    className="game-card"
-                    style={{
-                      padding: '24px',
-                      backgroundColor: '#ffffff',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                    }}
-                  >
-                    <div>
-                      <div
-                        style={{
-                          width: '44px',
-                          height: '44px',
-                          borderRadius: 'var(--radius-md)',
-                          backgroundColor: '#ede9fe',
-                          color: '#6366f1',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          marginBottom: '16px',
-                        }}
-                      >
-                        <TrendingUp size={24} />
-                      </div>
-                      <h3 style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: '6px' }}>
-                        Tiến độ học cá nhân
-                      </h3>
-                      <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '16px' }}>
-                        Theo dõi thống kê số bài học đã hoàn thành theo từng cấp độ HSK, số từ vựng tích lũy và điểm trung bình bài tập.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => navigate('/progress')}
-                      className="btn-gamified"
-                      style={{
-                        width: '100%',
-                        fontSize: '0.92rem',
-                        padding: '10px',
-                        backgroundColor: '#6366f1',
-                        color: '#ffffff',
-                        border: 'none',
-                      }}
-                    >
-                      <span>Xem tiến độ cá nhân</span>
-                      <ArrowRight size={18} />
-                    </button>
-                  </div>
-
-                  {/* Card 1.6: SRS Spaced Repetition */}
-                  <div
-                    className="game-card"
-                    style={{
-                      padding: '24px',
-                      backgroundColor: '#ffffff',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                    }}
-                  >
-                    <div>
-                      <div
-                        style={{
-                          width: '44px',
-                          height: '44px',
-                          borderRadius: 'var(--radius-md)',
-                          backgroundColor: 'var(--jade-green-light)',
-                          color: 'var(--jade-green-shadow)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          marginBottom: '16px',
-                        }}
-                      >
-                        <BrainCircuit size={24} />
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                        <h3 style={{ fontSize: '1.15rem', fontWeight: 800 }}>
-                          Ôn từ theo lịch (SRS)
-                        </h3>
-                        {srsSummary && srsSummary.dueTodayCount > 0 ? (
-                          <span
-                            style={{
-                              fontSize: '0.78rem',
-                              fontWeight: 800,
-                              padding: '3px 10px',
-                              backgroundColor: '#fee2e2',
-                              color: '#b91c1c',
-                              borderRadius: 'var(--radius-full)',
-                              border: '1px solid #fca5a5',
-                            }}
-                          >
-                            Cần ôn: {srsSummary.dueTodayCount} từ
-                          </span>
-                        ) : (
-                          <span
-                            style={{
-                              fontSize: '0.78rem',
-                              fontWeight: 800,
-                              padding: '3px 10px',
-                              backgroundColor: 'var(--jade-green-light)',
-                              color: 'var(--jade-green-shadow)',
-                              borderRadius: 'var(--radius-full)',
-                            }}
-                          >
-                            Đã ôn xong hôm nay
-                          </span>
-                        )}
-                      </div>
-                      <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '16px' }}>
-                        {srsSummary && srsSummary.dueTodayCount > 0
-                          ? `Bạn có ${srsSummary.dueTodayCount} từ vựng đến hạn cần ôn hôm nay theo thuật toán ngắt quãng SM-2.`
-                          : 'Tuyệt vời! Bạn đã hoàn thành toàn bộ bài ôn hôm nay. Thuật toán SRS đã lên lịch cho các ngày tiếp theo.'}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => navigate('/srs/review')}
-                      className={`btn-gamified ${srsSummary && srsSummary.dueTodayCount > 0 ? 'btn-green' : ''}`}
-                      style={{
-                        width: '100%',
-                        fontSize: '0.92rem',
-                        padding: '10px',
-                        backgroundColor: srsSummary && srsSummary.dueTodayCount > 0 ? undefined : '#f1f5f9',
-                        color: srsSummary && srsSummary.dueTodayCount > 0 ? undefined : '#64748b',
-                        border: srsSummary && srsSummary.dueTodayCount > 0 ? undefined : '1px solid #cbd5e1',
-                      }}
-                    >
-                      <span>
-                        {srsSummary && srsSummary.dueTodayCount > 0
-                          ? `Bắt đầu ôn tập (${srsSummary.dueTodayCount} từ)`
-                          : 'Xem lại lịch ôn tập SRS'}
-                      </span>
-                      <ArrowRight size={18} />
-                    </button>
-                  </div>
-
-                  {/* Card 2: Curriculum */}
-                  <div
-                    className="game-card"
-                    style={{
-                      padding: '24px',
-                      backgroundColor: '#ffffff',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                    }}
-                  >
-                    <div>
-                      <div
-                        style={{
-                          width: '44px',
-                          height: '44px',
-                          borderRadius: 'var(--radius-md)',
-                          backgroundColor: 'var(--primary-light)',
-                          color: 'var(--primary)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          marginBottom: '16px',
-                        }}
-                      >
-                        <BookOpen size={24} />
-                      </div>
-                      <h3 style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: '6px' }}>
-                        Kho giáo trình & Từ vựng
-                      </h3>
-                      <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '16px' }}>
-                        Khám phá kho từ vựng 150 từ cơ bản, nghe phát âm chuẩn pinyin và học các điểm ngữ pháp nền tảng.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => navigate('/curriculum')}
-                      className="btn-gamified btn-primary"
-                      style={{ width: '100%', fontSize: '0.92rem', padding: '10px' }}
-                    >
-                      <span>Vào học giáo trình</span>
-                      <ArrowRight size={18} />
-                    </button>
-                  </div>
-
-                  {/* Card 3: Teacher Upgrade */}
-                  <div
-                    className="game-card"
-                    style={{
-                      padding: '24px',
-                      backgroundColor: '#ffffff',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                    }}
-                  >
-                    <div>
-                      <div
-                        style={{
-                          width: '44px',
-                          height: '44px',
-                          borderRadius: 'var(--radius-md)',
-                          backgroundColor: 'var(--jade-green-light)',
-                          color: 'var(--jade-green-shadow)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          marginBottom: '16px',
+                          flexShrink: 0,
                         }}
                       >
                         <GraduationCap size={24} />
                       </div>
-                      <h3 style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: '6px' }}>
-                        Nâng quyền Giáo viên
-                      </h3>
-                      <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '16px' }}>
-                        Bạn là giáo viên tiếng Trung? Hãy đăng ký nâng quyền để tạo lớp học, soạn bài tập và quản lý học sinh.
-                      </p>
+                      <div>
+                        <h4 style={{ fontSize: '1.02rem', fontWeight: 800, color: 'var(--text-main)', margin: '0 0 4px' }}>
+                          Bạn là Giáo viên Tiếng Trung?
+                        </h4>
+                        <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.45 }}>
+                          Đăng ký nâng quyền để tạo lớp học, giao bài tập tự động chấm điểm và theo dõi tiến độ từng học viên.
+                        </p>
+                      </div>
                     </div>
+
                     {myTeacherRequest?.status === 'PENDING' ? (
                       <div
                         style={{
-                          padding: '10px',
+                          padding: '8px 16px',
                           backgroundColor: 'var(--accent-gold-light)',
                           borderRadius: 'var(--radius-md)',
-                          textAlign: 'center',
                           fontWeight: 800,
                           color: 'var(--accent-gold-shadow)',
-                          fontSize: '0.88rem',
+                          fontSize: '0.84rem',
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center',
                           gap: '6px',
                         }}
                       >
@@ -1496,63 +1131,14 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
                         type="button"
                         onClick={() => navigate('/teacher-request')}
                         className="btn-gamified btn-green"
-                        style={{ width: '100%', fontSize: '0.92rem', padding: '10px' }}
+                        style={{ padding: '9px 18px', fontSize: '0.85rem' }}
                       >
-                        <GraduationCap size={18} />
+                        <GraduationCap size={16} />
                         <span>Đăng ký làm giáo viên</span>
                       </button>
                     )}
                   </div>
-
-                  {/* Card 4: Daily Streak */}
-                  <div
-                    className="game-card"
-                    style={{
-                      padding: '24px',
-                      backgroundColor: '#ffffff',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                    }}
-                  >
-                    <div>
-                      <div
-                        style={{
-                          width: '44px',
-                          height: '44px',
-                          borderRadius: 'var(--radius-md)',
-                          backgroundColor: '#ffedd5',
-                          color: '#ea580c',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          marginBottom: '16px',
-                        }}
-                      >
-                        <Flame size={24} />
-                      </div>
-                      <h3 style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: '6px' }}>
-                        Chuỗi ngày học (Streak)
-                      </h3>
-                      <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '16px' }}>
-                        Duy trì việc ôn tập từ vựng mỗi ngày để giữ ngọn lửa streak và tích lũy điểm kinh nghiệm XP!
-                      </p>
-                    </div>
-                    <div
-                      style={{
-                        padding: '10px',
-                        backgroundColor: 'var(--bg-input)',
-                        borderRadius: 'var(--radius-md)',
-                        textAlign: 'center',
-                        fontWeight: 800,
-                        color: 'var(--text-main)',
-                        fontSize: '0.9rem',
-                      }}
-                    >
-                      Mục tiêu hôm nay: 1 bài học
-                    </div>
-                  </div>
-                </div>
+                )}
 
                 {/* Student Classroom Section */}
                 <div style={{ marginTop: '36px' }}>

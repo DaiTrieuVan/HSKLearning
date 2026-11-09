@@ -19,6 +19,19 @@ public interface VocabLearningRepository extends JpaRepository<VocabLearningEnti
 
 	long countById_UserId(Long userId);
 
+	long countById_UserIdAndIsMasteredTrue(Long userId);
+
+	@org.springframework.data.jpa.repository.Query("""
+		SELECT COUNT(vl) FROM VocabLearningEntity vl
+		WHERE vl.user.id = :userId
+		  AND vl.id.vocabularyId IN :vocabularyIds
+		  AND vl.isMastered = true
+	""")
+	long countMasteredInList(
+			@org.springframework.data.repository.query.Param("userId") Long userId,
+			@org.springframework.data.repository.query.Param("vocabularyIds") Collection<Long> vocabularyIds
+	);
+
 	@org.springframework.data.jpa.repository.Query("""
 		SELECT vl FROM VocabLearningEntity vl
 		JOIN FETCH vl.vocabulary v

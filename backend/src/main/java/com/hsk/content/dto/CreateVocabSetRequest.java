@@ -12,5 +12,19 @@ public record CreateVocabSetRequest(
 	@Size(max = 500, message = "Mô tả không được vượt quá 500 ký tự")
 	String description,
 
+	Long folderId,
+
+	String color,
+
+	Boolean isPublic,
+
 	List<Long> vocabularyIds
-) {}
+) {
+	public CreateVocabSetRequest(String title, String description) {
+		this(title, description, null, null, null, null);
+	}
+
+	public CreateVocabSetRequest(String title, String description, List<Long> vocabularyIds) {
+		this(title, description, null, null, null, vocabularyIds);
+	}
+}

@@ -6,6 +6,7 @@ import com.hsk.common.api.ApiErrorCode;
 import com.hsk.common.api.ApiException;
 import com.hsk.content.dto.BatchAddVocabSetItemsRequest;
 import com.hsk.content.dto.BatchAddVocabSetItemsResponse;
+import com.hsk.content.dto.BatchSaveWordsRequest;
 import com.hsk.content.dto.CreateGrammarPointRequest;
 import com.hsk.content.dto.CreateLessonRequest;
 import com.hsk.content.dto.CreateVocabSetRequest;
@@ -15,9 +16,11 @@ import com.hsk.content.dto.HskLevelResponse;
 import com.hsk.content.dto.ImportVocabularyResult;
 import com.hsk.content.dto.LessonResponse;
 import com.hsk.content.dto.LessonStudyResponse;
+import com.hsk.content.dto.StudentWordsPageResponse;
 import com.hsk.content.dto.UpdateLessonRequest;
 import com.hsk.content.dto.UpdateVocabularyRequest;
 import com.hsk.content.dto.VocabSetResponse;
+import com.hsk.content.dto.VocabSetSummaryDto;
 import com.hsk.content.dto.VocabularyAudioResponse;
 import com.hsk.content.dto.VocabularyResponse;
 import com.hsk.content.service.ContentService;
@@ -352,5 +355,76 @@ public class ContentController {
 			Principal principal) {
 		UserEntity user = requireUser(principal);
 		contentService.deleteVocabSet(vocabSetId, user.getId());
+	}
+
+	// ==================== STUDENT VOCAB SETS & WORDS (HTT-VOCAB-SETS-WORDS) ====================
+
+	@GetMapping("/vocab-sets/my-sets")
+	public List<VocabSetSummaryDto> getMyVocabSetsSummary(
+			@RequestParam(required = false) Long folderId,
+			Principal principal) {
+		UserEntity user = requireUser(principal);
+		return contentService.getMyVocabSets(user.getId(), folderId);
+	}
+
+	@GetMapping("/vocab-sets/community")
+	public List<VocabSetSummaryDto> getCommunityVocabSets(Principal principal) {
+		UserEntity user = requireUser(principal);
+		return contentService.getCommunityVocabSets(user.getId());
+	}
+
+	@PutMapping("/vocab-sets/{vocabSetId}")
+	public VocabSetSummaryDto updateVocabSet(
+			@PathVariable Long vocabSetId,
+			@Valid @RequestBody CreateVocabSetRequest req,
+			Principal principal) {
+		UserEntity user = requireUser(principal);
+		return contentService.updateVocabSet(vocabSetId, user.getId(), req);
+	}
+
+	@PostMapping("/vocab-sets/{vocabSetId}/share")
+	public VocabSetSummaryDto toggleShareVocabSet(
+			@PathVariable Long vocabSetId,
+			Principal principal) {
+		UserEntity user = requireUser(principal);
+		return contentService.toggleShareVocabSet(vocabSetId, user.getId());
+	}
+
+	@PostMapping("/vocab-sets/import-shared")
+	public VocabSetSummaryDto importSharedVocabSet(
+			@RequestParam String shareCode,
+			Principal principal) {
+		UserEntity user = requireUser(principal);
+		return contentService.importSharedVocabSet(user.getId(), shareCode);
+	}
+
+	@PostMapping("/vocabularies/batch-save")
+	@ResponseStatus(HttpStatus.CREATED)
+	public BatchAddVocabSetItemsResponse batchSaveWordsToSet(
+			@Valid @RequestBody BatchSaveWordsRequest req,
+			Principal principal) {
+		UserEntity user = requireUser(principal);
+		return contentService.batchSaveWordsToSet(user.getId(), req);
+	}
+
+	@PostMapping("/vocabularies/{vocabularyId}/toggle-mastered")
+	public Map<String, Object> toggleWordMastered(
+			@PathVariable Long vocabularyId,
+			Principal principal) {
+		UserEntity user = requireUser(principal);
+		boolean mastered = contentService.toggleWordMastered(user.getId(), vocabularyId);
+		return Map.of("vocabularyId", vocabularyId, "isMastered", mastered);
+	}
+
+	@GetMapping("/vocabularies/my-words")
+	public StudentWordsPageResponse getMyWords(
+			@RequestParam(required = false) Long vocabSetId,
+			@RequestParam(required = false) String search,
+			@RequestParam(required = false) String status,
+			@RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "20") int size,
+			Principal principal) {
+		UserEntity user = requireUser(principal);
+		return contentService.getStudentWords(user.getId(), vocabSetId, search, status, page, size);
 	}
 }

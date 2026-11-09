@@ -179,35 +179,35 @@ export const StudentVocabSetsPage: React.FC = () => {
     : mySets.filter((s) => !s.folderId) // root sets
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-8 space-y-8">
+    <div className="min-h-screen bg-slate-50/50 text-slate-800 p-6 md:p-8 space-y-6">
       {/* Top Header & Quick Actions */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
             <span
               onClick={() => setCurrentFolder(null)}
-              className="hover:text-white cursor-pointer transition-colors"
+              className="hover:text-emerald-600 cursor-pointer transition-colors"
             >
               Bộ từ vựng
             </span>
             {currentFolder && (
               <>
-                <ChevronRight className="w-3.5 h-3.5 text-slate-600" />
-                <span className="text-emerald-400">{currentFolder.title}</span>
+                <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                <span className="text-emerald-600 font-bold">{currentFolder.title}</span>
               </>
             )}
           </div>
-          <h1 className="text-2xl md:text-3xl font-black text-white mt-1 tracking-tight flex items-center gap-3">
+          <h1 className="text-2xl md:text-3xl font-black text-slate-900 mt-1 tracking-tight flex items-center gap-3">
             <span>{currentFolder ? currentFolder.title : 'Quản lý Bộ từ vựng'}</span>
             {currentFolder && (
-              <span className="text-xs px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700 font-medium">
+              <span className="text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-semibold">
                 {displayedMySets.length} bộ từ
               </span>
             )}
           </h1>
         </div>
 
-        {/* Action Buttons styled matching Vocapy */}
+        {/* Action Buttons styled matching Light Theme */}
         <div className="flex items-center gap-2.5 flex-wrap">
           <button
             type="button"
@@ -215,7 +215,7 @@ export const StudentVocabSetsPage: React.FC = () => {
               setEditingSet(null)
               setIsSetDrawerOpen(true)
             }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider shadow-lg shadow-emerald-900/30 transition-all hover:scale-105"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider shadow-sm transition-all hover:shadow hover:-translate-y-0.5"
           >
             <Plus className="w-4 h-4" />
             <span>Tạo bộ từ mới</span>
@@ -227,7 +227,7 @@ export const StudentVocabSetsPage: React.FC = () => {
               setEditingFolder(null)
               setIsFolderDrawerOpen(true)
             }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs uppercase tracking-wider shadow-lg shadow-sky-900/30 transition-all hover:scale-105"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs uppercase tracking-wider shadow-sm transition-all hover:shadow hover:-translate-y-0.5"
           >
             <FolderPlus className="w-4 h-4" />
             <span>Tạo folder</span>
@@ -236,7 +236,7 @@ export const StudentVocabSetsPage: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate('/roadmap')}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs uppercase tracking-wider shadow-lg shadow-amber-900/20 transition-all hover:scale-105"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs uppercase tracking-wider shadow-sm transition-all hover:shadow hover:-translate-y-0.5"
           >
             <Compass className="w-4 h-4" />
             <span>Lộ trình</span>
@@ -248,16 +248,16 @@ export const StudentVocabSetsPage: React.FC = () => {
               setShareDrawerMode('import')
               setIsShareDrawerOpen(true)
             }}
-            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white font-semibold text-xs transition-colors"
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 hover:text-slate-900 font-semibold text-xs shadow-sm transition-all"
           >
-            <ArrowDownToLine className="w-4 h-4 text-emerald-400" />
+            <ArrowDownToLine className="w-4 h-4 text-emerald-600" />
             <span>Nhập mã</span>
           </button>
         </div>
       </div>
 
       {/* Tabs Switcher */}
-      <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
         <button
           type="button"
           onClick={() => {
@@ -266,13 +266,13 @@ export const StudentVocabSetsPage: React.FC = () => {
           }}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
             activeTab === 'my_sets'
-              ? 'bg-slate-800 text-white border border-slate-700 shadow-sm'
-              : 'text-slate-400 hover:text-white hover:bg-slate-900'
+              ? 'bg-white text-emerald-700 border border-slate-200 shadow-sm'
+              : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
           }`}
         >
-          <Layers className="w-4 h-4 text-emerald-400" />
+          <Layers className="w-4 h-4 text-emerald-600" />
           <span>Bộ từ của tôi</span>
-          <span className="px-1.5 py-0.2 rounded-md bg-slate-700/60 text-[10px] text-slate-300">
+          <span className="px-2 py-0.5 rounded-md bg-slate-100 text-[11px] text-slate-600 font-semibold">
             {mySets.length}
           </span>
         </button>
@@ -282,11 +282,11 @@ export const StudentVocabSetsPage: React.FC = () => {
           onClick={() => setActiveTab('community')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
             activeTab === 'community'
-              ? 'bg-slate-800 text-white border border-slate-700 shadow-sm'
-              : 'text-slate-400 hover:text-white hover:bg-slate-900'
+              ? 'bg-white text-sky-700 border border-slate-200 shadow-sm'
+              : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
           }`}
         >
-          <Globe className="w-4 h-4 text-sky-400" />
+          <Globe className="w-4 h-4 text-sky-600" />
           <span>Cộng đồng</span>
         </button>
 
@@ -295,11 +295,11 @@ export const StudentVocabSetsPage: React.FC = () => {
           onClick={() => setActiveTab('classroom')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
             activeTab === 'classroom'
-              ? 'bg-slate-800 text-white border border-slate-700 shadow-sm'
-              : 'text-slate-400 hover:text-white hover:bg-slate-900'
+              ? 'bg-white text-indigo-700 border border-slate-200 shadow-sm'
+              : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
           }`}
         >
-          <GraduationCap className="w-4 h-4 text-indigo-400" />
+          <GraduationCap className="w-4 h-4 text-indigo-600" />
           <span>Lớp học</span>
         </button>
       </div>
@@ -307,11 +307,11 @@ export const StudentVocabSetsPage: React.FC = () => {
       {/* Content Area */}
       {loading ? (
         <div className="py-20 flex flex-col items-center justify-center gap-3 text-slate-400">
-          <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
-          <span className="text-sm font-medium">Đang tải danh sách bộ từ vựng...</span>
+          <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+          <span className="text-sm font-medium text-slate-600">Đang tải danh sách bộ từ vựng...</span>
         </div>
       ) : error ? (
-        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm">
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 text-sm">
           {error}
         </div>
       ) : activeTab === 'my_sets' ? (
@@ -322,13 +322,13 @@ export const StudentVocabSetsPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setCurrentFolder(null)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-colors border border-slate-700"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors border border-slate-200 shadow-sm"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span>Quay lại tất cả folder</span>
               </button>
-              <span className="text-xs text-slate-400">
-                Đang xem thư mục: <strong className="text-white">{currentFolder.title}</strong>
+              <span className="text-xs text-slate-500">
+                Đang xem thư mục: <strong className="text-slate-800">{currentFolder.title}</strong>
               </span>
             </div>
           )}
@@ -337,8 +337,8 @@ export const StudentVocabSetsPage: React.FC = () => {
           {!currentFolder && folders.length > 0 && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-                  <Folder className="w-4 h-4 text-amber-400" />
+                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                  <Folder className="w-4 h-4 text-amber-500" />
                   <span>Folders ({folders.length})</span>
                 </h2>
               </div>
@@ -363,8 +363,8 @@ export const StudentVocabSetsPage: React.FC = () => {
           {/* Vocab Sets Grid */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-                <BookOpen className="w-4 h-4 text-emerald-400" />
+              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-emerald-600" />
                 <span>
                   {currentFolder
                     ? `Bộ từ trong folder (${displayedMySets.length})`
@@ -374,13 +374,13 @@ export const StudentVocabSetsPage: React.FC = () => {
             </div>
 
             {displayedMySets.length === 0 ? (
-              <div className="py-16 text-center rounded-3xl border border-dashed border-slate-800 bg-slate-900/30 p-8 space-y-4">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mx-auto">
+              <div className="py-16 text-center rounded-3xl border border-dashed border-slate-300 bg-white p-8 space-y-4 shadow-sm">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto border border-emerald-100">
                   <BookOpen className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-white">Chưa có bộ từ vựng nào</h3>
-                  <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+                  <h3 className="text-base font-bold text-slate-900">Chưa có bộ từ vựng nào</h3>
+                  <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
                     {currentFolder
                       ? `Thư mục "${currentFolder.title}" hiện chưa chứa bộ từ vựng nào. Hãy tạo bộ từ mới vào đây!`
                       : 'Bắt đầu hành trình học tập bằng cách tạo bộ từ vựng đầu tiên của bạn hoặc nhập bộ từ từ cộng đồng.'}
@@ -392,7 +392,7 @@ export const StudentVocabSetsPage: React.FC = () => {
                     setEditingSet(null)
                     setIsSetDrawerOpen(true)
                   }}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-lg shadow-emerald-900/30 transition-all"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-sm transition-all"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Tạo bộ từ ngay</span>
@@ -424,13 +424,13 @@ export const StudentVocabSetsPage: React.FC = () => {
       ) : activeTab === 'community' ? (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-500">
               Khám phá và học các bộ từ vựng hữu ích được chia sẻ bởi cộng đồng người học tiếng Trung
             </p>
           </div>
 
           {communitySets.length === 0 ? (
-            <div className="py-16 text-center text-slate-400">
+            <div className="py-16 text-center text-slate-500 bg-white rounded-3xl border border-slate-200">
               Chưa có bộ từ vựng công khai nào trong cộng đồng.
             </div>
           ) : (
@@ -448,12 +448,12 @@ export const StudentVocabSetsPage: React.FC = () => {
         </div>
       ) : (
         /* Classroom tab */
-        <div className="py-16 text-center text-slate-400 space-y-3">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center mx-auto">
+        <div className="py-16 text-center text-slate-600 space-y-3 bg-white rounded-3xl border border-slate-200 shadow-sm p-8">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto border border-indigo-100">
             <GraduationCap className="w-6 h-6" />
           </div>
-          <h3 className="text-base font-bold text-white">Bộ từ theo Lớp học</h3>
-          <p className="text-xs text-slate-400 max-w-md mx-auto">
+          <h3 className="text-base font-bold text-slate-900">Bộ từ theo Lớp học</h3>
+          <p className="text-xs text-slate-500 max-w-md mx-auto">
             Các bộ từ do giáo viên phụ trách lớp học giao cho lớp của bạn sẽ hiển thị tại đây để bạn ôn luyện mỗi ngày.
           </p>
         </div>

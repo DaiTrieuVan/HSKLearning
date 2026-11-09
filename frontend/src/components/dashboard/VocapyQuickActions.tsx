@@ -9,9 +9,9 @@ export const VocapyQuickActions: React.FC<VocapyQuickActionsProps> = ({ onNaviga
   const actions = [
     {
       id: 'add_vocab',
-      title: 'Tra cứu & Thêm từ',
-      subtitle: 'Tạo từ vựng cá nhân & Tra từ điển',
-      path: '/vocab-search',
+      title: 'Thêm từ & Bộ từ',
+      subtitle: 'Tạo từ vựng cá nhân & Bộ từ AI',
+      path: '/vocab-sets',
       icon: PlusCircle,
       iconBg: '#eff6ff',
       iconColor: '#2563eb',

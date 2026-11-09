@@ -17,6 +17,8 @@ import {
   Mic,
   Bot,
   Award,
+  Layers,
+  BookA,
   User,
   LogOut,
   ChevronLeft,
@@ -247,6 +249,28 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ isCollapsed, onToggleCol
               >
                 <LayoutDashboard size={20} style={{ flexShrink: 0, color: isActive('/') ? 'var(--primary)' : '#64748b' }} />
                 {!isCollapsed && <span>Trang chủ</span>}
+              </button>
+
+              {/* 1.1. Bộ từ vựng */}
+              <button
+                type="button"
+                onClick={() => navigate('/vocab-sets')}
+                style={navItemStyle(isActive('/vocab-sets'))}
+                title={isCollapsed ? 'Bộ từ vựng' : undefined}
+              >
+                <Layers size={20} style={{ flexShrink: 0, color: isActive('/vocab-sets') ? 'var(--primary)' : '#64748b' }} />
+                {!isCollapsed && <span>Bộ từ vựng</span>}
+              </button>
+
+              {/* 1.2. Từ vựng */}
+              <button
+                type="button"
+                onClick={() => navigate('/words')}
+                style={navItemStyle(isActive('/words'))}
+                title={isCollapsed ? 'Từ vựng' : undefined}
+              >
+                <BookA size={20} style={{ flexShrink: 0, color: isActive('/words') ? 'var(--primary)' : '#64748b' }} />
+                {!isCollapsed && <span>Từ vựng</span>}
               </button>
 
               {/* 2. Lộ trình HSK */}

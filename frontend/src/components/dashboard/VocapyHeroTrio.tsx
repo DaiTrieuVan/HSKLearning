@@ -140,7 +140,10 @@ export const VocapyHeroTrio: React.FC<VocapyHeroTrioProps> = ({
       {/* 2. HERO CENTER: 4 Stats Metrics Matrix (Vocapy style) */}
       <div
         className="game-card"
+        onClick={() => onNavigate('/words')}
+        title="Xem danh sách từ vựng chi tiết"
         style={{
+          cursor: 'pointer',
           padding: '16px',
           backgroundColor: '#1e293b',
           borderRadius: '18px',

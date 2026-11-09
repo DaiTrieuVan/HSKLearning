@@ -34,14 +34,18 @@ import { AddWordsToVocabSetPage } from './pages/teacher/AddWordsToVocabSetPage'
 import { MockExamManagementPage } from './pages/teacher/MockExamManagementPage'
 import { Hsk30ExamManagementPage } from './pages/teacher/Hsk30ExamManagementPage'
 import { Hsk30TakeExamPage } from './pages/learning/Hsk30TakeExamPage'
+import { StudentVocabSetsPage } from './pages/learning/StudentVocabSetsPage'
+import { StudentWordsListPage } from './pages/learning/StudentWordsListPage'
 import { AppLayout } from './layouts/AppLayout'
 
 function AppRoutes() {
-  const { isLoggedIn } = useAuth()
+  const { isLoggedIn, user } = useAuth()
 
   if (!isLoggedIn) {
     return <AuthPage />
   }
+
+  const isTeacher = user?.activeMode === 'TEACHER'
 
   return (
     <Routes>
@@ -58,7 +62,8 @@ function AppRoutes() {
         <Route path="/ai-assistant" element={<AiLearningAssistantPage />} />
         <Route path="/curriculum" element={<HskCurriculumPage />} />
         <Route path="/lessons/:lessonId" element={<LessonStudyPage />} />
-        <Route path="/vocab-sets" element={<TeacherVocabSetsPage />} />
+        <Route path="/vocab-sets" element={isTeacher ? <TeacherVocabSetsPage /> : <StudentVocabSetsPage />} />
+        <Route path="/words" element={<StudentWordsListPage />} />
         <Route path="/vocab-sets/:vocabSetId/add-words" element={<AddWordsToVocabSetPage />} />
         <Route path="/teacher/private-vocab" element={<PrivateVocabManagementPage />} />
         <Route path="/private-vocab" element={<PrivateVocabManagementPage />} />

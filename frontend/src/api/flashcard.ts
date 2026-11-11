@@ -34,16 +34,28 @@ export interface FlashcardSessionSummary {
   forgottenVocabularyIds: number[]
 }
 
+export interface GetFlashcardOptions {
+  lessonId?: number
+  vocabSetId?: number
+  onlyForgotten?: boolean
+  filterStatus?: 'ALL' | 'UNMASTERED' | 'MASTERED'
+  order?: 'RANDOM' | 'DEFAULT'
+  limit?: number
+}
+
 const API_BASE = '/api/v1/learning/flashcards'
 
 export async function getFlashcards(
   token: string,
-  options: { lessonId?: number; vocabSetId?: number; onlyForgotten?: boolean }
+  options: GetFlashcardOptions
 ): Promise<FlashcardItem[]> {
   const params = new URLSearchParams()
   if (options.lessonId) params.append('lessonId', options.lessonId.toString())
   if (options.vocabSetId) params.append('vocabSetId', options.vocabSetId.toString())
   if (options.onlyForgotten) params.append('onlyForgotten', 'true')
+  if (options.filterStatus) params.append('filterStatus', options.filterStatus)
+  if (options.order) params.append('order', options.order)
+  if (options.limit) params.append('limit', options.limit.toString())
 
   const response = await fetch(`${API_BASE}?${params.toString()}`, {
     headers: {

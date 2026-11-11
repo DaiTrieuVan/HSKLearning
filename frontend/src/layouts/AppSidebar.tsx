@@ -19,6 +19,7 @@ import {
   Award,
   Layers,
   BookA,
+  Gamepad2,
   User,
   LogOut,
   ChevronLeft,
@@ -271,6 +272,17 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ isCollapsed, onToggleCol
               >
                 <BookA size={20} style={{ flexShrink: 0, color: isActive('/words') ? 'var(--primary)' : '#64748b' }} />
                 {!isCollapsed && <span>Từ vựng</span>}
+              </button>
+
+              {/* 1.3. Luyện tập phản xạ (Vocapy Games) */}
+              <button
+                type="button"
+                onClick={() => navigate('/practice')}
+                style={navItemStyle(isActive('/practice'))}
+                title={isCollapsed ? 'Luyện tập phản xạ' : undefined}
+              >
+                <Gamepad2 size={20} style={{ flexShrink: 0, color: isActive('/practice') ? 'var(--primary)' : '#64748b' }} />
+                {!isCollapsed && <span>Luyện tập</span>}
               </button>
 
               {/* 2. Lộ trình HSK */}

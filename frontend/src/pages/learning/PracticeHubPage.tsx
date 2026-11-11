@@ -18,6 +18,7 @@ import {
   History,
   Gamepad2,
   Coins,
+  Settings,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import {
@@ -26,6 +27,17 @@ import {
   type VocabSetSummary,
   type StudentWordsStats,
 } from '../../api/vocabManagement'
+import {
+  getPracticeHistory,
+  type PracticeSessionHistoryItem,
+  type QuizMode,
+} from '../../api/vocabPractice'
+import {
+  loadPracticeSettings,
+  type PracticeGameSettings,
+} from '../../utils/practiceSettings'
+import { GameSettingsDrawer } from '../../components/practice/GameSettingsDrawer'
+import { QuizModeDrawer } from '../../components/practice/QuizModeDrawer'
 
 export const PracticeHubPage: React.FC = () => {
   const { user } = useAuth()
@@ -42,6 +54,13 @@ export const PracticeHubPage: React.FC = () => {
   // Stats for the chosen set & filter
   const [stats, setStats] = useState<StudentWordsStats | null>(null)
   const [loadingStats, setLoadingStats] = useState(false)
+
+  // Game settings, mode drawer & practice history
+  const [gameSettings, setGameSettings] = useState<PracticeGameSettings>(() => loadPracticeSettings())
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [quizDrawerOpen, setQuizDrawerOpen] = useState(false)
+  const [historyItems, setHistoryItems] = useState<PracticeSessionHistoryItem[]>([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
 
   // 1. Load available vocab sets
   useEffect(() => {
@@ -80,6 +99,24 @@ export const PracticeHubPage: React.FC = () => {
     }
   }, [user, selectedSetId])
 
+  // 3. Load practice session history
+  useEffect(() => {
+    if (!user) return
+    let isMounted = true
+    setLoadingHistory(true)
+    getPracticeHistory(user.token, 5)
+      .then((items) => {
+        if (isMounted) setHistoryItems(items)
+      })
+      .catch((err: unknown) => console.error('Failed to load practice history:', err))
+      .finally(() => {
+        if (isMounted) setLoadingHistory(false)
+      })
+    return () => {
+      isMounted = false
+    }
+  }, [user])
+
   // Count available words based on filterStatus
   const readyWordCount = useMemo(() => {
     if (!stats) return 0
@@ -88,9 +125,7 @@ export const PracticeHubPage: React.FC = () => {
     return stats.totalWords
   }, [stats, filterStatus])
 
-  // Launch Flashcard session directly
-  const handleStartFlashcard = () => {
-    if (readyWordCount === 0) return
+  const buildFilterQueryParams = () => {
     const params = new URLSearchParams()
     if (selectedSetId !== 'all') {
       params.append('vocabSetId', selectedSetId)
@@ -100,7 +135,22 @@ export const PracticeHubPage: React.FC = () => {
     if (limit !== 'all') {
       params.append('limit', limit)
     }
-    navigate(`/practice/flashcard?${params.toString()}`)
+    return params
+  }
+
+  // Launch Flashcard session directly
+  const handleStartFlashcard = () => {
+    if (readyWordCount === 0) return
+    navigate(`/practice/flashcard?${buildFilterQueryParams().toString()}`)
+  }
+
+  // Launch Quiz with chosen mode
+  const handleStartQuiz = (mode: QuizMode) => {
+    if (readyWordCount === 0) return
+    const params = buildFilterQueryParams()
+    params.append('mode', mode)
+    setQuizDrawerOpen(false)
+    navigate(`/practice/quiz?${params.toString()}`)
   }
 
   return (
@@ -179,10 +229,19 @@ export const PracticeHubPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. Dòng trạng thái Chọn game & Số từ sẵn sàng */}
+      {/* 2. Dòng trạng thái Chọn game + Cài đặt & Số từ sẵn sàng */}
       <div className="flex items-center justify-between px-0.5">
         <div className="flex items-center gap-2 text-sm font-extrabold text-slate-700">
           <span>Chọn game:</span>
+          <button
+            type="button"
+            onClick={() => setSettingsOpen(true)}
+            title="Cài đặt âm thanh & thời gian"
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 border border-transparent hover:border-emerald-200 transition-colors text-xs font-bold"
+          >
+            <Settings className="w-4 h-4" />
+            <span className="hidden sm:inline">{gameSettings.timePerQuestion}s</span>
+          </button>
         </div>
 
         <div className="flex items-center gap-2">
@@ -222,30 +281,29 @@ export const PracticeHubPage: React.FC = () => {
           </div>
         </button>
 
-        {/* 3.2 Trắc nghiệm (Sắp có) */}
-        <div
-          title="Sắp ra mắt trong Milestone 2"
-          className="relative rounded-2xl p-3.5 bg-amber-50 border border-amber-200/90 text-amber-950 flex flex-col items-center justify-between text-center min-h-[168px] opacity-80 select-none"
+        {/* 3.2 Trắc nghiệm (Active & Clickable -> QuizModeDrawer) */}
+        <button
+          type="button"
+          onClick={() => setQuizDrawerOpen(true)}
+          disabled={readyWordCount === 0}
+          className="group relative rounded-2xl p-3.5 bg-gradient-to-b from-amber-500 to-orange-600 text-white shadow-md shadow-orange-500/20 hover:-translate-y-1 hover:shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 transition-all flex flex-col items-center justify-between text-center min-h-[168px]"
         >
-          <span className="absolute top-2 right-2 text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-200/80 text-amber-900">
-            Sắp có
-          </span>
-          <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center">
-            <CheckSquare className="w-5 h-5" />
+          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform">
+            <CheckSquare className="w-5 h-5 text-white" />
           </div>
 
           <div className="my-2">
             <div className="text-sm font-extrabold tracking-tight">Trắc nghiệm</div>
-            <div className="text-[11px] text-amber-800/80 leading-tight mt-1">
+            <div className="text-[11px] text-amber-100 leading-tight mt-1">
               Chọn đáp án đúng
             </div>
           </div>
 
-          <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-200/60 text-amber-900 text-[11px] font-bold">
+          <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-black/20 text-[11px] font-bold">
             <span>+10</span>
-            <Coins className="w-3 h-3 text-amber-600" />
+            <Coins className="w-3 h-3 text-amber-300" />
           </div>
-        </div>
+        </button>
 
         {/* 3.3 Nối từ (Sắp có) */}
         <div
@@ -401,18 +459,73 @@ export const PracticeHubPage: React.FC = () => {
 
       {/* 5. Lịch sử luyện tập Gọn gàng bên dưới */}
       <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
-            <History className="w-4 h-4" />
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+              <History className="w-4 h-4" />
+            </div>
+            <h3 className="text-sm font-extrabold text-slate-800">Lịch sử luyện tập</h3>
           </div>
-          <h3 className="text-sm font-extrabold text-slate-800">Lịch sử luyện tập</h3>
+          {historyItems.length > 0 && (
+            <span className="text-[11px] font-bold text-slate-400">
+              {historyItems.length} lượt gần nhất
+            </span>
+          )}
         </div>
 
-        <div className="py-5 border border-dashed border-slate-200 rounded-xl flex items-center justify-center gap-2 text-xs font-medium text-slate-400">
-          <Gamepad2 className="w-4 h-4 text-slate-300" />
-          <span>Chưa có lịch sử luyện tập. Hãy chơi thử một game nhé!</span>
-        </div>
+        {loadingHistory ? (
+          <div className="py-4 text-center text-xs font-medium text-slate-400">
+            Đang tải lịch sử...
+          </div>
+        ) : historyItems.length === 0 ? (
+          <div className="py-5 border border-dashed border-slate-200 rounded-xl flex items-center justify-center gap-2 text-xs font-medium text-slate-400">
+            <Gamepad2 className="w-4 h-4 text-slate-300" />
+            <span>Chưa có lịch sử luyện tập. Hãy chơi thử một game nhé!</span>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+            {historyItems.map((item) => (
+              <div
+                key={item.id}
+                className="rounded-xl border border-slate-200/80 bg-slate-50/70 px-3 py-2 flex flex-col justify-between gap-1"
+              >
+                <div className="flex items-center justify-between gap-1.5">
+                  <span className="text-[11px] font-extrabold text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-md truncate">
+                    {item.gameType === 'QUIZ' ? 'Trắc nghiệm' : item.gameType}
+                  </span>
+                  <span className="text-[11px] font-extrabold text-emerald-700">
+                    +{item.xpEarned} XP
+                  </span>
+                </div>
+                <div className="text-xs font-bold text-slate-800 truncate" title={item.vocabSetTitle}>
+                  {item.vocabSetTitle}
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-slate-500">
+                  <span>
+                    {item.correctCount}/{item.totalCount} đúng ({item.accuracyPercent}%)
+                  </span>
+                  <span>{item.durationSeconds}s</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Drawers (GEMINI.md Rule 4: Slide-over Drawer, không dùng Modal/Popup) */}
+      <GameSettingsDrawer
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        settings={gameSettings}
+        onChange={setGameSettings}
+      />
+
+      <QuizModeDrawer
+        open={quizDrawerOpen}
+        onClose={() => setQuizDrawerOpen(false)}
+        readyWordCount={readyWordCount}
+        onSelectMode={handleStartQuiz}
+      />
     </div>
   )
 }

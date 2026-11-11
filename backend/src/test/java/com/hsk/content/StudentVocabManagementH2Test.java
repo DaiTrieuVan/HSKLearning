@@ -368,5 +368,14 @@ class StudentVocabManagementH2Test {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$", hasSize(1)))
 				.andExpect(jsonPath("$[0].id", is((int) word1Id)));
+
+		// 7. Kiểm tra trường hợp chọn "Tất cả bộ từ" (không truyền vocabSetId)
+		mockMvc.perform(get("/api/v1/learning/flashcards")
+				.header("Authorization", "Bearer " + user1Token)
+				.param("filterStatus", "UNMASTERED")
+				.param("order", "RANDOM")
+				.param("limit", "20"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$", hasSize(1)));
 	}
 }

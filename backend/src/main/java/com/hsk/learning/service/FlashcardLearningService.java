@@ -28,6 +28,8 @@ import com.hsk.learning.repository.VocabLearningRepository;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -95,11 +97,15 @@ public class FlashcardLearningService {
 		List<VocabLearningEntity> learnings = vocabLearningRepository
 				.findAllById_UserIdAndId_VocabularyIdIn(currentUserId, vocabIds);
 
-		Map<Long, FlashcardResult> resultMap = learnings.stream()
-				.collect(Collectors.toMap(vl -> vl.getId().getVocabularyId(), VocabLearningEntity::getLastResult, (a, b) -> a));
-
-		Map<Long, Boolean> masteredMap = learnings.stream()
-				.collect(Collectors.toMap(vl -> vl.getId().getVocabularyId(), VocabLearningEntity::isMastered, (a, b) -> a));
+		Map<Long, FlashcardResult> resultMap = new HashMap<>();
+		Map<Long, Boolean> masteredMap = new HashMap<>();
+		for (VocabLearningEntity vl : learnings) {
+			Long vId = vl.getId().getVocabularyId();
+			if (vl.getLastResult() != null) {
+				resultMap.putIfAbsent(vId, vl.getLastResult());
+			}
+			masteredMap.putIfAbsent(vId, vl.isMastered());
+		}
 
 		if (Boolean.TRUE.equals(onlyForgotten)) {
 			vocabs = vocabs.stream()
@@ -176,10 +182,12 @@ public class FlashcardLearningService {
 		}
 
 		List<Long> vocabIds = vocabs.stream().map(VocabularyEntity::getId).toList();
-		Map<Long, FlashcardResult> resultMap = vocabLearningRepository
-				.findAllById_UserIdAndId_VocabularyIdIn(currentUserId, vocabIds)
-				.stream()
-				.collect(Collectors.toMap(vl -> vl.getId().getVocabularyId(), VocabLearningEntity::getLastResult));
+		Map<Long, FlashcardResult> resultMap = new HashMap<>();
+		for (VocabLearningEntity vl : vocabLearningRepository.findAllById_UserIdAndId_VocabularyIdIn(currentUserId, vocabIds)) {
+			if (vl.getLastResult() != null) {
+				resultMap.putIfAbsent(vl.getId().getVocabularyId(), vl.getLastResult());
+			}
+		}
 
 		int rememberedCount = 0;
 		int forgottenCount = 0;
@@ -248,17 +256,17 @@ public class FlashcardLearningService {
 					.distinct()
 					.toList();
 
-			List<VocabularyEntity> list = new ArrayList<>();
+			Map<Long, VocabularyEntity> uniqueVocabs = new LinkedHashMap<>();
 			if (!targetVocabIds.isEmpty()) {
-				list.addAll(vocabularyRepository.findAllById(targetVocabIds).stream().filter(v -> !v.isHidden()).toList());
+				vocabularyRepository.findAllById(targetVocabIds).stream()
+						.filter(v -> !v.isHidden())
+						.forEach(v -> uniqueVocabs.putIfAbsent(v.getId(), v));
 			}
 			List<VocabularyEntity> customVocabs = vocabularyRepository.findAllByOwnerIdAndHiddenFalse(currentUserId);
 			for (VocabularyEntity cv : customVocabs) {
-				if (!list.contains(cv)) {
-					list.add(cv);
-				}
+				uniqueVocabs.putIfAbsent(cv.getId(), cv);
 			}
-			return list;
+			return new ArrayList<>(uniqueVocabs.values());
 		}
 	}
 }

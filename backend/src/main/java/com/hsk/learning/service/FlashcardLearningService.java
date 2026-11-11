@@ -88,6 +88,42 @@ public class FlashcardLearningService {
 			String filterStatus,
 			String order,
 			Integer limit) {
+		List<VocabularyEntity> vocabs = findFilteredVocabularies(
+				currentUserId, lessonId, vocabSetId, onlyForgotten, filterStatus, order, limit);
+		if (vocabs.isEmpty()) {
+			return Collections.emptyList();
+		}
+
+		List<Long> vocabIds = vocabs.stream().map(VocabularyEntity::getId).toList();
+		Map<Long, FlashcardResult> resultMap = buildLastResultMap(currentUserId, vocabIds);
+
+		return vocabs.stream().map(v -> new FlashcardCardResponse(
+				v.getId(),
+				v.getHanzi(),
+				v.getPinyin(),
+				v.getMeaning(),
+				v.getPartOfSpeech(),
+				v.getAudioUrl(),
+				v.getExampleSentence(),
+				v.getExamplePinyin(),
+				v.getExampleMeaning(),
+				resultMap.get(v.getId())
+		)).toList();
+	}
+
+	/**
+	 * Truy vấn danh sách từ vựng có quyền truy cập và lọc theo trạng thái học, thứ tự và giới hạn số lượng.
+	 * Dùng chung cho Flashcard, Trắc nghiệm và các chế độ luyện tập tiếp theo.
+	 */
+	@Transactional(readOnly = true)
+	public List<VocabularyEntity> findFilteredVocabularies(
+			Long currentUserId,
+			Long lessonId,
+			Long vocabSetId,
+			Boolean onlyForgotten,
+			String filterStatus,
+			String order,
+			Integer limit) {
 		List<VocabularyEntity> vocabs = new ArrayList<>(getAccessibleVocabularies(currentUserId, lessonId, vocabSetId));
 		if (vocabs.isEmpty()) {
 			return Collections.emptyList();
@@ -126,21 +162,20 @@ public class FlashcardLearningService {
 		}
 
 		if (limit != null && limit > 0 && vocabs.size() > limit) {
-			vocabs = vocabs.subList(0, limit);
+			vocabs = new ArrayList<>(vocabs.subList(0, limit));
 		}
 
-		return vocabs.stream().map(v -> new FlashcardCardResponse(
-				v.getId(),
-				v.getHanzi(),
-				v.getPinyin(),
-				v.getMeaning(),
-				v.getPartOfSpeech(),
-				v.getAudioUrl(),
-				v.getExampleSentence(),
-				v.getExamplePinyin(),
-				v.getExampleMeaning(),
-				resultMap.get(v.getId())
-		)).toList();
+		return vocabs;
+	}
+
+	private Map<Long, FlashcardResult> buildLastResultMap(Long currentUserId, List<Long> vocabIds) {
+		Map<Long, FlashcardResult> resultMap = new HashMap<>();
+		for (VocabLearningEntity vl : vocabLearningRepository.findAllById_UserIdAndId_VocabularyIdIn(currentUserId, vocabIds)) {
+			if (vl.getLastResult() != null) {
+				resultMap.putIfAbsent(vl.getId().getVocabularyId(), vl.getLastResult());
+			}
+		}
+		return resultMap;
 	}
 
 	@Transactional
@@ -215,7 +250,8 @@ public class FlashcardLearningService {
 		);
 	}
 
-	private List<VocabularyEntity> getAccessibleVocabularies(Long currentUserId, Long lessonId, Long vocabSetId) {
+	@Transactional(readOnly = true)
+	public List<VocabularyEntity> getAccessibleVocabularies(Long currentUserId, Long lessonId, Long vocabSetId) {
 		if (lessonId != null) {
 			LessonEntity lesson = lessonRepository.findById(lessonId)
 					.orElseThrow(() -> new ApiException(ApiErrorCode.RESOURCE_NOT_FOUND));

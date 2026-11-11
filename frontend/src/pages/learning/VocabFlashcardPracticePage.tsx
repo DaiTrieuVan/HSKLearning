@@ -51,11 +51,16 @@ export const VocabFlashcardPracticePage: React.FC = () => {
     try {
       setLoading(true)
       setError(null)
+      const parsedSetId =
+        vocabSetIdParam && !isNaN(Number(vocabSetIdParam)) ? parseInt(vocabSetIdParam, 10) : undefined
+      const parsedLimit =
+        limitParam && limitParam !== 'all' && !isNaN(Number(limitParam)) ? parseInt(limitParam, 10) : undefined
+
       const data = await getFlashcards(user.token, {
-        vocabSetId: vocabSetIdParam ? parseInt(vocabSetIdParam, 10) : undefined,
+        vocabSetId: parsedSetId,
         filterStatus: filterStatusParam,
         order: orderParam,
-        limit: limitParam && limitParam !== 'all' ? parseInt(limitParam, 10) : undefined,
+        limit: parsedLimit,
       })
 
       setCards(data)

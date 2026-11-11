@@ -25,6 +25,7 @@ import com.hsk.learning.dto.FlashcardReviewResponse;
 import com.hsk.learning.dto.FlashcardSessionSummaryResponse;
 import com.hsk.learning.dto.ReviewFlashcardCommand;
 import com.hsk.learning.repository.VocabLearningRepository;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -46,6 +47,7 @@ public class FlashcardLearningService {
 	private final VocabSetRepository vocabSetRepository;
 	private final ClassVocabSetRepository classVocabSetRepository;
 	private final ClassMemberRepository classMemberRepository;
+	private final XpLevelService xpLevelService;
 
 	public FlashcardLearningService(
 			VocabLearningRepository vocabLearningRepository,
@@ -56,7 +58,8 @@ public class FlashcardLearningService {
 			LessonRepository lessonRepository,
 			VocabSetRepository vocabSetRepository,
 			ClassVocabSetRepository classVocabSetRepository,
-			ClassMemberRepository classMemberRepository) {
+			ClassMemberRepository classMemberRepository,
+			XpLevelService xpLevelService) {
 		this.vocabLearningRepository = vocabLearningRepository;
 		this.lessonVocabularyRepository = lessonVocabularyRepository;
 		this.vocabSetItemRepository = vocabSetItemRepository;
@@ -66,25 +69,58 @@ public class FlashcardLearningService {
 		this.vocabSetRepository = vocabSetRepository;
 		this.classVocabSetRepository = classVocabSetRepository;
 		this.classMemberRepository = classMemberRepository;
+		this.xpLevelService = xpLevelService;
 	}
 
 	@Transactional(readOnly = true)
 	public List<FlashcardCardResponse> getFlashcards(Long currentUserId, Long lessonId, Long vocabSetId, Boolean onlyForgotten) {
-		List<VocabularyEntity> vocabs = getAccessibleVocabularies(currentUserId, lessonId, vocabSetId);
+		return getFlashcards(currentUserId, lessonId, vocabSetId, onlyForgotten, "ALL", "DEFAULT", null);
+	}
+
+	@Transactional(readOnly = true)
+	public List<FlashcardCardResponse> getFlashcards(
+			Long currentUserId,
+			Long lessonId,
+			Long vocabSetId,
+			Boolean onlyForgotten,
+			String filterStatus,
+			String order,
+			Integer limit) {
+		List<VocabularyEntity> vocabs = new ArrayList<>(getAccessibleVocabularies(currentUserId, lessonId, vocabSetId));
 		if (vocabs.isEmpty()) {
 			return Collections.emptyList();
 		}
 
 		List<Long> vocabIds = vocabs.stream().map(VocabularyEntity::getId).toList();
-		Map<Long, FlashcardResult> resultMap = vocabLearningRepository
-				.findAllById_UserIdAndId_VocabularyIdIn(currentUserId, vocabIds)
-				.stream()
-				.collect(Collectors.toMap(vl -> vl.getId().getVocabularyId(), VocabLearningEntity::getLastResult));
+		List<VocabLearningEntity> learnings = vocabLearningRepository
+				.findAllById_UserIdAndId_VocabularyIdIn(currentUserId, vocabIds);
+
+		Map<Long, FlashcardResult> resultMap = learnings.stream()
+				.collect(Collectors.toMap(vl -> vl.getId().getVocabularyId(), VocabLearningEntity::getLastResult, (a, b) -> a));
+
+		Map<Long, Boolean> masteredMap = learnings.stream()
+				.collect(Collectors.toMap(vl -> vl.getId().getVocabularyId(), VocabLearningEntity::isMastered, (a, b) -> a));
 
 		if (Boolean.TRUE.equals(onlyForgotten)) {
 			vocabs = vocabs.stream()
 					.filter(v -> resultMap.get(v.getId()) == FlashcardResult.FORGOTTEN)
-					.toList();
+					.collect(Collectors.toCollection(ArrayList::new));
+		} else if ("UNMASTERED".equalsIgnoreCase(filterStatus)) {
+			vocabs = vocabs.stream()
+					.filter(v -> !Boolean.TRUE.equals(masteredMap.get(v.getId())))
+					.collect(Collectors.toCollection(ArrayList::new));
+		} else if ("MASTERED".equalsIgnoreCase(filterStatus)) {
+			vocabs = vocabs.stream()
+					.filter(v -> Boolean.TRUE.equals(masteredMap.get(v.getId())))
+					.collect(Collectors.toCollection(ArrayList::new));
+		}
+
+		if ("RANDOM".equalsIgnoreCase(order)) {
+			Collections.shuffle(vocabs);
+		}
+
+		if (limit != null && limit > 0 && vocabs.size() > limit) {
+			vocabs = vocabs.subList(0, limit);
 		}
 
 		return vocabs.stream().map(v -> new FlashcardCardResponse(
@@ -114,6 +150,13 @@ public class FlashcardLearningService {
 				.orElseGet(() -> new VocabLearningEntity(user, vocab, command.result()));
 
 		learning.recordReview(command.result());
+		if (command.result() == FlashcardResult.REMEMBERED) {
+			learning.setMastered(true);
+			String sourceId = "flashcard:" + vocab.getId() + ":" + LocalDate.now();
+			xpLevelService.awardXp(user, 5, "FLASHCARD", sourceId, "Học từ vựng Flashcard: " + vocab.getHanzi());
+		} else {
+			learning.setMastered(false);
+		}
 		learning = vocabLearningRepository.save(learning);
 
 		return new FlashcardReviewResponse(
@@ -165,10 +208,6 @@ public class FlashcardLearningService {
 	}
 
 	private List<VocabularyEntity> getAccessibleVocabularies(Long currentUserId, Long lessonId, Long vocabSetId) {
-		if (lessonId == null && vocabSetId == null) {
-			throw new ApiException(ApiErrorCode.VALIDATION_FAILED);
-		}
-
 		if (lessonId != null) {
 			LessonEntity lesson = lessonRepository.findById(lessonId)
 					.orElseThrow(() -> new ApiException(ApiErrorCode.RESOURCE_NOT_FOUND));
@@ -180,12 +219,13 @@ public class FlashcardLearningService {
 					.map(LessonVocabularyEntity::getVocabulary)
 					.filter(v -> !v.isHidden())
 					.toList();
-		} else {
+		} else if (vocabSetId != null) {
 			VocabSetEntity vocabSet = vocabSetRepository.findById(vocabSetId)
 					.orElseThrow(() -> new ApiException(ApiErrorCode.VOCAB_SET_NOT_FOUND));
 
 			boolean isOwner = Objects.equals(vocabSet.getTeacherId(), currentUserId);
-			if (!isOwner) {
+			boolean isPublic = vocabSet.isPublic();
+			if (!isOwner && !isPublic) {
 				List<ClassVocabSetEntity> assignments = classVocabSetRepository.findAllByVocabSetId(vocabSetId);
 				boolean hasAccess = assignments.stream()
 						.anyMatch(a -> Objects.equals(a.getClassroom().getTeacher().getId(), currentUserId) ||
@@ -201,6 +241,24 @@ public class FlashcardLearningService {
 					.map(VocabSetItemEntity::getVocabulary)
 					.filter(v -> !v.isHidden())
 					.toList();
+		} else {
+			List<VocabSetEntity> userSets = vocabSetRepository.findAllByTeacherIdOrderByCreatedAtDesc(currentUserId);
+			List<Long> targetVocabIds = userSets.stream()
+					.flatMap(s -> vocabSetItemRepository.findVocabularyIdsByVocabSetId(s.getId()).stream())
+					.distinct()
+					.toList();
+
+			List<VocabularyEntity> list = new ArrayList<>();
+			if (!targetVocabIds.isEmpty()) {
+				list.addAll(vocabularyRepository.findAllById(targetVocabIds).stream().filter(v -> !v.isHidden()).toList());
+			}
+			List<VocabularyEntity> customVocabs = vocabularyRepository.findAllByOwnerIdAndHiddenFalse(currentUserId);
+			for (VocabularyEntity cv : customVocabs) {
+				if (!list.contains(cv)) {
+					list.add(cv);
+				}
+			}
+			return list;
 		}
 	}
 }

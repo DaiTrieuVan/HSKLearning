@@ -45,9 +45,13 @@ public class FlashcardController {
 			@RequestParam(required = false) Long lessonId,
 			@RequestParam(required = false) Long vocabSetId,
 			@RequestParam(required = false, defaultValue = "false") Boolean onlyForgotten,
+			@RequestParam(required = false, defaultValue = "ALL") String filterStatus,
+			@RequestParam(required = false, defaultValue = "DEFAULT") String order,
+			@RequestParam(required = false) Integer limit,
 			Principal principal) {
 		UserEntity user = requireUser(principal);
-		List<FlashcardCardResponse> response = flashcardLearningService.getFlashcards(user.getId(), lessonId, vocabSetId, onlyForgotten);
+		List<FlashcardCardResponse> response = flashcardLearningService.getFlashcards(
+				user.getId(), lessonId, vocabSetId, onlyForgotten, filterStatus, order, limit);
 		return ResponseEntity.ok(response);
 	}
 

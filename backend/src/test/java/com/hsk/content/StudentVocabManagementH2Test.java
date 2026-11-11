@@ -287,4 +287,86 @@ class StudentVocabManagementH2Test {
 				.andExpect(jsonPath("$.stats.progressPercent", is(50)))
 				.andExpect(jsonPath("$.items[0].isMastered", is(true)));
 	}
+
+	@Test
+	@DisplayName("TC-04: Học sinh luyện flashcard theo bộ từ tự tạo với bộ lọc và nhận thưởng XP")
+	void testTC04_StudentVocabFlashcardPractice_WithFiltersAndXpReward() throws Exception {
+		// 1. Tạo bộ từ cho User 1
+		CreateVocabSetRequest setReq = new CreateVocabSetRequest(
+				"Bộ từ Flashcard Test",
+				"Mô tả",
+				null,
+				"#10b981",
+				false,
+				null
+		);
+		MvcResult setRes = mockMvc.perform(post("/api/v1/content/vocab-sets")
+				.header("Authorization", "Bearer " + user1Token)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(setReq)))
+				.andExpect(status().isCreated())
+				.andReturn();
+
+		long setId = objectMapper.readTree(setRes.getResponse().getContentAsString()).get("id").asLong();
+
+		// 2. Thêm 2 từ vựng vào bộ từ
+		BatchSaveWordsRequest batchReq = new BatchSaveWordsRequest(
+				setId,
+				List.of(
+						new CreateWordRowDto("桌子", "zhuōzi", "cái bàn", "danh từ", "这里有一张桌子。", "gần cửa"),
+						new CreateWordRowDto("椅子", "yǐzi", "cái ghế", "danh từ", "这是一把椅子。", "gần bàn")
+				)
+		);
+		mockMvc.perform(post("/api/v1/content/vocabularies/batch-save")
+				.header("Authorization", "Bearer " + user1Token)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(batchReq)))
+				.andExpect(status().isCreated());
+
+		// 3. Lấy danh sách flashcard ban đầu (filterStatus = UNMASTERED, limit = 10)
+		MvcResult flashcardRes = mockMvc.perform(get("/api/v1/learning/flashcards")
+				.header("Authorization", "Bearer " + user1Token)
+				.param("vocabSetId", String.valueOf(setId))
+				.param("filterStatus", "UNMASTERED")
+				.param("limit", "10"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$", hasSize(2)))
+				.andReturn();
+
+		JsonNode fcNode = objectMapper.readTree(flashcardRes.getResponse().getContentAsString());
+		long word1Id = fcNode.get(0).get("id").asLong();
+
+		// 4. Đánh dấu Thuộc (REMEMBERED) cho từ thứ nhất
+		String reviewPayload = """
+				{
+					"vocabularyId": %d,
+					"result": "REMEMBERED"
+				}
+				""".formatted(word1Id);
+
+		mockMvc.perform(post("/api/v1/learning/flashcards/review")
+				.header("Authorization", "Bearer " + user1Token)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(reviewPayload))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.vocabularyId", is((int) word1Id)))
+				.andExpect(jsonPath("$.result", is("REMEMBERED")));
+
+		// 5. Kiểm tra lại bộ lọc UNMASTERED -> chỉ còn 1 từ chưa thuộc
+		mockMvc.perform(get("/api/v1/learning/flashcards")
+				.header("Authorization", "Bearer " + user1Token)
+				.param("vocabSetId", String.valueOf(setId))
+				.param("filterStatus", "UNMASTERED"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$", hasSize(1)));
+
+		// 6. Kiểm tra bộ lọc MASTERED -> đúng 1 từ đã thuộc
+		mockMvc.perform(get("/api/v1/learning/flashcards")
+				.header("Authorization", "Bearer " + user1Token)
+				.param("vocabSetId", String.valueOf(setId))
+				.param("filterStatus", "MASTERED"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$", hasSize(1)))
+				.andExpect(jsonPath("$[0].id", is((int) word1Id)));
+	}
 }

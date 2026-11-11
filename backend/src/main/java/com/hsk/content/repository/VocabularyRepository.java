@@ -21,6 +21,8 @@ public interface VocabularyRepository extends JpaRepository<VocabularyEntity, Lo
 
 	List<VocabularyEntity> findAllByOwnerIdIsNullAndHiddenFalse();
 
+	List<VocabularyEntity> findAllByOwnerIdIsNullAndHiddenFalseOrderByIdAsc(Pageable pageable);
+
 	List<VocabularyEntity> findAllByOwnerIdAndHiddenFalse(Long ownerId);
 
 	List<VocabularyEntity> findByHanziInAndHiddenFalse(java.util.Collection<String> hanzis);

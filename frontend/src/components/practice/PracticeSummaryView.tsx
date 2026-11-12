@@ -36,6 +36,8 @@ interface PracticeSummaryViewProps {
   saving: boolean
   saved: boolean
   endReasonNote?: string | null
+  itemUnitLabel?: string
+  xpFormulaText?: string
   onSaveAndFinish: () => void
   onRetryWrong?: () => void
   onReplayAll: () => void
@@ -56,6 +58,8 @@ export const PracticeSummaryView: React.FC<PracticeSummaryViewProps> = ({
   saving,
   saved,
   endReasonNote,
+  itemUnitLabel = 'cặp',
+  xpFormulaText,
   onSaveAndFinish,
   onRetryWrong,
   onReplayAll,
@@ -134,7 +138,7 @@ export const PracticeSummaryView: React.FC<PracticeSummaryViewProps> = ({
               </span>
               <span className="inline-flex items-center gap-1 text-sky-700">
                 <Target className="w-3.5 h-3.5" />
-                {totalCount} cặp
+                {totalCount} {itemUnitLabel}
               </span>
             </div>
           </div>
@@ -329,7 +333,8 @@ export const PracticeSummaryView: React.FC<PracticeSummaryViewProps> = ({
             <span>{saved ? 'XP đã cộng vào tài khoản' : 'Dự tính XP nhận được'}</span>
           </div>
           <p className="text-[11px] text-amber-800/80 mt-0.5">
-            Ghép đúng: +{estimatedBaseXp} XP (+2 XP/cặp) • Thưởng hoàn thành trọn ván: +{estimatedBonusXp} XP
+            {xpFormulaText ??
+              `Ghép đúng: +${estimatedBaseXp} XP (+2 XP/${itemUnitLabel}) • Thưởng hoàn thành trọn ván: +${estimatedBonusXp} XP`}
           </p>
         </div>
         <div className="text-xl font-extrabold text-amber-700">+{displayedXp} XP</div>

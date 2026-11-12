@@ -2,6 +2,73 @@ import { ApiError } from './auth'
 
 export type QuizMode = 'HANZI_TO_MEANING' | 'MEANING_TO_HANZI' | 'MIXED' | 'CONTEXT'
 export type MatchMode = 'MATCH_MEANING' | 'MATCH_PINYIN'
+export type WritingMode = 'TRACE' | 'RECALL' | 'PDF'
+
+export interface WritingCharStrokeDto {
+  hanzi: string
+  strokeCount: number
+  strokes: string[]
+  medians: number[][][]
+  supported: boolean
+}
+
+export interface WritingWordItemDto {
+  vocabularyId: number
+  hanzi: string
+  pinyin: string
+  meaning: string
+  partOfSpeech?: string | null
+  audioUrl?: string | null
+  exampleSentence?: string | null
+  examplePinyin?: string | null
+  exampleMeaning?: string | null
+  characters: WritingCharStrokeDto[]
+}
+
+export interface WritingSessionResponse {
+  vocabSetId?: number | null
+  vocabSetTitle: string
+  mode: WritingMode
+  totalWords: number
+  words: WritingWordItemDto[]
+}
+
+export interface WritingResultItemRequest {
+  vocabularyId: number
+  completedCleanly: boolean
+  mistakesCount: number
+  markMastered: boolean
+}
+
+export interface WritingSubmitRequest {
+  vocabSetId?: number
+  mode: 'TRACE' | 'RECALL'
+  durationSeconds: number
+  idempotencyKey?: string
+  results: WritingResultItemRequest[]
+}
+
+export interface WritingSubmitResponse {
+  sessionId: number
+  correctCount: number
+  totalCount: number
+  accuracyPercent: number
+  xpEarned: number
+  baseXp: number
+  completionBonusXp: number
+  totalUserXp: number
+  duplicateSubmission: boolean
+  completedAt: string
+}
+
+export interface GenerateWritingParams {
+  lessonId?: number
+  vocabSetId?: number
+  filterStatus?: 'ALL' | 'UNMASTERED' | 'MASTERED'
+  order?: 'RANDOM' | 'DEFAULT'
+  limit?: number
+  mode: WritingMode
+}
 
 export interface MatchCardSideDto {
   vocabularyId: number
@@ -260,6 +327,53 @@ export async function submitMatchSession(
 
   if (!response.ok) {
     throw new ApiError(response.status, 'SUBMIT_MATCH_FAILED', 'Không thể lưu kết quả lượt chơi Nối từ')
+  }
+
+  return response.json()
+}
+
+export async function generateWritingSession(
+  token: string,
+  params: GenerateWritingParams
+): Promise<WritingSessionResponse> {
+  const qs = new URLSearchParams()
+  if (params.lessonId) qs.append('lessonId', params.lessonId.toString())
+  if (params.vocabSetId) qs.append('vocabSetId', params.vocabSetId.toString())
+  if (params.filterStatus) qs.append('filterStatus', params.filterStatus)
+  if (params.order) qs.append('order', params.order)
+  if (params.limit) qs.append('limit', params.limit.toString())
+  qs.append('mode', params.mode)
+
+  const response = await fetch(`${API_BASE}/writing?${qs.toString()}`, {
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  if (!response.ok) {
+    throw new ApiError(response.status, 'FETCH_WRITING_FAILED', 'Không thể tải danh sách từ luyện viết chữ Hán')
+  }
+
+  return response.json()
+}
+
+export async function submitWritingSession(
+  token: string,
+  payload: WritingSubmitRequest
+): Promise<WritingSubmitResponse> {
+  const response = await fetch(`${API_BASE}/writing/submit`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  if (!response.ok) {
+    throw new ApiError(response.status, 'SUBMIT_WRITING_FAILED', 'Không thể lưu kết quả luyện viết chữ Hán')
   }
 
   return response.json()

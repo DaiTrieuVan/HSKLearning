@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
-  BookMarked,
   Plus,
   Trash2,
   Share2,
@@ -82,17 +81,13 @@ export const TeacherVocabSetsPage: React.FC = () => {
   const [importFile, setImportFile] = useState<File | null>(null)
   const [importing, setImporting] = useState(false)
 
-  if (!user) {
-    navigate('/')
-    return null
-  }
-
   const showNotification = (msg: string) => {
     setSuccessMessage(msg)
     setTimeout(() => setSuccessMessage(null), 3000)
   }
 
   const loadVocabSets = async () => {
+    if (!user) return
     try {
       setLoading(true)
       setErrorMessage(null)
@@ -116,6 +111,7 @@ export const TeacherVocabSetsPage: React.FC = () => {
   }
 
   const loadPrivateWords = async () => {
+    if (!user) return
     try {
       setLoading(true)
       setErrorMessage(null)
@@ -133,6 +129,7 @@ export const TeacherVocabSetsPage: React.FC = () => {
   }
 
   const handleSelectSet = async (set: VocabSetItem) => {
+    if (!user) return
     setSelectedSet(set)
     try {
       setWordsLoading(true)
@@ -148,21 +145,27 @@ export const TeacherVocabSetsPage: React.FC = () => {
   }
 
   useEffect(() => {
-    if (user) {
-      getTeachingClasses(user.token)
-        .then((res) => {
-          setClasses(res)
-          if (res.length > 0) setSelectedClassId(res[0].id)
-        })
-        .catch(() => {})
+    if (!user) {
+      navigate('/')
+      return
+    }
+    getTeachingClasses(user.token)
+      .then((res) => {
+        setClasses(res)
+        if (res.length > 0) setSelectedClassId(res[0].id)
+      })
+      .catch(() => {})
 
-      if (activeTab === 'SETS') {
-        loadVocabSets()
-      } else {
-        loadPrivateWords()
-      }
+    if (activeTab === 'SETS') {
+      loadVocabSets()
+    } else {
+      loadPrivateWords()
     }
   }, [user, activeTab])
+
+  if (!user) {
+    return null
+  }
 
   const handleCreateSetSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -376,79 +379,31 @@ export const TeacherVocabSetsPage: React.FC = () => {
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-page)', padding: '32px 20px' }}>
-      <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+    <div className="w-full max-w-[1100px] mx-auto">
+      <div>
         {/* Header & Back navigation */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+        <div className="flex items-center justify-between mb-4 sm:mb-5">
           <button
             type="button"
             onClick={() => navigate('/')}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '8px 16px',
-              borderRadius: 'var(--radius-md)',
-              border: '1.5px solid var(--border-card)',
-              backgroundColor: '#ffffff',
-              color: 'var(--text-main)',
-              fontWeight: 700,
-              fontSize: '0.88rem',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-            }}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-[var(--radius-md)] border-[1.5px] border-[var(--border-card)] bg-white text-[var(--text-main)] font-bold text-xs sm:text-sm cursor-pointer whitespace-nowrap"
           >
-            <ArrowLeft size={18} />
+            <ArrowLeft size={16} />
             <span>Quay lại Bảng điều khiển</span>
           </button>
-        </div>
-
-        {/* Page Title Card */}
-        <div className="game-card" style={{ padding: '28px', backgroundColor: '#ffffff', marginBottom: '24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div
-              style={{
-                width: '52px',
-                height: '52px',
-                borderRadius: 'var(--radius-md)',
-                backgroundColor: 'var(--primary-light)',
-                color: 'var(--primary)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <BookMarked size={28} />
-            </div>
-            <div>
-              <h1 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>
-                Quản lý Bộ từ vựng của lớp
-              </h1>
-              <p style={{ margin: '4px 0 0', fontSize: '0.88rem', color: 'var(--text-muted)' }}>
-                Soạn các bộ từ vựng theo chủ đề và giao cho các lớp học (QTN-19).
-              </p>
-            </div>
-          </div>
         </div>
 
         {/* Success Alert */}
         {successMessage && (
           <div
+            className="flex items-center gap-2.5 p-3 sm:px-4 rounded-[var(--radius-md)] text-xs sm:text-sm font-bold mb-4"
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              padding: '12px 18px',
               backgroundColor: 'var(--primary-light)',
               border: '1.5px solid var(--primary)',
-              borderRadius: 'var(--radius-md)',
               color: 'var(--primary-hover)',
-              fontSize: '0.9rem',
-              fontWeight: 700,
-              marginBottom: '20px',
             }}
           >
-            <CheckCircle2 size={20} />
+            <CheckCircle2 size={18} className="shrink-0" />
             <span>{successMessage}</span>
           </div>
         )}
@@ -456,67 +411,44 @@ export const TeacherVocabSetsPage: React.FC = () => {
         {/* Error Alert */}
         {errorMessage && (
           <div
+            className="flex items-center gap-2.5 p-3 sm:px-4 rounded-[var(--radius-md)] text-xs sm:text-sm mb-4"
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              padding: '12px 18px',
               backgroundColor: '#fef2f2',
               border: '1.5px solid #fecaca',
-              borderRadius: 'var(--radius-md)',
               color: '#b91c1c',
-              fontSize: '0.9rem',
-              marginBottom: '20px',
             }}
           >
-            <AlertCircle size={20} />
+            <AlertCircle size={18} className="shrink-0" />
             <span>{errorMessage}</span>
           </div>
         )}
 
         {/* Navigation Tabs */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', borderBottom: '2px solid var(--border-card)', paddingBottom: '8px' }}>
+        <div className="flex flex-wrap gap-2 mb-5 border-b-2 border-[var(--border-card)] pb-2.5">
           <button
             type="button"
             onClick={() => setActiveTab('SETS')}
+            className="inline-flex items-center gap-1.5 px-3.5 sm:px-5 py-2 rounded-[var(--radius-md)] border-none font-extrabold text-xs sm:text-[0.9rem] cursor-pointer whitespace-nowrap"
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '10px 20px',
-              borderRadius: 'var(--radius-md)',
-              border: 'none',
-              fontWeight: 800,
-              fontSize: '0.92rem',
-              cursor: 'pointer',
               backgroundColor: 'var(--primary)',
               color: '#ffffff',
             }}
           >
-            <FolderPlus size={18} />
+            <FolderPlus size={16} />
             <span>Bộ từ vựng ({sets.length})</span>
           </button>
 
           <button
             type="button"
             onClick={() => navigate('/private-vocab')}
+            className="inline-flex items-center gap-1.5 px-3.5 sm:px-5 py-2 rounded-[var(--radius-md)] border-none font-extrabold text-xs sm:text-[0.9rem] cursor-pointer whitespace-nowrap transition-all"
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '10px 20px',
-              borderRadius: 'var(--radius-md)',
-              border: 'none',
-              fontWeight: 800,
-              fontSize: '0.92rem',
-              cursor: 'pointer',
               backgroundColor: '#f1f5f9',
               color: 'var(--text-muted)',
-              transition: 'all 0.15s ease',
             }}
             title="Vào ngay Trang Quản trị Kho từ vựng riêng (Có tìm kiếm, lọc & phân trang)"
           >
-            <BookOpen size={18} />
+            <BookOpen size={16} />
             <span>Kho từ vựng riêng ({privateWords.length})</span>
           </button>
         </div>
@@ -525,15 +457,14 @@ export const TeacherVocabSetsPage: React.FC = () => {
         {activeTab === 'SETS' && (
           <div>
             {/* Action Bar */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div style={{ fontSize: '0.92rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-4">
+              <div className="text-xs sm:text-[0.9rem] text-[var(--text-muted)] font-semibold leading-snug">
                 Chọn một bộ từ vựng bên dưới để xem và quản lý các từ trong bộ
               </div>
               <button
                 type="button"
                 onClick={() => setShowCreateSet(!showCreateSet)}
-                className="btn-gamified btn-primary"
-                style={{ padding: '8px 18px', fontSize: '0.88rem' }}
+                className="btn-gamified btn-primary self-start sm:self-auto shrink-0 whitespace-nowrap px-4 py-2 text-xs sm:text-sm"
               >
                 <Plus size={16} />
                 <span>{showCreateSet ? 'Đóng tạo bộ từ' : 'Tạo bộ từ mới'}</span>
@@ -542,13 +473,13 @@ export const TeacherVocabSetsPage: React.FC = () => {
 
             {/* Inline Create Set Form */}
             {showCreateSet && (
-              <div className="game-card" style={{ padding: '24px', backgroundColor: '#ffffff', marginBottom: '24px', border: '2px solid var(--primary)' }}>
-                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: '0 0 16px', color: 'var(--text-main)' }}>
+              <div className="game-card p-4 sm:p-6 bg-white mb-5" style={{ border: '2px solid var(--primary)' }}>
+                <h3 className="text-base sm:text-lg font-extrabold m-0 mb-3.5 text-[var(--text-main)]">
                   Tạo bộ từ vựng mới
                 </h3>
-                <form onSubmit={handleCreateSetSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <form onSubmit={handleCreateSetSubmit} className="flex flex-col gap-3.5">
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, marginBottom: '6px' }}>
+                    <label className="block text-xs sm:text-[0.85rem] font-bold mb-1.5">
                       Tên bộ từ vựng <span style={{ color: 'var(--primary)' }}>*</span>
                     </label>
                     <input
@@ -556,14 +487,13 @@ export const TeacherVocabSetsPage: React.FC = () => {
                       placeholder="VD: Từ vựng Chuyên ngành Du lịch, HSK 3 Mở rộng..."
                       value={newSetTitle}
                       onChange={(e) => setNewSetTitle(e.target.value)}
-                      className="game-input"
-                      style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px' }}
+                      className="game-input w-full box-border px-3 py-2 text-sm"
                       autoFocus
                     />
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, marginBottom: '6px' }}>
+                    <label className="block text-xs sm:text-[0.85rem] font-bold mb-1.5">
                       Mô tả ngắn (Tùy chọn)
                     </label>
                     <input
@@ -571,31 +501,22 @@ export const TeacherVocabSetsPage: React.FC = () => {
                       placeholder="VD: Tổng hợp 50 từ vựng xuất hiện nhiều trong kỳ thi..."
                       value={newSetDesc}
                       onChange={(e) => setNewSetDesc(e.target.value)}
-                      className="game-input"
-                      style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px' }}
+                      className="game-input w-full box-border px-3 py-2 text-sm"
                     />
                   </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                  <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
                     <button
                       type="button"
                       onClick={() => setShowCreateSet(false)}
-                      style={{
-                        padding: '8px 16px',
-                        borderRadius: 'var(--radius-md)',
-                        border: '1px solid var(--border-card)',
-                        backgroundColor: '#ffffff',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                      }}
+                      className="px-4 py-2 rounded-[var(--radius-md)] border border-[var(--border-card)] bg-white font-bold text-sm cursor-pointer"
                     >
                       Hủy
                     </button>
                     <button
                       type="submit"
                       disabled={creatingSet || !newSetTitle.trim()}
-                      className="btn-gamified btn-primary"
-                      style={{ padding: '8px 20px', fontSize: '0.88rem' }}
+                      className="btn-gamified btn-primary px-5 py-2 text-sm justify-center whitespace-nowrap"
                     >
                       {creatingSet ? 'Đang tạo...' : 'Xác nhận tạo bộ từ'}
                     </button>
@@ -605,16 +526,16 @@ export const TeacherVocabSetsPage: React.FC = () => {
             )}
 
             {/* Split View: Left = List of Sets, Right = Details of Selected Set */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 1fr) 2fr', gap: '20px' }}>
+            <div className="grid grid-cols-1 lg:grid-cols-[minmax(280px,1fr)_2fr] gap-4 sm:gap-5 items-start">
               {/* Left Column: List of Sets */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div className="flex flex-col gap-3 min-w-0">
                 {loading ? (
-                  <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                  <div className="text-center py-8 text-sm text-[var(--text-muted)]">
                     Đang tải danh sách...
                   </div>
                 ) : sets.length === 0 ? (
-                  <div className="game-card" style={{ padding: '24px', backgroundColor: '#ffffff', textAlign: 'center' }}>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem' }}>Bạn chưa tạo bộ từ vựng nào.</p>
+                  <div className="game-card p-6 bg-white text-center">
+                    <p className="text-[var(--text-muted)] text-sm m-0">Bạn chưa tạo bộ từ vựng nào.</p>
                   </div>
                 ) : (
                   sets.map((s) => {
@@ -623,25 +544,19 @@ export const TeacherVocabSetsPage: React.FC = () => {
                       <div
                         key={s.id}
                         onClick={() => handleSelectSet(s)}
-                        className="game-card"
+                        className="game-card p-4 cursor-pointer transition-all"
                         style={{
-                          padding: '16px',
                           backgroundColor: isSelected ? 'var(--primary-light)' : '#ffffff',
                           borderColor: isSelected ? 'var(--primary)' : 'var(--border-card)',
-                          cursor: 'pointer',
-                          transition: 'all 0.15s ease',
                         }}
                       >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <h3 style={{ fontSize: '1rem', fontWeight: 800, margin: '0 0 4px', color: 'var(--text-main)' }}>
+                        <div className="flex justify-between items-start gap-2 mb-1">
+                          <h3 className="text-sm sm:text-base font-extrabold m-0 text-[var(--text-main)] leading-snug min-w-0">
                             {s.title}
                           </h3>
                           <span
+                            className="text-xs font-extrabold px-2.5 py-0.5 rounded-full whitespace-nowrap shrink-0"
                             style={{
-                              fontSize: '0.75rem',
-                              fontWeight: 800,
-                              padding: '2px 8px',
-                              borderRadius: 'var(--radius-full)',
                               backgroundColor: isSelected ? 'var(--primary)' : '#f1f5f9',
                               color: isSelected ? '#ffffff' : 'var(--text-muted)',
                             }}
@@ -650,7 +565,7 @@ export const TeacherVocabSetsPage: React.FC = () => {
                           </span>
                         </div>
                         {s.description && (
-                          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
+                          <p className="text-xs text-[var(--text-muted)] m-0 leading-relaxed">
                             {s.description}
                           </p>
                         )}
@@ -661,25 +576,24 @@ export const TeacherVocabSetsPage: React.FC = () => {
               </div>
 
               {/* Right Column: Selected Set Content */}
-              <div className="game-card" style={{ padding: '24px', backgroundColor: '#ffffff' }}>
+              <div className="game-card p-4 sm:p-6 bg-white min-w-0">
                 {selectedSet ? (
                   <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', borderBottom: '1px solid #f1f5f9', paddingBottom: '16px' }}>
-                      <div>
-                        <h2 style={{ fontSize: '1.3rem', fontWeight: 800, margin: '0 0 4px', color: 'var(--text-main)' }}>
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4 pb-4 border-b border-slate-100">
+                      <div className="min-w-0">
+                        <h2 className="text-lg sm:text-xl font-extrabold m-0 mb-1 text-[var(--text-main)] leading-snug">
                           {selectedSet.title}
                         </h2>
-                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
+                        <p className="text-xs sm:text-[0.85rem] text-[var(--text-muted)] m-0 leading-relaxed">
                           {selectedSet.description || 'Chưa có mô tả cho bộ từ này.'}
                         </p>
                       </div>
 
-                      <div style={{ display: 'flex', gap: '8px' }}>
+                      <div className="flex items-center gap-2 shrink-0">
                         <button
                           type="button"
                           onClick={() => setAssigningSet(selectedSet)}
-                          className="btn-gamified btn-gold"
-                          style={{ padding: '6px 14px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                          className="btn-gamified btn-gold px-3.5 py-1.5 text-xs inline-flex items-center gap-1.5 whitespace-nowrap"
                         >
                           <Share2 size={14} />
                           <span>Giao cho lớp</span>
@@ -688,16 +602,8 @@ export const TeacherVocabSetsPage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleDeleteSet(selectedSet.id)}
-                          className="btn-danger"
-                          style={{
-                            padding: '6px 12px',
-                            borderRadius: 'var(--radius-md)',
-                            border: '1px solid #fecaca',
-                            backgroundColor: '#ffffff',
-                            fontSize: '0.82rem',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                          }}
+                          className="btn-danger px-3 py-1.5 rounded-[var(--radius-md)] border border-red-200 bg-white text-xs font-bold cursor-pointer inline-flex items-center justify-center"
+                          title="Xóa bộ từ vựng"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -706,16 +612,18 @@ export const TeacherVocabSetsPage: React.FC = () => {
 
                     {/* Assign to Class Inline View */}
                     {assigningSet && (
-                      <div style={{ padding: '16px', backgroundColor: 'var(--primary-light)', borderRadius: 'var(--radius-md)', marginBottom: '20px', border: '1.5px solid var(--primary)' }}>
-                        <div style={{ fontWeight: 800, fontSize: '0.9rem', marginBottom: '8px', color: 'var(--primary-hover)' }}>
+                      <div
+                        className="p-3.5 sm:p-4 rounded-[var(--radius-md)] mb-4"
+                        style={{ backgroundColor: 'var(--primary-light)', border: '1.5px solid var(--primary)' }}
+                      >
+                        <div className="font-extrabold text-xs sm:text-sm mb-2" style={{ color: 'var(--primary-hover)' }}>
                           Giao bộ từ &ldquo;{assigningSet.title}&rdquo; cho lớp học:
                         </div>
-                        <form onSubmit={handleAssignToClassSubmit} style={{ display: 'flex', gap: '10px' }}>
+                        <form onSubmit={handleAssignToClassSubmit} className="flex flex-col sm:flex-row gap-2.5">
                           <select
                             value={selectedClassId}
                             onChange={(e) => setSelectedClassId(Number(e.target.value))}
-                            className="game-input"
-                            style={{ flex: 1, padding: '8px 12px', fontSize: '0.88rem' }}
+                            className="game-input w-full sm:flex-1 min-w-0 px-3 py-2 text-xs sm:text-sm"
                           >
                             {classes.map((cls) => (
                               <option key={cls.id} value={cls.id}>
@@ -723,70 +631,45 @@ export const TeacherVocabSetsPage: React.FC = () => {
                               </option>
                             ))}
                           </select>
-                          <button
-                            type="button"
-                            onClick={() => setAssigningSet(null)}
-                            style={{
-                              padding: '8px 14px',
-                              borderRadius: 'var(--radius-md)',
-                              border: '1px solid var(--border-card)',
-                              backgroundColor: '#ffffff',
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                            }}
-                          >
-                            Hủy
-                          </button>
-                          <button
-                            type="submit"
-                            disabled={assigningLoading || !selectedClassId}
-                            className="btn-gamified btn-primary"
-                            style={{ padding: '8px 18px', fontSize: '0.88rem' }}
-                          >
-                            {assigningLoading ? 'Đang giao...' : 'Xác nhận giao'}
-                          </button>
+                          <div className="flex items-center justify-end gap-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => setAssigningSet(null)}
+                              className="px-3.5 py-2 rounded-[var(--radius-md)] border border-[var(--border-card)] bg-white font-bold text-xs sm:text-sm cursor-pointer"
+                            >
+                              Hủy
+                            </button>
+                            <button
+                              type="submit"
+                              disabled={assigningLoading || !selectedClassId}
+                              className="btn-gamified btn-primary px-4 py-2 text-xs sm:text-sm whitespace-nowrap"
+                            >
+                              {assigningLoading ? 'Đang giao...' : 'Xác nhận giao'}
+                            </button>
+                          </div>
                         </form>
                       </div>
                     )}
 
                     {/* Add Word into Set section */}
-                    <div style={{ marginBottom: '20px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
-                        <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-main)' }}>
+                    <div className="mb-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3">
+                        <div className="font-extrabold text-sm sm:text-[0.95rem] text-[var(--text-main)]">
                           Danh sách từ vựng trong bộ ({setWords.length})
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div className="flex flex-wrap items-center gap-2">
                           <button
                             type="button"
                             onClick={() => navigate(`/vocab-sets/${selectedSet.id}/add-words`)}
-                            className="btn-gamified btn-primary"
-                            style={{
-                              padding: '6px 14px',
-                              fontSize: '0.82rem',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                            }}
+                            className="btn-gamified btn-primary px-3.5 py-1.5 text-xs inline-flex items-center gap-1.5 whitespace-nowrap"
                           >
                             <Plus size={15} />
-                            <span>+ Thêm nhiều từ vào bộ</span>
+                            <span>Thêm nhiều từ vào bộ</span>
                           </button>
                           <button
                             type="button"
                             onClick={() => setShowAddWordToSet(!showAddWordToSet)}
-                            style={{
-                              padding: '6px 12px',
-                              borderRadius: 'var(--radius-md)',
-                              border: '1.5px solid var(--border-card)',
-                              backgroundColor: '#ffffff',
-                              color: 'var(--text-main)',
-                              fontSize: '0.82rem',
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                            }}
+                            className="px-3 py-1.5 rounded-[var(--radius-md)] border-[1.5px] border-[var(--border-card)] bg-white text-[var(--text-main)] text-xs font-bold cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap"
                           >
                             <Search size={14} />
                             <span>{showAddWordToSet ? 'Đóng tìm nhanh' : 'Tìm nhanh 1 từ'}</span>
@@ -795,42 +678,32 @@ export const TeacherVocabSetsPage: React.FC = () => {
                       </div>
 
                       {showAddWordToSet && (
-                        <div style={{ padding: '16px', backgroundColor: '#f8fafc', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--border-card)', marginBottom: '16px' }}>
+                        <div className="p-3.5 sm:p-4 bg-slate-50 rounded-[var(--radius-md)] border-[1.5px] border-[var(--border-card)] mb-4">
                           <input
                             type="text"
                             placeholder="Nhập chữ Hán, Pinyin hoặc nghĩa tiếng Việt để tìm từ..."
                             value={wordSearchQuery}
                             onChange={(e) => handleSearchWords(e.target.value)}
-                            className="game-input"
-                            style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', marginBottom: '12px' }}
+                            className="game-input w-full box-border px-3 py-2 text-sm mb-3"
                             autoFocus
                           />
-                          {searching && <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Đang tìm kiếm...</div>}
+                          {searching && <div className="text-xs text-[var(--text-muted)]">Đang tìm kiếm...</div>}
                           {searchResults.length > 0 && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto' }}>
+                            <div className="flex flex-col gap-2 max-h-[200px] overflow-y-auto">
                               {searchResults.map((vocab) => (
                                 <div
                                   key={vocab.id}
-                                  style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    padding: '8px 12px',
-                                    backgroundColor: '#ffffff',
-                                    borderRadius: 'var(--radius-sm)',
-                                    border: '1px solid var(--border-card)',
-                                  }}
+                                  className="flex justify-between items-center gap-2 px-3 py-2 bg-white rounded-[var(--radius-sm)] border border-[var(--border-card)]"
                                 >
-                                  <div>
-                                    <span className="hanzi" style={{ fontSize: '1.1rem', fontWeight: 900, marginRight: '8px' }}>{vocab.hanzi}</span>
-                                    <span style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 700, marginRight: '8px' }}>{vocab.pinyin}</span>
-                                    <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>{vocab.meaning}</span>
+                                  <div className="min-w-0">
+                                    <span className="hanzi text-base font-black mr-2">{vocab.hanzi}</span>
+                                    <span className="text-xs sm:text-sm text-[var(--primary)] font-bold mr-2">{vocab.pinyin}</span>
+                                    <span className="text-xs text-[var(--text-muted)]">{vocab.meaning}</span>
                                   </div>
                                   <button
                                     type="button"
                                     onClick={() => handleAddWordToCurrentSet(vocab)}
-                                    className="btn-gamified btn-primary"
-                                    style={{ padding: '4px 10px', fontSize: '0.78rem' }}
+                                    className="btn-gamified btn-primary shrink-0 whitespace-nowrap px-2.5 py-1 text-xs"
                                   >
                                     Thêm vào bộ
                                   </button>
@@ -844,24 +717,23 @@ export const TeacherVocabSetsPage: React.FC = () => {
 
                     {/* Word list table/grid */}
                     {wordsLoading ? (
-                      <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                      <div className="text-center py-10 text-sm text-[var(--text-muted)]">
                         Đang tải danh sách từ vựng...
                       </div>
                     ) : setWords.length === 0 ? (
-                      <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
-                        <p style={{ margin: '0 0 16px' }}>Bộ từ vựng này chưa có từ nào.</p>
+                      <div className="text-center py-10 px-4 text-[var(--text-muted)] text-sm">
+                        <p className="m-0 mb-4">Bộ từ vựng này chưa có từ nào.</p>
                         <button
                           type="button"
                           onClick={() => navigate(`/vocab-sets/${selectedSet.id}/add-words`)}
-                          className="btn-gamified btn-primary"
-                          style={{ padding: '8px 20px', fontSize: '0.88rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                          className="btn-gamified btn-primary px-5 py-2 text-xs sm:text-sm inline-flex items-center gap-1.5 whitespace-nowrap"
                         >
                           <Plus size={16} />
-                          <span>+ Thêm nhiều từ vào bộ ngay</span>
+                          <span>Thêm nhiều từ vào bộ ngay</span>
                         </button>
                       </div>
                     ) : (
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '12px' }}>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {setWords.map((word) => (
                           <div
                             key={word.id}

@@ -41,3 +41,5 @@ app:
     expiration-hours: 24
   upload:
     dir: target/test-uploads
+  writing:
+    remote-stroke-fetch-enabled: false

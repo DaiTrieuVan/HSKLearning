@@ -1,5 +1,6 @@
 package com.hsk.material.repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -12,7 +13,7 @@ import com.hsk.material.domain.MaterialStatus;
 
 public interface CourseMaterialRepository extends JpaRepository<CourseMaterialEntity, Long> {
 
-	List<CourseMaterialEntity> findByStatus(MaterialStatus status);
+	List<CourseMaterialEntity> findByStatusIn(Collection<MaterialStatus> statuses);
 
 	@Query("""
 		SELECT m FROM CourseMaterialEntity m

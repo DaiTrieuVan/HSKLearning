@@ -1,5 +1,6 @@
 package com.hsk.material.service;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -113,19 +114,22 @@ public class MaterialAsyncProcessor {
 	}
 
 	/**
-	 * Khôi phục các giáo trình bị kẹt ở PROCESSING từ phiên chạy trước (PDF chuyển thẳng READY).
+	 * Khôi phục các giáo trình bị kẹt ở PROCESSING (hoặc PDF bị FAILED do lỗi chuyển slide cũ) từ phiên chạy trước.
 	 */
 	@EventListener(ApplicationReadyEvent.class)
 	public void reconcileStaleProcessingMaterials() {
-		List<CourseMaterialEntity> stale = materialRepository.findByStatus(MaterialStatus.PROCESSING);
+		List<CourseMaterialEntity> stale = materialRepository.findByStatusIn(List.of(MaterialStatus.PROCESSING, MaterialStatus.FAILED));
 		for (CourseMaterialEntity item : stale) {
 			if (item.getFileType() == MaterialFileType.PDF) {
 				try {
 					Path pdfPath = storageService.resolveSafe(item.getOriginalStoragePath());
+					if (!Files.exists(pdfPath)) {
+						continue;
+					}
 					int totalPages = slideRenderService.countPdfPages(pdfPath);
 					transactionTemplate.executeWithoutResult(status -> {
 						CourseMaterialEntity reloaded = materialRepository.findById(item.getId()).orElse(null);
-						if (reloaded != null && reloaded.getStatus() == MaterialStatus.PROCESSING) {
+						if (reloaded != null && reloaded.getStatus() != MaterialStatus.READY) {
 							reloaded.markReady(totalPages);
 							materialRepository.save(reloaded);
 						}
@@ -140,7 +144,7 @@ public class MaterialAsyncProcessor {
 						}
 					});
 				}
-			} else {
+			} else if (item.getStatus() == MaterialStatus.PROCESSING) {
 				renderSlidesAsync(item.getId());
 			}
 		}

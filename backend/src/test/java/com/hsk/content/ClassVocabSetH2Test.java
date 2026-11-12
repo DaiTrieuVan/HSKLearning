@@ -370,4 +370,73 @@ class ClassVocabSetH2Test {
 						.header("Authorization", "Bearer " + droppedStudentToken))
 				.andExpect(status().isForbidden());
 	}
+
+	@Test
+	@DisplayName("HTT-04-CN-007-TC-05: Học sinh ACTIVE chọn 'Tất cả bộ từ' tải được bộ từ được giao trong lớp học cho mọi chế độ luyện tập")
+	void testTC05_ActiveClassStudent_AllSetsIncludesAssignedClassVocab() throws Exception {
+		// 1. Practice Hub dropdown returns classroom-assigned vocab sets for active member only
+		mockMvc.perform(get("/api/v1/content/vocab-sets/practice-accessible")
+						.header("Authorization", "Bearer " + activeStudentToken))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$", hasSize(1)))
+				.andExpect(jsonPath("$[0].id", is(vocabSet.getId().intValue())))
+				.andExpect(jsonPath("$[0].title", is("Từ vựng Trái Cây Tuần 1")));
+
+		mockMvc.perform(get("/api/v1/content/vocab-sets/practice-accessible")
+						.header("Authorization", "Bearer " + outsiderStudentToken))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$", hasSize(0)));
+
+		mockMvc.perform(get("/api/v1/content/vocab-sets/practice-accessible")
+						.header("Authorization", "Bearer " + droppedStudentToken))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$", hasSize(0)));
+
+		// 2. 'Tất cả bộ từ' stats & words (vocabSetId omitted)
+		mockMvc.perform(get("/api/v1/content/vocabularies/my-words")
+						.header("Authorization", "Bearer " + activeStudentToken))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.stats.totalWords", is(2)))
+				.andExpect(jsonPath("$.items", hasSize(2)));
+
+		mockMvc.perform(get("/api/v1/content/vocabularies/my-words")
+						.header("Authorization", "Bearer " + droppedStudentToken))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.stats.totalWords", is(0)))
+				.andExpect(jsonPath("$.items", hasSize(0)));
+
+		// 3. Flashcard / Quiz / Match / Writing with 'Tất cả bộ từ' (vocabSetId omitted)
+		mockMvc.perform(get("/api/v1/learning/flashcards")
+						.param("filterStatus", "ALL")
+						.header("Authorization", "Bearer " + activeStudentToken))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$", hasSize(2)));
+
+		mockMvc.perform(get("/api/v1/learning/flashcards")
+						.param("filterStatus", "ALL")
+						.header("Authorization", "Bearer " + droppedStudentToken))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$", hasSize(0)));
+
+		mockMvc.perform(get("/api/v1/learning/practice/quiz")
+						.param("filterStatus", "ALL")
+						.param("mode", "HANZI_TO_MEANING")
+						.header("Authorization", "Bearer " + activeStudentToken))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.totalQuestions", is(2)));
+
+		mockMvc.perform(get("/api/v1/learning/practice/match")
+						.param("filterStatus", "ALL")
+						.param("mode", "MATCH_MEANING")
+						.header("Authorization", "Bearer " + activeStudentToken))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.totalPairs", is(2)));
+
+		mockMvc.perform(get("/api/v1/learning/practice/writing")
+						.param("filterStatus", "ALL")
+						.param("mode", "RECALL")
+						.header("Authorization", "Bearer " + activeStudentToken))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.totalWords", is(2)));
+	}
 }

@@ -17,7 +17,9 @@ interface AudioPlayerProps {
   title?: string
   autoPlay?: boolean
   className?: string
+  variant?: 'dark' | 'light'
   onErrorOccurred?: (err: string) => void
+  onLoadedSuccess?: () => void
 }
 
 export const AudioPlayer: React.FC<AudioPlayerProps> = ({
@@ -25,8 +27,11 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   title,
   autoPlay = false,
   className = '',
+  variant = 'dark',
   onErrorOccurred,
+  onLoadedSuccess,
 }) => {
+  const isLight = variant === 'light'
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
@@ -38,18 +43,20 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   const [errorMessage, setErrorMessage] = useState('')
   const [isLoading, setIsLoading] = useState(true)
 
-  // Reset khi src thay đổi
+  // Reset audio khi src thay đổi
   useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.load()
+    }
+  }, [src])
+
+  const handleLoadStart = () => {
     setHasError(false)
     setErrorMessage('')
     setIsPlaying(false)
     setCurrentTime(0)
     setIsLoading(true)
-
-    if (audioRef.current) {
-      audioRef.current.load()
-    }
-  }, [src])
+  }
 
   const togglePlay = () => {
     if (!audioRef.current || hasError) return
@@ -78,6 +85,9 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
       setDuration(audioRef.current.duration || 0)
       setIsLoading(false)
       setHasError(false)
+      if (onLoadedSuccess) {
+        onLoadedSuccess()
+      }
     }
   }
 
@@ -108,7 +118,12 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
       audioRef.current.load()
       audioRef.current
         .play()
-        .then(() => setIsPlaying(true))
+        .then(() => {
+          setIsPlaying(true)
+          if (onLoadedSuccess) {
+            onLoadedSuccess()
+          }
+        })
         .catch(() => {
           handleAudioError('Thử lại thất bại. Tệp âm thanh không khả dụng trên máy chủ.')
         })
@@ -164,12 +179,17 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
   return (
     <div
-      className={`rounded-2xl border border-slate-200/80 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-5 text-white shadow-xl ${className}`}
+      className={`rounded-2xl border p-4 sm:p-5 ${
+        isLight
+          ? 'border-slate-200 bg-slate-50 text-slate-800 shadow-xs'
+          : 'border-slate-200/80 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white shadow-xl'
+      } ${className}`}
     >
       <audio
         ref={audioRef}
         src={src}
         autoPlay={autoPlay}
+        onLoadStart={handleLoadStart}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onEnded={handleEnded}
@@ -177,45 +197,83 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
       />
 
       {/* Header trình phát */}
-      <div className="mb-4 flex items-center justify-between border-b border-white/10 pb-3">
-        <div className="flex items-center space-x-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-400 ring-1 ring-indigo-500/30">
-            <Headphones className="h-5 w-5" />
+      <div
+        className={`mb-3.5 sm:mb-4 flex items-center justify-between border-b pb-3 ${
+          isLight ? 'border-slate-200' : 'border-white/10'
+        }`}
+      >
+        <div className="flex items-center space-x-3 min-w-0">
+          <div
+            className={`flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl ring-1 ${
+              isLight
+                ? 'bg-emerald-50 text-emerald-600 ring-emerald-200'
+                : 'bg-indigo-500/20 text-indigo-400 ring-indigo-500/30'
+            }`}
+          >
+            <Headphones className="h-4 w-4 sm:h-5 sm:w-5" />
           </div>
-          <div>
-            <h4 className="text-sm font-semibold tracking-wide text-white">
+          <div className="min-w-0">
+            <h4
+              className={`text-sm font-semibold tracking-wide truncate ${
+                isLight ? 'text-slate-900' : 'text-white'
+              }`}
+            >
               {title || 'Đoạn hội thoại luyện nghe'}
             </h4>
-            <p className="text-xs text-indigo-200/70">HSK Listening Comprehension</p>
+            <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-indigo-200/70'}`}>
+              HSK Listening Comprehension
+            </p>
           </div>
         </div>
 
         {/* Trạng thái sóng âm thanh khi đang phát */}
         {isPlaying && (
-          <div className="flex items-end space-x-1">
-            <span className="h-2 w-1 animate-pulse rounded-full bg-indigo-400" />
-            <span className="h-4 w-1 animate-pulse rounded-full bg-indigo-300 delay-75" />
-            <span className="h-6 w-1 animate-pulse rounded-full bg-indigo-400 delay-150" />
-            <span className="h-3 w-1 animate-pulse rounded-full bg-indigo-300 delay-100" />
-            <span className="h-5 w-1 animate-pulse rounded-full bg-indigo-400 delay-200" />
+          <div className="flex items-end space-x-1 shrink-0">
+            <span className={`h-2 w-1 animate-pulse rounded-full ${isLight ? 'bg-emerald-500' : 'bg-indigo-400'}`} />
+            <span className={`h-4 w-1 animate-pulse rounded-full delay-75 ${isLight ? 'bg-emerald-400' : 'bg-indigo-300'}`} />
+            <span className={`h-6 w-1 animate-pulse rounded-full delay-150 ${isLight ? 'bg-emerald-500' : 'bg-indigo-400'}`} />
+            <span className={`h-3 w-1 animate-pulse rounded-full delay-100 ${isLight ? 'bg-emerald-400' : 'bg-indigo-300'}`} />
+            <span className={`h-5 w-1 animate-pulse rounded-full delay-200 ${isLight ? 'bg-emerald-500' : 'bg-indigo-400'}`} />
           </div>
         )}
       </div>
 
       {/* HTT-10-CN-001-TC-02: Thông báo lỗi inline khi audio không tải được */}
       {hasError ? (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
+        <div
+          className={`rounded-xl border p-3.5 sm:p-4 ${
+            isLight
+              ? 'border-amber-200 bg-amber-50 text-amber-900'
+              : 'border-amber-500/30 bg-amber-500/10'
+          }`}
+        >
           <div className="flex items-start space-x-3">
-            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-amber-200">{errorMessage}</p>
-              <p className="mt-1 text-xs text-amber-300/70">
+            <AlertCircle
+              className={`mt-0.5 h-5 w-5 shrink-0 ${isLight ? 'text-amber-600' : 'text-amber-400'}`}
+            />
+            <div className="flex-1 min-w-0">
+              <p
+                className={`text-xs sm:text-sm font-medium ${
+                  isLight ? 'text-amber-900' : 'text-amber-200'
+                }`}
+              >
+                {errorMessage}
+              </p>
+              <p
+                className={`mt-1 text-xs ${
+                  isLight ? 'text-amber-700' : 'text-amber-300/70'
+                }`}
+              >
                 Hệ thống không ghi nhận lượt nộp lỗi khi âm thanh chưa thể phát.
               </p>
               <button
                 type="button"
                 onClick={handleRetry}
-                className="mt-3 inline-flex items-center space-x-2 rounded-lg bg-amber-500/20 px-3 py-1.5 text-xs font-semibold text-amber-300 transition hover:bg-amber-500/30"
+                className={`mt-3 inline-flex items-center space-x-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                  isLight
+                    ? 'bg-amber-100 text-amber-800 hover:bg-amber-200 border border-amber-200'
+                    : 'bg-amber-500/20 text-amber-300 hover:bg-amber-500/30'
+                }`}
               >
                 <RefreshCw className="h-3.5 w-3.5" />
                 <span>Thử tải lại audio</span>
@@ -235,10 +293,18 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
                 value={currentTime}
                 onChange={handleSeek}
                 disabled={isLoading || duration === 0}
-                className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-slate-700/60 accent-indigo-400 transition hover:bg-slate-700 disabled:cursor-not-allowed"
+                className={`h-2 w-full cursor-pointer appearance-none rounded-lg transition disabled:cursor-not-allowed ${
+                  isLight
+                    ? 'bg-slate-200 accent-emerald-600 hover:bg-slate-300'
+                    : 'bg-slate-700/60 accent-indigo-400 hover:bg-slate-700'
+                }`}
               />
             </div>
-            <div className="flex justify-between text-xs font-mono text-slate-400">
+            <div
+              className={`flex justify-between text-xs font-mono ${
+                isLight ? 'text-slate-500' : 'text-slate-400'
+              }`}
+            >
               <span>{formatTime(currentTime)}</span>
               <span>{formatTime(duration)}</span>
             </div>
@@ -253,7 +319,11 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
                 onClick={handleRewind5s}
                 title="Tua lùi 5 giây"
                 disabled={isLoading}
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-slate-300 transition hover:bg-white/10 hover:text-white disabled:opacity-40"
+                className={`flex h-9 w-9 items-center justify-center rounded-xl transition disabled:opacity-40 ${
+                  isLight
+                    ? 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'
+                }`}
               >
                 <RotateCcw className="h-4 w-4" />
               </button>
@@ -263,14 +333,22 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
                 onClick={togglePlay}
                 disabled={isLoading}
                 title={isPlaying ? 'Tạm dừng' : 'Phát audio'}
-                className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500 text-white shadow-lg shadow-indigo-500/30 transition hover:bg-indigo-400 active:scale-95 disabled:opacity-50"
+                className={`flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-2xl text-white shadow-md transition active:scale-95 disabled:opacity-50 ${
+                  isLight
+                    ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'
+                    : 'bg-indigo-500 hover:bg-indigo-400 shadow-lg shadow-indigo-500/30'
+                }`}
               >
                 {isPlaying ? <Pause className="h-5 w-5 fill-current" /> : <Play className="ml-0.5 h-5 w-5 fill-current" />}
               </button>
             </div>
 
             {/* Chọn tốc độ phát */}
-            <div className="flex items-center space-x-1.5 rounded-xl bg-white/5 p-1">
+            <div
+              className={`flex items-center space-x-1 sm:space-x-1.5 rounded-xl p-1 ${
+                isLight ? 'bg-white border border-slate-200' : 'bg-white/5'
+              }`}
+            >
               <Gauge className="ml-1.5 h-3.5 w-3.5 text-slate-400" />
               {speedOptions.map((speed) => (
                 <button
@@ -279,7 +357,11 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
                   onClick={() => handleSpeedChange(speed)}
                   className={`rounded-lg px-2 py-1 text-xs font-medium transition ${
                     playbackRate === speed
-                      ? 'bg-indigo-500 text-white shadow'
+                      ? isLight
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'bg-indigo-500 text-white shadow'
+                      : isLight
+                      ? 'text-slate-600 hover:text-slate-900'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
@@ -294,10 +376,12 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
                 type="button"
                 onClick={toggleMute}
                 title={isMuted ? 'Bật âm thanh' : 'Tắt tiếng'}
-                className="text-slate-400 transition hover:text-white"
+                className={`transition ${
+                  isLight ? 'text-slate-500 hover:text-slate-900' : 'text-slate-400 hover:text-white'
+                }`}
               >
                 {isMuted || volume === 0 ? (
-                  <VolumeX className="h-4 w-4 text-rose-400" />
+                  <VolumeX className="h-4 w-4 text-rose-500" />
                 ) : volume < 0.5 ? (
                   <Volume1 className="h-4 w-4" />
                 ) : (
@@ -311,7 +395,9 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
                 step="0.05"
                 value={isMuted ? 0 : volume}
                 onChange={handleVolumeChange}
-                className="h-1.5 w-16 cursor-pointer appearance-none rounded-lg bg-slate-700/60 accent-indigo-400"
+                className={`h-1.5 w-16 cursor-pointer appearance-none rounded-lg ${
+                  isLight ? 'bg-slate-200 accent-emerald-600' : 'bg-slate-700/60 accent-indigo-400'
+                }`}
               />
             </div>
           </div>

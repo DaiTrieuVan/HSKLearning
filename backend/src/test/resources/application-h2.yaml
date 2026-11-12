@@ -41,3 +41,11 @@ app:
     expiration-hours: 24
   upload:
     dir: target/test-uploads
+  writing:
+    remote-stroke-fetch-enabled: false
+  materials:
+    storage-dir: target/test-materials
+    max-size-bytes: 52428800
+    max-pages: 150
+    render-dpi: 150
+    soffice-path: ""

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   GraduationCap,
   Clock,
@@ -47,6 +48,7 @@ interface DraftSection {
 
 export const MockExamManagementPage: React.FC = () => {
   const { user } = useAuth()
+  const navigate = useNavigate()
 
   // State danh sách đề thi thử
   const [mockExams, setMockExams] = useState<MockExamItem[]>([])
@@ -374,212 +376,99 @@ export const MockExamManagementPage: React.FC = () => {
   })
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', paddingBottom: '80px' }}>
-      {/* Header Bar */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '24px',
-        }}
-      >
-        <div>
-          <h1
-            style={{
-              fontSize: '1.75rem',
-              fontWeight: 800,
-              color: 'var(--text-main)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              margin: 0,
-            }}
-          >
-            <GraduationCap size={32} color="var(--primary)" />
-            Đề thi thử HSK
-          </h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem', marginTop: '4px' }}>
-            Soạn và tổ chức kỳ thi thử chuẩn cấu trúc HSK với nhiều phần thi có tính giờ (HTT-09-CN-001)
-          </p>
-        </div>
-
+    <div className="w-full max-w-6xl mx-auto pb-16 sm:pb-20 space-y-4 sm:space-y-5">
+      {/* Compact Top Action Bar (Title block removed) */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3">
         {!isCreating ? (
-          <button
-            type="button"
-            onClick={() => {
-              setIsCreating(true)
-              setErrorMessage(null)
-              setSuccessMessage(null)
-            }}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              backgroundColor: 'var(--primary)',
-              color: '#ffffff',
-              padding: '10px 18px',
-              borderRadius: 'var(--radius-md)',
-              border: 'none',
-              fontWeight: 700,
-              fontSize: '0.92rem',
-              cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)',
-            }}
-          >
-            <Plus size={18} />
-            Tạo đề thi mới
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="inline-flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-medium rounded-xl shadow-xs transition text-xs sm:text-sm whitespace-nowrap"
+            >
+              <ArrowLeft className="w-4 h-4 shrink-0" />
+              <span>Quay lại Bảng điều khiển</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsCreating(true)
+                setErrorMessage(null)
+                setSuccessMessage(null)
+              }}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-[var(--primary)] hover:opacity-95 text-white font-bold rounded-xl shadow-sm transition text-xs sm:text-sm whitespace-nowrap"
+            >
+              <Plus className="w-4 h-4 shrink-0" />
+              <span>Tạo đề thi mới</span>
+            </button>
+          </>
         ) : (
           <button
             type="button"
             onClick={() => setIsCreating(false)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              backgroundColor: '#f1f5f9',
-              color: 'var(--text-main)',
-              padding: '10px 16px',
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid var(--border-card)',
-              fontWeight: 600,
-              fontSize: '0.9rem',
-              cursor: 'pointer',
-            }}
+            className="inline-flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-semibold rounded-xl shadow-xs transition text-xs sm:text-sm whitespace-nowrap"
           >
-            <ArrowLeft size={18} />
-            Quay lại danh sách
+            <ArrowLeft className="w-4 h-4 shrink-0" />
+            <span>Quay lại danh sách</span>
           </button>
         )}
       </div>
 
       {/* Thông báo lỗi / thành công */}
       {errorMessage && (
-        <div
-          style={{
-            padding: '14px 18px',
-            backgroundColor: '#fef2f2',
-            border: '1px solid #fecaca',
-            borderRadius: 'var(--radius-md)',
-            color: '#dc2626',
-            marginBottom: '20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            fontSize: '0.92rem',
-          }}
-        >
-          <AlertCircle size={20} style={{ flexShrink: 0 }} />
-          <span>{errorMessage}</span>
+        <div className="p-3.5 sm:px-4 sm:py-3.5 bg-red-50 border border-red-200 rounded-xl text-red-600 flex items-start gap-2.5 text-xs sm:text-sm font-medium">
+          <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+          <span className="break-words">{errorMessage}</span>
         </div>
       )}
 
       {successMessage && (
-        <div
-          style={{
-            padding: '14px 18px',
-            backgroundColor: '#f0fdf4',
-            border: '1px solid #bbf7d0',
-            borderRadius: 'var(--radius-md)',
-            color: '#16a34a',
-            marginBottom: '20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            fontSize: '0.92rem',
-          }}
-        >
-          <CheckCircle2 size={20} style={{ flexShrink: 0 }} />
-          <span>{successMessage}</span>
+        <div className="p-3.5 sm:px-4 sm:py-3.5 bg-green-50 border border-green-200 rounded-xl text-green-700 flex items-start gap-2.5 text-xs sm:text-sm font-medium">
+          <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" />
+          <span className="break-words">{successMessage}</span>
         </div>
       )}
 
       {/* GIAO DIỆN TẠO ĐỀ THI MỚI */}
       {isCreating ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <div className="flex flex-col gap-4 sm:gap-6">
           {/* Card 1: Thông tin cơ bản */}
-          <div
-            style={{
-              backgroundColor: '#ffffff',
-              borderRadius: 'var(--radius-lg)',
-              border: '1.5px solid var(--border-card)',
-              padding: '24px',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
-            }}
-          >
-            <h2
-              style={{
-                fontSize: '1.15rem',
-                fontWeight: 700,
-                color: 'var(--text-main)',
-                marginBottom: '18px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-              }}
-            >
-              <FileText size={20} color="var(--primary)" />
-              1. Thông tin cấu trúc đề thi
+          <div className="bg-white rounded-2xl border border-[var(--border-card)] p-4 sm:p-6 shadow-xs">
+            <h2 className="text-base sm:text-lg font-bold text-[var(--text-main)] mb-4 sm:mb-5 flex items-center gap-2">
+              <FileText className="w-5 h-5 text-[var(--primary)] shrink-0" />
+              <span>1. Thông tin cấu trúc đề thi</span>
             </h2>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px' }}>
-              <div style={{ gridColumn: 'span 2' }}>
-                <label
-                  style={{
-                    display: 'block',
-                    fontSize: '0.88rem',
-                    fontWeight: 700,
-                    marginBottom: '6px',
-                  }}
-                >
-                  Tên đề thi thử <span style={{ color: '#ef4444' }}>*</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+              <div className="md:col-span-2">
+                <label className="block text-xs sm:text-sm font-bold text-[var(--text-main)] mb-1.5">
+                  Tên đề thi thử <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   placeholder="Ví dụ: Đề thi thử HSK 1 - Chuẩn cấu trúc Hanban"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1.5px solid var(--border-card)',
-                    fontSize: '0.92rem',
-                    outline: 'none',
-                  }}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-card)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
                 />
               </div>
 
-              <div>
-                <label
-                  style={{
-                    display: 'block',
-                    fontSize: '0.88rem',
-                    fontWeight: 700,
-                    marginBottom: '8px',
-                  }}
-                >
-                  Cấp độ HSK <span style={{ color: '#ef4444' }}>*</span>
+              <div className="md:col-span-2">
+                <label className="block text-xs sm:text-sm font-bold text-[var(--text-main)] mb-2">
+                  Cấp độ HSK <span className="text-red-500">*</span>
                 </label>
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                   {[1, 2, 3, 4, 5, 6].map((lvl) => (
                     <button
                       key={lvl}
                       type="button"
                       onClick={() => setHskLevel(lvl)}
-                      style={{
-                        flex: 1,
-                        padding: '8px 0',
-                        borderRadius: 'var(--radius-md)',
-                        border: '1.5px solid',
-                        borderColor: hskLevel === lvl ? 'var(--primary)' : 'var(--border-card)',
-                        backgroundColor: hskLevel === lvl ? 'var(--primary-light)' : '#ffffff',
-                        color: hskLevel === lvl ? 'var(--primary)' : 'var(--text-main)',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease',
-                      }}
+                      className={`py-2 px-2 rounded-xl border text-xs sm:text-sm font-bold transition whitespace-nowrap ${
+                        hskLevel === lvl
+                          ? 'border-[var(--primary)] bg-[var(--primary-light)] text-[var(--primary)]'
+                          : 'border-[var(--border-card)] bg-white text-[var(--text-main)] hover:bg-slate-50'
+                      }`}
                     >
                       HSK {lvl}
                     </button>
@@ -588,83 +477,40 @@ export const MockExamManagementPage: React.FC = () => {
               </div>
 
               <div>
-                <label
-                  style={{
-                    display: 'block',
-                    fontSize: '0.88rem',
-                    fontWeight: 700,
-                    marginBottom: '8px',
-                  }}
-                >
-                  Thời gian làm bài (phút) <span style={{ color: '#ef4444' }}>*</span>
+                <label className="block text-xs sm:text-sm font-bold text-[var(--text-main)] mb-1.5">
+                  Thời gian làm bài (phút) <span className="text-red-500">*</span>
                 </label>
-                <div style={{ position: 'relative' }}>
+                <div className="relative">
                   <input
                     type="number"
                     min="1"
                     value={timeLimitMinutes}
                     onChange={(e) => setTimeLimitMinutes(Number(e.target.value))}
-                    style={{
-                      width: '100%',
-                      padding: '10px 14px 10px 38px',
-                      borderRadius: 'var(--radius-md)',
-                      border: '1.5px solid var(--border-card)',
-                      fontSize: '0.92rem',
-                      outline: 'none',
-                    }}
+                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-[var(--border-card)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
                   />
-                  <Clock
-                    size={18}
-                    color="#64748b"
-                    style={{ position: 'absolute', left: '12px', top: '12px' }}
-                  />
+                  <Clock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
               </div>
 
               <div>
-                <label
-                  style={{
-                    display: 'block',
-                    fontSize: '0.88rem',
-                    fontWeight: 700,
-                    marginBottom: '8px',
-                  }}
-                >
+                <label className="block text-xs sm:text-sm font-bold text-[var(--text-main)] mb-1.5">
                   Điểm đạt (Passing score)
                 </label>
-                <div style={{ position: 'relative' }}>
+                <div className="relative">
                   <input
                     type="number"
                     min="0"
                     step="0.5"
                     value={passingScore}
                     onChange={(e) => setPassingScore(Number(e.target.value))}
-                    style={{
-                      width: '100%',
-                      padding: '10px 14px 10px 38px',
-                      borderRadius: 'var(--radius-md)',
-                      border: '1.5px solid var(--border-card)',
-                      fontSize: '0.92rem',
-                      outline: 'none',
-                    }}
+                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-[var(--border-card)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
                   />
-                  <Award
-                    size={18}
-                    color="#64748b"
-                    style={{ position: 'absolute', left: '12px', top: '12px' }}
-                  />
+                  <Award className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
               </div>
 
-              <div style={{ gridColumn: 'span 2' }}>
-                <label
-                  style={{
-                    display: 'block',
-                    fontSize: '0.88rem',
-                    fontWeight: 700,
-                    marginBottom: '6px',
-                  }}
-                >
+              <div className="md:col-span-2">
+                <label className="block text-xs sm:text-sm font-bold text-[var(--text-main)] mb-1.5">
                   Mô tả đề thi
                 </label>
                 <textarea
@@ -672,76 +518,31 @@ export const MockExamManagementPage: React.FC = () => {
                   placeholder="Ghi chú hướng dẫn cho học sinh khi làm bài thi thử..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1.5px solid var(--border-card)',
-                    fontSize: '0.92rem',
-                    outline: 'none',
-                    resize: 'vertical',
-                  }}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--border-card)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)] resize-y"
                 />
               </div>
             </div>
           </div>
 
           {/* Card 2: Quản lý các phần thi */}
-          <div
-            style={{
-              backgroundColor: '#ffffff',
-              borderRadius: 'var(--radius-lg)',
-              border: '1.5px solid var(--border-card)',
-              padding: '24px',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '18px',
-              }}
-            >
-              <h2
-                style={{
-                  fontSize: '1.15rem',
-                  fontWeight: 700,
-                  color: 'var(--text-main)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  margin: 0,
-                }}
-              >
-                <Layers size={20} color="var(--primary)" />
-                2. Các phần thi trong đề (Sections)
+          <div className="bg-white rounded-2xl border border-[var(--border-card)] p-4 sm:p-6 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-5">
+              <h2 className="text-base sm:text-lg font-bold text-[var(--text-main)] flex items-center gap-2">
+                <Layers className="w-5 h-5 text-[var(--primary)] shrink-0" />
+                <span>2. Các phần thi trong đề (Sections)</span>
               </h2>
 
               <button
                 type="button"
                 onClick={handleAddSection}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '7px 12px',
-                  backgroundColor: '#f8fafc',
-                  border: '1px solid var(--border-card)',
-                  borderRadius: 'var(--radius-md)',
-                  color: 'var(--primary)',
-                  fontWeight: 700,
-                  fontSize: '0.85rem',
-                  cursor: 'pointer',
-                }}
+                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-slate-50 hover:bg-slate-100 border border-[var(--border-card)] rounded-xl text-[var(--primary)] font-bold text-xs sm:text-sm transition self-start sm:self-auto whitespace-nowrap"
               >
-                <Plus size={16} />
-                Thêm phần thi
+                <Plus className="w-4 h-4 shrink-0" />
+                <span>Thêm phần thi</span>
               </button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div className="flex flex-col gap-4 sm:gap-5">
               {sections.map((section, sIdx) => {
                 const sectionPoints = section.questions.reduce(
                   (sum, q) => sum + (Number(q.points) || 0),
@@ -750,33 +551,12 @@ export const MockExamManagementPage: React.FC = () => {
                 return (
                   <div
                     key={sIdx}
-                    style={{
-                      border: '1.5px solid #e2e8f0',
-                      borderRadius: 'var(--radius-md)',
-                      backgroundColor: '#f8fafc',
-                      padding: '16px',
-                    }}
+                    className="border border-slate-200 rounded-xl bg-slate-50 p-3.5 sm:p-4"
                   >
                     {/* Section Header */}
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginBottom: '14px',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                        <span
-                          style={{
-                            backgroundColor: 'var(--primary)',
-                            color: '#ffffff',
-                            fontWeight: 800,
-                            fontSize: '0.75rem',
-                            padding: '3px 8px',
-                            borderRadius: '4px',
-                          }}
-                        >
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 md:gap-3 mb-3.5">
+                      <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                        <span className="bg-[var(--primary)] text-white font-extrabold text-xs px-2 py-1 rounded shrink-0 whitespace-nowrap">
                           Phần {sIdx + 1}
                         </span>
                         <input
@@ -784,143 +564,69 @@ export const MockExamManagementPage: React.FC = () => {
                           value={section.name}
                           onChange={(e) => handleUpdateSectionName(sIdx, e.target.value)}
                           placeholder="Tên phần thi (ví dụ: Phần 1: Nghe)"
-                          style={{
-                            fontWeight: 700,
-                            fontSize: '1rem',
-                            color: 'var(--text-main)',
-                            border: '1px solid transparent',
-                            backgroundColor: 'transparent',
-                            padding: '4px 8px',
-                            borderRadius: 'var(--radius-md)',
-                            outline: 'none',
-                            width: '320px',
-                          }}
-                          onFocus={(e) => (e.target.style.borderColor = 'var(--primary)')}
-                          onBlur={(e) => (e.target.style.borderColor = 'transparent')}
+                          className="flex-1 min-w-0 w-full font-bold text-sm sm:text-base text-[var(--text-main)] bg-transparent border border-transparent focus:border-[var(--primary)] focus:bg-white px-2 py-1 rounded-lg outline-none transition"
                         />
                       </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                      <div className="flex flex-wrap items-center justify-between md:justify-end gap-2 sm:gap-3 shrink-0">
+                        <span className="text-xs sm:text-sm text-slate-500 whitespace-nowrap">
                           <strong>{section.questions.length}</strong> câu hỏi •{' '}
                           <strong>{sectionPoints}</strong> điểm
                         </span>
 
-                        <button
-                          type="button"
-                          onClick={() => openQuestionPicker(sIdx)}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            backgroundColor: '#ffffff',
-                            border: '1px solid var(--primary)',
-                            color: 'var(--primary)',
-                            padding: '6px 12px',
-                            borderRadius: 'var(--radius-md)',
-                            fontWeight: 700,
-                            fontSize: '0.82rem',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          <Plus size={15} />
-                          Chọn câu hỏi
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => openQuestionPicker(sIdx)}
+                            className="inline-flex items-center gap-1.5 bg-white hover:bg-slate-50 border border-[var(--primary)] text-[var(--primary)] px-3 py-1.5 rounded-xl font-bold text-xs transition whitespace-nowrap"
+                          >
+                            <Plus className="w-3.5 h-3.5 shrink-0" />
+                            <span>Chọn câu hỏi</span>
+                          </button>
 
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveSection(sIdx)}
-                          title="Xóa phần thi này"
-                          style={{
-                            color: '#94a3b8',
-                            border: 'none',
-                            backgroundColor: 'transparent',
-                            cursor: 'pointer',
-                            padding: '4px',
-                          }}
-                          onMouseEnter={(e) => (e.currentTarget.style.color = '#ef4444')}
-                          onMouseLeave={(e) => (e.currentTarget.style.color = '#94a3b8')}
-                        >
-                          <Trash2 size={18} />
-                        </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveSection(sIdx)}
+                            title="Xóa phần thi này"
+                            className="text-slate-400 hover:text-red-500 p-1.5 rounded-lg transition"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
 
                     {/* Section Questions List */}
                     {section.questions.length === 0 ? (
-                      <div
-                        style={{
-                          backgroundColor: '#ffffff',
-                          border: '1.5px dashed #cbd5e1',
-                          borderRadius: 'var(--radius-md)',
-                          padding: '24px',
-                          textAlign: 'center',
-                          color: '#64748b',
-                          fontSize: '0.88rem',
-                        }}
-                      >
-                        <HelpCircle size={28} style={{ margin: '0 auto 8px auto', opacity: 0.5 }} />
-                        <p style={{ margin: 0, fontWeight: 600 }}>
-                          Phần này chưa có câu hỏi nào
-                        </p>
-                        <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: '#ef4444' }}>
+                      <div className="bg-white border border-dashed border-slate-300 rounded-xl p-5 sm:p-6 text-center text-slate-500 text-xs sm:text-sm">
+                        <HelpCircle className="w-7 h-7 mx-auto mb-2 opacity-50" />
+                        <p className="font-semibold">Phần này chưa có câu hỏi nào</p>
+                        <p className="mt-1 text-xs text-red-500">
                           (Cần ít nhất 1 câu hỏi để có thể xuất bản ở trạng thái READY theo quy tắc TC-05)
                         </p>
                       </div>
                     ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div className="flex flex-col gap-2">
                         {section.questions.map((q, qIdx) => (
                           <div
                             key={qIdx}
-                            style={{
-                              backgroundColor: '#ffffff',
-                              border: '1px solid #e2e8f0',
-                              borderRadius: 'var(--radius-md)',
-                              padding: '10px 14px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              gap: '12px',
-                            }}
+                            className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3"
                           >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
-                              <span
-                                style={{
-                                  fontSize: '0.78rem',
-                                  fontWeight: 800,
-                                  color: '#64748b',
-                                  minWidth: '24px',
-                                }}
-                              >
+                            <div className="flex items-start sm:items-center gap-2 sm:gap-2.5 flex-1 min-w-0">
+                              <span className="text-xs font-extrabold text-slate-500 min-w-[24px] shrink-0">
                                 #{qIdx + 1}
                               </span>
-                              <span
-                                style={{
-                                  backgroundColor: '#f1f5f9',
-                                  padding: '2px 8px',
-                                  borderRadius: '4px',
-                                  fontSize: '0.72rem',
-                                  fontWeight: 700,
-                                  color: '#475569',
-                                }}
-                              >
+                              <span className="bg-slate-100 px-2 py-0.5 rounded text-[11px] font-bold text-slate-600 shrink-0 whitespace-nowrap">
                                 {q.type}
                               </span>
-                              <span
-                                style={{
-                                  fontSize: '0.9rem',
-                                  color: 'var(--text-main)',
-                                  fontWeight: 600,
-                                  lineHeight: 1.4,
-                                }}
-                              >
+                              <span className="text-xs sm:text-sm text-[var(--text-main)] font-semibold leading-snug break-words min-w-0">
                                 {q.content}
                               </span>
                             </div>
 
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <label style={{ fontSize: '0.8rem', color: '#64748b' }}>Điểm:</label>
+                            <div className="flex items-center justify-end gap-3 shrink-0 pt-1.5 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                              <div className="flex items-center gap-1.5">
+                                <label className="text-xs text-slate-500">Điểm:</label>
                                 <input
                                   type="number"
                                   step="0.5"
@@ -929,31 +635,16 @@ export const MockExamManagementPage: React.FC = () => {
                                   onChange={(e) =>
                                     handleUpdatePoints(sIdx, qIdx, Number(e.target.value))
                                   }
-                                  style={{
-                                    width: '60px',
-                                    padding: '4px 6px',
-                                    borderRadius: '4px',
-                                    border: '1px solid var(--border-card)',
-                                    fontSize: '0.85rem',
-                                    fontWeight: 700,
-                                    textAlign: 'center',
-                                  }}
+                                  className="w-16 px-2 py-1 rounded border border-[var(--border-card)] text-xs sm:text-sm font-bold text-center"
                                 />
                               </div>
 
                               <button
                                 type="button"
                                 onClick={() => handleRemoveQuestion(sIdx, qIdx)}
-                                style={{
-                                  color: '#94a3b8',
-                                  border: 'none',
-                                  backgroundColor: 'transparent',
-                                  cursor: 'pointer',
-                                }}
-                                onMouseEnter={(e) => (e.currentTarget.style.color = '#ef4444')}
-                                onMouseLeave={(e) => (e.currentTarget.style.color = '#94a3b8')}
+                                className="text-slate-400 hover:text-red-500 p-1 rounded transition"
                               >
-                                <Trash2 size={16} />
+                                <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
                           </div>
@@ -967,62 +658,38 @@ export const MockExamManagementPage: React.FC = () => {
           </div>
 
           {/* Sticky Bottom Actions Bar */}
-          <div
-            style={{
-              position: 'sticky',
-              bottom: '16px',
-              backgroundColor: '#1e293b',
-              color: '#ffffff',
-              padding: '16px 24px',
-              borderRadius: 'var(--radius-lg)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              boxShadow: '0 8px 30px rgba(0,0,0,0.25)',
-              zIndex: 40,
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+          <div className="sticky bottom-3 sm:bottom-4 bg-slate-800 text-white p-3.5 sm:px-6 sm:py-4 rounded-2xl shadow-xl z-40 flex flex-col lg:flex-row lg:items-center justify-between gap-3.5 lg:gap-6">
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-3 sm:gap-6">
               <div>
-                <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Tổng số phần thi:</span>
-                <div style={{ fontWeight: 800, fontSize: '1.1rem' }}>{sections.length} phần</div>
+                <span className="text-xs text-slate-400 block">Tổng số phần thi:</span>
+                <div className="font-extrabold text-sm sm:text-base">{sections.length} phần</div>
               </div>
               <div>
-                <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Tổng số câu hỏi:</span>
-                <div style={{ fontWeight: 800, fontSize: '1.1rem' }}>
+                <span className="text-xs text-slate-400 block">Tổng số câu hỏi:</span>
+                <div className="font-extrabold text-sm sm:text-base">
                   {sections.reduce((s, sec) => s + sec.questions.length, 0)} câu
                 </div>
               </div>
               <div>
-                <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Tổng điểm đề thi:</span>
-                <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#38bdf8' }}>
+                <span className="text-xs text-slate-400 block">Tổng điểm đề thi:</span>
+                <div className="font-extrabold text-sm sm:text-base text-sky-400">
                   {totalPoints} điểm
                 </div>
               </div>
               <div>
-                <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Điểm đạt:</span>
-                <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#4ade80' }}>
+                <span className="text-xs text-slate-400 block">Điểm đạt:</span>
+                <div className="font-extrabold text-sm sm:text-base text-green-400">
                   {passingScore} điểm
                 </div>
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '12px' }}>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
               <button
                 type="button"
                 disabled={isSaving}
                 onClick={() => handleSaveExam('DRAFT')}
-                style={{
-                  backgroundColor: '#334155',
-                  color: '#ffffff',
-                  padding: '10px 18px',
-                  borderRadius: 'var(--radius-md)',
-                  border: 'none',
-                  fontWeight: 700,
-                  fontSize: '0.9rem',
-                  cursor: isSaving ? 'not-allowed' : 'pointer',
-                  opacity: isSaving ? 0.7 : 1,
-                }}
+                className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition disabled:opacity-70 whitespace-nowrap"
               >
                 Lưu bản nháp (DRAFT)
               </button>
@@ -1031,24 +698,10 @@ export const MockExamManagementPage: React.FC = () => {
                 type="button"
                 disabled={isSaving}
                 onClick={() => handleSaveExam('READY')}
-                style={{
-                  backgroundColor: 'var(--primary)',
-                  color: '#ffffff',
-                  padding: '10px 22px',
-                  borderRadius: 'var(--radius-md)',
-                  border: 'none',
-                  fontWeight: 800,
-                  fontSize: '0.9rem',
-                  cursor: isSaving ? 'not-allowed' : 'pointer',
-                  opacity: isSaving ? 0.7 : 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  boxShadow: '0 2px 10px rgba(37, 99, 235, 0.4)',
-                }}
+                className="bg-[var(--primary)] hover:opacity-95 text-white px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm shadow-md transition disabled:opacity-70 inline-flex items-center justify-center gap-2 whitespace-nowrap"
               >
-                <CheckCircle2 size={18} />
-                Lưu & Sẵn sàng giao (READY)
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>Lưu & Sẵn sàng giao (READY)</span>
               </button>
             </div>
           </div>
@@ -1057,256 +710,144 @@ export const MockExamManagementPage: React.FC = () => {
         /* GIAO DIỆN DANH SÁCH ĐỀ THI */
         <div>
           {isLoading ? (
-            <div style={{ padding: '60px 0', textAlign: 'center', color: '#64748b' }}>
+            <div className="py-16 text-center text-slate-500 text-sm">
               Đang tải danh sách đề thi thử...
             </div>
           ) : mockExams.length === 0 ? (
-            <div
-              style={{
-                backgroundColor: '#ffffff',
-                border: '1.5px dashed var(--border-card)',
-                borderRadius: 'var(--radius-lg)',
-                padding: '60px 20px',
-                textAlign: 'center',
-              }}
-            >
-              <GraduationCap size={48} color="#94a3b8" style={{ margin: '0 auto 16px auto' }} />
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)', margin: '0 0 6px 0' }}>
+            <div className="bg-white border border-dashed border-[var(--border-card)] rounded-2xl px-5 py-10 sm:py-14 text-center">
+              <GraduationCap className="w-12 h-12 text-slate-400 mx-auto mb-3.5" />
+              <h3 className="text-base sm:text-lg font-bold text-[var(--text-main)] mb-1.5">
                 Chưa có đề thi thử nào
               </h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: '0 0 20px 0' }}>
+              <p className="text-[var(--text-muted)] text-xs sm:text-sm mb-5 max-w-md mx-auto leading-relaxed">
                 Bắt đầu tạo đề thi thử theo cấu trúc kỳ thi HSK để chuẩn bị cho học sinh của bạn.
               </p>
               <button
                 type="button"
                 onClick={() => setIsCreating(true)}
-                style={{
-                  backgroundColor: 'var(--primary)',
-                  color: '#ffffff',
-                  padding: '10px 18px',
-                  borderRadius: 'var(--radius-md)',
-                  border: 'none',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                }}
+                className="inline-flex items-center justify-center gap-2 bg-[var(--primary)] hover:opacity-95 text-white px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-xs transition whitespace-nowrap"
               >
                 Tạo đề thi đầu tiên
               </button>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div className="flex flex-col gap-3.5 sm:gap-4">
               {mockExams.map((exam) => {
                 const isExpanded = expandedExamId === exam.id
                 return (
                   <div
                     key={exam.id}
-                    style={{
-                      backgroundColor: '#ffffff',
-                      border: '1.5px solid var(--border-card)',
-                      borderRadius: 'var(--radius-lg)',
-                      overflow: 'hidden',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
-                    }}
+                    className="bg-white border border-[var(--border-card)] rounded-2xl overflow-hidden shadow-xs"
                   >
-                    <div
-                      style={{
-                        padding: '20px 24px',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        gap: '16px',
-                      }}
-                    >
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                          <span
-                            style={{
-                              backgroundColor: '#eff6ff',
-                              color: 'var(--primary)',
-                              border: '1px solid #bfdbfe',
-                              padding: '2px 8px',
-                              borderRadius: '4px',
-                              fontWeight: 800,
-                              fontSize: '0.78rem',
-                            }}
-                          >
+                    <div className="p-4 sm:px-6 sm:py-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <span className="bg-blue-50 text-[var(--primary)] border border-blue-200 px-2 py-0.5 rounded font-extrabold text-xs whitespace-nowrap">
                             HSK {exam.hskLevel}
                           </span>
 
                           <span
-                            style={{
-                              backgroundColor: exam.status === 'READY' ? '#f0fdf4' : '#fefce8',
-                              color: exam.status === 'READY' ? '#16a34a' : '#ca8a04',
-                              border: `1px solid ${exam.status === 'READY' ? '#bbf7d0' : '#fef08a'}`,
-                              padding: '2px 8px',
-                              borderRadius: '4px',
-                              fontWeight: 700,
-                              fontSize: '0.75rem',
-                            }}
+                            className={`px-2 py-0.5 rounded border font-bold text-xs whitespace-nowrap ${
+                              exam.status === 'READY'
+                                ? 'bg-green-50 text-green-600 border-green-200'
+                                : 'bg-yellow-50 text-yellow-700 border-yellow-200'
+                            }`}
                           >
                             {exam.status === 'READY' ? 'Sẵn sàng giao' : 'Bản nháp'}
                           </span>
 
-                          <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                          <span className="text-xs text-slate-400 whitespace-nowrap">
                             Mã đề: #{exam.id}
                           </span>
                         </div>
 
-                        <h3
-                          style={{
-                            fontSize: '1.15rem',
-                            fontWeight: 700,
-                            color: 'var(--text-main)',
-                            margin: '0 0 6px 0',
-                          }}
-                        >
+                        <h3 className="text-base sm:text-lg font-bold text-[var(--text-main)] mb-1.5 break-words">
                           {exam.title}
                         </h3>
 
                         {exam.description && (
-                          <p style={{ color: '#64748b', fontSize: '0.88rem', margin: '0 0 10px 0' }}>
+                          <p className="text-slate-500 text-xs sm:text-sm mb-2.5 break-words leading-relaxed">
                             {exam.description}
                           </p>
                         )}
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '0.85rem', color: '#64748b' }}>
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <Clock size={15} color="#3b82f6" />
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs sm:text-sm text-slate-500">
+                          <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                            <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                             <strong>{exam.timeLimitMinutes}</strong> phút
                           </span>
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <Award size={15} color="#10b981" />
+                          <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                            <Award className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                             Điểm đạt: <strong>{exam.passingScore}</strong> / <strong>{exam.totalPoints}</strong>
                           </span>
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <Layers size={15} color="#8b5cf6" />
+                          <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                            <Layers className="w-3.5 h-3.5 text-violet-500 shrink-0" />
                             <strong>{exam.sectionCount}</strong> phần thi
                           </span>
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <HelpCircle size={15} color="#f59e0b" />
+                          <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                            <HelpCircle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                             <strong>{exam.questionCount}</strong> câu hỏi
                           </span>
                         </div>
                       </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div className="flex flex-wrap items-center gap-2 shrink-0">
                         <button
                           type="button"
                           onClick={() => toggleExpandExam(exam.id)}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            backgroundColor: '#f8fafc',
-                            border: '1px solid var(--border-card)',
-                            color: 'var(--text-main)',
-                            padding: '8px 14px',
-                            borderRadius: 'var(--radius-md)',
-                            fontSize: '0.85rem',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                          }}
+                          className="inline-flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100 border border-[var(--border-card)] text-[var(--text-main)] px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition whitespace-nowrap"
                         >
-                          {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                          {isExpanded ? 'Đóng cấu trúc' : 'Xem cấu trúc đề'}
+                          {isExpanded ? <ChevronUp className="w-4 h-4 shrink-0" /> : <ChevronDown className="w-4 h-4 shrink-0" />}
+                          <span>{isExpanded ? 'Đóng cấu trúc' : 'Xem cấu trúc đề'}</span>
                         </button>
 
                         <button
                           type="button"
                           onClick={() => openAssignDrawer(exam)}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            backgroundColor: 'var(--primary)',
-                            color: '#ffffff',
-                            padding: '8px 16px',
-                            borderRadius: 'var(--radius-md)',
-                            border: 'none',
-                            fontSize: '0.85rem',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            boxShadow: '0 2px 6px rgba(37,99,235,0.2)',
-                          }}
+                          className="inline-flex items-center gap-1.5 bg-[var(--primary)] hover:opacity-95 text-white px-4 py-2 rounded-xl text-xs sm:text-sm font-bold shadow-xs transition whitespace-nowrap"
                         >
-                          <Send size={15} />
-                          Giao cho lớp
+                          <Send className="w-3.5 h-3.5 shrink-0" />
+                          <span>Giao cho lớp</span>
                         </button>
                       </div>
                     </div>
 
                     {/* Inline Expandable Structure Details (NO MODAL) */}
                     {isExpanded && (
-                      <div
-                        style={{
-                          backgroundColor: '#f8fafc',
-                          borderTop: '1px solid var(--border-card)',
-                          padding: '20px 24px',
-                        }}
-                      >
-                        <h4
-                          style={{
-                            fontSize: '0.95rem',
-                            fontWeight: 700,
-                            color: 'var(--text-main)',
-                            margin: '0 0 14px 0',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                          }}
-                        >
-                          <Layers size={17} color="var(--primary)" />
-                          Chi tiết các phần thi và câu hỏi
+                      <div className="bg-slate-50 border-t border-[var(--border-card)] p-4 sm:px-6 sm:py-5">
+                        <h4 className="text-sm sm:text-base font-bold text-[var(--text-main)] mb-3.5 flex items-center gap-1.5">
+                          <Layers className="w-4 h-4 text-[var(--primary)] shrink-0" />
+                          <span>Chi tiết các phần thi và câu hỏi</span>
                         </h4>
 
                         {!examDetail ? (
-                          <div style={{ fontSize: '0.85rem', color: '#64748b' }}>Đang nạp chi tiết...</div>
+                          <div className="text-xs sm:text-sm text-slate-500">Đang nạp chi tiết...</div>
                         ) : (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                          <div className="flex flex-col gap-3.5">
                             {examDetail.sections.map((sec, sIdx) => (
                               <div
                                 key={sec.id || sIdx}
-                                style={{
-                                  backgroundColor: '#ffffff',
-                                  borderRadius: 'var(--radius-md)',
-                                  border: '1px solid #e2e8f0',
-                                  padding: '14px 18px',
-                                }}
+                                className="bg-white rounded-xl border border-slate-200 p-3.5 sm:px-4 sm:py-3.5"
                               >
-                                <div
-                                  style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    marginBottom: '10px',
-                                  }}
-                                >
-                                  <span style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-main)' }}>
+                                <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+                                  <span className="font-bold text-xs sm:text-sm text-[var(--text-main)] break-words">
                                     {sec.name}
                                   </span>
-                                  <span style={{ fontSize: '0.82rem', color: '#64748b' }}>
+                                  <span className="text-xs text-slate-500 whitespace-nowrap">
                                     {sec.questions.length} câu hỏi
                                   </span>
                                 </div>
 
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <div className="flex flex-col gap-1.5">
                                   {sec.questions.map((q, qIdx) => (
                                     <div
                                       key={q.id || qIdx}
-                                      style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                        backgroundColor: '#f8fafc',
-                                        padding: '8px 12px',
-                                        borderRadius: '4px',
-                                        fontSize: '0.85rem',
-                                      }}
+                                      className="flex items-start sm:items-center justify-between gap-2 bg-slate-50 px-3 py-2 rounded-lg text-xs sm:text-sm"
                                     >
-                                      <span>
+                                      <span className="min-w-0 break-words">
                                         <strong>#{qIdx + 1}.</strong> {q.content}
                                       </span>
-                                      <span style={{ color: 'var(--primary)', fontWeight: 700 }}>
+                                      <span className="text-[var(--primary)] font-bold shrink-0 whitespace-nowrap">
                                         {q.points} điểm
                                       </span>
                                     </div>
@@ -1329,43 +870,20 @@ export const MockExamManagementPage: React.FC = () => {
       {/* DRAWER CHỌN CÂU HỎI TỪ NGÂN HÀNG (SLIDE-OVER - NO MODAL) */}
       {isQuestionDrawerOpen && (
         <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0,0,0,0.4)',
-            zIndex: 100,
-            display: 'flex',
-            justifyContent: 'flex-end',
-          }}
+          className="fixed inset-0 bg-black/40 z-[100] flex justify-end"
           onClick={() => setIsQuestionDrawerOpen(false)}
         >
           <div
-            style={{
-              width: '540px',
-              maxWidth: '90vw',
-              height: '100%',
-              backgroundColor: '#ffffff',
-              boxShadow: '-4px 0 25px rgba(0,0,0,0.15)',
-              display: 'flex',
-              flexDirection: 'column',
-            }}
+            className="w-full sm:w-[540px] sm:max-w-[90vw] h-full bg-white shadow-2xl flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Drawer Header */}
-            <div
-              style={{
-                padding: '18px 24px',
-                borderBottom: '1px solid var(--border-card)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <div>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)' }}>
+            <div className="px-4 py-3.5 sm:px-6 sm:py-4 border-b border-[var(--border-card)] flex items-start sm:items-center justify-between gap-3">
+              <div className="min-w-0">
+                <h3 className="text-base sm:text-lg font-bold text-[var(--text-main)]">
                   Ngân hàng câu hỏi cá nhân
                 </h3>
-                <p style={{ margin: '2px 0 0 0', fontSize: '0.82rem', color: '#64748b' }}>
+                <p className="mt-0.5 text-xs text-slate-500 truncate">
                   {targetSectionIndex !== null ? `Đưa vào ${sections[targetSectionIndex]?.name}` : ''}
                 </p>
               </div>
@@ -1373,51 +891,38 @@ export const MockExamManagementPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsQuestionDrawerOpen(false)}
-                style={{
-                  border: 'none',
-                  backgroundColor: 'transparent',
-                  color: '#94a3b8',
-                  cursor: 'pointer',
-                  padding: '4px',
-                }}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg transition shrink-0"
               >
-                <X size={20} />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Search Input */}
-            <div style={{ padding: '14px 24px', borderBottom: '1px solid var(--border-card)' }}>
-              <div style={{ position: 'relative' }}>
+            <div className="px-4 py-3 sm:px-6 sm:py-3.5 border-b border-[var(--border-card)]">
+              <div className="relative">
                 <input
                   type="text"
                   placeholder="Tìm kiếm câu hỏi theo nội dung..."
                   value={searchQuestionKeyword}
                   onChange={(e) => setSearchQuestionKeyword(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px 8px 34px',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid var(--border-card)',
-                    fontSize: '0.88rem',
-                    outline: 'none',
-                  }}
+                  className="w-full pl-9 pr-3 py-2 rounded-xl border border-[var(--border-card)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
                 />
-                <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: '10px', top: '10px' }} />
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
             </div>
 
             {/* Questions List */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 24px' }}>
+            <div className="flex-1 overflow-y-auto px-4 py-3.5 sm:px-6 sm:py-4">
               {isLoadingQuestions ? (
-                <div style={{ textAlign: 'center', padding: '40px 0', color: '#64748b' }}>
+                <div className="text-center py-10 text-slate-500 text-sm">
                   Đang nạp câu hỏi...
                 </div>
               ) : filteredQuestions.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>
+                <div className="text-center py-10 text-slate-400 text-sm">
                   Không tìm thấy câu hỏi phù hợp trong ngân hàng
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div className="flex flex-col gap-2.5">
                   {filteredQuestions.map((q) => {
                     const isAdded = sections.some((s) =>
                       s.questions.some((item) => item.questionId === q.id)
@@ -1425,36 +930,18 @@ export const MockExamManagementPage: React.FC = () => {
                     return (
                       <div
                         key={q.id}
-                        style={{
-                          border: '1px solid #e2e8f0',
-                          borderRadius: 'var(--radius-md)',
-                          padding: '12px 14px',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          backgroundColor: isAdded ? '#f1f5f9' : '#ffffff',
-                          opacity: isAdded ? 0.75 : 1,
-                        }}
+                        className={`border border-slate-200 rounded-xl px-3.5 py-3 flex items-center justify-between gap-3 ${
+                          isAdded ? 'bg-slate-100 opacity-75' : 'bg-white'
+                        }`}
                       >
-                        <div style={{ flex: 1, paddingRight: '12px' }}>
-                          <div style={{ display: 'flex', gap: '6px', marginBottom: '4px' }}>
-                            <span
-                              style={{
-                                fontSize: '0.72rem',
-                                fontWeight: 700,
-                                backgroundColor: '#eff6ff',
-                                color: 'var(--primary)',
-                                padding: '2px 6px',
-                                borderRadius: '4px',
-                              }}
-                            >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <span className="text-[11px] font-bold bg-blue-50 text-[var(--primary)] px-1.5 py-0.5 rounded whitespace-nowrap">
                               {q.type}
                             </span>
-                            <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-                              #{q.id}
-                            </span>
+                            <span className="text-xs text-slate-400">#{q.id}</span>
                           </div>
-                          <p style={{ margin: 0, fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                          <p className="text-xs sm:text-sm font-semibold text-[var(--text-main)] break-words">
                             {q.content}
                           </p>
                         </div>
@@ -1463,16 +950,11 @@ export const MockExamManagementPage: React.FC = () => {
                           type="button"
                           disabled={isAdded}
                           onClick={() => handleAddQuestionToSection(q)}
-                          style={{
-                            backgroundColor: isAdded ? '#e2e8f0' : 'var(--primary)',
-                            color: isAdded ? '#64748b' : '#ffffff',
-                            border: 'none',
-                            padding: '6px 12px',
-                            borderRadius: 'var(--radius-md)',
-                            fontSize: '0.8rem',
-                            fontWeight: 700,
-                            cursor: isAdded ? 'default' : 'pointer',
-                          }}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 whitespace-nowrap transition ${
+                            isAdded
+                              ? 'bg-slate-200 text-slate-500 cursor-default'
+                              : 'bg-[var(--primary)] hover:opacity-95 text-white'
+                          }`}
                         >
                           {isAdded ? 'Đã thêm' : 'Chọn'}
                         </button>
@@ -1484,20 +966,11 @@ export const MockExamManagementPage: React.FC = () => {
             </div>
 
             {/* Drawer Footer */}
-            <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border-card)', textAlign: 'right' }}>
+            <div className="px-4 py-3 sm:px-6 sm:py-3.5 border-t border-[var(--border-card)] text-right">
               <button
                 type="button"
                 onClick={() => setIsQuestionDrawerOpen(false)}
-                style={{
-                  backgroundColor: 'var(--primary)',
-                  color: '#ffffff',
-                  border: 'none',
-                  padding: '8px 18px',
-                  borderRadius: 'var(--radius-md)',
-                  fontWeight: 700,
-                  fontSize: '0.88rem',
-                  cursor: 'pointer',
-                }}
+                className="bg-[var(--primary)] hover:opacity-95 text-white px-5 py-2 rounded-xl font-bold text-xs sm:text-sm transition"
               >
                 Xong
               </button>
@@ -1509,43 +982,20 @@ export const MockExamManagementPage: React.FC = () => {
       {/* DRAWER GIAO ĐỀ CHO LỚP HỌC (SLIDE-OVER - NO MODAL) */}
       {isAssignDrawerOpen && selectedExamToAssign && (
         <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0,0,0,0.4)',
-            zIndex: 100,
-            display: 'flex',
-            justifyContent: 'flex-end',
-          }}
+          className="fixed inset-0 bg-black/40 z-[100] flex justify-end"
           onClick={() => setIsAssignDrawerOpen(false)}
         >
           <div
-            style={{
-              width: '480px',
-              maxWidth: '90vw',
-              height: '100%',
-              backgroundColor: '#ffffff',
-              boxShadow: '-4px 0 25px rgba(0,0,0,0.15)',
-              display: 'flex',
-              flexDirection: 'column',
-            }}
+            className="w-full sm:w-[480px] sm:max-w-[90vw] h-full bg-white shadow-2xl flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div
-              style={{
-                padding: '18px 24px',
-                borderBottom: '1px solid var(--border-card)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <div>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)' }}>
+            <div className="px-4 py-3.5 sm:px-6 sm:py-4 border-b border-[var(--border-card)] flex items-start sm:items-center justify-between gap-3">
+              <div className="min-w-0">
+                <h3 className="text-base sm:text-lg font-bold text-[var(--text-main)]">
                   Giao đề thi thử cho lớp
                 </h3>
-                <p style={{ margin: '2px 0 0 0', fontSize: '0.82rem', color: '#64748b' }}>
+                <p className="mt-0.5 text-xs text-slate-500 break-words">
                   {selectedExamToAssign.title} (HSK {selectedExamToAssign.hskLevel})
                 </p>
               </div>
@@ -1553,40 +1003,27 @@ export const MockExamManagementPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsAssignDrawerOpen(false)}
-                style={{
-                  border: 'none',
-                  backgroundColor: 'transparent',
-                  color: '#94a3b8',
-                  cursor: 'pointer',
-                  padding: '4px',
-                }}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg transition shrink-0"
               >
-                <X size={20} />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Body */}
-            <div style={{ flex: 1, padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col gap-4 sm:gap-5">
               <div>
-                <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 700, marginBottom: '6px' }}>
-                  Chọn lớp học phụ trách <span style={{ color: '#ef4444' }}>*</span>
+                <label className="block text-xs sm:text-sm font-bold text-[var(--text-main)] mb-1.5">
+                  Chọn lớp học phụ trách <span className="text-red-500">*</span>
                 </label>
                 {classes.length === 0 ? (
-                  <p style={{ color: '#ef4444', fontSize: '0.85rem' }}>
+                  <p className="text-red-500 text-xs sm:text-sm">
                     Bạn chưa có lớp học nào đang hoạt động. Vui lòng tạo lớp học trước.
                   </p>
                 ) : (
                   <select
                     value={selectedClassId}
                     onChange={(e) => setSelectedClassId(Number(e.target.value))}
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      borderRadius: 'var(--radius-md)',
-                      border: '1.5px solid var(--border-card)',
-                      fontSize: '0.9rem',
-                      outline: 'none',
-                    }}
+                    className="w-full px-3 py-2.5 rounded-xl border border-[var(--border-card)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)] bg-white"
                   >
                     {classes.map((c) => (
                       <option key={c.id} value={c.id}>
@@ -1598,39 +1035,23 @@ export const MockExamManagementPage: React.FC = () => {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 700, marginBottom: '6px' }}>
-                  Hạn nộp bài thi <span style={{ color: '#ef4444' }}>*</span>
+                <label className="block text-xs sm:text-sm font-bold text-[var(--text-main)] mb-1.5">
+                  Hạn nộp bài thi <span className="text-red-500">*</span>
                 </label>
-                <div style={{ position: 'relative' }}>
+                <div className="relative">
                   <input
                     type="datetime-local"
                     value={dueTime}
                     onChange={(e) => setDueTime(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px 10px 38px',
-                      borderRadius: 'var(--radius-md)',
-                      border: '1.5px solid var(--border-card)',
-                      fontSize: '0.9rem',
-                      outline: 'none',
-                    }}
+                    className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-[var(--border-card)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
                   />
-                  <Calendar size={18} color="#64748b" style={{ position: 'absolute', left: '12px', top: '12px' }} />
+                  <Calendar className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
               </div>
 
-              <div
-                style={{
-                  backgroundColor: '#f8fafc',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: 'var(--radius-md)',
-                  padding: '14px',
-                  fontSize: '0.85rem',
-                  color: '#475569',
-                }}
-              >
-                <p style={{ margin: '0 0 6px 0', fontWeight: 700 }}>Thông số đề thi thử:</p>
-                <ul style={{ margin: 0, paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs sm:text-sm text-slate-600">
+                <p className="mb-1.5 font-bold">Thông số đề thi thử:</p>
+                <ul className="pl-5 list-disc flex flex-col gap-1">
                   <li>Thời gian làm bài: <strong>{selectedExamToAssign.timeLimitMinutes} phút</strong></li>
                   <li>Điểm đạt: <strong>{selectedExamToAssign.passingScore}</strong> / {selectedExamToAssign.totalPoints} điểm</li>
                   <li>Số phần thi: <strong>{selectedExamToAssign.sectionCount} phần</strong></li>
@@ -1640,27 +1061,11 @@ export const MockExamManagementPage: React.FC = () => {
             </div>
 
             {/* Footer */}
-            <div
-              style={{
-                padding: '16px 24px',
-                borderTop: '1px solid var(--border-card)',
-                display: 'flex',
-                justifyContent: 'flex-end',
-                gap: '10px',
-              }}
-            >
+            <div className="px-4 py-3.5 sm:px-6 sm:py-4 border-t border-[var(--border-card)] flex flex-col-reverse sm:flex-row sm:justify-end gap-2.5">
               <button
                 type="button"
                 onClick={() => setIsAssignDrawerOpen(false)}
-                style={{
-                  backgroundColor: '#f1f5f9',
-                  border: '1px solid var(--border-card)',
-                  padding: '9px 16px',
-                  borderRadius: 'var(--radius-md)',
-                  fontSize: '0.88rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                }}
+                className="bg-slate-100 hover:bg-slate-200 border border-[var(--border-card)] px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition whitespace-nowrap"
               >
                 Hủy
               </button>
@@ -1669,23 +1074,10 @@ export const MockExamManagementPage: React.FC = () => {
                 type="button"
                 disabled={isAssigning || classes.length === 0}
                 onClick={handleAssign}
-                style={{
-                  backgroundColor: 'var(--primary)',
-                  color: '#ffffff',
-                  border: 'none',
-                  padding: '9px 20px',
-                  borderRadius: 'var(--radius-md)',
-                  fontSize: '0.88rem',
-                  fontWeight: 700,
-                  cursor: isAssigning ? 'not-allowed' : 'pointer',
-                  opacity: isAssigning ? 0.7 : 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                }}
+                className="bg-[var(--primary)] hover:opacity-95 text-white px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold disabled:opacity-70 inline-flex items-center justify-center gap-1.5 transition whitespace-nowrap"
               >
-                <Send size={16} />
-                Xác nhận giao bài
+                <Send className="w-4 h-4 shrink-0" />
+                <span>Xác nhận giao bài</span>
               </button>
             </div>
           </div>

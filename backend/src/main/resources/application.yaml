@@ -66,6 +66,14 @@ server:
 app:
   cors:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  writing:
+    remote-stroke-fetch-enabled: ${WRITING_REMOTE_STROKE_FETCH_ENABLED:true}
+  materials:
+    storage-dir: ${MATERIALS_STORAGE_DIR:./storage/materials}
+    max-size-bytes: ${MATERIALS_MAX_SIZE_BYTES:52428800}
+    max-pages: ${MATERIALS_MAX_PAGES:150}
+    render-dpi: ${MATERIALS_RENDER_DPI:200}
+    soffice-path: ${SOFFICE_PATH:}
 
 springdoc:
   api-docs:

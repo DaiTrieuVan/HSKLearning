@@ -304,26 +304,15 @@ export const PrivateVocabManagementPage: React.FC = () => {
     vocabPage.content.every((v) => selectedWordIds.includes(v.id))
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-page)', padding: '28px 24px' }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+    <div className="w-full max-w-[1200px] mx-auto">
+      <div>
         {/* Navigation & Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-4 sm:mb-5">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => navigate('/')}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 14px',
-                borderRadius: 'var(--radius-md)',
-                border: '1.5px solid var(--border-card)',
-                backgroundColor: '#ffffff',
-                fontWeight: 700,
-                fontSize: '0.86rem',
-                cursor: 'pointer',
-              }}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[var(--radius-md)] border-[1.5px] border-[var(--border-card)] bg-white font-bold text-xs sm:text-[0.86rem] cursor-pointer whitespace-nowrap"
             >
               <ArrowLeft size={16} />
               <span>Bảng điều khiển</span>
@@ -331,33 +320,21 @@ export const PrivateVocabManagementPage: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/vocab-sets')}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 14px',
-                borderRadius: 'var(--radius-md)',
-                border: '1.5px solid var(--border-card)',
-                backgroundColor: '#ffffff',
-                fontWeight: 700,
-                fontSize: '0.86rem',
-                cursor: 'pointer',
-              }}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[var(--radius-md)] border-[1.5px] border-[var(--border-card)] bg-white font-bold text-xs sm:text-[0.86rem] cursor-pointer whitespace-nowrap"
             >
               <BookMarked size={16} />
               <span>Bộ từ vựng của lớp</span>
             </button>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={handleDownloadTemplate}
-              className="btn-gamified btn-gold"
-              style={{ padding: '8px 16px', fontSize: '0.86rem', display: 'flex', alignItems: 'center', gap: '8px' }}
+              className="btn-gamified btn-gold inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 text-xs sm:text-[0.86rem] whitespace-nowrap"
               title="Tải về file Excel/CSV mẫu chuẩn UTF-8"
             >
-              <Download size={16} />
+              <Download size={15} />
               <span>Tải file mẫu CSV</span>
             </button>
             <button
@@ -366,10 +343,9 @@ export const PrivateVocabManagementPage: React.FC = () => {
                 setShowImport(!showImport)
                 if (showAddWord) setShowAddWord(false)
               }}
-              className="btn-gamified btn-gold"
-              style={{ padding: '8px 16px', fontSize: '0.86rem', display: 'flex', alignItems: 'center', gap: '8px' }}
+              className="btn-gamified btn-gold inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 text-xs sm:text-[0.86rem] whitespace-nowrap"
             >
-              <FileSpreadsheet size={16} />
+              <FileSpreadsheet size={15} />
               <span>{showImport ? 'Đóng CSV' : 'Nhập CSV'}</span>
             </button>
             <button
@@ -378,103 +354,54 @@ export const PrivateVocabManagementPage: React.FC = () => {
                 setShowAddWord(!showAddWord)
                 if (showImport) setShowImport(false)
               }}
-              className="btn-gamified btn-primary"
-              style={{ padding: '8px 16px', fontSize: '0.86rem', display: 'flex', alignItems: 'center', gap: '8px' }}
+              className="btn-gamified btn-primary inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 text-xs sm:text-[0.86rem] whitespace-nowrap"
             >
-              <Plus size={16} />
+              <Plus size={15} />
               <span>{showAddWord ? 'Đóng thêm từ' : 'Thêm từ mới'}</span>
             </button>
           </div>
         </div>
 
         {/* Title & Stats Banner */}
-        <div
-          className="game-card"
-          style={{
-            padding: '24px 28px',
-            backgroundColor: '#ffffff',
-            border: '1.5px solid var(--border-card)',
-            marginBottom: '20px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: '16px',
-          }}
-        >
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-              <h1 style={{ fontSize: '1.45rem', fontWeight: 900, color: 'var(--text-main)', margin: 0 }}>
-                Kho Từ Vựng Riêng của Giáo Viên
-              </h1>
-              <span
-                style={{
-                  fontSize: '0.85rem',
-                  fontWeight: 800,
-                  padding: '4px 12px',
-                  borderRadius: 'var(--radius-full)',
-                  backgroundColor: 'var(--accent-gold-light)',
-                  color: 'var(--accent-gold-shadow)',
-                  border: '1px solid var(--accent-gold)',
-                }}
-              >
-                {totalWords.toLocaleString('vi-VN')} từ vựng
-              </span>
-            </div>
-            <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-muted)' }}>
-              Quản lý toàn bộ kho từ vựng cá nhân dùng để đóng gói bài tập và giao bộ từ vựng cho các lớp học.
-            </p>
+        <div className="game-card p-4 sm:px-7 sm:py-5 bg-white border-[1.5px] border-[var(--border-card)] mb-4 sm:mb-5">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-1.5">
+            <h1 className="text-lg sm:text-[1.45rem] font-black text-[var(--text-main)] m-0 leading-snug">
+              Kho Từ Vựng Riêng của Giáo Viên
+            </h1>
+            <span
+              className="text-xs sm:text-[0.84rem] font-extrabold px-3 py-1 rounded-full whitespace-nowrap shrink-0"
+              style={{
+                backgroundColor: 'var(--accent-gold-light)',
+                color: 'var(--accent-gold-shadow)',
+                border: '1px solid var(--accent-gold)',
+              }}
+            >
+              {totalWords.toLocaleString('vi-VN')} từ vựng
+            </span>
           </div>
+          <p className="m-0 text-xs sm:text-[0.88rem] text-[var(--text-muted)] leading-relaxed">
+            Quản lý toàn bộ kho từ vựng cá nhân dùng để đóng gói bài tập và giao bộ từ vựng cho các lớp học.
+          </p>
         </div>
 
         {/* Notifications */}
         {notification && (
-          <div
-            className="animate-fade-in"
-            style={{
-              padding: '12px 18px',
-              backgroundColor: '#ecfdf5',
-              border: '1px solid #10b981',
-              borderRadius: 'var(--radius-md)',
-              color: '#065f46',
-              marginBottom: '16px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              fontWeight: 700,
-              fontSize: '0.88rem',
-            }}
-          >
-            <CheckCircle2 size={18} />
+          <div className="animate-fade-in p-3 sm:px-4 bg-emerald-50 border border-emerald-500 rounded-[var(--radius-md)] text-emerald-800 mb-4 flex items-center gap-2.5 font-bold text-xs sm:text-sm">
+            <CheckCircle2 size={18} className="shrink-0" />
             <span>{notification}</span>
           </div>
         )}
 
         {errorMessage && (
-          <div
-            className="animate-fade-in"
-            style={{
-              padding: '12px 18px',
-              backgroundColor: '#fef2f2',
-              border: '1px solid #ef4444',
-              borderRadius: 'var(--radius-md)',
-              color: '#991b1b',
-              marginBottom: '16px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              fontWeight: 700,
-              fontSize: '0.88rem',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <AlertCircle size={18} />
+          <div className="animate-fade-in p-3 sm:px-4 bg-red-50 border border-red-500 rounded-[var(--radius-md)] text-red-800 mb-4 flex items-center justify-between gap-2.5 font-bold text-xs sm:text-sm">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <AlertCircle size={18} className="shrink-0" />
               <span>{errorMessage}</span>
             </div>
             <button
               type="button"
               onClick={() => setErrorMessage(null)}
-              style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#991b1b' }}
+              className="border-none bg-transparent cursor-pointer text-red-800 shrink-0 p-1"
             >
               <X size={16} />
             </button>
@@ -484,63 +411,52 @@ export const PrivateVocabManagementPage: React.FC = () => {
         {/* Inline Import CSV Panel */}
         {showImport && (
           <div
-            className="game-card animate-fade-in"
-            style={{
-              padding: '24px',
-              backgroundColor: '#ffffff',
-              marginBottom: '20px',
-              border: '2px solid var(--accent-gold)',
-            }}
+            className="game-card animate-fade-in p-4 sm:p-6 bg-white mb-5"
+            style={{ border: '2px solid var(--accent-gold)' }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-              <div>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: '0 0 6px', color: 'var(--text-main)' }}>
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-3">
+              <div className="min-w-0">
+                <h3 className="text-base sm:text-lg font-extrabold m-0 mb-1.5 text-[var(--text-main)]">
                   Nhập danh sách từ vựng riêng từ file CSV
                 </h3>
-                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: 0 }}>
-                  Định dạng cột CSV: <code>hanzi,pinyin,meaning,partOfSpeech,exampleSentence,examplePinyin,exampleMeaning</code>
+                <p className="text-xs text-[var(--text-muted)] m-0 leading-relaxed">
+                  Định dạng cột CSV:{' '}
+                  <code className="break-all">hanzi,pinyin,meaning,partOfSpeech,exampleSentence,examplePinyin,exampleMeaning</code>
                 </p>
               </div>
               <button
                 type="button"
                 onClick={handleDownloadTemplate}
-                className="btn-gamified btn-gold"
-                style={{ padding: '6px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                className="btn-gamified btn-gold self-start shrink-0 px-3.5 py-1.5 text-xs inline-flex items-center gap-1.5 whitespace-nowrap"
               >
                 <Download size={14} />
                 <span>Tải file mẫu CSV</span>
               </button>
             </div>
-            <form onSubmit={handleImportPrivateWords} style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <form onSubmit={handleImportPrivateWords} className="flex flex-col sm:flex-row sm:items-center gap-2.5">
               <input
                 type="file"
                 accept=".csv"
                 onChange={(e) => setImportFile(e.target.files?.[0] || null)}
                 required
-                style={{ flex: 1, padding: '8px', border: '1px dashed var(--border-card)', borderRadius: 'var(--radius-md)' }}
+                className="w-full sm:flex-1 min-w-0 p-2 border border-dashed border-[var(--border-card)] rounded-[var(--radius-md)] text-xs sm:text-sm"
               />
-              <button
-                type="button"
-                onClick={() => setShowImport(false)}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--border-card)',
-                  backgroundColor: '#ffffff',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                }}
-              >
-                Hủy
-              </button>
-              <button
-                type="submit"
-                disabled={importing || !importFile}
-                className="btn-gamified btn-gold"
-                style={{ padding: '8px 20px', fontSize: '0.88rem' }}
-              >
-                {importing ? 'Đang nhập...' : 'Tải lên & Nhập'}
-              </button>
+              <div className="flex items-center justify-end gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowImport(false)}
+                  className="px-4 py-2 rounded-[var(--radius-md)] border border-[var(--border-card)] bg-white font-bold text-xs sm:text-sm cursor-pointer"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={importing || !importFile}
+                  className="btn-gamified btn-gold px-4 py-2 text-xs sm:text-sm whitespace-nowrap"
+                >
+                  {importing ? 'Đang nhập...' : 'Tải lên & Nhập'}
+                </button>
+              </div>
             </form>
           </div>
         )}
@@ -548,20 +464,15 @@ export const PrivateVocabManagementPage: React.FC = () => {
         {/* Inline Add Word Panel */}
         {showAddWord && (
           <div
-            className="game-card animate-fade-in"
-            style={{
-              padding: '24px',
-              backgroundColor: '#ffffff',
-              marginBottom: '20px',
-              border: '2px solid var(--primary)',
-            }}
+            className="game-card animate-fade-in p-4 sm:p-6 bg-white mb-5"
+            style={{ border: '2px solid var(--primary)' }}
           >
-            <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: '0 0 16px', color: 'var(--text-main)' }}>
+            <h3 className="text-base sm:text-lg font-extrabold m-0 mb-4 text-[var(--text-main)]">
               Thêm từ vựng riêng mới
             </h3>
-            <form onSubmit={handleCreatePrivateWord} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+            <form onSubmit={handleCreatePrivateWord} className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
-                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 700, marginBottom: '6px' }}>
+                <label className="block text-xs sm:text-[0.84rem] font-bold mb-1.5">
                   Chữ Hán (Hanzi) <span style={{ color: 'var(--primary)' }}>*</span>
                 </label>
                 <input
@@ -569,13 +480,12 @@ export const PrivateVocabManagementPage: React.FC = () => {
                   placeholder="VD: 咖啡"
                   value={newHanzi}
                   onChange={(e) => setNewHanzi(e.target.value)}
-                  className="game-input hanzi"
-                  style={{ width: '100%', boxSizing: 'border-box', fontSize: '1.1rem', padding: '8px 12px' }}
+                  className="game-input hanzi w-full box-border text-base sm:text-lg px-3 py-2"
                   required
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 700, marginBottom: '6px' }}>
+                <label className="block text-xs sm:text-[0.84rem] font-bold mb-1.5">
                   Phiên âm (Pinyin) <span style={{ color: 'var(--primary)' }}>*</span>
                 </label>
                 <input
@@ -583,13 +493,12 @@ export const PrivateVocabManagementPage: React.FC = () => {
                   placeholder="VD: kā fēi"
                   value={newPinyin}
                   onChange={(e) => setNewPinyin(e.target.value)}
-                  className="game-input"
-                  style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px' }}
+                  className="game-input w-full box-border px-3 py-2 text-sm"
                   required
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 700, marginBottom: '6px' }}>
+                <label className="block text-xs sm:text-[0.84rem] font-bold mb-1.5">
                   Nghĩa tiếng Việt <span style={{ color: 'var(--primary)' }}>*</span>
                 </label>
                 <input
@@ -597,20 +506,18 @@ export const PrivateVocabManagementPage: React.FC = () => {
                   placeholder="VD: Cà phê"
                   value={newMeaning}
                   onChange={(e) => setNewMeaning(e.target.value)}
-                  className="game-input"
-                  style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px' }}
+                  className="game-input w-full box-border px-3 py-2 text-sm"
                   required
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 700, marginBottom: '6px' }}>
+                <label className="block text-xs sm:text-[0.84rem] font-bold mb-1.5">
                   Loại từ (Tùy chọn)
                 </label>
                 <select
                   value={newPartOfSpeech}
                   onChange={(e) => setNewPartOfSpeech(e.target.value)}
-                  className="game-input"
-                  style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px' }}
+                  className="game-input w-full box-border px-3 py-2 text-sm"
                 >
                   <option value="">Chọn loại từ</option>
                   <option value="danh từ">Danh từ</option>
@@ -624,8 +531,8 @@ export const PrivateVocabManagementPage: React.FC = () => {
                   <option value="trợ từ">Trợ từ</option>
                 </select>
               </div>
-              <div style={{ gridColumn: 'span 2' }}>
-                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 700, marginBottom: '6px' }}>
+              <div className="sm:col-span-2">
+                <label className="block text-xs sm:text-[0.84rem] font-bold mb-1.5">
                   Câu ví dụ tiếng Trung (Tùy chọn)
                 </label>
                 <input
@@ -633,12 +540,11 @@ export const PrivateVocabManagementPage: React.FC = () => {
                   placeholder="VD: 我想喝一杯咖啡。"
                   value={newExampleSentence}
                   onChange={(e) => setNewExampleSentence(e.target.value)}
-                  className="game-input"
-                  style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px' }}
+                  className="game-input w-full box-border px-3 py-2 text-sm"
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 700, marginBottom: '6px' }}>
+                <label className="block text-xs sm:text-[0.84rem] font-bold mb-1.5">
                   Pinyin ví dụ (Tùy chọn)
                 </label>
                 <input
@@ -646,12 +552,11 @@ export const PrivateVocabManagementPage: React.FC = () => {
                   placeholder="VD: Wǒ xiǎng hē yì bēi kāfēi."
                   value={newExamplePinyin}
                   onChange={(e) => setNewExamplePinyin(e.target.value)}
-                  className="game-input"
-                  style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px' }}
+                  className="game-input w-full box-border px-3 py-2 text-sm"
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 700, marginBottom: '6px' }}>
+                <label className="block text-xs sm:text-[0.84rem] font-bold mb-1.5">
                   Nghĩa câu ví dụ (Tùy chọn)
                 </label>
                 <input
@@ -659,30 +564,21 @@ export const PrivateVocabManagementPage: React.FC = () => {
                   placeholder="VD: Tôi muốn uống một cốc cà phê."
                   value={newExampleMeaning}
                   onChange={(e) => setNewExampleMeaning(e.target.value)}
-                  className="game-input"
-                  style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px' }}
+                  className="game-input w-full box-border px-3 py-2 text-sm"
                 />
               </div>
-              <div style={{ gridColumn: 'span 2', display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
+              <div className="sm:col-span-2 flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-2">
                 <button
                   type="button"
                   onClick={() => setShowAddWord(false)}
-                  style={{
-                    padding: '8px 18px',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid var(--border-card)',
-                    backgroundColor: '#ffffff',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                  }}
+                  className="px-4 py-2 rounded-[var(--radius-md)] border border-[var(--border-card)] bg-white font-bold text-sm cursor-pointer"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
                   disabled={addingWord || !newHanzi.trim() || !newPinyin.trim() || !newMeaning.trim()}
-                  className="btn-gamified btn-primary"
-                  style={{ padding: '8px 24px', fontSize: '0.88rem' }}
+                  className="btn-gamified btn-primary px-6 py-2 text-sm justify-center"
                 >
                   {addingWord ? 'Đang thêm...' : 'Lưu từ vựng'}
                 </button>
@@ -694,32 +590,27 @@ export const PrivateVocabManagementPage: React.FC = () => {
         {/* Inline Create Vocab Set from Selected Words */}
         {showCreateSetFromSelected && (
           <div
-            className="game-card animate-fade-in"
-            style={{
-              padding: '24px',
-              backgroundColor: '#ffffff',
-              marginBottom: '20px',
-              border: '2px solid #2563eb',
-            }}
+            className="game-card animate-fade-in p-4 sm:p-6 bg-white mb-5"
+            style={{ border: '2px solid #2563eb' }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <FolderPlus size={20} style={{ color: '#2563eb' }} />
-                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>
+            <div className="flex justify-between items-center gap-2 mb-3.5">
+              <div className="flex items-center gap-2 min-w-0">
+                <FolderPlus size={20} className="shrink-0" style={{ color: '#2563eb' }} />
+                <h3 className="text-base sm:text-lg font-extrabold m-0 text-[var(--text-main)]">
                   Tạo Bộ từ vựng mới từ {selectedWordIds.length} từ đã chọn
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setShowCreateSetFromSelected(false)}
-                style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-muted)' }}
+                className="border-none bg-transparent cursor-pointer text-[var(--text-muted)] shrink-0 p-1"
               >
                 <X size={18} />
               </button>
             </div>
-            <form onSubmit={handleCreateSetFromSelected} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <form onSubmit={handleCreateSetFromSelected} className="flex flex-col gap-3">
               <div>
-                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 700, marginBottom: '6px' }}>
+                <label className="block text-xs sm:text-[0.84rem] font-bold mb-1.5">
                   Tên Bộ từ vựng <span style={{ color: 'var(--primary)' }}>*</span>
                 </label>
                 <input
@@ -727,13 +618,12 @@ export const PrivateVocabManagementPage: React.FC = () => {
                   placeholder="VD: Từ vựng chuyên đề Du Lịch & Mua Sắm"
                   value={newSetName}
                   onChange={(e) => setNewSetName(e.target.value)}
-                  className="game-input"
-                  style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px' }}
+                  className="game-input w-full box-border px-3 py-2 text-sm"
                   required
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 700, marginBottom: '6px' }}>
+                <label className="block text-xs sm:text-[0.84rem] font-bold mb-1.5">
                   Mô tả bộ từ (Tùy chọn)
                 </label>
                 <input
@@ -741,30 +631,21 @@ export const PrivateVocabManagementPage: React.FC = () => {
                   placeholder="VD: Dành cho học sinh ôn thi cuối kỳ"
                   value={newSetDescription}
                   onChange={(e) => setNewSetDescription(e.target.value)}
-                  className="game-input"
-                  style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px' }}
+                  className="game-input w-full box-border px-3 py-2 text-sm"
                 />
               </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-1.5">
                 <button
                   type="button"
                   onClick={() => setShowCreateSetFromSelected(false)}
-                  style={{
-                    padding: '8px 16px',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid var(--border-card)',
-                    backgroundColor: '#ffffff',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                  }}
+                  className="px-4 py-2 rounded-[var(--radius-md)] border border-[var(--border-card)] bg-white font-bold text-sm cursor-pointer"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
                   disabled={creatingSet || !newSetName.trim()}
-                  className="btn-gamified btn-primary"
-                  style={{ padding: '8px 20px', fontSize: '0.88rem' }}
+                  className="btn-gamified btn-primary px-5 py-2 text-sm justify-center whitespace-nowrap"
                 >
                   {creatingSet ? 'Đang tạo...' : `Tạo Bộ Từ (${selectedWordIds.length} từ)`}
                 </button>
@@ -774,23 +655,10 @@ export const PrivateVocabManagementPage: React.FC = () => {
         )}
 
         {/* Search, Filter & View Controls Bar */}
-        <div
-          className="game-card"
-          style={{
-            padding: '16px 20px',
-            backgroundColor: '#ffffff',
-            border: '1.5px solid var(--border-card)',
-            marginBottom: '16px',
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '12px',
-          }}
-        >
+        <div className="game-card p-3.5 sm:px-5 sm:py-4 bg-white border-[1.5px] border-[var(--border-card)] mb-4 flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 sm:gap-3">
           {/* Left: Search input */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1 1 320px' }}>
-            <div style={{ position: 'relative', width: '100%' }}>
+          <div className="w-full lg:flex-1 min-w-0">
+            <div className="relative w-full">
               <Search
                 size={16}
                 style={{
@@ -803,16 +671,10 @@ export const PrivateVocabManagementPage: React.FC = () => {
               />
               <input
                 type="text"
-                placeholder="Tìm kiếm theo chữ Hán, pinyin hoặc nghĩa tiếng Việt..."
+                placeholder="Tìm chữ Hán, pinyin hoặc nghĩa tiếng Việt..."
                 value={searchKeyword}
                 onChange={(e) => handleSearchChange(e.target.value)}
-                className="game-input"
-                style={{
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  padding: '8px 12px 8px 36px',
-                  fontSize: '0.88rem',
-                }}
+                className="game-input w-full box-border py-2 pr-8 pl-9 text-xs sm:text-sm"
               />
               {searchKeyword && (
                 <button
@@ -835,125 +697,94 @@ export const PrivateVocabManagementPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Center: Part of speech filter & Sort */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Filter size={15} style={{ color: 'var(--text-muted)' }} />
+          {/* Center & Right: Filter, Sort & View toggle */}
+          <div className="flex flex-wrap items-center justify-between lg:justify-end gap-2">
+            <div className="flex flex-wrap items-center gap-2 flex-1 sm:flex-initial">
+              <div className="flex items-center gap-1.5 flex-1 sm:flex-initial min-w-[135px]">
+                <Filter size={15} className="shrink-0 hidden sm:inline" style={{ color: 'var(--text-muted)' }} />
+                <select
+                  value={selectedPos}
+                  onChange={(e) => {
+                    setSelectedPos(e.target.value)
+                    setPage(0)
+                  }}
+                  className="game-input w-full sm:w-auto py-1.5 px-2.5 text-xs sm:text-[0.84rem]"
+                >
+                  {PART_OF_SPEECH_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <select
-                value={selectedPos}
+                value={`${sortBy}_${sortDir}`}
                 onChange={(e) => {
-                  setSelectedPos(e.target.value)
+                  const [sb, sd] = e.target.value.split('_') as [
+                    'createdAt' | 'hanzi' | 'pinyin',
+                    'desc' | 'asc'
+                  ]
+                  setSortBy(sb)
+                  setSortDir(sd)
                   setPage(0)
                 }}
-                className="game-input"
-                style={{ padding: '7px 10px', fontSize: '0.84rem' }}
+                className="game-input flex-1 sm:flex-initial min-w-[130px] py-1.5 px-2.5 text-xs sm:text-[0.84rem]"
               >
-                {PART_OF_SPEECH_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
+                <option value="createdAt_desc">Mới nhất trước</option>
+                <option value="createdAt_asc">Cũ nhất trước</option>
+                <option value="hanzi_asc">Chữ Hán (A-Z)</option>
+                <option value="pinyin_asc">Pinyin (A-Z)</option>
               </select>
             </div>
 
-            <select
-              value={`${sortBy}_${sortDir}`}
-              onChange={(e) => {
-                const [sb, sd] = e.target.value.split('_') as [
-                  'createdAt' | 'hanzi' | 'pinyin',
-                  'desc' | 'asc'
-                ]
-                setSortBy(sb)
-                setSortDir(sd)
-                setPage(0)
-              }}
-              className="game-input"
-              style={{ padding: '7px 10px', fontSize: '0.84rem' }}
-            >
-              <option value="createdAt_desc">Mới nhất trước</option>
-              <option value="createdAt_asc">Cũ nhất trước</option>
-              <option value="hanzi_asc">Chữ Hán (A-Z)</option>
-              <option value="pinyin_asc">Pinyin (A-Z)</option>
-            </select>
-          </div>
-
-          {/* Right: View mode switch (Table vs Grid) */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: '#f1f5f9', padding: '3px', borderRadius: 'var(--radius-md)' }}>
-            <button
-              type="button"
-              onClick={() => setViewMode('TABLE')}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '6px 12px',
-                borderRadius: 'var(--radius-sm)',
-                border: 'none',
-                backgroundColor: viewMode === 'TABLE' ? '#ffffff' : 'transparent',
-                color: viewMode === 'TABLE' ? 'var(--primary)' : 'var(--text-muted)',
-                fontWeight: 800,
-                fontSize: '0.82rem',
-                cursor: 'pointer',
-                boxShadow: viewMode === 'TABLE' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-              }}
-              title="Xem dạng Bảng quản trị dữ liệu"
-            >
-              <TableIcon size={15} />
-              <span>Bảng</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('GRID')}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '6px 12px',
-                borderRadius: 'var(--radius-sm)',
-                border: 'none',
-                backgroundColor: viewMode === 'GRID' ? '#ffffff' : 'transparent',
-                color: viewMode === 'GRID' ? 'var(--primary)' : 'var(--text-muted)',
-                fontWeight: 800,
-                fontSize: '0.82rem',
-                cursor: 'pointer',
-                boxShadow: viewMode === 'GRID' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-              }}
-              title="Xem dạng Lưới thẻ từ vựng"
-            >
-              <LayoutGrid size={15} />
-              <span>Thẻ</span>
-            </button>
+            {/* Right: View mode switch (Table vs Grid) */}
+            <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-[var(--radius-md)] shrink-0">
+              <button
+                type="button"
+                onClick={() => setViewMode('TABLE')}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[var(--radius-sm)] border-none font-extrabold text-xs cursor-pointer"
+                style={{
+                  backgroundColor: viewMode === 'TABLE' ? '#ffffff' : 'transparent',
+                  color: viewMode === 'TABLE' ? 'var(--primary)' : 'var(--text-muted)',
+                  boxShadow: viewMode === 'TABLE' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                }}
+                title="Xem dạng Bảng quản trị dữ liệu"
+              >
+                <TableIcon size={14} />
+                <span>Bảng</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('GRID')}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[var(--radius-sm)] border-none font-extrabold text-xs cursor-pointer"
+                style={{
+                  backgroundColor: viewMode === 'GRID' ? '#ffffff' : 'transparent',
+                  color: viewMode === 'GRID' ? 'var(--primary)' : 'var(--text-muted)',
+                  boxShadow: viewMode === 'GRID' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                }}
+                title="Xem dạng Lưới thẻ từ vựng"
+              >
+                <LayoutGrid size={14} />
+                <span>Thẻ</span>
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Batch Action Floating Banner */}
         {selectedWordIds.length > 0 && (
-          <div
-            className="animate-fade-in"
-            style={{
-              padding: '12px 20px',
-              backgroundColor: '#eff6ff',
-              border: '1.5px solid #3b82f6',
-              borderRadius: 'var(--radius-md)',
-              marginBottom: '16px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: '12px',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', color: '#1e40af', fontWeight: 800 }}>
-              <CheckCircle2 size={18} style={{ color: '#2563eb' }} />
+          <div className="animate-fade-in p-3 sm:px-5 bg-blue-50 border-[1.5px] border-blue-500 rounded-[var(--radius-md)] mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2 text-sm text-blue-800 font-extrabold">
+              <CheckCircle2 size={18} className="shrink-0 text-blue-600" />
               <span>Đã chọn {selectedWordIds.length} từ vựng</span>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => setShowCreateSetFromSelected(true)}
-                className="btn-gamified btn-primary"
-                style={{ padding: '6px 16px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                className="btn-gamified btn-primary px-3.5 py-1.5 text-xs inline-flex items-center gap-1.5 whitespace-nowrap"
               >
                 <FolderPlus size={15} />
                 <span>Tạo Bộ từ vựng từ các từ đã chọn</span>
@@ -961,16 +792,7 @@ export const PrivateVocabManagementPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setSelectedWordIds([])}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: 'var(--radius-sm)',
-                  border: '1px solid #94a3b8',
-                  backgroundColor: '#ffffff',
-                  fontSize: '0.82rem',
-                  fontWeight: 700,
-                  color: 'var(--text-muted)',
-                  cursor: 'pointer',
-                }}
+                className="px-3 py-1.5 rounded-[var(--radius-sm)] border border-slate-400 bg-white text-xs font-bold text-[var(--text-muted)] cursor-pointer whitespace-nowrap"
               >
                 Bỏ chọn
               </button>
@@ -981,15 +803,15 @@ export const PrivateVocabManagementPage: React.FC = () => {
         {/* Main Content: Table or Grid */}
         <div className="game-card" style={{ padding: '0', backgroundColor: '#ffffff', overflow: 'hidden', border: '1.5px solid var(--border-card)' }}>
           {loading ? (
-            <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)', fontWeight: 600 }}>
+            <div className="text-center py-12 px-5 text-[var(--text-muted)] font-semibold text-sm">
               Đang tải danh sách từ vựng...
             </div>
           ) : !vocabPage || vocabPage.content.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
-              <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '6px' }}>
+            <div className="text-center py-12 px-5 text-[var(--text-muted)]">
+              <div className="text-sm sm:text-base font-extrabold text-[var(--text-main)] mb-1.5">
                 Không tìm thấy từ vựng nào
               </div>
-              <div style={{ fontSize: '0.85rem' }}>
+              <div className="text-xs sm:text-sm">
                 {searchKeyword || selectedPos !== 'Tất cả loại từ'
                   ? 'Thử thay đổi từ khóa tìm kiếm hoặc bỏ bộ lọc loại từ.'
                   : 'Kho từ vựng riêng của bạn đang rỗng. Hãy thêm từ mới hoặc nhập từ file CSV.'}
@@ -999,11 +821,11 @@ export const PrivateVocabManagementPage: React.FC = () => {
             /* ========================================================
                DATA TABLE VIEW (Optimized for large lists)
                ======================================================== */
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.88rem' }}>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[700px] border-collapse text-left text-xs sm:text-[0.88rem]">
                 <thead>
-                  <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1.5px solid var(--border-card)' }}>
-                    <th style={{ padding: '12px 14px', width: '40px', textAlign: 'center' }}>
+                  <tr className="bg-slate-50 border-b-[1.5px] border-[var(--border-card)] whitespace-nowrap">
+                    <th className="py-3 px-3.5 w-10 text-center">
                       <input
                         type="checkbox"
                         checked={!!isAllCurrentPageSelected}
@@ -1012,13 +834,13 @@ export const PrivateVocabManagementPage: React.FC = () => {
                         title="Chọn tất cả từ trên trang này"
                       />
                     </th>
-                    <th style={{ padding: '12px 14px', width: '50px', color: 'var(--text-muted)', fontWeight: 800 }}>STT</th>
-                    <th style={{ padding: '12px 14px', fontWeight: 800, color: 'var(--text-main)', width: '140px' }}>Chữ Hán</th>
-                    <th style={{ padding: '12px 14px', fontWeight: 800, color: 'var(--text-main)', width: '130px' }}>Pinyin</th>
-                    <th style={{ padding: '12px 14px', fontWeight: 800, color: 'var(--text-main)', width: '110px' }}>Loại từ</th>
-                    <th style={{ padding: '12px 14px', fontWeight: 800, color: 'var(--text-main)' }}>Nghĩa tiếng Việt</th>
-                    <th style={{ padding: '12px 14px', fontWeight: 800, color: 'var(--text-main)' }}>Câu ví dụ</th>
-                    <th style={{ padding: '12px 14px', fontWeight: 800, color: 'var(--text-main)', width: '80px', textAlign: 'center' }}>Thao tác</th>
+                    <th className="py-3 px-3 w-12 text-[var(--text-muted)] font-extrabold">STT</th>
+                    <th className="py-3 px-3.5 font-extrabold text-[var(--text-main)] w-32">Chữ Hán</th>
+                    <th className="py-3 px-3.5 font-extrabold text-[var(--text-main)] w-32">Pinyin</th>
+                    <th className="py-3 px-3.5 font-extrabold text-[var(--text-main)] w-28">Loại từ</th>
+                    <th className="py-3 px-3.5 font-extrabold text-[var(--text-main)]">Nghĩa tiếng Việt</th>
+                    <th className="py-3 px-3.5 font-extrabold text-[var(--text-main)]">Câu ví dụ</th>
+                    <th className="py-3 px-3.5 font-extrabold text-[var(--text-main)] w-20 text-center">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1034,7 +856,7 @@ export const PrivateVocabManagementPage: React.FC = () => {
                           transition: 'background-color 0.15s ease',
                         }}
                       >
-                        <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                        <td className="py-3 px-3.5 text-center">
                           <input
                             type="checkbox"
                             checked={isSelected}
@@ -1042,59 +864,43 @@ export const PrivateVocabManagementPage: React.FC = () => {
                             style={{ cursor: 'pointer' }}
                           />
                         </td>
-                        <td style={{ padding: '12px 14px', color: 'var(--text-muted)', fontWeight: 600 }}>{rowNumber}</td>
-                        <td style={{ padding: '12px 14px' }}>
-                          <span className="hanzi" style={{ fontSize: '1.45rem', fontWeight: 900, color: 'var(--text-chinese)' }}>
+                        <td className="py-3 px-3 text-[var(--text-muted)] font-semibold">{rowNumber}</td>
+                        <td className="py-3 px-3.5">
+                          <span className="hanzi text-xl sm:text-[1.45rem] font-black text-[var(--text-chinese)]">
                             {word.hanzi}
                           </span>
                         </td>
-                        <td style={{ padding: '12px 14px', color: 'var(--primary)', fontWeight: 800 }}>
+                        <td className="py-3 px-3.5 text-[var(--primary)] font-extrabold">
                           {word.pinyin}
                         </td>
-                        <td style={{ padding: '12px 14px' }}>
+                        <td className="py-3 px-3.5">
                           {word.partOfSpeech ? (
-                            <span
-                              style={{
-                                fontSize: '0.74rem',
-                                fontWeight: 800,
-                                padding: '2px 8px',
-                                borderRadius: 'var(--radius-full)',
-                                backgroundColor: '#f1f5f9',
-                                color: 'var(--text-muted)',
-                              }}
-                            >
+                            <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-slate-100 text-[var(--text-muted)] whitespace-nowrap">
                               {word.partOfSpeech}
                             </span>
                           ) : (
                             <span style={{ color: '#cbd5e1' }}>-</span>
                           )}
                         </td>
-                        <td style={{ padding: '12px 14px', fontWeight: 600, color: 'var(--text-main)' }}>
+                        <td className="py-3 px-3.5 font-semibold text-[var(--text-main)]">
                           {word.meaning}
                         </td>
-                        <td style={{ padding: '12px 14px', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                        <td className="py-3 px-3.5 text-xs text-[var(--text-muted)]">
                           {word.exampleSentence ? (
                             <div>
-                              <div style={{ color: 'var(--text-main)', fontWeight: 600 }}>{word.exampleSentence}</div>
-                              {word.exampleMeaning && <div style={{ fontSize: '0.78rem' }}>{word.exampleMeaning}</div>}
+                              <div className="text-[var(--text-main)] font-semibold">{word.exampleSentence}</div>
+                              {word.exampleMeaning && <div className="text-[11px]">{word.exampleMeaning}</div>}
                             </div>
                           ) : (
                             <span style={{ color: '#cbd5e1' }}>-</span>
                           )}
                         </td>
-                        <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                        <td className="py-3 px-3.5 text-center">
                           <button
                             type="button"
                             onClick={() => handleDeleteWord(word.id, word.hanzi)}
                             disabled={deletingId === word.id}
-                            style={{
-                              border: 'none',
-                              background: 'transparent',
-                              color: '#ef4444',
-                              cursor: 'pointer',
-                              padding: '6px',
-                              borderRadius: 'var(--radius-sm)',
-                            }}
+                            className="border-none bg-transparent text-red-500 cursor-pointer p-1.5 rounded-[var(--radius-sm)]"
                             title={`Xóa từ "${word.hanzi}"`}
                           >
                             <Trash2 size={16} />
@@ -1110,25 +916,17 @@ export const PrivateVocabManagementPage: React.FC = () => {
             /* ========================================================
                CARDS GRID VIEW
                ======================================================== */
-            <div style={{ padding: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '16px' }}>
+            <div className="p-3.5 sm:p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5 sm:gap-4">
               {vocabPage.content.map((word) => {
                 const isSelected = selectedWordIds.includes(word.id)
                 return (
                   <div
                     key={word.id}
                     onClick={() => handleToggleSelectWord(word.id)}
-                    className="game-card"
+                    className="game-card p-4 flex flex-col justify-between cursor-pointer relative rounded-[var(--radius-lg)] transition-all"
                     style={{
-                      padding: '16px',
                       backgroundColor: isSelected ? '#f0fdf4' : '#ffffff',
                       border: isSelected ? '2px solid #16a34a' : '1.5px solid var(--border-card)',
-                      borderRadius: 'var(--radius-lg)',
-                      position: 'relative',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                      transition: 'all 0.15s ease',
                     }}
                   >
                     <div>
@@ -1205,20 +1003,9 @@ export const PrivateVocabManagementPage: React.FC = () => {
               PAGINATION CONTROLS FOOTER
              ======================================================== */}
           {vocabPage && vocabPage.totalElements > 0 && (
-            <div
-              style={{
-                padding: '14px 20px',
-                borderTop: '1.5px solid var(--border-card)',
-                backgroundColor: '#f8fafc',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: '12px',
-              }}
-            >
+            <div className="px-4 py-3.5 sm:px-5 border-t-[1.5px] border-[var(--border-card)] bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               {/* Left: Summary and Page Size */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '0.84rem', color: 'var(--text-muted)' }}>
+              <div className="flex flex-wrap items-center gap-3 text-xs sm:text-[0.84rem] text-[var(--text-muted)]">
                 <span>
                   Đang xem{' '}
                   <strong style={{ color: 'var(--text-main)' }}>
@@ -1227,7 +1014,7 @@ export const PrivateVocabManagementPage: React.FC = () => {
                   trong tổng số <strong style={{ color: 'var(--text-main)' }}>{totalWords.toLocaleString('vi-VN')}</strong> từ
                 </span>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div className="flex items-center gap-1.5">
                   <span>Hiển thị:</span>
                   <select
                     value={pageSize}
@@ -1235,8 +1022,7 @@ export const PrivateVocabManagementPage: React.FC = () => {
                       setPageSize(Number(e.target.value))
                       setPage(0)
                     }}
-                    className="game-input"
-                    style={{ padding: '4px 8px', fontSize: '0.82rem' }}
+                    className="game-input py-1 px-2 text-xs"
                   >
                     <option value={20}>20 từ/trang</option>
                     <option value={50}>50 từ/trang</option>
@@ -1246,7 +1032,7 @@ export const PrivateVocabManagementPage: React.FC = () => {
               </div>
 
               {/* Right: Page navigation buttons */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div className="flex items-center justify-center sm:justify-end gap-1.5">
                 <button
                   type="button"
                   onClick={() => setPage(0)}

@@ -31,47 +31,28 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const hasMultipleRoles = user ? user.roles.includes('TEACHER') && user.roles.includes('STUDENT') : false
 
   return (
-    <header
-      style={{
-        height: '64px',
-        backgroundColor: '#ffffff',
-        borderBottom: '1.5px solid var(--border-card)',
-        padding: '0 24px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        position: 'sticky',
-        top: 0,
-        zIndex: 40,
-      }}
-    >
-      {/* Left: Mobile hamburger & Greeting */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+    <header className="print:hidden h-14 sm:h-16 bg-white border-b border-slate-200 px-3 sm:px-6 flex items-center justify-between gap-2 sticky top-0 z-30">
+      {/* Left: Mobile/Tablet hamburger & Greeting */}
+      <div className="flex items-center gap-2 sm:gap-3.5 min-w-0 flex-1">
         {onToggleMobileSidebar && (
           <button
             type="button"
             onClick={onToggleMobileSidebar}
-            style={{
-              display: 'none',
-              padding: '6px',
-              borderRadius: 'var(--radius-sm)',
-              border: '1px solid var(--border-card)',
-              backgroundColor: '#ffffff',
-              cursor: 'pointer',
-            }}
-            className="mobile-hamburger-btn"
+            className="lg:hidden inline-flex items-center justify-center p-2 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shrink-0"
+            aria-label="Mở menu điều hướng"
           >
             <Menu size={20} />
           </button>
         )}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '0.92rem', color: 'var(--text-muted)' }}>
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+          <span className="hidden sm:inline text-sm text-slate-500 shrink-0">
             Xin chào,
           </span>
-          <span style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-main)' }}>
+          <span className="text-sm sm:text-base font-extrabold text-slate-900 truncate">
             {user?.fullName || 'Bạn học'}
           </span>
           <span
+            className="hidden sm:inline-flex shrink-0"
             style={{
               fontSize: '0.72rem',
               fontWeight: 800,
@@ -84,10 +65,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             {isAdmin ? 'ADMIN' : isTeacher ? 'GIÁO VIÊN' : 'HỌC SINH'}
           </span>
           <span
+            className="hidden md:inline-flex items-center gap-1 shrink-0"
             style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '4px',
               fontSize: '0.72rem',
               fontWeight: 700,
               color: 'var(--jade-green-shadow)',
@@ -104,31 +83,24 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       </div>
 
       {/* Right: Gamification Badges & Mode Switcher */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
         {/* Switch Mode if Teacher & Student */}
         {hasMultipleRoles && !isAdmin && (
           <button
             type="button"
             onClick={() => switchMode(isTeacher ? 'STUDENT' : 'TEACHER')}
+            className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-full text-[11px] sm:text-xs font-extrabold cursor-pointer transition-all"
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 14px',
               backgroundColor: isTeacher ? 'var(--primary-light)' : '#fef3c7',
               border: isTeacher ? '1.5px solid var(--primary)' : '1.5px solid #f59e0b',
               color: isTeacher ? 'var(--primary)' : '#b45309',
-              borderRadius: 'var(--radius-full)',
-              fontSize: '0.8rem',
-              fontWeight: 800,
-              cursor: 'pointer',
-              transition: 'all 0.2s',
             }}
             title={isTeacher ? 'Chuyển sang giao diện Học sinh' : 'Chuyển sang giao diện Giáo viên'}
           >
-            {isTeacher ? <GraduationCap size={15} /> : <BookOpen size={15} />}
-            <span>{isTeacher ? 'Chế độ Học sinh' : 'Chế độ Giáo viên'}</span>
-            <ArrowRight size={13} />
+            {isTeacher ? <GraduationCap size={14} /> : <BookOpen size={14} />}
+            <span className="hidden sm:inline">{isTeacher ? 'Chế độ Học sinh' : 'Chế độ Giáo viên'}</span>
+            <span className="sm:hidden">{isTeacher ? 'Học sinh' : 'Giáo viên'}</span>
+            <ArrowRight size={12} className="hidden sm:inline" />
           </button>
         )}
 
@@ -136,21 +108,16 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         {streak && !isTeacher && !isAdmin && (
           <div
             title={`Chuỗi học tập liên tục: ${streak.currentStreak} ngày!`}
+            className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs sm:text-[0.82rem] font-extrabold shrink-0"
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-              padding: '6px 12px',
-              borderRadius: 'var(--radius-full)',
               backgroundColor: streak.completedToday ? '#ffedd5' : '#f1f5f9',
               border: streak.completedToday ? '1.5px solid #fb923c' : '1px solid #cbd5e1',
               color: streak.completedToday ? '#c2410c' : '#64748b',
-              fontSize: '0.82rem',
-              fontWeight: 800,
             }}
           >
-            <Flame size={16} style={{ color: streak.completedToday ? '#ea580c' : '#94a3b8' }} />
-            <span>{streak.currentStreak} ngày</span>
+            <Flame size={15} style={{ color: streak.completedToday ? '#ea580c' : '#94a3b8' }} />
+            <span>{streak.currentStreak}</span>
+            <span className="hidden sm:inline">ngày</span>
           </div>
         )}
 
@@ -159,22 +126,16 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           <div
             onClick={() => navigate('/progress')}
             title={`Cấp ${userLevel.currentLevel}: ${userLevel.title}. Bấm xem tiến trình.`}
+            className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-xs sm:text-[0.82rem] font-extrabold cursor-pointer shrink-0"
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 14px',
-              borderRadius: 'var(--radius-full)',
               backgroundColor: '#fef3c7',
               border: '1.5px solid #f59e0b',
               color: '#92400e',
-              fontSize: '0.82rem',
-              fontWeight: 800,
-              cursor: 'pointer',
             }}
           >
-            <Award size={16} style={{ color: '#d97706' }} />
-            <span>Cấp {userLevel.currentLevel}: {userLevel.title}</span>
+            <Award size={15} style={{ color: '#d97706' }} />
+            <span>Cấp {userLevel.currentLevel}</span>
+            <span className="hidden sm:inline">: {userLevel.title}</span>
           </div>
         )}
       </div>

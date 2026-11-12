@@ -395,7 +395,7 @@ export const LessonStudyPage: React.FC = () => {
             Bài học này không tồn tại hoặc đã được chuyển sang trạng thái tạm ẩn theo chính sách hệ thống.
           </p>
           <button
-            onClick={() => navigate('/curriculum')}
+            onClick={() => navigate('/roadmap')}
             className="w-full inline-flex items-center justify-center gap-2 py-3 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold transition-all shadow-md shadow-emerald-600/20 active:scale-[0.98]"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -429,33 +429,33 @@ export const LessonStudyPage: React.FC = () => {
   const currentCard = flashcards[flashcardIndex] || (lessonData.vocabularies && lessonData.vocabularies[flashcardIndex])
 
   return (
-    <div className="min-h-screen bg-slate-50 text-gray-800 pb-16">
+    <div className="min-h-screen bg-slate-50 text-gray-800 pb-16 overflow-x-hidden">
       {/* Top sticky header */}
-      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-emerald-100/80 shadow-sm">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-emerald-100/80 shadow-sm">
+        <div className="max-w-[1440px] mx-auto px-3.5 sm:px-8 h-16 flex items-center justify-between gap-2.5 sm:gap-4">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
             <button
-              onClick={() => navigate('/curriculum')}
-              className="p-2 rounded-xl text-gray-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
+              onClick={() => navigate('/roadmap')}
+              className="p-2 rounded-xl text-gray-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors shrink-0"
               title="Quay lại lộ trình"
               aria-label="Quay lại lộ trình"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <div>
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 whitespace-nowrap">
                   {lessonData.levelTitle || 'HSK 1'}
                 </span>
-                <span className="text-xs text-gray-400">Bài {lessonData.sortOrder}</span>
+                <span className="text-xs text-gray-400 whitespace-nowrap">Bài {lessonData.sortOrder}</span>
               </div>
-              <h1 className="text-base sm:text-lg font-bold text-gray-900 truncate max-w-xs sm:max-w-md">
+              <h1 className="text-sm sm:text-lg font-bold text-gray-900 truncate max-w-full sm:max-w-md">
                 {lessonData.title}
               </h1>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <div className="hidden sm:flex items-center gap-3 text-xs text-gray-600 bg-slate-100 px-3 py-1.5 rounded-full">
               <span className="flex items-center gap-1 font-medium text-emerald-700">
                 <BookOpen className="w-3.5 h-3.5" />
@@ -484,41 +484,41 @@ export const LessonStudyPage: React.FC = () => {
         </div>
       </header>
 
-      {/* Main Content Container */}
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 pt-6">
-        {/* Lesson Banner */}
-        <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-emerald-700/10 mb-6 relative overflow-hidden">
-          <div className="absolute right-0 bottom-0 opacity-10 pointer-events-none transform translate-x-8 translate-y-8">
-            <GraduationCap className="w-64 h-64 text-white" />
-          </div>
-          <div className="relative z-10 max-w-2xl">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-semibold tracking-wide uppercase mb-3">
+      {/* Main Content Container - Tối ưu maxWidth lên 1440px */}
+      <main className="max-w-[1440px] mx-auto px-4 sm:px-8 pt-6">
+        {/* Lesson Banner - Thiết kế Compact và thanh lịch */}
+        <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 rounded-2xl p-5 sm:p-6 text-white shadow-lg shadow-emerald-700/10 mb-6 relative overflow-hidden flex items-center justify-between gap-6">
+          <div className="relative z-10 max-w-3xl">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-xs font-semibold tracking-wide uppercase mb-2">
               <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
               <span>Chương trình học HSK chuẩn</span>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight mb-2">
+            <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight mb-1">
               {lessonData.title}
             </h2>
             {lessonData.description && (
-              <p className="text-emerald-50 text-sm sm:text-base leading-relaxed line-clamp-2">
+              <p className="text-emerald-50 text-xs sm:text-sm leading-relaxed line-clamp-1">
                 {lessonData.description}
               </p>
             )}
+          </div>
+          <div className="hidden sm:block opacity-15 flex-shrink-0">
+            <GraduationCap className="w-24 h-24 text-white" />
           </div>
         </div>
 
         {/* Tab Navigation */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6 bg-white p-1.5 rounded-2xl border border-gray-200 shadow-sm">
-          <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-1 w-full sm:w-auto">
             <button
               onClick={() => setActiveTab('VOCAB')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+              className={`flex items-center justify-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all flex-1 sm:flex-initial ${
                 activeTab === 'VOCAB'
                   ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
                   : 'text-gray-600 hover:text-emerald-700 hover:bg-emerald-50'
               }`}
             >
-              <BookOpen className="w-4 h-4" />
+              <BookOpen className="w-4 h-4 shrink-0" />
               <span>Từ vựng ({lessonData.vocabularies.length})</span>
             </button>
 
@@ -526,13 +526,13 @@ export const LessonStudyPage: React.FC = () => {
             {hasGrammar ? (
               <button
                 onClick={() => setActiveTab('GRAMMAR')}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                className={`flex items-center justify-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all flex-1 sm:flex-initial ${
                   activeTab === 'GRAMMAR'
                     ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
                     : 'text-gray-600 hover:text-emerald-700 hover:bg-emerald-50'
                 }`}
               >
-                <Sparkles className="w-4 h-4 text-amber-300" />
+                <Sparkles className="w-4 h-4 text-amber-300 shrink-0" />
                 <span>Ngữ pháp ({lessonData.grammarPoints.length})</span>
               </button>
             ) : null}
@@ -542,13 +542,13 @@ export const LessonStudyPage: React.FC = () => {
                 setActiveTab('FLASHCARD')
                 setIsFlipped(false)
               }}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+              className={`flex items-center justify-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all flex-1 sm:flex-initial ${
                 activeTab === 'FLASHCARD'
                   ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
                   : 'text-gray-600 hover:text-emerald-700 hover:bg-emerald-50'
               }`}
             >
-              <Layers className="w-4 h-4" />
+              <Layers className="w-4 h-4 shrink-0" />
               <span>Flashcard ôn tập</span>
             </button>
           </div>
@@ -567,7 +567,7 @@ export const LessonStudyPage: React.FC = () => {
           )}
         </div>
 
-        {/* TAB 1: DANH SÁCH TỪ VỰNG */}
+        {/* TAB 1: DANH SÁCH TỪ VỰNG - Lưới hiển thị 3-4 cột tiết kiệm không gian */}
         {activeTab === 'VOCAB' && (
           <div className="space-y-4">
             {filteredVocabs.length === 0 ? (
@@ -576,28 +576,28 @@ export const LessonStudyPage: React.FC = () => {
                 <p className="text-gray-500 font-medium">Không tìm thấy từ vựng phù hợp</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {filteredVocabs.map((vocab, index) => (
                   <div
                     key={vocab.id}
-                    className="bg-white rounded-2xl p-5 border border-gray-200/80 shadow-sm hover:shadow-md hover:border-emerald-300 transition-all group flex flex-col justify-between"
+                    className="bg-white rounded-2xl p-4 border border-gray-200/90 shadow-sm hover:shadow-md hover:border-emerald-400 transition-all group flex flex-col justify-between"
                   >
                     <div>
-                      {/* Top row: Index & Pronunciation button */}
+                      {/* Top row: Index, Part of speech & Pronunciation button */}
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-bold text-slate-400">#{index + 1}</span>
-                        <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-bold text-slate-400">#{index + 1}</span>
+                        <div className="flex items-center gap-1.5">
                           {vocab.partOfSpeech && (
-                            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">
                               {vocab.partOfSpeech}
                             </span>
                           )}
-                          {/* TC-02: Ẩn nút nghe nếu từ vựng chưa có audio */}
+                          {/* TC-02: Nút nghe phát âm nếu từ vựng có audio */}
                           {vocab.audioUrl && vocab.audioUrl.trim() && (
                             <button
                               type="button"
                               onClick={() => togglePronunciation(vocab)}
-                              className={`p-2 rounded-xl transition-all ${
+                              className={`p-1.5 rounded-lg transition-all ${
                                 playingAudioId === vocab.id
                                   ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30 ring-2 ring-emerald-400'
                                   : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
@@ -606,41 +606,41 @@ export const LessonStudyPage: React.FC = () => {
                               aria-label={playingAudioId === vocab.id ? `Dừng phát âm từ ${vocab.hanzi}` : `Nghe phát âm từ ${vocab.hanzi}`}
                             >
                               {playingAudioId === vocab.id ? (
-                                <VolumeX className="w-4 h-4" />
+                                <VolumeX className="w-3.5 h-3.5" />
                               ) : (
-                                <Volume2 className="w-4 h-4" />
+                                <Volume2 className="w-3.5 h-3.5" />
                               )}
                             </button>
                           )}
                         </div>
                       </div>
 
-                      {/* Main Hanzi & Pinyin (TC-02: Font và Pinyin có dấu thanh điệu chuẩn) */}
-                      <div className="mb-3">
-                        <div className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-wide font-sans mb-1">
+                      {/* Main Hanzi & Pinyin (Font chuẩn, kích thước cân đối) */}
+                      <div className="mb-2">
+                        <div className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-wide font-sans mb-0.5">
                           {vocab.hanzi}
                         </div>
-                        <div className="text-base font-semibold text-emerald-700 tracking-wider">
+                        <div className="text-sm font-semibold text-emerald-700 tracking-wider">
                           {vocab.pinyin}
                         </div>
                       </div>
 
                       {/* Vietnamese Meaning */}
-                      <div className="text-sm font-medium text-gray-800 leading-snug mb-3">
+                      <div className="text-xs sm:text-sm font-medium text-gray-800 leading-snug mb-2.5">
                         {vocab.meaning}
                       </div>
 
                       {/* Example sentence if present */}
                       {vocab.exampleSentence && (
-                        <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 text-xs space-y-1">
-                          <div className="font-semibold text-gray-900 font-sans text-sm">
+                        <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100 text-xs space-y-1">
+                          <div className="font-semibold text-gray-900 font-sans text-xs">
                             {vocab.exampleSentence}
                           </div>
                           {vocab.examplePinyin && (
-                            <div className="text-emerald-700 font-medium">{vocab.examplePinyin}</div>
+                            <div className="text-emerald-700 font-medium text-[11px]">{vocab.examplePinyin}</div>
                           )}
                           {vocab.exampleMeaning && (
-                            <div className="text-gray-600">{vocab.exampleMeaning}</div>
+                            <div className="text-gray-600 text-[11px]">{vocab.exampleMeaning}</div>
                           )}
                         </div>
                       )}
@@ -658,22 +658,22 @@ export const LessonStudyPage: React.FC = () => {
             {lessonData.grammarPoints.map((gp, idx) => (
               <div
                 key={gp.id}
-                className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-200 shadow-sm hover:shadow-md transition-all"
+                className="bg-white rounded-3xl p-4 sm:p-8 border border-gray-200 shadow-sm hover:shadow-md transition-all"
               >
-                <div className="flex items-center gap-3 mb-4">
-                  <span className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center text-sm">
+                <div className="flex items-start sm:items-center gap-3 mb-4">
+                  <span className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center text-sm shrink-0">
                     {idx + 1}
                   </span>
-                  <h3 className="text-lg sm:text-xl font-bold text-gray-900">{gp.title}</h3>
+                  <h3 className="text-lg sm:text-xl font-bold text-gray-900 break-words">{gp.title}</h3>
                 </div>
 
                 {/* Structure / Formula */}
                 {gp.structure && (
-                  <div className="mb-4 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4">
+                  <div className="mb-4 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-3.5 sm:p-4">
                     <div className="text-xs font-bold text-emerald-800 uppercase tracking-wider mb-1">
                       Cấu trúc ngữ pháp
                     </div>
-                    <div className="text-base font-bold text-emerald-950 font-sans">{gp.structure}</div>
+                    <div className="text-sm sm:text-base font-bold text-emerald-950 font-sans break-words">{gp.structure}</div>
                   </div>
                 )}
 
@@ -692,9 +692,9 @@ export const LessonStudyPage: React.FC = () => {
                       {gp.examples.map((ex, exIdx) => (
                         <div
                           key={ex.id || exIdx}
-                          className="bg-slate-50 hover:bg-slate-100/80 transition-colors rounded-2xl p-4 border border-slate-200/60 flex items-start justify-between gap-4"
+                          className="bg-slate-50 hover:bg-slate-100/80 transition-colors rounded-2xl p-3.5 sm:p-4 border border-slate-200/60 flex items-start justify-between gap-3 sm:gap-4"
                         >
-                          <div className="space-y-1">
+                          <div className="space-y-1 min-w-0 flex-1">
                             <div className="text-base sm:text-lg font-bold text-gray-900 font-sans tracking-wide">
                               {ex.hanzi}
                             </div>
@@ -893,11 +893,11 @@ export const LessonStudyPage: React.FC = () => {
                 {/* Flip Card Container */}
                 <div
                   onClick={() => setIsFlipped(!isFlipped)}
-                  className="w-full min-h-[320px] bg-white rounded-3xl border-2 border-emerald-300 shadow-xl p-8 flex flex-col items-center justify-center cursor-pointer text-center select-none hover:shadow-2xl transition-all relative overflow-hidden"
+                  className="w-full min-h-[270px] sm:min-h-[320px] bg-white rounded-3xl border-2 border-emerald-300 shadow-xl p-5 sm:p-8 flex flex-col items-center justify-center cursor-pointer text-center select-none hover:shadow-2xl transition-all relative overflow-hidden"
                 >
                   {/* Nút phát âm (TC-02: Ẩn nếu từ không có audio) */}
                   {currentCard.audioUrl && currentCard.audioUrl.trim() && (
-                    <div className="absolute top-4 right-4">
+                    <div className="absolute top-3 right-3 sm:top-4 sm:right-4">
                       <button
                         type="button"
                         onClick={(e) => {
@@ -1022,13 +1022,13 @@ export const LessonStudyPage: React.FC = () => {
         )}
 
         {/* HTT-04-CN-004: Bottom Completion Action & Inline Celebration Progress */}
-        <div className="mt-12 space-y-4">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-200/90 shadow-sm transition-all overflow-hidden">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-              <div className="flex items-center gap-4">
-                <PandaMascot size={56} />
-                <div>
-                  <div className="flex items-center gap-2">
+        <div className="mt-8 sm:mt-12 space-y-4">
+          <div className="bg-white rounded-3xl p-5 sm:p-8 border border-gray-200/90 shadow-sm transition-all overflow-hidden">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 sm:gap-6">
+              <div className="flex items-start sm:items-center gap-3.5 sm:gap-4 min-w-0">
+                <PandaMascot size={56} className="shrink-0" />
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
                     <h2 className="text-base sm:text-lg font-bold text-gray-900">
                       {progressData?.completed ? 'Bài học đã hoàn thành' : 'Bạn đã nắm vững bài học này chưa?'}
                     </h2>
@@ -1082,7 +1082,7 @@ export const LessonStudyPage: React.FC = () => {
 
                     <button
                       type="button"
-                      onClick={() => navigate('/curriculum')}
+                      onClick={() => navigate('/roadmap')}
                       className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-white hover:bg-gray-50 text-gray-700 font-semibold border border-gray-200 transition-all shadow-sm"
                     >
                       <Layers className="w-4 h-4 text-gray-500" />
@@ -1105,14 +1105,14 @@ export const LessonStudyPage: React.FC = () => {
 
             {/* TC-01 & GEMINI.md: Inline Celebration & Level Progress Banner (TUYỆT ĐỐI KHÔNG DÙNG MODAL) */}
             {showCelebration && progressData?.completed && (
-              <div className="mt-6 pt-6 border-t border-emerald-100 bg-gradient-to-r from-emerald-50/80 via-teal-50/60 to-cyan-50/50 -mx-6 -mb-6 sm:-mx-8 sm:-mb-8 p-6 sm:p-8 animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="mt-6 pt-6 border-t border-emerald-100 bg-gradient-to-r from-emerald-50/80 via-teal-50/60 to-cyan-50/50 -mx-5 -mb-5 sm:-mx-8 sm:-mb-8 p-5 sm:p-8 animate-in fade-in slide-in-from-top-2 duration-300">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="flex items-start gap-3.5">
+                  <div className="flex items-start gap-3.5 min-w-0">
                     <div className="p-2.5 rounded-2xl bg-emerald-500 text-white shadow-md shadow-emerald-500/20 shrink-0">
                       <Sparkles className="w-6 h-6" />
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="text-base font-bold text-emerald-950">
                           Chúc mừng bạn đã hoàn thành bài học này!
                         </span>
@@ -1156,7 +1156,7 @@ export const LessonStudyPage: React.FC = () => {
           <div
             role="alert"
             aria-live="assertive"
-            className="fixed bottom-6 right-6 z-50 max-w-sm sm:max-w-md bg-white border border-rose-200/80 border-l-4 border-l-rose-500 rounded-2xl shadow-xl shadow-slate-900/10 p-4 flex items-start gap-3 transition-all animate-in fade-in slide-in-from-bottom-5 duration-300"
+            className="fixed bottom-4 left-4 right-4 sm:left-auto sm:bottom-6 sm:right-6 z-50 sm:max-w-md bg-white border border-rose-200/80 border-l-4 border-l-rose-500 rounded-2xl shadow-xl shadow-slate-900/10 p-4 flex items-start gap-3 transition-all animate-in fade-in slide-in-from-bottom-5 duration-300"
           >
             <div className="p-1.5 rounded-xl bg-rose-50 text-rose-600 shrink-0">
               <AlertCircle className="w-5 h-5" />

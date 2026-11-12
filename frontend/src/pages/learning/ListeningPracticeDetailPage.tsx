@@ -40,17 +40,27 @@ export const ListeningPracticeDetailPage: React.FC = () => {
   const practiceId = id ? parseInt(id, 10) : 0
 
   useEffect(() => {
+    let ignore = false
     if (!user || !practiceId) return
-    setIsLoading(true)
-    setError(null)
-    setResult(null)
-    setSelectedAnswers({})
     getListeningPracticeDetail(practiceId, user.token)
-      .then((data) => setPractice(data))
-      .catch((err: any) => {
-        setError(err?.message || 'Không thể tải chi tiết bài nghe.')
+      .then((data) => {
+        if (!ignore) {
+          setPractice(data)
+        }
       })
-      .finally(() => setIsLoading(false))
+      .catch((err: any) => {
+        if (!ignore) {
+          setError(err?.message || 'Không thể tải chi tiết bài nghe.')
+        }
+      })
+      .finally(() => {
+        if (!ignore) {
+          setIsLoading(false)
+        }
+      })
+    return () => {
+      ignore = true
+    }
   }, [practiceId, user])
 
   const handleSelectOption = (questionId: number, optionId: number) => {
@@ -62,17 +72,7 @@ export const ListeningPracticeDetailPage: React.FC = () => {
   }
 
   const handleSubmit = async () => {
-    if (!user || !practice) return
-
-    // Kiểm tra xem đã trả lời hết câu hỏi chưa
-    const unansweredCount =
-      practice.questions.length - Object.keys(selectedAnswers).length
-    if (unansweredCount > 0) {
-      const confirmSubmit = window.confirm(
-        `Bạn vẫn còn ${unansweredCount} câu hỏi chưa chọn đáp án. Bạn có chắc chắn muốn nộp bài không?`
-      )
-      if (!confirmSubmit) return
-    }
+    if (!user || !practice || audioError) return
 
     setIsSubmitting(true)
     setError(null)
@@ -143,6 +143,7 @@ export const ListeningPracticeDetailPage: React.FC = () => {
 
   const answeredQuestionsCount = Object.keys(selectedAnswers).length
   const totalQuestionsCount = practice.questions.length
+  const unansweredCount = totalQuestionsCount - answeredQuestionsCount
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
@@ -184,6 +185,7 @@ export const ListeningPracticeDetailPage: React.FC = () => {
           src={practice.primaryAudioUrl}
           title={practice.title}
           onErrorOccurred={(msg) => setAudioError(msg)}
+          onLoadedSuccess={() => setAudioError(null)}
         />
       </div>
 
@@ -196,7 +198,7 @@ export const ListeningPracticeDetailPage: React.FC = () => {
               <p className="font-semibold">Lưu ý sự cố âm thanh:</p>
               <p className="mt-0.5">{audioError}</p>
               <p className="mt-1 text-amber-700 dark:text-amber-300/70">
-                Bạn không phải chịu phạt hay mất lượt nộp khi gặp sự cố đường truyền audio.
+                Nút nộp bài được tạm khóa để bảo vệ bạn khỏi bài làm lỗi. Bạn không mất lượt nộp khi gặp sự cố âm thanh.
               </p>
             </div>
           </div>
@@ -443,19 +445,32 @@ export const ListeningPracticeDetailPage: React.FC = () => {
       {!result && (
         <div className="sticky bottom-6 mt-8 rounded-2xl border border-slate-200/80 bg-white/95 p-4 shadow-xl backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="text-xs text-slate-600 dark:text-slate-400">
-              Đã trả lời:{' '}
-              <strong className="text-indigo-600 dark:text-indigo-400">
-                {answeredQuestionsCount} / {totalQuestionsCount}
-              </strong>{' '}
-              câu
+            <div className="flex flex-col text-xs text-slate-600 dark:text-slate-400">
+              <div>
+                Đã trả lời:{' '}
+                <strong className="text-indigo-600 dark:text-indigo-400">
+                  {answeredQuestionsCount} / {totalQuestionsCount}
+                </strong>{' '}
+                câu
+              </div>
+              {unansweredCount > 0 && !audioError && (
+                <span className="mt-0.5 text-[11px] text-amber-600 dark:text-amber-400">
+                  (Còn {unansweredCount} câu chưa chọn - câu bỏ trống tính 0 điểm)
+                </span>
+              )}
+              {audioError && (
+                <span className="mt-0.5 text-[11px] font-semibold text-rose-600 dark:text-rose-400">
+                  Khóa nộp bài do âm thanh chưa tải được. Vui lòng bấm thử lại trên audio.
+                </span>
+              )}
             </div>
 
             <button
               type="button"
-              disabled={isSubmitting}
+              disabled={isSubmitting || Boolean(audioError)}
               onClick={handleSubmit}
-              className="inline-flex items-center space-x-2 rounded-xl bg-indigo-600 px-6 py-2.5 text-xs font-bold text-white shadow-md shadow-indigo-600/30 transition hover:bg-indigo-500 active:scale-95 disabled:opacity-50"
+              title={audioError ? 'Không thể nộp bài khi tệp âm thanh bị lỗi' : undefined}
+              className="inline-flex items-center space-x-2 rounded-xl bg-indigo-600 px-6 py-2.5 text-xs font-bold text-white shadow-md shadow-indigo-600/30 transition hover:bg-indigo-500 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? (
                 <>

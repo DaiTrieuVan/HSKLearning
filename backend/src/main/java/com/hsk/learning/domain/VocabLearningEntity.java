@@ -53,6 +53,9 @@ public class VocabLearningEntity {
 	@Column(name = "review_count", nullable = false)
 	private Integer reviewCount = 1;
 
+	@Column(name = "is_mastered", nullable = false)
+	private boolean isMastered = false;
+
 	@UpdateTimestamp
 	@Column(name = "updated_at", nullable = false)
 	private Instant updatedAt;
@@ -178,6 +181,14 @@ public class VocabLearningEntity {
 
 	public void setReviewCount(Integer reviewCount) {
 		this.reviewCount = reviewCount;
+	}
+
+	public boolean isMastered() {
+		return isMastered;
+	}
+
+	public void setMastered(boolean isMastered) {
+		this.isMastered = isMastered;
 	}
 
 	public Instant getUpdatedAt() {

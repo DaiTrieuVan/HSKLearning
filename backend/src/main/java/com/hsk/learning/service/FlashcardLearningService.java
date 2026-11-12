@@ -25,11 +25,16 @@ import com.hsk.learning.dto.FlashcardReviewResponse;
 import com.hsk.learning.dto.FlashcardSessionSummaryResponse;
 import com.hsk.learning.dto.ReviewFlashcardCommand;
 import com.hsk.learning.repository.VocabLearningRepository;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,6 +51,7 @@ public class FlashcardLearningService {
 	private final VocabSetRepository vocabSetRepository;
 	private final ClassVocabSetRepository classVocabSetRepository;
 	private final ClassMemberRepository classMemberRepository;
+	private final XpLevelService xpLevelService;
 
 	public FlashcardLearningService(
 			VocabLearningRepository vocabLearningRepository,
@@ -56,7 +62,8 @@ public class FlashcardLearningService {
 			LessonRepository lessonRepository,
 			VocabSetRepository vocabSetRepository,
 			ClassVocabSetRepository classVocabSetRepository,
-			ClassMemberRepository classMemberRepository) {
+			ClassMemberRepository classMemberRepository,
+			XpLevelService xpLevelService) {
 		this.vocabLearningRepository = vocabLearningRepository;
 		this.lessonVocabularyRepository = lessonVocabularyRepository;
 		this.vocabSetItemRepository = vocabSetItemRepository;
@@ -66,26 +73,31 @@ public class FlashcardLearningService {
 		this.vocabSetRepository = vocabSetRepository;
 		this.classVocabSetRepository = classVocabSetRepository;
 		this.classMemberRepository = classMemberRepository;
+		this.xpLevelService = xpLevelService;
 	}
 
 	@Transactional(readOnly = true)
 	public List<FlashcardCardResponse> getFlashcards(Long currentUserId, Long lessonId, Long vocabSetId, Boolean onlyForgotten) {
-		List<VocabularyEntity> vocabs = getAccessibleVocabularies(currentUserId, lessonId, vocabSetId);
+		return getFlashcards(currentUserId, lessonId, vocabSetId, onlyForgotten, "ALL", "DEFAULT", null);
+	}
+
+	@Transactional(readOnly = true)
+	public List<FlashcardCardResponse> getFlashcards(
+			Long currentUserId,
+			Long lessonId,
+			Long vocabSetId,
+			Boolean onlyForgotten,
+			String filterStatus,
+			String order,
+			Integer limit) {
+		List<VocabularyEntity> vocabs = findFilteredVocabularies(
+				currentUserId, lessonId, vocabSetId, onlyForgotten, filterStatus, order, limit);
 		if (vocabs.isEmpty()) {
 			return Collections.emptyList();
 		}
 
 		List<Long> vocabIds = vocabs.stream().map(VocabularyEntity::getId).toList();
-		Map<Long, FlashcardResult> resultMap = vocabLearningRepository
-				.findAllById_UserIdAndId_VocabularyIdIn(currentUserId, vocabIds)
-				.stream()
-				.collect(Collectors.toMap(vl -> vl.getId().getVocabularyId(), VocabLearningEntity::getLastResult));
-
-		if (Boolean.TRUE.equals(onlyForgotten)) {
-			vocabs = vocabs.stream()
-					.filter(v -> resultMap.get(v.getId()) == FlashcardResult.FORGOTTEN)
-					.toList();
-		}
+		Map<Long, FlashcardResult> resultMap = buildLastResultMap(currentUserId, vocabIds);
 
 		return vocabs.stream().map(v -> new FlashcardCardResponse(
 				v.getId(),
@@ -101,6 +113,73 @@ public class FlashcardLearningService {
 		)).toList();
 	}
 
+	/**
+	 * Truy vấn danh sách từ vựng có quyền truy cập và lọc theo trạng thái học, thứ tự và giới hạn số lượng.
+	 * Dùng chung cho Flashcard, Trắc nghiệm và các chế độ luyện tập tiếp theo.
+	 */
+	@Transactional(readOnly = true)
+	public List<VocabularyEntity> findFilteredVocabularies(
+			Long currentUserId,
+			Long lessonId,
+			Long vocabSetId,
+			Boolean onlyForgotten,
+			String filterStatus,
+			String order,
+			Integer limit) {
+		List<VocabularyEntity> vocabs = new ArrayList<>(getAccessibleVocabularies(currentUserId, lessonId, vocabSetId));
+		if (vocabs.isEmpty()) {
+			return Collections.emptyList();
+		}
+
+		List<Long> vocabIds = vocabs.stream().map(VocabularyEntity::getId).toList();
+		List<VocabLearningEntity> learnings = vocabLearningRepository
+				.findAllById_UserIdAndId_VocabularyIdIn(currentUserId, vocabIds);
+
+		Map<Long, FlashcardResult> resultMap = new HashMap<>();
+		Map<Long, Boolean> masteredMap = new HashMap<>();
+		for (VocabLearningEntity vl : learnings) {
+			Long vId = vl.getId().getVocabularyId();
+			if (vl.getLastResult() != null) {
+				resultMap.putIfAbsent(vId, vl.getLastResult());
+			}
+			masteredMap.putIfAbsent(vId, vl.isMastered());
+		}
+
+		if (Boolean.TRUE.equals(onlyForgotten)) {
+			vocabs = vocabs.stream()
+					.filter(v -> resultMap.get(v.getId()) == FlashcardResult.FORGOTTEN)
+					.collect(Collectors.toCollection(ArrayList::new));
+		} else if ("UNMASTERED".equalsIgnoreCase(filterStatus)) {
+			vocabs = vocabs.stream()
+					.filter(v -> !Boolean.TRUE.equals(masteredMap.get(v.getId())))
+					.collect(Collectors.toCollection(ArrayList::new));
+		} else if ("MASTERED".equalsIgnoreCase(filterStatus)) {
+			vocabs = vocabs.stream()
+					.filter(v -> Boolean.TRUE.equals(masteredMap.get(v.getId())))
+					.collect(Collectors.toCollection(ArrayList::new));
+		}
+
+		if ("RANDOM".equalsIgnoreCase(order)) {
+			Collections.shuffle(vocabs);
+		}
+
+		if (limit != null && limit > 0 && vocabs.size() > limit) {
+			vocabs = new ArrayList<>(vocabs.subList(0, limit));
+		}
+
+		return vocabs;
+	}
+
+	private Map<Long, FlashcardResult> buildLastResultMap(Long currentUserId, List<Long> vocabIds) {
+		Map<Long, FlashcardResult> resultMap = new HashMap<>();
+		for (VocabLearningEntity vl : vocabLearningRepository.findAllById_UserIdAndId_VocabularyIdIn(currentUserId, vocabIds)) {
+			if (vl.getLastResult() != null) {
+				resultMap.putIfAbsent(vl.getId().getVocabularyId(), vl.getLastResult());
+			}
+		}
+		return resultMap;
+	}
+
 	@Transactional
 	public FlashcardReviewResponse reviewCard(Long currentUserId, ReviewFlashcardCommand command) {
 		UserEntity user = userRepository.findById(currentUserId)
@@ -114,6 +193,13 @@ public class FlashcardLearningService {
 				.orElseGet(() -> new VocabLearningEntity(user, vocab, command.result()));
 
 		learning.recordReview(command.result());
+		if (command.result() == FlashcardResult.REMEMBERED) {
+			learning.setMastered(true);
+			String sourceId = "flashcard:" + vocab.getId() + ":" + LocalDate.now();
+			xpLevelService.awardXp(user, 5, "FLASHCARD", sourceId, "Học từ vựng Flashcard: " + vocab.getHanzi());
+		} else {
+			learning.setMastered(false);
+		}
 		learning = vocabLearningRepository.save(learning);
 
 		return new FlashcardReviewResponse(
@@ -133,10 +219,12 @@ public class FlashcardLearningService {
 		}
 
 		List<Long> vocabIds = vocabs.stream().map(VocabularyEntity::getId).toList();
-		Map<Long, FlashcardResult> resultMap = vocabLearningRepository
-				.findAllById_UserIdAndId_VocabularyIdIn(currentUserId, vocabIds)
-				.stream()
-				.collect(Collectors.toMap(vl -> vl.getId().getVocabularyId(), VocabLearningEntity::getLastResult));
+		Map<Long, FlashcardResult> resultMap = new HashMap<>();
+		for (VocabLearningEntity vl : vocabLearningRepository.findAllById_UserIdAndId_VocabularyIdIn(currentUserId, vocabIds)) {
+			if (vl.getLastResult() != null) {
+				resultMap.putIfAbsent(vl.getId().getVocabularyId(), vl.getLastResult());
+			}
+		}
 
 		int rememberedCount = 0;
 		int forgottenCount = 0;
@@ -164,11 +252,8 @@ public class FlashcardLearningService {
 		);
 	}
 
-	private List<VocabularyEntity> getAccessibleVocabularies(Long currentUserId, Long lessonId, Long vocabSetId) {
-		if (lessonId == null && vocabSetId == null) {
-			throw new ApiException(ApiErrorCode.VALIDATION_FAILED);
-		}
-
+	@Transactional(readOnly = true)
+	public List<VocabularyEntity> getAccessibleVocabularies(Long currentUserId, Long lessonId, Long vocabSetId) {
 		if (lessonId != null) {
 			LessonEntity lesson = lessonRepository.findById(lessonId)
 					.orElseThrow(() -> new ApiException(ApiErrorCode.RESOURCE_NOT_FOUND));
@@ -180,12 +265,13 @@ public class FlashcardLearningService {
 					.map(LessonVocabularyEntity::getVocabulary)
 					.filter(v -> !v.isHidden())
 					.toList();
-		} else {
+		} else if (vocabSetId != null) {
 			VocabSetEntity vocabSet = vocabSetRepository.findById(vocabSetId)
 					.orElseThrow(() -> new ApiException(ApiErrorCode.VOCAB_SET_NOT_FOUND));
 
 			boolean isOwner = Objects.equals(vocabSet.getTeacherId(), currentUserId);
-			if (!isOwner) {
+			boolean isPublic = vocabSet.isPublic();
+			if (!isOwner && !isPublic) {
 				List<ClassVocabSetEntity> assignments = classVocabSetRepository.findAllByVocabSetId(vocabSetId);
 				boolean hasAccess = assignments.stream()
 						.anyMatch(a -> Objects.equals(a.getClassroom().getTeacher().getId(), currentUserId) ||
@@ -201,6 +287,27 @@ public class FlashcardLearningService {
 					.map(VocabSetItemEntity::getVocabulary)
 					.filter(v -> !v.isHidden())
 					.toList();
+		} else {
+			Set<Long> accessibleSetIds = new LinkedHashSet<>();
+			vocabSetRepository.findAllByTeacherIdOrderByCreatedAtDesc(currentUserId)
+					.forEach(s -> accessibleSetIds.add(s.getId()));
+			accessibleSetIds.addAll(
+					classVocabSetRepository.findVocabSetIdsForActiveStudent(currentUserId, ClassMemberStatus.ACTIVE));
+
+			Map<Long, VocabularyEntity> uniqueVocabs = new LinkedHashMap<>();
+			if (!accessibleSetIds.isEmpty()) {
+				List<Long> targetVocabIds = vocabSetItemRepository.findDistinctVocabularyIdsByVocabSetIdIn(accessibleSetIds);
+				if (!targetVocabIds.isEmpty()) {
+					vocabularyRepository.findAllById(targetVocabIds).stream()
+							.filter(v -> !v.isHidden())
+							.forEach(v -> uniqueVocabs.putIfAbsent(v.getId(), v));
+				}
+			}
+			List<VocabularyEntity> customVocabs = vocabularyRepository.findAllByOwnerIdAndHiddenFalse(currentUserId);
+			for (VocabularyEntity cv : customVocabs) {
+				uniqueVocabs.putIfAbsent(cv.getId(), cv);
+			}
+			return new ArrayList<>(uniqueVocabs.values());
 		}
 	}
 }

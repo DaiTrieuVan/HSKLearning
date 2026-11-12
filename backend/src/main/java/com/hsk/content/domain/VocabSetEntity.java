@@ -21,11 +21,23 @@ public class VocabSetEntity {
 	@Column(name = "teacher_id", nullable = false)
 	private Long teacherId;
 
+	@Column(name = "folder_id")
+	private Long folderId;
+
 	@Column(name = "title", nullable = false, length = 150)
 	private String title;
 
 	@Column(name = "description", length = 500)
 	private String description;
+
+	@Column(name = "is_public", nullable = false)
+	private boolean isPublic = false;
+
+	@Column(name = "share_code", length = 50, unique = true)
+	private String shareCode;
+
+	@Column(name = "color", nullable = false, length = 50)
+	private String color = "#10b981";
 
 	@CreationTimestamp
 	@Column(name = "created_at", nullable = false, updatable = false)
@@ -44,6 +56,15 @@ public class VocabSetEntity {
 		this.description = description;
 	}
 
+	public VocabSetEntity(Long teacherId, Long folderId, String title, String description, boolean isPublic, String color) {
+		this.teacherId = teacherId;
+		this.folderId = folderId;
+		this.title = title;
+		this.description = description;
+		this.isPublic = isPublic;
+		this.color = (color != null && !color.isBlank()) ? color : "#10b981";
+	}
+
 	public Long getId() {
 		return id;
 	}
@@ -54,6 +75,14 @@ public class VocabSetEntity {
 
 	public void setTeacherId(Long teacherId) {
 		this.teacherId = teacherId;
+	}
+
+	public Long getFolderId() {
+		return folderId;
+	}
+
+	public void setFolderId(Long folderId) {
+		this.folderId = folderId;
 	}
 
 	public String getTitle() {
@@ -70,6 +99,30 @@ public class VocabSetEntity {
 
 	public void setDescription(String description) {
 		this.description = description;
+	}
+
+	public boolean isPublic() {
+		return isPublic;
+	}
+
+	public void setPublic(boolean isPublic) {
+		this.isPublic = isPublic;
+	}
+
+	public String getShareCode() {
+		return shareCode;
+	}
+
+	public void setShareCode(String shareCode) {
+		this.shareCode = shareCode;
+	}
+
+	public String getColor() {
+		return color;
+	}
+
+	public void setColor(String color) {
+		this.color = (color != null && !color.isBlank()) ? color : "#10b981";
 	}
 
 	public Instant getCreatedAt() {

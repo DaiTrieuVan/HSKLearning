@@ -19,6 +19,21 @@ export const AppLayout: React.FC = () => {
       return false
     }
   })
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
+
+  // Tự động đóng menu drawer trên mobile/tablet khi chuyển trang
+  useEffect(() => {
+    setIsMobileSidebarOpen(false)
+  }, [location.pathname])
+
+  useEffect(() => {
+    if (!isMobileSidebarOpen) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsMobileSidebarOpen(false)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isMobileSidebarOpen])
 
   // Gamification shared states
   const [streak, setStreak] = useState<StreakData | null>(null)
@@ -59,15 +74,25 @@ export const AppLayout: React.FC = () => {
     }
   }, [user])
 
-  // Show right sidebar primarily on Dashboard ('/') for students/teachers
-  const isDashboard = location.pathname === '/'
-  const showRightSidebar = isDashboard && !user?.roles.includes('ADMIN')
+  // Vocapy Full-Width Layout: Dashboard has its own Hero Trio & Widgets without duplicate right sidebar
+  const showRightSidebar = false
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-page)' }}>
+      {/* Mobile/Tablet Backdrop khi mở menu điều hướng */}
+      {isMobileSidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-[1px] lg:hidden"
+          onClick={() => setIsMobileSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
       {/* 1. Left Sidebar */}
       <AppSidebar
         isCollapsed={isSidebarCollapsed}
+        isMobileOpen={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
         onToggleCollapse={toggleSidebar}
       />
 
@@ -77,13 +102,13 @@ export const AppLayout: React.FC = () => {
         <AppHeader
           streak={streak}
           userLevel={userLevel}
-          onToggleMobileSidebar={toggleSidebar}
+          onToggleMobileSidebar={() => setIsMobileSidebarOpen((prev) => !prev)}
         />
 
         {/* Workspace body (Center + Optional Right Sidebar) */}
         <div style={{ flex: 1, display: 'flex', minWidth: 0 }}>
           {/* Main Outlet for all pages */}
-          <main style={{ flex: 1, minWidth: 0, padding: '24px 32px' }}>
+          <main className="flex-1 min-w-0 px-3 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6 print:p-0 print:m-0">
             <Outlet />
           </main>
 

@@ -253,26 +253,24 @@ export const HskCurriculumPage: React.FC = () => {
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-page)', padding: '32px 20px' }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+    <div
+      className="min-h-screen overflow-x-hidden px-3.5 py-4 sm:px-5 sm:py-8"
+      style={{ backgroundColor: 'var(--bg-page)' }}
+    >
+      <div className="max-w-[1200px] mx-auto w-full">
         {/* Top bar */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+        <div className="flex flex-wrap justify-between items-center gap-3 mb-4 sm:mb-6">
           <button
             type="button"
             onClick={() => navigate('/')}
+            className="inline-flex items-center gap-2 px-3.5 py-2 sm:px-4 cursor-pointer transition-all"
             style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '8px 16px',
               borderRadius: 'var(--radius-md)',
               border: '1.5px solid var(--border-card)',
               backgroundColor: '#ffffff',
               color: 'var(--text-main)',
               fontWeight: 700,
               fontSize: '0.88rem',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
             }}
           >
             <ArrowLeft size={18} />
@@ -282,91 +280,62 @@ export const HskCurriculumPage: React.FC = () => {
 
         {/* Hero banner */}
         <div
-          className="game-card"
-          style={{
-            padding: '28px',
-            backgroundColor: '#ffffff',
-            marginBottom: '24px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '20px',
-          }}
+          className="game-card p-4 sm:p-7 bg-white mb-5 sm:mb-6 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-4 sm:gap-5"
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div className="flex items-start sm:items-center gap-3.5 sm:gap-4 min-w-0">
             <div
+              className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 flex items-center justify-center"
               style={{
-                width: '56px',
-                height: '56px',
                 borderRadius: 'var(--radius-md)',
                 backgroundColor: 'var(--primary-light)',
                 color: 'var(--primary)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
               }}
             >
-              <BookOpen size={30} />
+              <BookOpen size={28} />
             </div>
-            <div>
+            <div className="min-w-0 flex-1">
               <div
+                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 font-extrabold text-xs mb-1.5"
                 style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
                   backgroundColor: 'var(--primary-light)',
                   color: 'var(--primary-hover)',
-                  padding: '3px 10px',
                   borderRadius: 'var(--radius-full)',
-                  fontWeight: 800,
-                  fontSize: '0.75rem',
-                  marginBottom: '6px',
                 }}
               >
                 <Sparkles size={14} />
                 <span>KHUNG NĂNG LỰC HSK 3.0</span>
               </div>
-              <h1 style={{ fontSize: '1.6rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>
+              <h1
+                className="text-xl sm:text-[1.6rem] font-extrabold leading-snug m-0"
+                style={{ color: 'var(--text-main)' }}
+              >
                 Chương trình Giáo trình HSK Chuẩn
               </h1>
-              <p style={{ margin: '4px 0 0', fontSize: '0.88rem', color: 'var(--text-muted)' }}>
+              <p className="mt-1 mb-0 text-xs sm:text-[0.88rem] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
                 Học từ vựng có audio phát âm chuẩn, ví dụ thực tế và các cấu trúc ngữ pháp trọng tâm theo từng bài.
               </p>
             </div>
           </div>
 
-          <div className="animate-float" style={{ flexShrink: 0 }}>
+          <div className="animate-float shrink-0 self-center sm:self-auto">
             <PandaMascot size={70} />
           </div>
         </div>
 
         {/* Level Selector Tabs */}
-        <div
-          style={{
-            display: 'flex',
-            gap: '10px',
-            overflowX: 'auto',
-            paddingBottom: '12px',
-            marginBottom: '20px',
-          }}
-        >
+        <div className="flex gap-2 sm:gap-2.5 overflow-x-auto pb-2.5 sm:pb-3 mb-4 sm:mb-5 -mx-1 px-1">
           {levels.map((lvl) => (
             <button
               key={lvl.id}
               type="button"
               onClick={() => handleSelectLevel(lvl.id)}
+              className="shrink-0 whitespace-nowrap px-3.5 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-[0.92rem] font-extrabold cursor-pointer transition-all"
               style={{
-                padding: '10px 20px',
                 borderRadius: 'var(--radius-md)',
                 border: 'none',
                 backgroundColor: selectedLevelId === lvl.id ? 'var(--primary)' : '#ffffff',
                 color: selectedLevelId === lvl.id ? '#ffffff' : 'var(--text-main)',
-                fontWeight: 800,
-                fontSize: '0.92rem',
-                cursor: 'pointer',
                 boxShadow: selectedLevelId === lvl.id ? 'var(--shadow-btn-primary)' : '0 1px 3px rgba(0,0,0,0.06)',
-                transition: 'all 0.15s ease',
-                whiteSpace: 'nowrap',
               }}
             >
               {lvl.title} ({lvl.targetVocabCount} từ)
@@ -414,10 +383,10 @@ export const HskCurriculumPage: React.FC = () => {
         )}
 
         {/* Split Layout: Left = Lessons List, Right = Content Details */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 1fr) 2.5fr', gap: '24px' }}>
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(280px,1fr)_2.5fr] gap-5 lg:gap-6 items-start">
           {/* Left Column: Lessons */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="flex flex-col gap-3.5 min-w-0">
+            <div className="flex flex-wrap justify-between items-center gap-2">
               <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-main)' }}>
                 Danh sách bài học ({lessons.length})
               </div>
@@ -487,57 +456,56 @@ export const HskCurriculumPage: React.FC = () => {
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem' }}>Chưa có bài học nào cho cấp độ này.</p>
               </div>
             ) : (
-              lessons.map((lesson) => {
-                const isSelected = selectedLesson?.id === lesson.id
-                return (
-                  <div
-                    key={lesson.id}
-                    onClick={() => handleSelectLesson(lesson)}
-                    className="game-card"
-                    style={{
-                      padding: '16px',
-                      backgroundColor: isSelected ? 'var(--primary-light)' : '#ffffff',
-                      borderColor: isSelected ? 'var(--primary)' : 'var(--border-card)',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-main)' }}>
-                        {lesson.title}
-                      </div>
-                      {lesson.description && (
-                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                          {lesson.description}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2.5 sm:gap-3">
+                {lessons.map((lesson) => {
+                  const isSelected = selectedLesson?.id === lesson.id
+                  return (
+                    <div
+                      key={lesson.id}
+                      onClick={() => handleSelectLesson(lesson)}
+                      className="game-card p-3.5 sm:p-4 flex items-center justify-between gap-3 cursor-pointer transition-all"
+                      style={{
+                        backgroundColor: isSelected ? 'var(--primary-light)' : '#ffffff',
+                        borderColor: isSelected ? 'var(--primary)' : 'var(--border-card)',
+                      }}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="font-extrabold text-[0.95rem] break-words" style={{ color: 'var(--text-main)' }}>
+                          {lesson.title}
                         </div>
-                      )}
+                        {lesson.description && (
+                          <div className="text-xs mt-0.5 line-clamp-2" style={{ color: 'var(--text-muted)' }}>
+                            {lesson.description}
+                          </div>
+                        )}
+                      </div>
+                      <ChevronRight size={18} className="shrink-0" style={{ color: isSelected ? 'var(--primary)' : 'var(--text-muted)' }} />
                     </div>
-                    <ChevronRight size={18} style={{ color: isSelected ? 'var(--primary)' : 'var(--text-muted)' }} />
-                  </div>
-                )
-              })
+                  )
+                })}
+              </div>
             )}
           </div>
 
           {/* Right Column: Lesson Content */}
-          <div className="game-card" style={{ padding: '28px', backgroundColor: '#ffffff' }}>
+          <div className="game-card p-4 sm:p-7 bg-white min-w-0">
             {selectedLesson ? (
               <>
                 {/* Header of selected lesson */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', borderBottom: '1px solid #f1f5f9', paddingBottom: '16px' }}>
-                  <div>
-                    <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-main)', margin: '0 0 4px' }}>
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3.5 sm:gap-4 mb-5 border-b border-slate-100 pb-4">
+                  <div className="min-w-0">
+                    <h2
+                      className="text-xl sm:text-[1.4rem] font-extrabold m-0 mb-1 break-words"
+                      style={{ color: 'var(--text-main)' }}
+                    >
                       {selectedLesson.title}
                     </h2>
-                    <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', margin: 0 }}>
+                    <p className="text-sm sm:text-[0.88rem] m-0" style={{ color: 'var(--text-muted)' }}>
                       {selectedLesson.description || 'Chưa có mô tả cho bài học này.'}
                     </p>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <div className="flex items-center gap-2 flex-wrap shrink-0">
                     <button
                       type="button"
                       onClick={() => navigate(`/lessons/${selectedLesson.id}`)}
@@ -575,9 +543,9 @@ export const HskCurriculumPage: React.FC = () => {
 
                 {/* Inline Add Vocab Form for Teacher */}
                 {showAddVocab && (
-                  <div className="game-card" style={{ padding: '20px', backgroundColor: '#ffffff', border: '2px solid var(--primary)', marginBottom: '20px' }}>
+                  <div className="game-card p-4 sm:p-5 bg-white mb-5" style={{ border: '2px solid var(--primary)' }}>
                     <h4 style={{ margin: '0 0 14px', fontSize: '1.05rem', fontWeight: 800 }}>Thêm từ vựng vào bài học</h4>
-                    <form onSubmit={handleCreateVocab} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <form onSubmit={handleCreateVocab} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '4px' }}>Chữ Hán *</label>
                         <input
@@ -601,7 +569,7 @@ export const HskCurriculumPage: React.FC = () => {
                           style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px' }}
                         />
                       </div>
-                      <div style={{ gridColumn: 'span 2' }}>
+                      <div className="sm:col-span-2">
                         <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '4px' }}>Nghĩa tiếng Việt *</label>
                         <input
                           type="text"
@@ -612,7 +580,7 @@ export const HskCurriculumPage: React.FC = () => {
                           style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px' }}
                         />
                       </div>
-                      <div style={{ gridColumn: 'span 2' }}>
+                      <div className="sm:col-span-2">
                         <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '4px' }}>Câu ví dụ</label>
                         <input
                           type="text"
@@ -623,7 +591,7 @@ export const HskCurriculumPage: React.FC = () => {
                           style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px' }}
                         />
                       </div>
-                      <div style={{ gridColumn: 'span 2', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                      <div className="sm:col-span-2 flex justify-end gap-2">
                         <button
                           type="button"
                           onClick={() => setShowAddVocab(false)}
@@ -646,23 +614,24 @@ export const HskCurriculumPage: React.FC = () => {
 
                 {/* Inline Import CSV */}
                 {showImport && (
-                  <div className="game-card" style={{ padding: '20px', backgroundColor: '#ffffff', border: '2px solid var(--accent-gold)', marginBottom: '20px' }}>
+                  <div className="game-card p-4 sm:p-5 bg-white mb-5" style={{ border: '2px solid var(--accent-gold)' }}>
                     <h4 style={{ margin: '0 0 6px', fontSize: '1rem', fontWeight: 800 }}>Nhập từ vựng HSK qua file CSV</h4>
-                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '14px' }}>
-                      Định dạng cột CSV: <code>hanzi,pinyin,meaning,partOfSpeech,exampleSentence,examplePinyin,exampleMeaning</code>
+                    <p className="text-xs mb-3.5 break-words" style={{ color: 'var(--text-muted)' }}>
+                      Định dạng cột CSV: <code className="break-all">hanzi,pinyin,meaning,partOfSpeech,exampleSentence,examplePinyin,exampleMeaning</code>
                     </p>
-                    <form onSubmit={handleImportVocab} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <form onSubmit={handleImportVocab} className="flex flex-col sm:flex-row gap-2.5 sm:items-center">
                       <input
                         type="file"
                         accept=".csv"
                         onChange={(e) => setImportFile(e.target.files?.[0] || null)}
                         required
-                        style={{ flex: 1, padding: '8px', border: '1px dashed var(--border-card)', borderRadius: 'var(--radius-md)' }}
+                        className="w-full sm:flex-1 min-w-0 p-2"
+                        style={{ border: '1px dashed var(--border-card)', borderRadius: 'var(--radius-md)' }}
                       />
                       <button
                         type="submit"
                         disabled={importing || !importFile}
-                        className="btn-gamified btn-gold"
+                        className="btn-gamified btn-gold w-full sm:w-auto justify-center whitespace-nowrap"
                         style={{ padding: '8px 18px', fontSize: '0.85rem' }}
                       >
                         {importing ? 'Đang nhập...' : 'Tải lên & Nhập'}
@@ -677,7 +646,7 @@ export const HskCurriculumPage: React.FC = () => {
                 )}
 
                 {/* Content Tabs: Vocab & Grammar */}
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+                <div className="flex flex-wrap gap-2 mb-5">
                   <button
                     type="button"
                     onClick={() => setLessonTab('VOCAB')}
@@ -723,28 +692,22 @@ export const HskCurriculumPage: React.FC = () => {
                       Bài học này hiện chưa có từ vựng.
                     </div>
                   ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '14px' }}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3.5">
                       {vocabularies.map((vocab) => (
                         <div
                           key={vocab.id}
-                          className="game-card"
-                          style={{
-                            padding: '16px',
-                            backgroundColor: '#ffffff',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            justifyContent: 'space-between',
-                          }}
+                          className="game-card p-4 bg-white flex flex-col justify-between min-w-0"
                         >
                           <div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                              <div className="hanzi" style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--text-chinese)' }}>
+                            <div className="flex justify-between items-start gap-2">
+                              <div className="hanzi text-[1.75rem] sm:text-[2rem] font-black break-words" style={{ color: 'var(--text-chinese)' }}>
                                 {vocab.hanzi}
                               </div>
                               <button
                                 type="button"
                                 onClick={() => handleSpeak(vocab.hanzi)}
                                 title="Nghe phát âm"
+                                className="shrink-0"
                                 style={{
                                   border: 'none',
                                   background: 'var(--primary-light)',
@@ -804,16 +767,11 @@ export const HskCurriculumPage: React.FC = () => {
                           </div>
                           {gp.structure && (
                             <div
+                              className="inline-block max-w-full break-words px-2.5 py-1 text-[0.82rem] sm:text-[0.85rem] font-bold mb-2.5 font-mono"
                               style={{
-                                display: 'inline-block',
-                                padding: '4px 10px',
                                 backgroundColor: 'var(--primary-light)',
                                 color: 'var(--primary-hover)',
                                 borderRadius: 'var(--radius-sm)',
-                                fontSize: '0.85rem',
-                                fontWeight: 700,
-                                marginBottom: '10px',
-                                fontFamily: 'monospace',
                               }}
                             >
                               Cấu trúc: {gp.structure}
@@ -826,8 +784,8 @@ export const HskCurriculumPage: React.FC = () => {
                             <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                               {gp.examples.map((ex) => (
                                 <div key={ex.id} style={{ padding: '8px 12px', backgroundColor: '#f8fafc', borderRadius: 'var(--radius-sm)' }}>
-                                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-main)' }}>
-                                    <span className="hanzi" style={{ marginRight: '6px' }}>{ex.hanzi}</span>
+                                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[0.88rem] font-bold" style={{ color: 'var(--text-main)' }}>
+                                    <span className="hanzi">{ex.hanzi}</span>
                                     <span style={{ color: 'var(--primary)', fontWeight: 600 }}>{ex.pinyin}</span>
                                   </div>
                                   <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: '2px' }}>

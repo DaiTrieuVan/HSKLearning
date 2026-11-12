@@ -8,7 +8,6 @@ import {
   AlertCircle,
   Search,
   Eye,
-  HelpCircle,
   FileQuestion,
   Sparkles,
   Check,
@@ -1905,115 +1904,99 @@ export const QuestionBankPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col">
-      {/* Top Navbar */}
-      <header className="sticky top-0 z-20 bg-white border-b border-slate-200 px-6 py-4 shadow-sm">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={() => navigate('/')}
-              className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition"
-              title="Quay lại bàn làm việc"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 border border-indigo-100 shadow-sm">
-                <HelpCircle className="w-5 h-5" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-slate-900 leading-tight">
-                  Ngân hàng câu hỏi
-                </h1>
-                <p className="text-xs text-slate-500">
-                  Quản lý và soạn thảo câu hỏi trắc nghiệm & điền từ của riêng bạn (QTN-19)
-                </p>
-              </div>
-            </div>
-          </div>
+    <div className="w-full max-w-7xl mx-auto space-y-4 sm:space-y-5 text-slate-800">
+      {/* Compact Top Action Bar */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+        <button
+          onClick={() => navigate('/')}
+          className="inline-flex items-center gap-2 self-start px-3.5 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl shadow-xs transition whitespace-nowrap"
+          title="Quay lại bàn làm việc"
+        >
+          <ArrowLeft className="w-4 h-4 shrink-0" />
+          <span>Quay lại Bảng điều khiển</span>
+        </button>
 
-          <div className="flex items-center space-x-3">
-            {/* HTT-05-CN-006: Go to Exercises */}
-            <button
-              onClick={() => navigate('/exercises')}
-              className="flex items-center space-x-2 px-4 py-2.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 font-medium rounded-xl shadow-xs transition text-sm"
-              title="Đóng gói câu hỏi thành bài tập hoàn chỉnh"
-            >
-              <FileCheck className="w-4 h-4" />
-              <span>Quản lý bài tập</span>
-            </button>
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+          {/* HTT-05-CN-006: Go to Exercises */}
+          <button
+            onClick={() => navigate('/exercises')}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 font-medium rounded-xl shadow-xs transition text-xs sm:text-sm whitespace-nowrap"
+            title="Đóng gói câu hỏi thành bài tập hoàn chỉnh"
+          >
+            <FileCheck className="w-4 h-4 shrink-0" />
+            <span>Quản lý bài tập</span>
+          </button>
 
-            {/* Bulk Import from Excel / CSV Action */}
-            <button
-              onClick={() => {
-                setIsImportOpen(!isImportOpen)
-                setIsQuickGenOpen(false)
-                setIsDrawerOpen(false)
-                setIsEditDrawerOpen(false)
-                setErrorMessage(null)
-                setFormErrors([])
-              }}
-              className={`flex items-center space-x-2 px-4 py-2.5 font-medium rounded-xl shadow-xs transition text-sm ${
-                isImportOpen
-                  ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                  : 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
-              }`}
-              title="Nhập danh sách câu hỏi hàng loạt từ file Excel (.xlsx) hoặc CSV (.csv)"
-            >
-              <FileSpreadsheet className="w-4 h-4" />
-              <span>{isImportOpen ? 'Đóng nhập file' : 'Nhập từ file (Excel/CSV)'}</span>
-            </button>
+          {/* Bulk Import from Excel / CSV Action */}
+          <button
+            onClick={() => {
+              setIsImportOpen(!isImportOpen)
+              setIsQuickGenOpen(false)
+              setIsDrawerOpen(false)
+              setIsEditDrawerOpen(false)
+              setErrorMessage(null)
+              setFormErrors([])
+            }}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-2 font-medium rounded-xl shadow-xs transition text-xs sm:text-sm whitespace-nowrap ${
+              isImportOpen
+                ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                : 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+            }`}
+            title="Nhập danh sách câu hỏi hàng loạt từ file Excel (.xlsx) hoặc CSV (.csv)"
+          >
+            <FileSpreadsheet className="w-4 h-4 shrink-0" />
+            <span>{isImportOpen ? 'Đóng nhập file' : 'Nhập từ file (Excel/CSV)'}</span>
+          </button>
 
-            {/* HTT-05-CN-004: Quick Generate Action */}
-            <button
-              onClick={() => {
-                setIsQuickGenOpen(!isQuickGenOpen)
-                setIsImportOpen(false)
-                setIsDrawerOpen(false)
-                setIsEditDrawerOpen(false)
-                setErrorMessage(null)
-                setFormErrors([])
-              }}
-              className={`flex items-center space-x-2 px-4 py-2.5 font-medium rounded-xl shadow-sm transition ${
-                isQuickGenOpen
-                  ? 'bg-amber-600 text-white hover:bg-amber-700'
-                  : 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100'
-              }`}
-            >
-              <Wand2 className="w-4 h-4" />
-              <span>{isQuickGenOpen ? 'Đóng tạo nhanh' : 'Tạo nhanh từ bộ từ vựng'}</span>
-            </button>
+          {/* HTT-05-CN-004: Quick Generate Action */}
+          <button
+            onClick={() => {
+              setIsQuickGenOpen(!isQuickGenOpen)
+              setIsImportOpen(false)
+              setIsDrawerOpen(false)
+              setIsEditDrawerOpen(false)
+              setErrorMessage(null)
+              setFormErrors([])
+            }}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-2 font-medium rounded-xl shadow-xs transition text-xs sm:text-sm whitespace-nowrap ${
+              isQuickGenOpen
+                ? 'bg-amber-600 text-white hover:bg-amber-700'
+                : 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100'
+            }`}
+          >
+            <Wand2 className="w-4 h-4 shrink-0" />
+            <span>{isQuickGenOpen ? 'Đóng tạo nhanh' : 'Tạo nhanh từ bộ từ vựng'}</span>
+          </button>
 
-            {/* Manual question creation */}
-            <button
-              onClick={() => {
-                setIsDrawerOpen(!isDrawerOpen)
-                setIsQuickGenOpen(false)
-                setIsImportOpen(false)
-                setIsEditDrawerOpen(false)
-                setErrorMessage(null)
-                setFormErrors([])
-              }}
-              className="flex items-center space-x-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl shadow-sm transition"
-            >
-              {isDrawerOpen ? (
-                <>
-                  <X className="w-4 h-4" />
-                  <span>Đóng soạn thủ công</span>
-                </>
-              ) : (
-                <>
-                  <Plus className="w-4 h-4" />
-                  <span>Soạn thủ công</span>
-                </>
-              )}
-            </button>
-          </div>
+          {/* Manual question creation */}
+          <button
+            onClick={() => {
+              setIsDrawerOpen(!isDrawerOpen)
+              setIsQuickGenOpen(false)
+              setIsImportOpen(false)
+              setIsEditDrawerOpen(false)
+              setErrorMessage(null)
+              setFormErrors([])
+            }}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl shadow-sm transition text-xs sm:text-sm whitespace-nowrap"
+          >
+            {isDrawerOpen ? (
+              <>
+                <X className="w-4 h-4 shrink-0" />
+                <span>Đóng soạn thủ công</span>
+              </>
+            ) : (
+              <>
+                <Plus className="w-4 h-4 shrink-0" />
+                <span>Soạn thủ công</span>
+              </>
+            )}
+          </button>
         </div>
-      </header>
+      </div>
 
-      {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-6 py-8 flex-1 w-full space-y-6">
+      {/* Main Content */}
+      <div className="space-y-5 sm:space-y-6">
         {/* Global Notifications */}
         {errorMessage && (
           <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl flex items-start space-x-3 text-rose-800">
@@ -2070,15 +2053,15 @@ export const QuestionBankPage: React.FC = () => {
 
         {/* BULK IMPORT FROM EXCEL / CSV PANEL (NO MODAL) */}
         {isImportOpen && (
-          <div className="bg-white border-2 border-emerald-300 rounded-2xl shadow-lg p-6 lg:p-8 animate-fadeIn space-y-6">
+          <div className="bg-white border-2 border-emerald-300 rounded-2xl shadow-lg p-4 sm:p-6 lg:p-8 animate-fadeIn space-y-5 sm:space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700">
+            <div className="flex items-start justify-between gap-3 pb-4 border-b border-slate-100">
+              <div className="flex items-start sm:items-center gap-3 min-w-0">
+                <div className="w-10 h-10 shrink-0 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700">
                   <FileSpreadsheet className="w-5 h-5" />
                 </div>
-                <div>
-                  <h2 className="text-lg font-bold text-slate-900">
+                <div className="min-w-0">
+                  <h2 className="text-base sm:text-lg font-bold text-slate-900">
                     Nhập câu hỏi hàng loạt từ file Excel (.xlsx) hoặc CSV (.csv)
                   </h2>
                   <p className="text-xs text-slate-500">
@@ -2092,7 +2075,7 @@ export const QuestionBankPage: React.FC = () => {
                   setIsImportOpen(false)
                   handleClearImport()
                 }}
-                className="p-2 text-slate-400 hover:text-slate-600 rounded-lg transition"
+                className="p-2 shrink-0 text-slate-400 hover:text-slate-600 rounded-lg transition"
                 title="Đóng panel nhập file"
               >
                 <X className="w-5 h-5" />
@@ -2101,7 +2084,7 @@ export const QuestionBankPage: React.FC = () => {
 
             {/* Template Download & Format Guide */}
             <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-emerald-50/60 border border-emerald-100 rounded-2xl">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-4 bg-emerald-50/60 border border-emerald-100 rounded-2xl">
                 <div>
                   <span className="text-sm font-bold text-emerald-950 block">
                     Tải mẫu câu hỏi chuẩn của hệ thống
@@ -2110,7 +2093,7 @@ export const QuestionBankPage: React.FC = () => {
                     File mẫu đã có sẵn 4 ví dụ cụ thể cho cả 4 dạng câu hỏi kèm hướng dẫn định dạng chi tiết.
                   </span>
                 </div>
-                <div className="flex items-center space-x-2.5 flex-shrink-0">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 flex-shrink-0">
                   <button
                     type="button"
                     onClick={() => handleDownloadTemplate('excel')}
@@ -2372,14 +2355,14 @@ export const QuestionBankPage: React.FC = () => {
 
         {/* HTT-05-CN-004: QUICK GENERATE FROM VOCAB SET PANEL (NO MODAL) */}
         {isQuickGenOpen && (
-          <div className="bg-white border-2 border-amber-300 rounded-2xl shadow-lg p-6 lg:p-8 animate-fadeIn space-y-6">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-700">
+          <div className="bg-white border-2 border-amber-300 rounded-2xl shadow-lg p-4 sm:p-6 lg:p-8 animate-fadeIn space-y-5 sm:space-y-6">
+            <div className="flex items-start justify-between gap-3 pb-4 border-b border-slate-100">
+              <div className="flex items-start sm:items-center gap-3 min-w-0">
+                <div className="w-10 h-10 shrink-0 rounded-xl bg-amber-100 flex items-center justify-center text-amber-700">
                   <Wand2 className="w-5 h-5" />
                 </div>
-                <div>
-                  <h2 className="text-lg font-bold text-slate-900">
+                <div className="min-w-0">
+                  <h2 className="text-base sm:text-lg font-bold text-slate-900">
                     Tạo nhanh câu hỏi trắc nghiệm từ bộ từ vựng
                   </h2>
                   <p className="text-xs text-slate-500">
@@ -2390,14 +2373,14 @@ export const QuestionBankPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsQuickGenOpen(false)}
-                className="p-2 text-slate-400 hover:text-slate-600 rounded-lg"
+                className="p-2 shrink-0 text-slate-400 hover:text-slate-600 rounded-lg"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Selection Form */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-end bg-amber-50/50 p-5 rounded-2xl border border-amber-100">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-5 items-end bg-amber-50/50 p-3.5 sm:p-5 rounded-2xl border border-amber-100">
               <div className="md:col-span-5">
                 <label className="block text-sm font-semibold text-slate-700 mb-1.5 flex items-center space-x-1.5">
                   <BookMarked className="w-4 h-4 text-amber-600" />
@@ -2573,22 +2556,22 @@ export const QuestionBankPage: React.FC = () => {
 
         {/* MANUAL CREATION INLINE PANEL (NO MODAL) */}
         {isDrawerOpen && (
-          <div className="bg-white border-2 border-indigo-200 rounded-2xl shadow-lg p-6 lg:p-8 animate-fadeIn">
+          <div className="bg-white border-2 border-indigo-200 rounded-2xl shadow-lg p-4 sm:p-6 lg:p-8 animate-fadeIn">
             {/* Drawer Top Navigation & Question Type Tabs */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 mb-6 gap-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-9 h-9 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-700">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between pb-4 border-b border-slate-100 mb-5 sm:mb-6 gap-3 sm:gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 shrink-0 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-700">
                   <Sparkles className="w-5 h-5" />
                 </div>
-                <div>
-                  <h2 className="text-lg font-bold text-slate-900">Soạn câu hỏi mới</h2>
+                <div className="min-w-0">
+                  <h2 className="text-base sm:text-lg font-bold text-slate-900">Soạn câu hỏi mới</h2>
                   <p className="text-xs text-slate-500">
                     Chọn dạng câu hỏi và điền cấu hình đáp án tương ứng
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center space-x-3 self-start sm:self-auto">
+              <div className="w-full lg:w-auto flex items-start justify-between gap-2">
                 {/* Type Switch Tabs */}
                 <div className="flex flex-wrap items-center bg-slate-100 p-1 rounded-xl gap-1">
                   <button
@@ -3458,13 +3441,13 @@ export const QuestionBankPage: React.FC = () => {
         {/* HTT-05-CN-005: EDIT QUESTION PANEL (NO MODAL / INLINE DRAWER) */}
         {isEditDrawerOpen && editingQuestion && (
           <div className="bg-white rounded-3xl border-2 border-indigo-200 shadow-xl overflow-hidden">
-            <div className="bg-gradient-to-r from-indigo-700 via-indigo-600 to-purple-600 px-6 py-4 flex items-center justify-between text-white">
-              <div className="flex items-center space-x-3">
-                <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center font-bold text-white text-sm">
+            <div className="bg-gradient-to-r from-indigo-700 via-indigo-600 to-purple-600 px-4 py-3.5 sm:px-6 sm:py-4 flex items-start sm:items-center justify-between gap-3 text-white">
+              <div className="flex items-start sm:items-center gap-3 min-w-0">
+                <div className="w-9 h-9 shrink-0 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center font-bold text-white text-sm">
                   <Edit3 className="w-5 h-5" />
                 </div>
-                <div>
-                  <h2 className="text-base font-bold flex items-center space-x-2">
+                <div className="min-w-0">
+                  <h2 className="text-sm sm:text-base font-bold flex flex-wrap items-center gap-2">
                     <span>Chỉnh sửa câu hỏi #{editingQuestion.id}</span>
                     <span className="text-xs bg-white/20 px-2.5 py-0.5 rounded-full font-semibold">
                       {editingQuestion.type === 'FILL'
@@ -3476,7 +3459,7 @@ export const QuestionBankPage: React.FC = () => {
                         : 'Trắc nghiệm (MCQ)'}
                     </span>
                   </h2>
-                  <p className="text-xs text-indigo-100">
+                  <p className="text-xs text-indigo-100 mt-0.5">
                     Sửa đổi trong ngân hàng không ảnh hưởng nội dung snapshot các lần giao bài trước (QTN-10).
                   </p>
                 </div>
@@ -3484,14 +3467,14 @@ export const QuestionBankPage: React.FC = () => {
               <button
                 type="button"
                 onClick={handleCloseEdit}
-                className="p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
+                className="p-1.5 shrink-0 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
                 title="Đóng chỉnh sửa"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveEdit} className="p-6 space-y-6">
+            <form onSubmit={handleSaveEdit} className="p-4 sm:p-6 space-y-5 sm:space-y-6">
               {editErrors.length > 0 && (
                 <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl space-y-1">
                   <div className="flex items-center space-x-2 text-rose-800 font-bold text-sm">
@@ -3804,19 +3787,19 @@ export const QuestionBankPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-100">
+              <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-end gap-2.5 sm:gap-3 pt-4 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={handleCloseEdit}
                   disabled={editSubmitting}
-                  className="px-5 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition"
+                  className="px-5 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition whitespace-nowrap"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
                   disabled={editSubmitting}
-                  className="flex items-center space-x-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl shadow-md transition disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl shadow-md transition disabled:opacity-50 whitespace-nowrap"
                 >
                   {editSubmitting ? (
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -3831,11 +3814,11 @@ export const QuestionBankPage: React.FC = () => {
         )}
 
         {/* ADVANCED CONTROL BAR: SEARCH, FILTERS, SORT & VIEW MODE */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-3.5">
+        <div className="bg-white rounded-2xl border border-slate-200 p-3.5 sm:p-4 shadow-sm space-y-3 sm:space-y-3.5">
           {/* Top Row: Search input + Sort + View switcher */}
-          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-            <div className="relative flex-1 max-w-lg">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5 sm:gap-3">
+            <div className="relative flex-1 md:max-w-lg">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={searchTerm}
@@ -3847,7 +3830,7 @@ export const QuestionBankPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleClearSearch}
-                  className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 transition"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
                   title="Xóa tìm kiếm"
                 >
                   <X className="w-4 h-4" />
@@ -3855,7 +3838,7 @@ export const QuestionBankPage: React.FC = () => {
               )}
             </div>
 
-            <div className="flex items-center space-x-2.5 justify-end">
+            <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-2.5">
               {/* Sort Dropdown */}
               <select
                 value={`${sortBy},${sortDir}`}
@@ -3863,7 +3846,7 @@ export const QuestionBankPage: React.FC = () => {
                   const [sb, sd] = e.target.value.split(',')
                   handleSortChange(sb as 'createdAt' | 'content' | 'id', sd as 'desc' | 'asc')
                 }}
-                className="px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                className="flex-1 sm:flex-initial min-w-0 px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
               >
                 <option value="createdAt,desc">Mới nhất trước</option>
                 <option value="createdAt,asc">Cũ nhất trước</option>
@@ -3872,7 +3855,7 @@ export const QuestionBankPage: React.FC = () => {
               </select>
 
               {/* View Mode Switcher */}
-              <div className="flex items-center bg-slate-100 p-1 rounded-xl">
+              <div className="flex items-center bg-slate-100 p-1 rounded-xl shrink-0">
                 <button
                   type="button"
                   onClick={() => setViewMode('TABLE')}
@@ -3904,8 +3887,8 @@ export const QuestionBankPage: React.FC = () => {
           </div>
 
           {/* Bottom Row: Filter Tabs & Total Count Badge */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-100">
-            <div className="flex flex-wrap items-center gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-100">
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-2.5 sm:gap-3 pt-2.5 border-t border-slate-100">
+            <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-100">
               <button
                 type="button"
                 onClick={() => handleFilterTypeChange('ALL')}
@@ -3967,75 +3950,77 @@ export const QuestionBankPage: React.FC = () => {
               </button>
             </div>
 
-            {/* Filter by HSK Level */}
-            <div className="flex items-center space-x-1.5">
-              <span className="text-xs font-semibold text-slate-500">Cấp độ:</span>
-              <select
-                value={filterHskLevel}
-                onChange={(e) => {
-                  setFilterHskLevel(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value))
-                  setPage(0)
-                }}
-                className="px-2.5 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-              >
-                <option value="ALL">Tất cả HSK</option>
-                <option value="1">HSK 1</option>
-                <option value="2">HSK 2</option>
-                <option value="3">HSK 3</option>
-                <option value="4">HSK 4</option>
-                <option value="5">HSK 5</option>
-                <option value="6">HSK 6</option>
-              </select>
-            </div>
+            <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2">
+              {/* Filter by HSK Level */}
+              <div className="flex items-center space-x-1.5">
+                <span className="text-xs font-semibold text-slate-500">Cấp độ:</span>
+                <select
+                  value={filterHskLevel}
+                  onChange={(e) => {
+                    setFilterHskLevel(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value))
+                    setPage(0)
+                  }}
+                  className="px-2.5 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                >
+                  <option value="ALL">Tất cả HSK</option>
+                  <option value="1">HSK 1</option>
+                  <option value="2">HSK 2</option>
+                  <option value="3">HSK 3</option>
+                  <option value="4">HSK 4</option>
+                  <option value="5">HSK 5</option>
+                  <option value="6">HSK 6</option>
+                </select>
+              </div>
 
-            {/* Media Toggles */}
-            <div className="flex items-center space-x-1.5">
-              <button
-                type="button"
-                onClick={() => {
-                  setFilterHasAudio((prev) => (prev === true ? 'ALL' : true))
-                  setPage(0)
-                }}
-                className={`flex items-center space-x-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition ${
-                  filterHasAudio === true
-                    ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
-                    : 'bg-white text-purple-700 border-purple-200 hover:bg-purple-50'
-                }`}
-                title="Lọc câu hỏi có file âm thanh bài nghe"
-              >
-                <Headphones className="w-3.5 h-3.5" />
-                <span>Có Audio</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setFilterHasImage((prev) => (prev === true ? 'ALL' : true))
-                  setPage(0)
-                }}
-                className={`flex items-center space-x-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition ${
-                  filterHasImage === true
-                    ? 'bg-sky-600 text-white border-sky-600 shadow-xs'
-                    : 'bg-white text-sky-700 border-sky-200 hover:bg-sky-50'
-                }`}
-                title="Lọc câu hỏi có hình ảnh"
-              >
-                <ImageIcon className="w-3.5 h-3.5" />
-                <span>Có Ảnh</span>
-              </button>
-            </div>
+              {/* Media Toggles */}
+              <div className="flex items-center space-x-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFilterHasAudio((prev) => (prev === true ? 'ALL' : true))
+                    setPage(0)
+                  }}
+                  className={`flex items-center space-x-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition whitespace-nowrap ${
+                    filterHasAudio === true
+                      ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
+                      : 'bg-white text-purple-700 border-purple-200 hover:bg-purple-50'
+                  }`}
+                  title="Lọc câu hỏi có file âm thanh bài nghe"
+                >
+                  <Headphones className="w-3.5 h-3.5" />
+                  <span>Có Audio</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFilterHasImage((prev) => (prev === true ? 'ALL' : true))
+                    setPage(0)
+                  }}
+                  className={`flex items-center space-x-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition whitespace-nowrap ${
+                    filterHasImage === true
+                      ? 'bg-sky-600 text-white border-sky-600 shadow-xs'
+                      : 'bg-white text-sky-700 border-sky-200 hover:bg-sky-50'
+                  }`}
+                  title="Lọc câu hỏi có hình ảnh"
+                >
+                  <ImageIcon className="w-3.5 h-3.5" />
+                  <span>Có Ảnh</span>
+                </button>
+              </div>
 
-            <span className="flex items-center space-x-1.5 font-bold text-xs text-slate-600 bg-slate-100 px-3 py-1.5 rounded-xl self-start sm:self-auto">
-              <Layers className="w-4 h-4 text-indigo-600" />
-              <span>
-                {questionPage?.totalElements ? `${questionPage.totalElements.toLocaleString()} câu hỏi` : '0 câu hỏi'}
+              <span className="flex items-center space-x-1.5 font-bold text-xs text-slate-600 bg-slate-100 px-3 py-1.5 rounded-xl whitespace-nowrap">
+                <Layers className="w-4 h-4 text-indigo-600" />
+                <span>
+                  {questionPage?.totalElements ? `${questionPage.totalElements.toLocaleString()} câu hỏi` : '0 câu hỏi'}
+                </span>
               </span>
-            </span>
+            </div>
           </div>
         </div>
 
         {/* BULK ACTION BAR (NO MODAL) */}
         {selectedQuestionIds.length > 0 && (
-          <div className="bg-slate-900 text-white px-5 py-3.5 rounded-2xl shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn">
+          <div className="bg-slate-900 text-white px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn">
             <div className="flex items-center space-x-3">
               <span className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-xs font-extrabold">
                 {selectedQuestionIds.length}
@@ -4045,31 +4030,31 @@ export const QuestionBankPage: React.FC = () => {
               </span>
             </div>
 
-            <div className="flex items-center space-x-2.5">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
               {!showBulkDeleteConfirm ? (
                 <button
                   type="button"
                   onClick={() => setShowBulkDeleteConfirm(true)}
-                  className="flex items-center space-x-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs rounded-xl shadow-xs transition"
+                  className="flex items-center space-x-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs rounded-xl shadow-xs transition whitespace-nowrap"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   <span>Xóa các câu đã chọn</span>
                 </button>
               ) : (
-                <div className="flex items-center space-x-2 bg-rose-950/70 p-1.5 rounded-xl border border-rose-800">
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 bg-rose-950/70 p-1.5 rounded-xl border border-rose-800">
                   <span className="text-xs text-rose-200 px-2">Xác nhận xóa {selectedQuestionIds.length} câu?</span>
                   <button
                     type="button"
                     onClick={handleBulkDeleteSubmit}
                     disabled={bulkDeleting}
-                    className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg transition disabled:opacity-50"
+                    className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg transition disabled:opacity-50 whitespace-nowrap"
                   >
                     {bulkDeleting ? 'Đang xóa...' : 'Đồng ý'}
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowBulkDeleteConfirm(false)}
-                    className="px-2 py-1 text-slate-300 hover:text-white text-xs"
+                    className="px-2 py-1 text-slate-300 hover:text-white text-xs whitespace-nowrap"
                   >
                     Hủy
                   </button>
@@ -4079,7 +4064,7 @@ export const QuestionBankPage: React.FC = () => {
               <button
                 type="button"
                 onClick={handleClearSelection}
-                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-medium text-xs rounded-xl transition"
+                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-medium text-xs rounded-xl transition whitespace-nowrap"
               >
                 Bỏ chọn
               </button>
@@ -4094,7 +4079,7 @@ export const QuestionBankPage: React.FC = () => {
             <p className="text-sm font-medium">Đang tải ngân hàng câu hỏi...</p>
           </div>
         ) : questions.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center max-w-lg mx-auto shadow-sm">
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-12 text-center max-w-lg mx-auto shadow-sm">
             <div className="w-16 h-16 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-500 mx-auto mb-4">
               <FileQuestion className="w-8 h-8" />
             </div>
@@ -4107,16 +4092,16 @@ export const QuestionBankPage: React.FC = () => {
                 : 'Bạn chưa tạo câu hỏi nào trong ngân hàng. Hãy bắt đầu bằng cách soạn thủ công hoặc tạo nhanh từ một bộ từ vựng.'}
             </p>
             {!searchTerm && (
-              <div className="flex items-center justify-center space-x-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2.5 sm:gap-3">
                 <button
                   type="button"
                   onClick={() => {
                     setIsQuickGenOpen(true)
                     setIsDrawerOpen(false)
                   }}
-                  className="inline-flex items-center space-x-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-xl shadow-sm transition"
+                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-xl shadow-sm transition whitespace-nowrap"
                 >
-                  <Wand2 className="w-4 h-4" />
+                  <Wand2 className="w-4 h-4 shrink-0" />
                   <span>Tạo nhanh từ bộ từ</span>
                 </button>
                 <button
@@ -4125,9 +4110,9 @@ export const QuestionBankPage: React.FC = () => {
                     setIsDrawerOpen(true)
                     setIsQuickGenOpen(false)
                   }}
-                  className="inline-flex items-center space-x-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl shadow-sm transition"
+                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl shadow-sm transition whitespace-nowrap"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="w-4 h-4 shrink-0" />
                   <span>Soạn thủ công</span>
                 </button>
               </div>
@@ -4740,8 +4725,8 @@ export const QuestionBankPage: React.FC = () => {
 
             {/* PAGINATION CONTROLS FOOTER */}
             {questionPage && questionPage.totalElements > 0 && (
-              <div className="bg-white rounded-2xl border border-slate-200 px-5 py-3.5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex items-center space-x-3 text-xs text-slate-600 font-medium">
+              <div className="bg-white rounded-2xl border border-slate-200 px-4 py-3 sm:px-5 sm:py-3.5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-3 gap-y-2 text-xs text-slate-600 font-medium text-center sm:text-left">
                   <span>
                     Hiển thị{' '}
                     <strong className="text-slate-900">
@@ -4757,7 +4742,7 @@ export const QuestionBankPage: React.FC = () => {
                     </strong>{' '}
                     câu hỏi
                   </span>
-                  <span>•</span>
+                  <span className="hidden sm:inline">•</span>
                   <div className="flex items-center space-x-1.5">
                     <span>Số lượng:</span>
                     <select
@@ -4820,8 +4805,7 @@ export const QuestionBankPage: React.FC = () => {
             )}
           </div>
         )}
-      
-      </main>
+      </div>
     </div>
   )
 }

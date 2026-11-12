@@ -152,131 +152,90 @@ export const VocabSearchPage: React.FC = () => {
   }, [results, selectedHskTab])
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-page)' }}>
+    <div className="min-h-screen flex flex-col overflow-x-hidden" style={{ backgroundColor: 'var(--bg-page)' }}>
       {/* Top Header */}
       <header
+        className="px-3.5 py-3 sm:px-6 sm:py-4 lg:px-8 bg-white flex flex-wrap items-center justify-between gap-x-4 gap-y-3"
         style={{
-          padding: '16px 32px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          backgroundColor: '#ffffff',
           borderBottom: '2px solid var(--border-card)',
           boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <button
-            type="button"
-            onClick={() => navigate('/')}
+        <button
+          type="button"
+          onClick={() => navigate('/')}
+          className="order-1 flex items-center gap-1.5 px-3 py-2 sm:px-3.5 rounded-xl bg-white text-xs sm:text-[0.85rem] font-extrabold cursor-pointer transition-all whitespace-nowrap shrink-0"
+          style={{
+            border: '1.5px solid var(--border-card)',
+            color: 'var(--text-main)',
+          }}
+        >
+          <ArrowLeft size={16} />
+          <span>Quay lại trang chủ</span>
+        </button>
+
+        <div className="order-3 md:order-2 w-full md:w-auto flex items-center gap-2.5 min-w-0">
+          <div
+            className="w-9 h-9 rounded-xl text-white flex items-center justify-center font-black text-xl shrink-0 hanzi"
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '8px 14px',
-              borderRadius: 'var(--radius-md)',
-              border: '1.5px solid var(--border-card)',
-              backgroundColor: '#ffffff',
-              color: 'var(--text-main)',
-              fontSize: '0.85rem',
-              fontWeight: 800,
-              cursor: 'pointer',
-              transition: 'all 0.2s',
+              backgroundColor: 'var(--primary)',
             }}
           >
-            <ArrowLeft size={16} />
-            <span>Quay lại trang chủ</span>
-          </button>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div
-              style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: 'var(--radius-md)',
-                backgroundColor: 'var(--primary)',
-                color: '#ffffff',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 900,
-                fontSize: '1.2rem',
-              }}
-              className="hanzi"
-            >
-              查
-            </div>
-            <div>
-              <h1 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-main)' }}>
-                Tra cứu từ vựng tiếng Trung
-              </h1>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>
-                Hỗ trợ tìm kiếm theo chữ Hán, Pinyin và tiếng Việt
-              </span>
-            </div>
+            查
+          </div>
+          <div className="min-w-0">
+            <h1 className="m-0 text-base sm:text-[1.15rem] font-extrabold leading-tight" style={{ color: 'var(--text-main)' }}>
+              Tra cứu từ vựng tiếng Trung
+            </h1>
+            <span className="block text-xs font-bold leading-snug" style={{ color: 'var(--text-muted)' }}>
+              Hỗ trợ tìm kiếm theo chữ Hán, Pinyin và tiếng Việt
+            </span>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <button
-            type="button"
-            onClick={() => navigate('/roadmap')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '8px 14px',
-              borderRadius: 'var(--radius-md)',
-              border: '1.5px solid var(--border-card)',
-              backgroundColor: '#ffffff',
-              color: 'var(--text-main)',
-              fontSize: '0.82rem',
-              fontWeight: 800,
-              cursor: 'pointer',
-            }}
-          >
-            <BookMarked size={16} color="var(--primary)" />
-            <span>Lộ trình HSK</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => navigate('/roadmap')}
+          className="order-2 md:order-3 md:ml-auto flex items-center gap-1.5 px-3 py-2 sm:px-3.5 rounded-xl bg-white text-xs sm:text-[0.82rem] font-extrabold cursor-pointer whitespace-nowrap shrink-0"
+          style={{
+            border: '1.5px solid var(--border-card)',
+            color: 'var(--text-main)',
+          }}
+        >
+          <BookMarked size={16} color="var(--primary)" />
+          <span>Lộ trình HSK</span>
+        </button>
       </header>
 
       {/* Main Content Area */}
-      <main style={{ flex: 1, padding: '32px 24px', maxWidth: '1100px', width: '100%', margin: '0 auto' }}>
+      <main className="flex-1 px-3.5 py-4 sm:px-6 sm:py-8 max-w-[1100px] w-full mx-auto">
         {/* Search Input Box */}
         <section
+          className="bg-white p-4 sm:p-6 mb-5 sm:mb-7"
           style={{
-            backgroundColor: '#ffffff',
             borderRadius: 'var(--radius-lg)',
             border: '2px solid var(--border-card)',
-            padding: '24px',
             boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
-            marginBottom: '28px',
           }}
         >
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+          <div className="relative flex items-center">
             <Search
-              size={22}
+              size={20}
               color="var(--text-muted)"
-              style={{ position: 'absolute', left: '16px', pointerEvents: 'none' }}
+              className="absolute left-3.5 sm:left-4 pointer-events-none"
             />
             <input
               type="text"
               id="vocab-search-input"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Nhập chữ Hán, pinyin (nihao, ni hao, nǐ hǎo) hoặc nghĩa tiếng Việt (chào bạn)..."
+              placeholder="Nhập chữ Hán, pinyin (nihao) hoặc nghĩa tiếng Việt..."
+              className="w-full box-border py-3 pl-11 pr-10 sm:py-3.5 sm:pl-[50px] sm:pr-12 text-sm sm:text-[1.05rem] font-semibold outline-none transition-colors"
               style={{
-                width: '100%',
-                padding: '14px 48px 14px 50px',
-                fontSize: '1.05rem',
-                fontWeight: 600,
                 color: 'var(--text-main)',
                 backgroundColor: 'var(--bg-input)',
                 border: '2px solid var(--border-card)',
                 borderRadius: 'var(--radius-md)',
-                outline: 'none',
-                transition: 'border-color 0.2s',
               }}
               onFocus={(e) => (e.target.style.borderColor = 'var(--primary)')}
               onBlur={(e) => (e.target.style.borderColor = 'var(--border-card)')}
@@ -293,17 +252,9 @@ export const VocabSearchPage: React.FC = () => {
                 type="button"
                 id="clear-search-btn"
                 onClick={handleClear}
+                className="absolute right-3 sm:right-4 bg-transparent border-0 cursor-pointer flex items-center p-1 rounded-full"
                 style={{
-                  position: 'absolute',
-                  right: '16px',
-                  background: 'none',
-                  border: 'none',
                   color: 'var(--text-muted)',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  padding: '4px',
-                  borderRadius: '50%',
                 }}
                 title="Xóa nội dung tìm kiếm"
               >
@@ -369,17 +320,8 @@ export const VocabSearchPage: React.FC = () => {
 
         {/* Filter by HSK Level Tabs (chỉ hiện khi có kết quả hoặc đã tìm) */}
         {searched && results.length > 0 && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              marginBottom: '20px',
-              overflowX: 'auto',
-              paddingBottom: '4px',
-            }}
-          >
-            <span style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <div className="flex items-center gap-2 mb-5 overflow-x-auto pb-1">
+            <span className="text-xs font-extrabold flex items-center gap-1 shrink-0 whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>
               <Layers size={14} /> Cấp độ:
             </span>
             {HSK_TABS.map((tab) => {
@@ -389,16 +331,11 @@ export const VocabSearchPage: React.FC = () => {
                   key={tab}
                   type="button"
                   onClick={() => setSelectedHskTab(tab)}
+                  className="px-3 py-1.5 sm:px-3.5 rounded-full font-extrabold text-xs cursor-pointer transition-all shrink-0 whitespace-nowrap"
                   style={{
-                    padding: '6px 14px',
-                    borderRadius: 'var(--radius-full, 9999px)',
                     border: active ? '1.5px solid var(--primary)' : '1.5px solid var(--border-card)',
                     backgroundColor: active ? 'var(--primary)' : '#ffffff',
                     color: active ? '#ffffff' : 'var(--text-main)',
-                    fontWeight: 800,
-                    fontSize: '0.82rem',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s',
                   }}
                 >
                   {tab}
@@ -427,47 +364,28 @@ export const VocabSearchPage: React.FC = () => {
         ) : !searched ? (
           /* Initial Welcome State */
           <div
+            className="bg-white p-5 sm:px-8 sm:py-12 text-center flex flex-col items-center gap-4"
             style={{
-              backgroundColor: '#ffffff',
               borderRadius: 'var(--radius-lg)',
               border: '2px dashed var(--border-card)',
-              padding: '48px 32px',
-              textAlign: 'center',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '16px',
             }}
           >
             <PandaMascot size={100} />
             <div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', margin: '0 0 8px 0' }}>
+              <h2 className="text-lg sm:text-xl font-extrabold m-0 mb-2" style={{ color: 'var(--text-main)' }}>
                 Khám phá kho từ vựng tiếng Trung
               </h2>
               <p
+                className="text-sm leading-relaxed m-0 max-w-[540px]"
                 style={{
                   color: 'var(--text-muted)',
-                  fontSize: '0.9rem',
-                  maxWidth: '540px',
-                  lineHeight: 1.6,
-                  margin: 0,
                 }}
               >
                 Nhập từ khóa vào ô tìm kiếm bên trên để tra cứu. Hệ thống hỗ trợ tìm kiếm chữ Hán, phiên âm pinyin không dấu hoặc có dấu, và nghĩa tiếng Việt tương ứng.
               </p>
             </div>
 
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-                gap: '16px',
-                width: '100%',
-                maxWidth: '720px',
-                marginTop: '16px',
-                textAlign: 'left',
-              }}
-            >
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 w-full max-w-[720px] mt-2 sm:mt-4 text-left">
               <div
                 style={{
                   padding: '16px',
@@ -521,16 +439,10 @@ export const VocabSearchPage: React.FC = () => {
           /* Empty Search Result (TC-04) */
           <div
             id="search-empty-state"
+            className="bg-white p-6 sm:px-8 sm:py-12 text-center flex flex-col items-center gap-4"
             style={{
-              backgroundColor: '#ffffff',
               borderRadius: 'var(--radius-lg)',
               border: '2px solid var(--border-card)',
-              padding: '48px 32px',
-              textAlign: 'center',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '16px',
             }}
           >
             <div
@@ -558,39 +470,27 @@ export const VocabSearchPage: React.FC = () => {
               </p>
             </div>
             <div
+              className="text-xs sm:text-[0.85rem] px-3.5 py-3 sm:px-5 flex items-start sm:items-center gap-2 text-left"
               style={{
-                fontSize: '0.85rem',
                 color: 'var(--text-muted)',
                 backgroundColor: 'var(--bg-input)',
-                padding: '12px 20px',
                 borderRadius: 'var(--radius-md)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
               }}
             >
-              <HelpCircle size={16} color="var(--primary)" />
+              <HelpCircle size={16} color="var(--primary)" className="shrink-0 mt-0.5 sm:mt-0" />
               <span>Gợi ý: Hãy thử từ khóa khác, kiểm tra lại chính tả hoặc chuyển sang tab "Tất cả".</span>
             </div>
           </div>
         ) : (
           /* Results List (TC-01, TC-02, TC-03) */
           <div>
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '16px',
-                padding: '0 4px',
-              }}
-            >
+            <div className="flex flex-wrap justify-between items-center gap-2 mb-4 px-1">
               <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-main)' }}>
                 Tìm thấy{' '}
                 <span style={{ color: 'var(--primary)' }}>{filteredResults.length}</span> từ vựng
               </span>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                Hiển thị kết quả tra cứu cho "{query}"
+              <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
+                Hiển thị kết quả tra cứu cho &quot;{query}&quot;
               </span>
             </div>
 
@@ -601,47 +501,30 @@ export const VocabSearchPage: React.FC = () => {
                 return (
                   <article
                     key={vocab.id}
-                    className="vocab-card"
+                    className="vocab-card bg-white p-4 sm:px-6 sm:py-5 transition-all flex flex-col gap-3.5"
                     style={{
-                      backgroundColor: '#ffffff',
                       borderRadius: 'var(--radius-lg)',
                       border: '2px solid var(--border-card)',
-                      padding: '20px 24px',
                       boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
-                      transition: 'all 0.2s ease',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '14px',
                     }}
                   >
                     {/* Top Row: Hanzi, Pinyin, Meaning, Audio */}
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'flex-start',
-                        flexWrap: 'wrap',
-                        gap: '16px',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div className="flex justify-between items-start flex-wrap gap-3 sm:gap-4">
+                      <div className="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0 flex-1">
                         {/* Hanzi Box */}
                         <div
+                          className="text-3xl sm:text-[2.2rem] font-extrabold leading-none shrink-0 hanzi"
                           style={{
-                            fontSize: '2.2rem',
-                            fontWeight: 800,
                             color: 'var(--text-main)',
                             fontFamily: 'serif',
-                            lineHeight: 1,
                           }}
-                          className="hanzi"
                         >
                           {vocab.hanzi}
                         </div>
 
                         {/* Pinyin & Meaning */}
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
                             <span
                               style={{
                                 fontSize: '1.15rem',
@@ -685,19 +568,12 @@ export const VocabSearchPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => handlePronounce(vocab)}
+                        className="flex items-center gap-1.5 px-3.5 py-2 font-extrabold text-xs cursor-pointer transition-all shrink-0 whitespace-nowrap"
                         style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          padding: '8px 14px',
                           borderRadius: 'var(--radius-md)',
                           border: '1.5px solid var(--border-card)',
                           backgroundColor: isSpeaking ? 'var(--primary)' : 'var(--bg-card)',
                           color: isSpeaking ? '#ffffff' : 'var(--primary)',
-                          fontWeight: 800,
-                          fontSize: '0.82rem',
-                          cursor: 'pointer',
-                          transition: 'all 0.15s',
                         }}
                         title="Nghe phát âm từ vựng"
                       >
@@ -773,19 +649,11 @@ export const VocabSearchPage: React.FC = () => {
                               key={lesson.lessonId}
                               type="button"
                               onClick={() => navigate(`/lessons/${lesson.lessonId}`)}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white text-xs font-bold cursor-pointer transition-all max-w-full text-left break-words"
                               style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                padding: '4px 10px',
                                 borderRadius: 'var(--radius-sm)',
                                 border: '1px solid var(--border-card)',
-                                backgroundColor: '#ffffff',
                                 color: 'var(--text-main)',
-                                fontSize: '0.78rem',
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                transition: 'all 0.15s',
                               }}
                               title={`Chuyển đến bài học ${lesson.lessonTitle}`}
                               onMouseEnter={(e) => {

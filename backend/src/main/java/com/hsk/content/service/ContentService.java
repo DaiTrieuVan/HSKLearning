@@ -1,5 +1,7 @@
 package com.hsk.content.service;
 
+import com.hsk.account.domain.UserEntity;
+import com.hsk.account.repository.UserRepository;
 import com.hsk.classroom.domain.ClassEntity;
 import com.hsk.classroom.domain.ClassMemberStatus;
 import com.hsk.classroom.repository.ClassMemberRepository;
@@ -17,18 +19,24 @@ import com.hsk.content.domain.VocabSetEntity;
 import com.hsk.content.domain.VocabSetItemEntity;
 import com.hsk.content.domain.VocabularyEntity;
 import com.hsk.content.dto.BatchAddVocabSetItemsResponse;
+import com.hsk.content.dto.BatchSaveWordsRequest;
 import com.hsk.content.dto.CreateGrammarPointRequest;
 import com.hsk.content.dto.CreateLessonRequest;
 import com.hsk.content.dto.CreateVocabSetRequest;
 import com.hsk.content.dto.CreateVocabularyRequest;
+import com.hsk.content.dto.CreateWordRowDto;
 import com.hsk.content.dto.GrammarPointResponse;
 import com.hsk.content.dto.HskLevelResponse;
 import com.hsk.content.dto.ImportVocabularyResult;
 import com.hsk.content.dto.LessonResponse;
 import com.hsk.content.dto.LessonStudyResponse;
+import com.hsk.content.dto.StudentVocabWordItemDto;
+import com.hsk.content.dto.StudentWordsPageResponse;
+import com.hsk.content.dto.StudentWordsStatsDto;
 import com.hsk.content.dto.UpdateLessonRequest;
 import com.hsk.content.dto.UpdateVocabularyRequest;
 import com.hsk.content.dto.VocabSetResponse;
+import com.hsk.content.dto.VocabSetSummaryDto;
 import com.hsk.content.dto.VocabularyAudioResponse;
 import com.hsk.content.dto.VocabularyResponse;
 import com.hsk.content.repository.ClassVocabSetRepository;
@@ -36,9 +44,15 @@ import com.hsk.content.repository.GrammarPointRepository;
 import com.hsk.content.repository.HskLevelRepository;
 import com.hsk.content.repository.LessonRepository;
 import com.hsk.content.repository.LessonVocabularyRepository;
+import com.hsk.content.repository.VocabFolderRepository;
 import com.hsk.content.repository.VocabSetItemRepository;
 import com.hsk.content.repository.VocabSetRepository;
 import com.hsk.content.repository.VocabularyRepository;
+import com.hsk.learning.domain.FlashcardResult;
+import com.hsk.learning.domain.VocabLearningEntity;
+import com.hsk.learning.domain.VocabLearningId;
+import com.hsk.learning.repository.VocabLearningRepository;
+import java.util.Map;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import java.io.BufferedReader;
@@ -50,6 +64,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -78,6 +95,9 @@ public class ContentService {
 	private final ClassVocabSetRepository classVocabSetRepository;
 	private final ClassRepository classRepository;
 	private final ClassMemberRepository classMemberRepository;
+	private final VocabFolderRepository vocabFolderRepository;
+	private final VocabLearningRepository vocabLearningRepository;
+	private final UserRepository userRepository;
 
 	public ContentService(
 			HskLevelRepository levelRepository,
@@ -89,7 +109,10 @@ public class ContentService {
 			VocabSetItemRepository vocabSetItemRepository,
 			ClassVocabSetRepository classVocabSetRepository,
 			ClassRepository classRepository,
-			ClassMemberRepository classMemberRepository) {
+			ClassMemberRepository classMemberRepository,
+			VocabFolderRepository vocabFolderRepository,
+			VocabLearningRepository vocabLearningRepository,
+			UserRepository userRepository) {
 		this.levelRepository = levelRepository;
 		this.lessonRepository = lessonRepository;
 		this.vocabularyRepository = vocabularyRepository;
@@ -100,6 +123,9 @@ public class ContentService {
 		this.classVocabSetRepository = classVocabSetRepository;
 		this.classRepository = classRepository;
 		this.classMemberRepository = classMemberRepository;
+		this.vocabFolderRepository = vocabFolderRepository;
+		this.vocabLearningRepository = vocabLearningRepository;
+		this.userRepository = userRepository;
 	}
 
 	// ==================== 1. HSK LEVELS ====================
@@ -666,7 +692,17 @@ public class ContentService {
 
 	@Transactional
 	public VocabSetResponse createVocabSet(CreateVocabSetRequest req, Long teacherId) {
-		VocabSetEntity set = new VocabSetEntity(teacherId, req.title().trim(), req.description());
+		VocabSetEntity set = new VocabSetEntity(
+				teacherId,
+				req.folderId(),
+				req.title().trim(),
+				req.description(),
+				Boolean.TRUE.equals(req.isPublic()),
+				req.color() != null && !req.color().isBlank() ? req.color().trim() : "#10b981"
+		);
+		if (Boolean.TRUE.equals(req.isPublic())) {
+			set.setShareCode("SET-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
+		}
 		VocabSetEntity saved = vocabSetRepository.save(set);
 
 		int count = 0;
@@ -834,5 +870,312 @@ public class ContentService {
 		vocabSetItemRepository.findAllByVocabSetIdOrderBySortOrderAsc(vocabSetId)
 			.forEach(vocabSetItemRepository::delete);
 		vocabSetRepository.delete(set);
+	}
+
+	@Transactional(readOnly = true)
+	public List<VocabSetSummaryDto> getMyVocabSets(Long userId, Long folderId) {
+		List<VocabSetEntity> sets;
+		if (folderId != null) {
+			sets = vocabSetRepository.findByTeacherIdAndFolderIdOrderByCreatedAtDesc(userId, folderId);
+		} else {
+			sets = vocabSetRepository.findAllByTeacherIdOrderByCreatedAtDesc(userId);
+		}
+
+		return sets.stream().map(s -> {
+			int wordCount = (int) vocabSetItemRepository.countByVocabSetId(s.getId());
+			List<Long> vIds = vocabSetItemRepository.findVocabularyIdsByVocabSetId(s.getId());
+			int mastered = vIds.isEmpty() ? 0 : (int) vocabLearningRepository.countMasteredInList(userId, vIds);
+			return VocabSetSummaryDto.fromEntity(s, wordCount, mastered);
+		}).toList();
+	}
+
+	/**
+	 * Trả về các bộ từ vựng học viên có thể dùng để luyện tập: bộ từ cá nhân/đã lưu và bộ từ được giao qua các lớp đang tham gia.
+	 */
+	@Transactional(readOnly = true)
+	public List<VocabSetSummaryDto> getPracticeAccessibleVocabSets(Long userId) {
+		Map<Long, VocabSetEntity> orderedSets = new LinkedHashMap<>();
+		for (VocabSetEntity owned : vocabSetRepository.findAllByTeacherIdOrderByCreatedAtDesc(userId)) {
+			orderedSets.putIfAbsent(owned.getId(), owned);
+		}
+		for (VocabSetEntity classSet : classVocabSetRepository.findVocabSetsForActiveStudent(userId, ClassMemberStatus.ACTIVE)) {
+			orderedSets.putIfAbsent(classSet.getId(), classSet);
+		}
+		if (orderedSets.isEmpty()) {
+			return List.of();
+		}
+
+		Map<Long, List<Long>> vocabIdsBySet = new LinkedHashMap<>();
+		Set<Long> allVocabIds = new LinkedHashSet<>();
+		for (Object[] row : vocabSetItemRepository.findSetAndVocabularyIdsByVocabSetIdIn(orderedSets.keySet())) {
+			Long setId = ((Number) row[0]).longValue();
+			Long vocabId = ((Number) row[1]).longValue();
+			vocabIdsBySet.computeIfAbsent(setId, ignored -> new ArrayList<>()).add(vocabId);
+			allVocabIds.add(vocabId);
+		}
+
+		Set<Long> masteredVocabIds = new HashSet<>();
+		if (!allVocabIds.isEmpty()) {
+			for (VocabLearningEntity vl : vocabLearningRepository.findAllById_UserIdAndId_VocabularyIdIn(userId, allVocabIds)) {
+				if (vl.isMastered()) {
+					masteredVocabIds.add(vl.getId().getVocabularyId());
+				}
+			}
+		}
+
+		return orderedSets.values().stream()
+				.map(s -> {
+					List<Long> vIds = vocabIdsBySet.getOrDefault(s.getId(), List.of());
+					int mastered = (int) vIds.stream().distinct().filter(masteredVocabIds::contains).count();
+					return VocabSetSummaryDto.fromEntity(s, vIds.size(), mastered);
+				})
+				.toList();
+	}
+
+	@Transactional(readOnly = true)
+	public List<VocabSetSummaryDto> getCommunityVocabSets(Long userId) {
+		return vocabSetRepository.findByIsPublicTrueOrderByCreatedAtDesc().stream().map(s -> {
+			int wordCount = (int) vocabSetItemRepository.countByVocabSetId(s.getId());
+			List<Long> vIds = vocabSetItemRepository.findVocabularyIdsByVocabSetId(s.getId());
+			int mastered = vIds.isEmpty() ? 0 : (int) vocabLearningRepository.countMasteredInList(userId, vIds);
+			return VocabSetSummaryDto.fromEntity(s, wordCount, mastered);
+		}).toList();
+	}
+
+	@Transactional
+	public VocabSetSummaryDto updateVocabSet(Long vocabSetId, Long userId, CreateVocabSetRequest req) {
+		VocabSetEntity set = vocabSetRepository.findById(vocabSetId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.VOCAB_SET_NOT_FOUND));
+		if (!Objects.equals(set.getTeacherId(), userId)) {
+			throw new ApiException(ApiErrorCode.FORBIDDEN);
+		}
+
+		set.setTitle(req.title().trim());
+		set.setDescription(req.description() != null ? req.description().trim() : null);
+		if (req.folderId() != null) {
+			if (!vocabFolderRepository.existsByIdAndUserId(req.folderId(), userId)) {
+				throw new ApiException(ApiErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy thư mục");
+			}
+			set.setFolderId(req.folderId());
+		} else {
+			set.setFolderId(null);
+		}
+
+		if (req.color() != null && !req.color().isBlank()) {
+			set.setColor(req.color().trim());
+		}
+		if (req.isPublic() != null) {
+			set.setPublic(req.isPublic());
+			if (req.isPublic() && set.getShareCode() == null) {
+				set.setShareCode("SET-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
+			}
+		}
+
+		VocabSetEntity saved = vocabSetRepository.save(set);
+		int wordCount = (int) vocabSetItemRepository.countByVocabSetId(saved.getId());
+		List<Long> vIds = vocabSetItemRepository.findVocabularyIdsByVocabSetId(saved.getId());
+		int mastered = vIds.isEmpty() ? 0 : (int) vocabLearningRepository.countMasteredInList(userId, vIds);
+		return VocabSetSummaryDto.fromEntity(saved, wordCount, mastered);
+	}
+
+	@Transactional
+	public VocabSetSummaryDto toggleShareVocabSet(Long vocabSetId, Long userId) {
+		VocabSetEntity set = vocabSetRepository.findById(vocabSetId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.VOCAB_SET_NOT_FOUND));
+		if (!Objects.equals(set.getTeacherId(), userId)) {
+			throw new ApiException(ApiErrorCode.FORBIDDEN);
+		}
+
+		if (set.getShareCode() == null) {
+			set.setShareCode("SET-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
+			set.setPublic(true);
+		} else {
+			set.setPublic(!set.isPublic());
+		}
+
+		VocabSetEntity saved = vocabSetRepository.save(set);
+		int wordCount = (int) vocabSetItemRepository.countByVocabSetId(saved.getId());
+		List<Long> vIds = vocabSetItemRepository.findVocabularyIdsByVocabSetId(saved.getId());
+		int mastered = vIds.isEmpty() ? 0 : (int) vocabLearningRepository.countMasteredInList(userId, vIds);
+		return VocabSetSummaryDto.fromEntity(saved, wordCount, mastered);
+	}
+
+	@Transactional
+	public VocabSetSummaryDto importSharedVocabSet(Long userId, String shareCode) {
+		String cleanCode = shareCode != null ? shareCode.trim() : "";
+		VocabSetEntity sourceSet = vocabSetRepository.findByShareCode(cleanCode)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy bộ từ vựng với mã chia sẻ này"));
+
+		VocabSetEntity newSet = new VocabSetEntity(
+				userId,
+				null,
+				sourceSet.getTitle() + " (Đã nhập)",
+				sourceSet.getDescription(),
+				false,
+				sourceSet.getColor()
+		);
+		VocabSetEntity savedSet = vocabSetRepository.save(newSet);
+
+		List<VocabSetItemEntity> sourceItems = vocabSetItemRepository.findAllByVocabSetIdOrderBySortOrderAsc(sourceSet.getId());
+		int order = 1;
+		for (VocabSetItemEntity item : sourceItems) {
+			VocabSetItemEntity newItem = new VocabSetItemEntity(savedSet, item.getVocabulary(), order++);
+			vocabSetItemRepository.save(newItem);
+		}
+
+		return VocabSetSummaryDto.fromEntity(savedSet, sourceItems.size(), 0);
+	}
+
+	@Transactional
+	public BatchAddVocabSetItemsResponse batchSaveWordsToSet(Long userId, BatchSaveWordsRequest req) {
+		VocabSetEntity set = vocabSetRepository.findById(req.vocabSetId())
+				.orElseThrow(() -> new ApiException(ApiErrorCode.VOCAB_SET_NOT_FOUND));
+		if (!Objects.equals(set.getTeacherId(), userId)) {
+			throw new ApiException(ApiErrorCode.FORBIDDEN);
+		}
+
+		int currentOrder = (int) vocabSetItemRepository.countByVocabSetId(set.getId()) + 1;
+		int added = 0;
+
+		for (CreateWordRowDto row : req.words()) {
+			String hanzi = row.hanzi().trim();
+			String pinyin = (row.pinyin() != null && !row.pinyin().isBlank()) ? row.pinyin().trim() : "";
+			String meaning = row.meaning().trim();
+			String pos = (row.partOfSpeech() != null && !row.partOfSpeech().isBlank()) ? row.partOfSpeech().trim() : "noun";
+			String exSentence = (row.exampleSentence() != null && !row.exampleSentence().isBlank()) ? row.exampleSentence().trim() : "";
+
+			String ownerKey = VocabularyEntity.buildOwnerKey(userId, hanzi, pinyin);
+			VocabularyEntity savedVocab = vocabularyRepository.findByOwnerKey(ownerKey)
+					.orElseGet(() -> {
+						VocabularyEntity vocab = new VocabularyEntity(
+								hanzi,
+								pinyin,
+								meaning,
+								pos,
+								null,
+								exSentence,
+								null,
+								null,
+								null,
+								userId
+						);
+						return vocabularyRepository.save(vocab);
+					});
+
+			if (!vocabSetItemRepository.existsByVocabSetIdAndVocabularyId(set.getId(), savedVocab.getId())) {
+				VocabSetItemEntity item = new VocabSetItemEntity(set, savedVocab, currentOrder++);
+				vocabSetItemRepository.save(item);
+				added++;
+			}
+		}
+
+		return new BatchAddVocabSetItemsResponse(added, req.words().size());
+	}
+
+	@Transactional
+	public boolean toggleWordMastered(Long userId, Long vocabularyId) {
+		UserEntity user = userRepository.findById(userId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.UNAUTHORIZED));
+		VocabularyEntity vocab = vocabularyRepository.findById(vocabularyId)
+				.orElseThrow(() -> new ApiException(ApiErrorCode.VOCABULARY_NOT_FOUND));
+
+		VocabLearningId id = new VocabLearningId(userId, vocabularyId);
+		VocabLearningEntity learning = vocabLearningRepository.findById(id)
+				.orElseGet(() -> {
+					VocabLearningEntity entity = new VocabLearningEntity(user, vocab, FlashcardResult.REMEMBERED);
+					entity.setMastered(false);
+					return entity;
+				});
+
+		boolean newStatus = !learning.isMastered();
+		learning.setMastered(newStatus);
+		if (newStatus) {
+			learning.setRepetitionLevel(Math.max(3, learning.getRepetitionLevel() != null ? learning.getRepetitionLevel() : 3));
+		}
+		vocabLearningRepository.save(learning);
+		return newStatus;
+	}
+
+	@Transactional(readOnly = true)
+	public StudentWordsPageResponse getStudentWords(Long userId, Long vocabSetId, String search, String status, int page, int size) {
+		List<Long> targetVocabIds;
+		if (vocabSetId != null) {
+			targetVocabIds = vocabSetItemRepository.findVocabularyIdsByVocabSetId(vocabSetId);
+		} else {
+			Set<Long> accessibleSetIds = new LinkedHashSet<>();
+			vocabSetRepository.findAllByTeacherIdOrderByCreatedAtDesc(userId)
+					.forEach(s -> accessibleSetIds.add(s.getId()));
+			accessibleSetIds.addAll(
+					classVocabSetRepository.findVocabSetIdsForActiveStudent(userId, ClassMemberStatus.ACTIVE));
+
+			Set<Long> combinedVocabIds = new LinkedHashSet<>();
+			if (!accessibleSetIds.isEmpty()) {
+				combinedVocabIds.addAll(
+						vocabSetItemRepository.findDistinctVocabularyIdsByVocabSetIdIn(accessibleSetIds));
+			}
+			vocabularyRepository.findAllByOwnerIdAndHiddenFalse(userId)
+					.forEach(v -> combinedVocabIds.add(v.getId()));
+			targetVocabIds = new ArrayList<>(combinedVocabIds);
+		}
+
+		if (targetVocabIds.isEmpty()) {
+			StudentWordsStatsDto emptyStats = new StudentWordsStatsDto(0, 0, 0, 0);
+			return new StudentWordsPageResponse(emptyStats, List.of(), page, 0, 0);
+		}
+
+		List<VocabularyEntity> vocabs = vocabularyRepository.findAllById(targetVocabIds).stream()
+				.filter(v -> !v.isHidden())
+				.toList();
+		if (vocabs.isEmpty()) {
+			StudentWordsStatsDto emptyStats = new StudentWordsStatsDto(0, 0, 0, 0);
+			return new StudentWordsPageResponse(emptyStats, List.of(), page, 0, 0);
+		}
+
+		List<Long> visibleVocabIds = vocabs.stream().map(VocabularyEntity::getId).toList();
+		long totalWords = visibleVocabIds.size();
+		long masteredWords = vocabLearningRepository.countMasteredInList(userId, visibleVocabIds);
+		long unmasteredWords = totalWords - masteredWords;
+		int progressPercent = totalWords > 0 ? (int) Math.round((double) masteredWords * 100 / totalWords) : 0;
+		StudentWordsStatsDto stats = new StudentWordsStatsDto(totalWords, masteredWords, unmasteredWords, progressPercent);
+
+		String cleanSearch = search != null ? search.trim().toLowerCase() : "";
+		if (!cleanSearch.isEmpty()) {
+			vocabs = vocabs.stream().filter(v ->
+					(v.getHanzi() != null && v.getHanzi().toLowerCase().contains(cleanSearch)) ||
+					(v.getPinyin() != null && v.getPinyin().toLowerCase().contains(cleanSearch)) ||
+					(v.getMeaning() != null && v.getMeaning().toLowerCase().contains(cleanSearch))
+			).toList();
+		}
+
+		List<VocabLearningEntity> learnings = vocabLearningRepository.findAllById_UserIdAndId_VocabularyIdIn(userId, visibleVocabIds);
+		Map<Long, Boolean> masteredMap = learnings.stream()
+				.collect(Collectors.toMap(l -> l.getVocabulary().getId(), VocabLearningEntity::isMastered, (a, b) -> a));
+
+		if ("MASTERED".equalsIgnoreCase(status)) {
+			vocabs = vocabs.stream().filter(v -> Boolean.TRUE.equals(masteredMap.get(v.getId()))).toList();
+		} else if ("UNMASTERED".equalsIgnoreCase(status)) {
+			vocabs = vocabs.stream().filter(v -> !Boolean.TRUE.equals(masteredMap.get(v.getId()))).toList();
+		}
+
+		int totalElements = vocabs.size();
+		int totalPages = (int) Math.ceil((double) totalElements / size);
+		int fromIndex = Math.min(page * size, totalElements);
+		int toIndex = Math.min(fromIndex + size, totalElements);
+		List<VocabularyEntity> pageList = vocabs.subList(fromIndex, toIndex);
+
+		List<StudentVocabWordItemDto> items = pageList.stream().map(v -> new StudentVocabWordItemDto(
+				v.getId(),
+				v.getHanzi(),
+				v.getPinyin(),
+				v.getMeaning(),
+				v.getPartOfSpeech(),
+				v.getAudioUrl(),
+				v.getExampleSentence(),
+				v.getExamplePinyin(),
+				v.getExampleMeaning(),
+				Boolean.TRUE.equals(masteredMap.get(v.getId()))
+		)).toList();
+
+		return new StudentWordsPageResponse(stats, items, page, totalPages, totalElements);
 	}
 }

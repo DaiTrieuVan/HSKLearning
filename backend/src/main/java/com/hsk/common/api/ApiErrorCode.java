@@ -273,7 +273,49 @@ public enum ApiErrorCode {
 	MOCK_EXAM_SECTIONS_REQUIRED(HttpStatus.BAD_REQUEST, "Đề thi thử phải có ít nhất 1 phần thi"),
 
 	/** Unexpected server side failure; the client may retry. */
-	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Hệ thống đang gặp sự cố, vui lòng thử lại sau");
+	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Hệ thống đang gặp sự cố, vui lòng thử lại sau"),
+
+	/** HTT-10-CN-002: Stroke order data not found for character. */
+	HANZI_STROKE_DATA_NOT_FOUND(HttpStatus.NOT_FOUND, "Chưa hỗ trợ chữ này"),
+
+	/** HTT-10-CN-002: Input is not a single valid Han ideograph character. */
+	INVALID_HANZI_CHARACTER(HttpStatus.BAD_REQUEST, "Ký tự không phải là chữ Hán hợp lệ"),
+
+	/** HTT-10-CN-003 / TC-04: Audio is too short (<0.5s), silence, or invalid format. */
+	INVALID_AUDIO(HttpStatus.BAD_REQUEST, "Bản ghi âm không hợp lệ, quá ngắn hoặc chỉ có tiếng ồn"),
+
+	/** HTT-10-CN-003 / TC-03: External speech recognition service error or timeout. */
+	PRONUNCIATION_PROVIDER_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "Dịch vụ nhận dạng giọng nói tạm thời không khả dụng, vui lòng thử lại sau"),
+
+	/** HTT-10-CN-003: Reference text must be 1-200 chars and contain Chinese characters. */
+	INVALID_REFERENCE_TEXT(HttpStatus.BAD_REQUEST, "Nội dung chuẩn phải từ 1-200 ký tự và chứa chữ Hán"),
+
+	/** HTT-10-CN-004 / TC-02: Question blank or exceeds 1000 characters. */
+	INVALID_AI_QUESTION(HttpStatus.BAD_REQUEST, "Câu hỏi không được để trống và không được vượt quá 1000 ký tự"),
+
+	/** HTT-10-CN-004 / TC-03: Daily question limit reached (20 questions/day). */
+	AI_DAILY_LIMIT_REACHED(HttpStatus.TOO_MANY_REQUESTS, "Bạn đã dùng hết 20 lượt hỏi trong ngày. Vui lòng quay lại vào ngày mai"),
+
+	/** HTT-10-CN-004 / TC-04: AI provider error or timeout. */
+	AI_PROVIDER_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "Dịch vụ trợ lý AI tạm thời không khả dụng, vui lòng thử lại sau"),
+
+	/** Material not found. */
+	MATERIAL_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy giáo trình"),
+
+	/** Material exceeds maximum allowed file size (50 MB). */
+	MATERIAL_FILE_TOO_LARGE(HttpStatus.BAD_REQUEST, "Kích thước tệp giáo trình vượt quá giới hạn tối đa 50 MB"),
+
+	/** Uploaded material format is not PDF or PPTX. */
+	MATERIAL_INVALID_FORMAT(HttpStatus.BAD_REQUEST, "Định dạng không hợp lệ. Vui lòng tải lên tệp .pdf hoặc .pptx"),
+
+	/** Uploaded material exceeds maximum supported pages/slides (150). */
+	MATERIAL_TOO_MANY_PAGES(HttpStatus.BAD_REQUEST, "Giáo trình vượt quá giới hạn tối đa 150 trang/slide"),
+
+	/** Material is still being converted or failed to render slides. */
+	MATERIAL_NOT_READY(HttpStatus.CONFLICT, "Giáo trình đang được xử lý hoặc gặp lỗi chuyển đổi, chưa thể trình chiếu"),
+
+	/** Teacher restricted download permission for this material. */
+	MATERIAL_DOWNLOAD_NOT_ALLOWED(HttpStatus.FORBIDDEN, "Giáo viên đã tắt quyền tải về đối với giáo trình này");
 
 	private final HttpStatus status;
 

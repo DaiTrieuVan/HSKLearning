@@ -27,6 +27,30 @@ export class ApiError extends Error {
   }
 }
 
+export async function throwApiErrorFromResponse(
+  response: Response,
+  fallbackCode: string,
+  fallbackMessage: string
+): Promise<never> {
+  const data = (await response.json().catch(() => null)) as ApiErrorResponse | null
+  if (response.status === 401) {
+    throw new ApiError(
+      401,
+      data?.code || 'UNAUTHORIZED',
+      data?.message || 'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại'
+    )
+  }
+  const message = data?.message
+    ? `${data.message}${response.status >= 500 ? ` (HTTP ${response.status})` : ''}`
+    : `${fallbackMessage} (HTTP ${response.status})`
+  throw new ApiError(
+    response.status,
+    data?.code || fallbackCode,
+    message,
+    data?.fields
+  )
+}
+
 export async function registerStudent(payload: RegisterRequest): Promise<UserResponse> {
   const response = await fetch(`${API_BASE}/auth/register`, {
     method: 'POST',

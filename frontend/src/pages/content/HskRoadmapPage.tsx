@@ -89,114 +89,102 @@ export const HskRoadmapPage: React.FC = () => {
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-page)', display: 'flex', flexDirection: 'column' }}>
+    <div
+      className="min-h-screen flex flex-col overflow-x-hidden"
+      style={{ backgroundColor: 'var(--bg-page)' }}
+    >
       {/* Top Header */}
       <header
+        className="px-3.5 py-3 sm:px-6 sm:py-4 lg:px-7 bg-white flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
         style={{
-          padding: '16px 28px',
-          backgroundColor: '#ffffff',
           borderBottom: '2px solid var(--border-card)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
           boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+        <div className="flex items-center gap-3 sm:gap-3.5 min-w-0">
           <button
             type="button"
             onClick={() => navigate('/')}
+            className="shrink-0 flex items-center justify-center w-[38px] h-[38px] cursor-pointer transition-all"
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '38px',
-              height: '38px',
               borderRadius: 'var(--radius-md)',
               border: '1.5px solid var(--border-card)',
               backgroundColor: '#ffffff',
               color: 'var(--text-main)',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
             }}
             title="Quay lại bảng điều khiển"
           >
             <ArrowLeft size={18} />
           </button>
-          <div>
-            <h1 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-main)' }}>
+          <div className="min-w-0">
+            <h1
+              className="text-lg sm:text-[1.3rem] font-extrabold leading-tight"
+              style={{ color: 'var(--text-main)' }}
+            >
               Lộ trình học tiếng Trung HSK
             </h1>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            <p className="text-xs sm:text-[0.8rem] mt-0.5" style={{ color: 'var(--text-muted)' }}>
               Theo dõi tiến độ từ HSK 1 đến các cấp độ nâng cao
             </p>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div className="flex items-center gap-3 shrink-0">
           <button
             type="button"
             onClick={() => navigate('/curriculum')}
-            className="btn-gamified btn-primary"
+            className="btn-gamified btn-primary w-full sm:w-auto justify-center whitespace-nowrap"
             style={{ padding: '8px 16px', fontSize: '0.85rem' }}
           >
-            <BookOpen size={16} />
+            <BookOpen size={16} className="shrink-0" />
             <span>Kho giáo trình HSK</span>
           </button>
         </div>
       </header>
 
       {/* Main Container - Tối ưu độ rộng lên 1440px */}
-      <main style={{ flex: 1, maxWidth: '1440px', width: '100%', margin: '0 auto', padding: '24px 28px' }}>
+      <main className="flex-1 w-full max-w-[1440px] mx-auto px-3.5 py-4 sm:px-6 sm:py-6 lg:px-7">
         {/* Banner with Mascot and Overall Progress */}
         <div
-          className="game-card"
+          className="game-card p-4 sm:px-7 sm:py-5 bg-white mb-5 sm:mb-6 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-4 sm:gap-6 rounded-2xl"
           style={{
-            padding: '20px 28px',
-            backgroundColor: '#ffffff',
-            marginBottom: '24px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '24px',
-            borderRadius: '16px',
             border: '1.5px solid var(--border-card)',
           }}
         >
-          <div style={{ flex: 1 }}>
+          <div className="flex-1 min-w-0">
             <div
+              className="inline-flex items-center gap-1.5 px-3 py-1 font-extrabold text-xs mb-2"
               style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
                 backgroundColor: 'var(--jade-green-light)',
                 color: 'var(--jade-green-shadow)',
-                padding: '4px 12px',
                 borderRadius: 'var(--radius-full)',
-                fontWeight: 800,
-                fontSize: '0.78rem',
-                marginBottom: '8px',
               }}
             >
               <Sparkles size={14} />
               <span>Lộ trình cá nhân hóa</span>
             </div>
 
-            <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '4px' }}>
+            <h2
+              className="text-xl sm:text-[1.4rem] font-extrabold leading-snug mb-1"
+              style={{ color: 'var(--text-main)' }}
+            >
               Chinh phục HSK từng bước vững chắc
             </h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginBottom: '14px', lineHeight: 1.5 }}>
+            <p
+              className="text-sm sm:text-[0.88rem] mb-3.5 leading-relaxed"
+              style={{ color: 'var(--text-muted)' }}
+            >
               Học theo thứ tự các bài học chuẩn, ôn tập từ vựng kèm ngữ pháp và tích lũy từng mốc hoàn thành.
             </p>
 
             {/* Overall Progress Bar */}
             {roadmap && (
-              <div style={{ maxWidth: '540px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '6px' }}>
+              <div className="max-w-[540px] w-full">
+                <div className="flex items-baseline justify-between gap-2 flex-wrap text-[0.82rem] mb-1.5">
                   <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>
                     Tổng số bài đã hoàn thành: <strong style={{ color: 'var(--primary)' }}>{roadmap.totalCompletedLessons}</strong> bài
                   </span>
-                  <span style={{ fontWeight: 800, color: 'var(--primary)' }}>
+                  <span className="shrink-0" style={{ fontWeight: 800, color: 'var(--primary)' }}>
                     {roadmap.overallProgressPercent}%
                   </span>
                 </div>
@@ -222,39 +210,37 @@ export const HskRoadmapPage: React.FC = () => {
             )}
           </div>
 
-          <div className="animate-float" style={{ flexShrink: 0 }}>
+          <div className="animate-float shrink-0 self-center sm:self-auto">
             <PandaMascot size={76} />
           </div>
         </div>
 
         {/* Loading & Error States */}
         {loading && (
-          <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>
-            <Loader2 size={36} className="animate-spin" style={{ margin: '0 auto 12px', color: 'var(--primary)' }} />
+          <div className="py-12 px-4 sm:p-[60px] text-center" style={{ color: 'var(--text-muted)' }}>
+            <Loader2 size={36} className="animate-spin mx-auto mb-3" style={{ color: 'var(--primary)' }} />
             <p style={{ fontWeight: 600 }}>Đang tải lộ trình học HSK...</p>
           </div>
         )}
 
         {error && !loading && (
           <div
+            className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3 mb-6"
             style={{
-              padding: '20px',
               backgroundColor: 'var(--danger-light)',
               color: 'var(--danger)',
               borderRadius: 'var(--radius-md)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              marginBottom: '24px',
             }}
           >
-            <AlertCircle size={20} />
-            <span style={{ fontWeight: 600 }}>{error}</span>
+            <div className="flex items-center gap-3 min-w-0">
+              <AlertCircle size={20} className="shrink-0" />
+              <span style={{ fontWeight: 600 }}>{error}</span>
+            </div>
             <button
               type="button"
               onClick={loadRoadmapData}
-              className="btn-gamified btn-danger"
-              style={{ marginLeft: 'auto', padding: '6px 14px', fontSize: '0.8rem' }}
+              className="btn-gamified btn-danger sm:ml-auto w-full sm:w-auto justify-center whitespace-nowrap"
+              style={{ padding: '6px 14px', fontSize: '0.8rem' }}
             >
               Thử lại
             </button>
@@ -263,24 +249,11 @@ export const HskRoadmapPage: React.FC = () => {
 
         {/* Content Section: 2-Column Responsive Layout */}
         {!loading && !error && roadmap && (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'minmax(0, 1fr) 340px',
-              gap: '24px',
-              alignItems: 'start',
-            }}
-          >
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_340px] gap-5 lg:gap-6 items-start">
             {/* CỘT CHÍNH (BÊN TRÁI): Chọn cấp độ & Danh sách bài học */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div className="flex flex-col gap-5 min-w-0">
               {/* Level Selector Tabs */}
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
-                  gap: '10px',
-                }}
-              >
+              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2.5">
                 {roadmap.levels.map((lvl) => {
                   const isSelected = lvl.id === selectedLevelId
                   const isDone = lvl.totalLessons > 0 && lvl.completedLessons === lvl.totalLessons
@@ -335,34 +308,26 @@ export const HskRoadmapPage: React.FC = () => {
               {/* Selected Level View */}
               {selectedLevel && (
                 <div
-                  className="game-card"
+                  className="game-card p-4 sm:p-6 bg-white rounded-2xl"
                   style={{
-                    padding: '24px',
-                    backgroundColor: '#ffffff',
-                    borderRadius: '16px',
                     border: '1.5px solid var(--border-card)',
                   }}
                 >
                   {/* Level Summary Header */}
                   <div
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 sm:gap-4 pb-4 mb-5"
                     style={{
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: '16px',
-                      paddingBottom: '18px',
                       borderBottom: '1.5px solid var(--border-card)',
-                      marginBottom: '20px',
                     }}
                   >
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                        <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <h2 className="text-lg sm:text-xl font-extrabold" style={{ color: 'var(--text-main)' }}>
                           {selectedLevel.title}
                         </h2>
                         {selectedLevel.available && (
                           <span
+                            className="shrink-0"
                             style={{
                               fontSize: '0.75rem',
                               fontWeight: 700,
@@ -376,14 +341,14 @@ export const HskRoadmapPage: React.FC = () => {
                           </span>
                         )}
                       </div>
-                      <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)', margin: 0 }}>
+                      <p className="text-sm sm:text-[0.86rem] m-0" style={{ color: 'var(--text-muted)' }}>
                         {selectedLevel.description || 'Học và hoàn thành các bài học bên dưới để đạt tiến độ cấp độ này.'}
                       </p>
                     </div>
 
                     {/* Level Progress */}
                     {selectedLevel.available && (
-                      <div style={{ minWidth: '200px' }}>
+                      <div className="w-full sm:w-auto sm:min-w-[200px] shrink-0">
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '6px' }}>
                           <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>
                             Tiến độ: {selectedLevel.completedLessons}/{selectedLevel.totalLessons} bài
@@ -447,36 +412,24 @@ export const HskRoadmapPage: React.FC = () => {
                         return (
                           <div
                             key={lesson.id}
+                            className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 sm:gap-4 p-3.5 sm:px-5 sm:py-4 transition-all"
                             style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              padding: '16px 20px',
                               borderRadius: 'var(--radius-md)',
                               border: lesson.completed ? '1.5px solid #a7f3d0' : '1.5px solid var(--border-card)',
                               backgroundColor: lesson.completed ? '#f0fdf4' : '#ffffff',
-                              transition: 'all 0.15s ease',
                             }}
                           >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1 }}>
+                            <div className="flex items-start sm:items-center gap-3 sm:gap-3.5 flex-1 min-w-0">
                               {/* Completion Checkmark Button */}
                               <button
                                 type="button"
                                 onClick={() => handleToggleCompletion(lesson.id, lesson.completed)}
                                 disabled={isUpdating}
+                                className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 cursor-pointer transition-all mt-0.5 sm:mt-0"
                                 style={{
-                                  width: '32px',
-                                  height: '32px',
-                                  borderRadius: '50%',
                                   border: lesson.completed ? 'none' : '2px solid #cbd5e1',
                                   backgroundColor: lesson.completed ? 'var(--primary)' : '#ffffff',
                                   color: '#ffffff',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  cursor: 'pointer',
-                                  flexShrink: 0,
-                                  transition: 'all 0.15s ease',
                                 }}
                                 title={lesson.completed ? 'Bấm để đánh dấu chưa hoàn thành' : 'Bấm để đánh dấu đã hoàn thành'}
                               >
@@ -490,9 +443,10 @@ export const HskRoadmapPage: React.FC = () => {
                               </button>
 
                               {/* Lesson Info */}
-                              <div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2 mb-0.5">
                                   <span
+                                    className="shrink-0"
                                     style={{
                                       fontSize: '0.72rem',
                                       fontWeight: 800,
@@ -505,22 +459,20 @@ export const HskRoadmapPage: React.FC = () => {
                                     Thứ tự #{lesson.sortOrder}
                                   </span>
                                   <h4
+                                    className="text-[0.95rem] sm:text-[0.98rem] font-bold m-0 break-words"
                                     style={{
-                                      fontSize: '0.98rem',
-                                      fontWeight: 700,
                                       color: 'var(--text-main)',
-                                      margin: 0,
                                     }}
                                   >
                                     {lesson.title}
                                   </h4>
                                 </div>
 
-                                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '4px 0' }}>
+                                <p className="text-xs sm:text-[0.82rem] my-1 break-words" style={{ color: 'var(--text-muted)' }}>
                                   {lesson.description || 'Nội dung bài học chuẩn theo khung HSK.'}
                                 </p>
 
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.75rem', color: 'var(--text-sub)' }}>
+                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs" style={{ color: 'var(--text-sub)' }}>
                                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                                     <Layers size={13} /> {lesson.vocabCount} từ vựng
                                   </span>
@@ -537,11 +489,11 @@ export const HskRoadmapPage: React.FC = () => {
                             </div>
 
                             {/* Action Button */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div className="flex items-center gap-2 sm:shrink-0">
                               <button
                                 type="button"
                                 onClick={() => navigate(`/lessons/${lesson.id}`)}
-                                className={`btn-gamified ${lesson.completed ? 'btn-green' : 'btn-primary'}`}
+                                className={`btn-gamified ${lesson.completed ? 'btn-green' : 'btn-primary'} w-full sm:w-auto justify-center whitespace-nowrap`}
                                 style={{ padding: '8px 16px', fontSize: '0.85rem' }}
                               >
                                 <span>{lesson.completed ? 'Ôn lại bài' : 'Vào học'}</span>
@@ -557,15 +509,12 @@ export const HskRoadmapPage: React.FC = () => {
             </div>
 
             {/* CỘT PHỤ (BÊN PHẢI): Bảng tổng quan năng lực & Lối tắt công cụ luyện tập */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div className="flex flex-col gap-5 min-w-0">
               {/* Widget 1: Tổng quan Năng lực Cấp độ */}
               {selectedLevel && (
                 <div
-                  className="game-card"
+                  className="game-card p-4 sm:p-5 bg-white rounded-2xl"
                   style={{
-                    padding: '20px',
-                    backgroundColor: '#ffffff',
-                    borderRadius: '16px',
                     border: '1.5px solid var(--border-card)',
                   }}
                 >
@@ -653,11 +602,8 @@ export const HskRoadmapPage: React.FC = () => {
 
               {/* Widget 2: Công cụ luyện tập bổ trợ */}
               <div
-                className="game-card"
+                className="game-card p-4 sm:p-5 bg-white rounded-2xl"
                 style={{
-                  padding: '20px',
-                  backgroundColor: '#ffffff',
-                  borderRadius: '16px',
                   border: '1.5px solid var(--border-card)',
                 }}
               >
@@ -812,20 +758,15 @@ export const HskRoadmapPage: React.FC = () => {
 
               {/* Widget 3: Ôn từ SRS */}
               <div
+                className="p-4 sm:px-5 sm:py-4 rounded-2xl flex flex-wrap sm:flex-nowrap items-center justify-between gap-3"
                 style={{
-                  padding: '18px 20px',
                   backgroundColor: '#f0fdf4',
-                  borderRadius: '16px',
                   border: '1.5px solid #bbf7d0',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '12px',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div className="flex items-center gap-2.5 min-w-0">
                   <BrainCircuit size={22} color="#16a34a" style={{ flexShrink: 0 }} />
-                  <div>
+                  <div className="min-w-0">
                     <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#166534' }}>
                       Ôn tập ngắt quãng SRS
                     </div>
@@ -838,6 +779,7 @@ export const HskRoadmapPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => navigate('/srs/review')}
+                  className="shrink-0 whitespace-nowrap cursor-pointer"
                   style={{
                     padding: '6px 12px',
                     borderRadius: '8px',
@@ -846,8 +788,6 @@ export const HskRoadmapPage: React.FC = () => {
                     color: '#ffffff',
                     fontWeight: 700,
                     fontSize: '0.78rem',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
                   }}
                 >
                   Ôn ngay

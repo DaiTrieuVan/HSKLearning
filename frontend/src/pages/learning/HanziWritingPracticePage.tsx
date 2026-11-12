@@ -70,51 +70,23 @@ export const HanziWritingPracticePage: React.FC = () => {
   }, [token, selectedHanzi])
 
   return (
-    <div
-      style={{
-        padding: '24px 24px 48px',
-        maxWidth: '1440px',
-        margin: '0 auto',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '24px',
-        width: '100%',
-        boxSizing: 'border-box',
-      }}
-    >
+    <div className="px-3.5 py-4 pb-10 sm:p-6 sm:pb-12 max-w-[1440px] mx-auto flex flex-col gap-5 sm:gap-6 w-full box-border overflow-x-hidden">
       {/* Tiêu đề trang */}
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '6px',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center gap-2.5">
           <div
+            className="p-2 rounded-[10px] shrink-0 flex items-center justify-center"
             style={{
-              padding: '8px',
-              borderRadius: '10px',
               backgroundColor: '#ecfdf5',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
             }}
           >
             <PenTool size={24} color="#10b981" />
           </div>
-          <h1
-            style={{
-              fontSize: '1.65rem',
-              fontWeight: 800,
-              color: '#0f172a',
-              margin: 0,
-            }}
-          >
+          <h1 className="text-xl sm:text-[1.65rem] font-extrabold text-slate-900 m-0 leading-tight">
             Luyện viết chữ Hán
           </h1>
         </div>
-        <p style={{ margin: 0, color: '#64748b', fontSize: '0.92rem' }}>
+        <p className="m-0 text-slate-500 text-xs sm:text-[0.92rem] leading-relaxed">
           Giao diện song song thông minh: vừa theo dõi hoạt ảnh nét mẫu chuẩn, vừa tập viết trực tiếp và giữ nguyên chữ viết tay để đối chiếu.
         </p>
       </div>
@@ -226,86 +198,48 @@ export const HanziWritingPracticePage: React.FC = () => {
 
       {/* Bố cục Song song (Dual View Layout) khi đã có dữ liệu */}
       {!loading && !errorStatus && strokeDetail && (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'minmax(340px, 460px) 1fr',
-            gap: '24px',
-            alignItems: 'stretch',
-          }}
-          className="hanzi-dual-view-container"
-        >
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(320px,430px)_minmax(0,1fr)] xl:grid-cols-[minmax(340px,460px)_minmax(0,1fr)] gap-4 sm:gap-6 items-stretch">
           {/* CỘT TRÁI: Hình mẫu chuẩn & Hoạt ảnh thứ tự nét */}
           <div
+            className="bg-white rounded-2xl p-4 sm:p-6 flex flex-col gap-4 sm:gap-[18px] min-w-0"
             style={{
-              backgroundColor: '#ffffff',
-              borderRadius: '16px',
               border: '1.5px solid #e2e8f0',
               boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)',
-              padding: '24px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '18px',
             }}
           >
             {/* Header Cột Trái */}
             <div
+              className="flex flex-wrap items-center justify-between gap-2.5 pb-3.5"
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                paddingBottom: '14px',
                 borderBottom: '1.5px solid #f1f5f9',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div className="flex items-center gap-3 min-w-0">
                 <div
+                  className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl text-white flex items-center justify-center text-2xl sm:text-[1.8rem] font-black shrink-0"
                   style={{
-                    width: '48px',
-                    height: '48px',
-                    borderRadius: '12px',
                     backgroundColor: '#10b981',
-                    color: '#ffffff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '1.8rem',
-                    fontWeight: 900,
                     boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
                   }}
                 >
                   {selectedHanzi}
                 </div>
-                <div>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1e293b' }}>
+                <div className="min-w-0">
+                  <div className="text-base sm:text-[1.1rem] font-extrabold text-slate-800">
                     Chữ mẫu: <strong>{selectedHanzi}</strong>
                   </div>
-                  <div
-                    style={{
-                      fontSize: '0.82rem',
-                      color: '#64748b',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                    }}
-                  >
-                    <BookOpen size={13} />
+                  <div className="text-xs sm:text-[0.82rem] text-slate-500 flex items-center gap-1.5">
+                    <BookOpen size={13} className="shrink-0" />
                     <span>Tổng số: {strokeDetail.strokeCount} nét</span>
                   </div>
                 </div>
               </div>
 
               <div
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold shrink-0 whitespace-nowrap"
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
                   backgroundColor: '#ecfdf5',
                   color: '#065f46',
-                  padding: '4px 10px',
-                  borderRadius: '20px',
-                  fontSize: '0.78rem',
-                  fontWeight: 700,
                 }}
               >
                 <Film size={14} color="#10b981" />
@@ -373,64 +307,36 @@ export const HanziWritingPracticePage: React.FC = () => {
 
           {/* CỘT PHẢI: Không gian luyện viết tay tương tác & Đối chiếu nét */}
           <div
+            className="bg-white rounded-2xl p-4 sm:p-6 flex flex-col gap-4 sm:gap-[18px] min-w-0"
             style={{
-              backgroundColor: '#ffffff',
-              borderRadius: '16px',
               border: '1.5px solid #e2e8f0',
               boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)',
-              padding: '24px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '18px',
             }}
           >
             {/* Header Cột Phải */}
             <div
+              className="flex flex-wrap items-center justify-between gap-2.5 pb-3.5"
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                paddingBottom: '14px',
                 borderBottom: '1.5px solid #f1f5f9',
-                flexWrap: 'wrap',
-                gap: '10px',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <PenTool size={20} color="#10b981" />
-                <div>
-                  <span
-                    style={{
-                      fontSize: '1.1rem',
-                      fontWeight: 800,
-                      color: '#1e293b',
-                    }}
-                  >
+              <div className="flex items-start sm:items-center gap-2 min-w-0">
+                <PenTool size={20} color="#10b981" className="shrink-0 mt-0.5 sm:mt-0" />
+                <div className="min-w-0">
+                  <span className="text-base sm:text-[1.1rem] font-extrabold text-slate-800">
                     Bảng luyện viết chữ
                   </span>
-                  <span
-                    style={{
-                      marginLeft: '8px',
-                      fontSize: '0.82rem',
-                      color: '#64748b',
-                    }}
-                  >
+                  <span className="block sm:inline sm:ml-2 text-xs sm:text-[0.82rem] text-slate-500">
                     (Lưu giữ nét chữ của bạn)
                   </span>
                 </div>
               </div>
 
               <div
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold shrink-0 whitespace-nowrap"
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
                   backgroundColor: '#f1f5f9',
                   color: '#475569',
-                  padding: '4px 10px',
-                  borderRadius: '20px',
-                  fontSize: '0.78rem',
-                  fontWeight: 600,
                 }}
               >
                 <CheckCircle2 size={14} color="#059669" />
@@ -461,38 +367,20 @@ export const HanziWritingPracticePage: React.FC = () => {
       {/* Thông tin bản quyền & Nguồn dữ liệu nét */}
       {!loading && !errorStatus && strokeDetail && (
         <div
+          className="bg-white rounded-xl p-3.5 sm:px-5 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400"
           style={{
-            backgroundColor: '#ffffff',
-            borderRadius: '12px',
             border: '1px solid #e2e8f0',
-            padding: '14px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: '8px',
-            fontSize: '0.78rem',
-            color: '#94a3b8',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Info size={14} color="#94a3b8" />
-            <span>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Info size={14} color="#94a3b8" className="shrink-0" />
+            <span className="break-words">
               Nguồn dữ liệu nét chữ Hán: <strong>{strokeDetail.source}</strong> ({strokeDetail.license})
             </span>
           </div>
           <div>HSK Master Writing Practice &bull; Hệ thống luyện viết song song trực quan</div>
         </div>
       )}
-
-      {/* Responsive Style cho màn hình di động / tablet nhỏ */}
-      <style>{`
-        @media (max-width: 1024px) {
-          .hanzi-dual-view-container {
-            grid-template-columns: 1fr !important;
-          }
-        }
-      `}</style>
     </div>
   )
 }

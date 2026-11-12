@@ -292,6 +292,23 @@ export async function fetchProtectedSlideBlob(
   return await response.blob()
 }
 
+export async function fetchProtectedPdfBytes(
+  token: string,
+  materialId: number,
+  signal?: AbortSignal
+): Promise<Uint8Array> {
+  const response = await fetch(`${API_BASE}/materials/${materialId}/document`, {
+    headers: authHeaders(token),
+    signal,
+    cache: 'no-store',
+  })
+  if (!response.ok) {
+    await throwApiErrorFromResponse(response, 'FETCH_PDF_FAILED', 'Không thể tải nội dung tài liệu PDF')
+  }
+  const buffer = await response.arrayBuffer()
+  return new Uint8Array(buffer)
+}
+
 export async function downloadOriginalMaterial(
   token: string,
   materialId: number,
@@ -317,3 +334,4 @@ export async function downloadOriginalMaterial(
     window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1500)
   }
 }
+

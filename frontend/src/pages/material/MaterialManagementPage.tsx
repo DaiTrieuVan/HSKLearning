@@ -284,7 +284,19 @@ export const MaterialManagementPage: React.FC = () => {
               >
                 {/* Preview Thumbnail */}
                 <div className="relative aspect-[16/10] w-full overflow-hidden border-b border-slate-100 bg-slate-100">
-                  {isReady && m.totalPages > 0 ? (
+                  {isReady && isPdf ? (
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/materials/${m.id}/present`)}
+                      className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-rose-50 via-white to-slate-50 px-4 text-center transition-colors hover:from-rose-100/70"
+                    >
+                      <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-100 text-rose-600 shadow-sm">
+                        <FileText size={26} />
+                      </div>
+                      <span className="text-xs font-bold text-slate-800">Tài liệu PDF • {m.totalPages} trang</span>
+                      <span className="mt-0.5 text-[11px] font-medium text-emerald-700">Bấm để trình chiếu toàn màn hình</span>
+                    </button>
+                  ) : isReady && m.totalPages > 0 ? (
                     <div
                       onClick={() => navigate(`/materials/${m.id}/present`)}
                       className="h-full w-full cursor-pointer overflow-hidden p-1.5"
@@ -406,7 +418,7 @@ export const MaterialManagementPage: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => navigate(`/materials/${m.id}/present`)}
-                            className="inline-flex min-h-[38px] flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700"
+                            className="inline-flex min-h-[38px] flex-1 whitespace-nowrap items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700"
                           >
                             <Play size={14} />
                             <span>Trình chiếu</span>
@@ -416,13 +428,23 @@ export const MaterialManagementPage: React.FC = () => {
                             type="button"
                             onClick={() => handleRetry(m.id)}
                             disabled={retryingId === m.id}
-                            className="inline-flex min-h-[38px] flex-1 items-center justify-center gap-1.5 rounded-xl bg-amber-600 px-3 py-2 text-xs font-bold text-white hover:bg-amber-700 disabled:opacity-60"
+                            className="inline-flex min-h-[38px] flex-1 whitespace-nowrap items-center justify-center gap-1.5 rounded-xl bg-amber-600 px-3 py-2 text-xs font-bold text-white hover:bg-amber-700 disabled:opacity-60"
                           >
                             <RefreshCw size={14} className={retryingId === m.id ? 'animate-spin' : ''} />
                             <span>Thử lại</span>
                           </button>
+                        ) : isPdf ? (
+                          <button
+                            type="button"
+                            onClick={() => handleRetry(m.id)}
+                            disabled={retryingId === m.id}
+                            className="inline-flex min-h-[38px] flex-1 whitespace-nowrap items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-60"
+                          >
+                            <RefreshCw size={14} className={retryingId === m.id ? 'animate-spin' : ''} />
+                            <span>Kích hoạt ngay</span>
+                          </button>
                         ) : (
-                          <span className="inline-flex min-h-[38px] flex-1 items-center justify-center rounded-xl bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-500">
+                          <span className="inline-flex min-h-[38px] flex-1 whitespace-nowrap items-center justify-center rounded-xl bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-500">
                             Đang xử lý...
                           </span>
                         )}
@@ -509,3 +531,4 @@ export const MaterialManagementPage: React.FC = () => {
     </div>
   )
 }
+

@@ -22,6 +22,7 @@ import {
   type MaterialDetail,
 } from '../../api/material'
 import { ProtectedSlideCanvas } from '../../components/material/ProtectedSlideCanvas'
+import { ProtectedPdfViewer } from '../../components/material/ProtectedPdfViewer'
 
 export const MaterialPresentationPage: React.FC = () => {
   const { materialId } = useParams<{ materialId: string }>()
@@ -38,6 +39,8 @@ export const MaterialPresentationPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null)
 
   const [currentPage, setCurrentPage] = useState(1)
+  const [pdfNumPages, setPdfNumPages] = useState(0)
+  const [scrollRequestKey, setScrollRequestKey] = useState(0)
   const [pageInput, setPageInput] = useState('1')
   const [zoom, setZoom] = useState(1)
   const [showThumbs, setShowThumbs] = useState(() =>
@@ -79,7 +82,8 @@ export const MaterialPresentationPage: React.FC = () => {
     setPageInput(String(currentPage))
   }, [currentPage])
 
-  const totalPages = detail?.totalPages || 0
+  const isPdf = detail?.fileType === 'PDF'
+  const totalPages = isPdf && pdfNumPages > 0 ? pdfNumPages : detail?.totalPages || 0
   const protectFromDownload = detail ? !detail.canDownload : true
   const watermarkText =
     protectFromDownload && user ? `${user.fullName} • ${user.email}` : undefined
@@ -89,6 +93,7 @@ export const MaterialPresentationPage: React.FC = () => {
       if (totalPages <= 0) return
       const clamped = Math.max(1, Math.min(totalPages, target))
       setCurrentPage(clamped)
+      setScrollRequestKey((k) => k + 1)
     },
     [totalPages]
   )
@@ -268,19 +273,21 @@ export const MaterialPresentationPage: React.FC = () => {
             )}
           </div>
 
-          <button
-            type="button"
-            onClick={() => setShowThumbs((v) => !v)}
-            className={`inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border px-2.5 text-xs font-semibold transition-colors ${
-              showThumbs
-                ? 'border-emerald-500/50 bg-emerald-600/20 text-emerald-300'
-                : 'border-slate-700 bg-slate-800/80 text-slate-200 hover:bg-slate-800'
-            }`}
-            title="Ẩn/hiện danh sách trang"
-          >
-            <PanelLeft size={16} />
-            <span className="hidden lg:inline">Danh sách slide</span>
-          </button>
+          {!isPdf && (
+            <button
+              type="button"
+              onClick={() => setShowThumbs((v) => !v)}
+              className={`inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border px-2.5 text-xs font-semibold transition-colors ${
+                showThumbs
+                  ? 'border-emerald-500/50 bg-emerald-600/20 text-emerald-300'
+                  : 'border-slate-700 bg-slate-800/80 text-slate-200 hover:bg-slate-800'
+              }`}
+              title="Ẩn/hiện danh sách trang"
+            >
+              <PanelLeft size={16} />
+              <span className="hidden lg:inline">Danh sách slide</span>
+            </button>
+          )}
 
           {detail?.canDownload && (
             <button
@@ -307,8 +314,8 @@ export const MaterialPresentationPage: React.FC = () => {
 
       {/* Main Presentation Body */}
       <div className="flex flex-1 flex-col overflow-hidden lg:flex-row">
-        {/* Desktop Vertical Thumbnail Sidebar */}
-        {showThumbs && detail?.status === 'READY' && (
+        {/* Desktop Vertical Thumbnail Sidebar (chỉ dùng cho PowerPoint slide) */}
+        {!isPdf && showThumbs && detail?.status === 'READY' && (
           <aside className="hidden w-52 shrink-0 flex-col gap-2.5 overflow-y-auto border-r border-slate-800 bg-slate-900/70 p-3 lg:flex xl:w-60">
             {detail.pages.map((p) => {
               const active = p.pageNumber === currentPage
@@ -344,7 +351,22 @@ export const MaterialPresentationPage: React.FC = () => {
           </aside>
         )}
 
-        {/* Slide Stage */}
+        {/* Document / Slide Stage */}
+        {isPdf && detail?.status === 'READY' ? (
+          <main className="relative flex-1 overflow-hidden bg-slate-950">
+            <ProtectedPdfViewer
+              token={token}
+              materialId={detail.id}
+              zoom={zoom}
+              currentPage={currentPage}
+              onTotalPages={setPdfNumPages}
+              onVisiblePageChange={setCurrentPage}
+              protectFromDownload={protectFromDownload}
+              watermarkText={watermarkText}
+              scrollRequestKey={scrollRequestKey}
+            />
+          </main>
+        ) : (
         <main
           className="relative flex flex-1 items-center justify-center overflow-auto bg-slate-950 p-2.5 sm:p-5"
           style={{ touchAction: zoom === 1 ? 'pan-y' : 'auto' }}
@@ -366,7 +388,7 @@ export const MaterialPresentationPage: React.FC = () => {
           {loading ? (
             <div className="flex flex-col items-center gap-3 text-slate-300">
               <Loader2 size={34} className="animate-spin text-emerald-500" />
-              <span className="text-sm font-medium">Đang chuẩn bị slide trình chiếu...</span>
+              <span className="text-sm font-medium">Đang chuẩn bị trình chiếu...</span>
             </div>
           ) : error ? (
             <div className="flex max-w-md flex-col items-center gap-3 rounded-2xl border border-rose-500/30 bg-rose-950/50 px-6 py-8 text-center">
@@ -427,10 +449,11 @@ export const MaterialPresentationPage: React.FC = () => {
             </>
           )}
         </main>
+        )}
       </div>
 
-      {/* Mobile/Tablet Horizontal Thumbnail Strip */}
-      {showThumbs && detail?.status === 'READY' && (
+      {/* Mobile/Tablet Horizontal Thumbnail Strip (chỉ dùng cho PowerPoint slide) */}
+      {!isPdf && showThumbs && detail?.status === 'READY' && (
         <div className="flex shrink-0 gap-2 overflow-x-auto border-t border-slate-800 bg-slate-900/95 px-3 py-2 lg:hidden">
           {detail.pages.map((p) => {
             const active = p.pageNumber === currentPage
@@ -518,3 +541,4 @@ export const MaterialPresentationPage: React.FC = () => {
     </div>
   )
 }
+

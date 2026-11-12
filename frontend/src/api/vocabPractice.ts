@@ -1,6 +1,78 @@
 import { ApiError } from './auth'
 
 export type QuizMode = 'HANZI_TO_MEANING' | 'MEANING_TO_HANZI' | 'MIXED' | 'CONTEXT'
+export type MatchMode = 'MATCH_MEANING' | 'MATCH_PINYIN'
+
+export interface MatchCardSideDto {
+  vocabularyId: number
+  primaryText: string
+  secondaryText?: string | null
+}
+
+export interface MatchPairItemDto {
+  vocabularyId: number
+  hanzi: string
+  pinyin: string
+  meaning: string
+  partOfSpeech?: string | null
+  audioUrl?: string | null
+}
+
+export interface MatchRoundDto {
+  roundIndex: number
+  pairsCount: number
+  pairs: MatchPairItemDto[]
+  leftCards: MatchCardSideDto[]
+  rightCards: MatchCardSideDto[]
+}
+
+export interface MatchSessionResponse {
+  vocabSetId?: number | null
+  vocabSetTitle: string
+  mode: MatchMode
+  totalPairs: number
+  maxHearts: number
+  rounds: MatchRoundDto[]
+}
+
+export interface MatchResultItemRequest {
+  vocabularyId: number
+  matched: boolean
+  mistakesCount: number
+  markMastered: boolean
+}
+
+export interface MatchSubmitRequest {
+  vocabSetId?: number
+  mode: MatchMode
+  durationSeconds: number
+  remainingHearts: number
+  timedOut: boolean
+  idempotencyKey?: string
+  results: MatchResultItemRequest[]
+}
+
+export interface MatchSubmitResponse {
+  sessionId: number
+  correctCount: number
+  totalCount: number
+  accuracyPercent: number
+  xpEarned: number
+  baseXp: number
+  completionBonusXp: number
+  totalUserXp: number
+  duplicateSubmission: boolean
+  completedAt: string
+}
+
+export interface GenerateMatchParams {
+  lessonId?: number
+  vocabSetId?: number
+  filterStatus?: 'ALL' | 'UNMASTERED' | 'MASTERED'
+  order?: 'RANDOM' | 'DEFAULT'
+  limit?: number
+  mode: MatchMode
+}
 
 export interface QuizOptionDto {
   id: number
@@ -145,3 +217,51 @@ export async function getPracticeHistory(
 
   return response.json()
 }
+
+export async function generateMatchSession(
+  token: string,
+  params: GenerateMatchParams
+): Promise<MatchSessionResponse> {
+  const qs = new URLSearchParams()
+  if (params.lessonId) qs.append('lessonId', params.lessonId.toString())
+  if (params.vocabSetId) qs.append('vocabSetId', params.vocabSetId.toString())
+  if (params.filterStatus) qs.append('filterStatus', params.filterStatus)
+  if (params.order) qs.append('order', params.order)
+  if (params.limit) qs.append('limit', params.limit.toString())
+  qs.append('mode', params.mode)
+
+  const response = await fetch(`${API_BASE}/match?${qs.toString()}`, {
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  if (!response.ok) {
+    throw new ApiError(response.status, 'FETCH_MATCH_FAILED', 'Không thể tạo trò chơi Nối từ')
+  }
+
+  return response.json()
+}
+
+export async function submitMatchSession(
+  token: string,
+  payload: MatchSubmitRequest
+): Promise<MatchSubmitResponse> {
+  const response = await fetch(`${API_BASE}/match/submit`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  if (!response.ok) {
+    throw new ApiError(response.status, 'SUBMIT_MATCH_FAILED', 'Không thể lưu kết quả lượt chơi Nối từ')
+  }
+
+  return response.json()
+}
+

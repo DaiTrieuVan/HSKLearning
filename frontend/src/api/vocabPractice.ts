@@ -439,9 +439,12 @@ export async function submitWritingSession(
   return response.json()
 }
 
-export async function generateTypingSession(
+async function fetchWordInputSession(
+  endpoint: 'typing' | 'dictation',
   token: string,
-  params: GenerateTypingParams
+  params: GenerateTypingParams,
+  errorCode: string,
+  fallbackMessage: string
 ): Promise<TypingSessionResponse> {
   const qs = new URLSearchParams()
   if (params.lessonId) qs.append('lessonId', params.lessonId.toString())
@@ -451,7 +454,7 @@ export async function generateTypingSession(
   if (params.limit) qs.append('limit', params.limit.toString())
   qs.append('mode', params.mode)
 
-  const response = await fetch(`${API_BASE}/typing?${qs.toString()}`, {
+  const response = await fetch(`${API_BASE}/${endpoint}?${qs.toString()}`, {
     headers: {
       Accept: 'application/json',
       Authorization: `Bearer ${token}`,
@@ -459,17 +462,20 @@ export async function generateTypingSession(
   })
 
   if (!response.ok) {
-    await throwApiErrorFromResponse(response, 'FETCH_TYPING_FAILED', 'Không thể tải danh sách từ luyện gõ')
+    await throwApiErrorFromResponse(response, errorCode, fallbackMessage)
   }
 
   return response.json()
 }
 
-export async function submitTypingSession(
+async function postWordInputSession(
+  endpoint: 'typing/submit' | 'dictation/submit',
   token: string,
-  payload: TypingSubmitRequest
+  payload: TypingSubmitRequest,
+  errorCode: string,
+  fallbackMessage: string
 ): Promise<TypingSubmitResponse> {
-  const response = await fetch(`${API_BASE}/typing/submit`, {
+  const response = await fetch(`${API_BASE}/${endpoint}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -480,9 +486,37 @@ export async function submitTypingSession(
   })
 
   if (!response.ok) {
-    await throwApiErrorFromResponse(response, 'SUBMIT_TYPING_FAILED', 'Không thể lưu kết quả luyện gõ từ')
+    await throwApiErrorFromResponse(response, errorCode, fallbackMessage)
   }
 
   return response.json()
+}
+
+export function generateTypingSession(
+  token: string,
+  params: GenerateTypingParams
+): Promise<TypingSessionResponse> {
+  return fetchWordInputSession('typing', token, params, 'FETCH_TYPING_FAILED', 'Không thể tải danh sách từ luyện gõ')
+}
+
+export function submitTypingSession(
+  token: string,
+  payload: TypingSubmitRequest
+): Promise<TypingSubmitResponse> {
+  return postWordInputSession('typing/submit', token, payload, 'SUBMIT_TYPING_FAILED', 'Không thể lưu kết quả luyện gõ từ')
+}
+
+export function generateDictationSession(
+  token: string,
+  params: GenerateTypingParams
+): Promise<TypingSessionResponse> {
+  return fetchWordInputSession('dictation', token, params, 'FETCH_DICTATION_FAILED', 'Không thể tải danh sách từ luyện nghe viết')
+}
+
+export function submitDictationSession(
+  token: string,
+  payload: TypingSubmitRequest
+): Promise<TypingSubmitResponse> {
+  return postWordInputSession('dictation/submit', token, payload, 'SUBMIT_DICTATION_FAILED', 'Không thể lưu kết quả lượt nghe viết')
 }
 

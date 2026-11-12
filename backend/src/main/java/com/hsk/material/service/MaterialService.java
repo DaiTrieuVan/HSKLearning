@@ -133,6 +133,14 @@ public class MaterialService {
 					file.getSize(),
 					defaultAllowDownload
 			);
+			if (fileType == MaterialFileType.PDF) {
+				// PDF hiển thị trực tiếp qua trình đọc toàn màn hình, không cần chuyển thành slide ảnh trên server
+				int pageCount = slideRenderService.countPdfPages(storageService.resolveSafe(storagePath));
+				entity.markReady(pageCount);
+				CourseMaterialEntity saved = materialRepository.save(entity);
+				return toSummary(saved, 0L);
+			}
+
 			CourseMaterialEntity saved = materialRepository.save(entity);
 			triggerAsyncRenderAfterCommit(saved.getId());
 			return toSummary(saved, 0L);
@@ -241,6 +249,13 @@ public class MaterialService {
 		UserEntity caller = findUser(callerEmail);
 		CourseMaterialEntity material = findMaterialWithTeacher(materialId);
 		assertOwnerOrAdmin(caller, material);
+
+		if (material.getFileType() == MaterialFileType.PDF) {
+			int pageCount = slideRenderService.countPdfPages(storageService.resolveSafe(material.getOriginalStoragePath()));
+			material.markReady(pageCount);
+			CourseMaterialEntity saved = materialRepository.save(material);
+			return toSummary(saved, countSingleShare(saved.getId()));
+		}
 
 		material.markProcessing();
 		CourseMaterialEntity saved = materialRepository.save(material);
@@ -442,6 +457,21 @@ public class MaterialService {
 	}
 
 	@Transactional(readOnly = true)
+	public byte[] readPdfDocument(String callerEmail, Long materialId) {
+		UserEntity caller = findUser(callerEmail);
+		CourseMaterialEntity material = findMaterialWithTeacher(materialId);
+		assertCanView(caller, material);
+
+		if (material.getFileType() != MaterialFileType.PDF) {
+			throw new ApiException(ApiErrorCode.MATERIAL_INVALID_FORMAT);
+		}
+		if (material.getStatus() != MaterialStatus.READY) {
+			throw new ApiException(ApiErrorCode.MATERIAL_NOT_READY);
+		}
+		return storageService.readAllBytes(material.getOriginalStoragePath());
+	}
+
+	@Transactional(readOnly = true)
 	public DownloadedMaterial downloadOriginal(String callerEmail, Long materialId) {
 		UserEntity caller = findUser(callerEmail);
 		CourseMaterialEntity material = findMaterialWithTeacher(materialId);
@@ -569,3 +599,4 @@ public class MaterialService {
 		return dot > 0 ? filename.substring(0, dot) : filename;
 	}
 }
+

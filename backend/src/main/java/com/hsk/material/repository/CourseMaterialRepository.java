@@ -8,8 +8,11 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.hsk.material.domain.CourseMaterialEntity;
+import com.hsk.material.domain.MaterialStatus;
 
 public interface CourseMaterialRepository extends JpaRepository<CourseMaterialEntity, Long> {
+
+	List<CourseMaterialEntity> findByStatus(MaterialStatus status);
 
 	@Query("""
 		SELECT m FROM CourseMaterialEntity m
@@ -26,3 +29,4 @@ public interface CourseMaterialRepository extends JpaRepository<CourseMaterialEn
 	""")
 	List<CourseMaterialEntity> findByTeacherIdWithTeacherOrderByCreatedAtDesc(@Param("teacherId") Long teacherId);
 }
+

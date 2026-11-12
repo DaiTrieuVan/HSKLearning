@@ -173,7 +173,7 @@ public class MaterialController {
 	}
 
 	@GetMapping("/materials/{id}/slides/{pageNumber}/image")
-	@Operation(summary = "Tải ảnh PNG của một trang slide phục vụ trình chiếu trên canvas")
+	@Operation(summary = "Tải ảnh PNG của một trang slide PowerPoint phục vụ trình chiếu trên canvas")
 	public ResponseEntity<byte[]> getSlideImage(
 			@PathVariable Long id,
 			@PathVariable int pageNumber,
@@ -185,6 +185,20 @@ public class MaterialController {
 				.header("X-Content-Type-Options", "nosniff")
 				.header(HttpHeaders.CONTENT_DISPOSITION, "inline")
 				.body(pngBytes);
+	}
+
+	@GetMapping("/materials/{id}/document")
+	@Operation(summary = "Stream dữ liệu PDF nội tuyến để frontend tự render lên canvas (không lộ file URL)")
+	public ResponseEntity<byte[]> getPdfDocumentStream(
+			@PathVariable Long id,
+			Principal principal) {
+		byte[] pdfBytes = materialService.readPdfDocument(principal.getName(), id);
+		return ResponseEntity.ok()
+				.contentType(MediaType.APPLICATION_PDF)
+				.cacheControl(CacheControl.noStore())
+				.header("X-Content-Type-Options", "nosniff")
+				.header(HttpHeaders.CONTENT_DISPOSITION, "inline")
+				.body(pdfBytes);
 	}
 
 	@GetMapping("/materials/{id}/download")
@@ -209,3 +223,4 @@ public class MaterialController {
 				.body(downloaded.bytes());
 	}
 }
+

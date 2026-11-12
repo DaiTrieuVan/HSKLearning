@@ -82,6 +82,22 @@ public class SlideRenderService {
 	}
 
 	/**
+	 * Đọc nhanh số trang của tệp PDF mà không cần render toàn bộ ảnh slide.
+	 */
+	public int countPdfPages(Path pdfPath) {
+		try (PDDocument document = Loader.loadPDF(pdfPath.toFile())) {
+			int total = document.getNumberOfPages();
+			validatePageCount(total);
+			return total;
+		} catch (ApiException ex) {
+			throw ex;
+		} catch (IOException ex) {
+			log.error("Failed to read PDF metadata for {}", pdfPath, ex);
+			throw new ApiException(ApiErrorCode.MATERIAL_INVALID_FORMAT, "Không thể đọc nội dung tệp PDF, vui lòng kiểm tra lại tệp không bị lỗi hoặc đặt mật khẩu");
+		}
+	}
+
+	/**
 	 * Kết xuất toàn bộ trang PDF hoặc slide PPTX thành từng ảnh PNG (giải phóng RAM ngay sau mỗi trang).
 	 */
 	public List<RenderedPageResult> renderToPngPages(
@@ -271,3 +287,4 @@ public class SlideRenderService {
 		}
 	}
 }
+

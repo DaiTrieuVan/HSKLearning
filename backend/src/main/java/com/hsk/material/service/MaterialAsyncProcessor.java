@@ -6,6 +6,8 @@ import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -14,6 +16,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import com.hsk.material.domain.CourseMaterialEntity;
 import com.hsk.material.domain.CourseMaterialPageEntity;
 import com.hsk.material.domain.MaterialFileType;
+import com.hsk.material.domain.MaterialStatus;
 import com.hsk.material.repository.CourseMaterialPageRepository;
 import com.hsk.material.repository.CourseMaterialRepository;
 import com.hsk.material.service.SlideRenderService.RenderedPageResult;
@@ -94,7 +97,7 @@ public class MaterialAsyncProcessor {
 				entity.markReady(pageEntities.size());
 				materialRepository.save(entity);
 			});
-		} catch (Exception ex) {
+		} catch (Throwable ex) {
 			log.error("Slide rendering failed for materialId={}", materialId, ex);
 			String errorMessage = ex.getMessage() != null && !ex.getMessage().isBlank()
 					? ex.getMessage()
@@ -108,4 +111,39 @@ public class MaterialAsyncProcessor {
 			});
 		}
 	}
+
+	/**
+	 * Khôi phục các giáo trình bị kẹt ở PROCESSING từ phiên chạy trước (PDF chuyển thẳng READY).
+	 */
+	@EventListener(ApplicationReadyEvent.class)
+	public void reconcileStaleProcessingMaterials() {
+		List<CourseMaterialEntity> stale = materialRepository.findByStatus(MaterialStatus.PROCESSING);
+		for (CourseMaterialEntity item : stale) {
+			if (item.getFileType() == MaterialFileType.PDF) {
+				try {
+					Path pdfPath = storageService.resolveSafe(item.getOriginalStoragePath());
+					int totalPages = slideRenderService.countPdfPages(pdfPath);
+					transactionTemplate.executeWithoutResult(status -> {
+						CourseMaterialEntity reloaded = materialRepository.findById(item.getId()).orElse(null);
+						if (reloaded != null && reloaded.getStatus() == MaterialStatus.PROCESSING) {
+							reloaded.markReady(totalPages);
+							materialRepository.save(reloaded);
+						}
+					});
+				} catch (Throwable ex) {
+					log.warn("Failed reconciling PDF materialId={}", item.getId(), ex);
+					transactionTemplate.executeWithoutResult(status -> {
+						CourseMaterialEntity reloaded = materialRepository.findById(item.getId()).orElse(null);
+						if (reloaded != null && reloaded.getStatus() == MaterialStatus.PROCESSING) {
+							reloaded.markFailed("Không thể đọc tệp PDF, vui lòng tải lại");
+							materialRepository.save(reloaded);
+						}
+					});
+				}
+			} else {
+				renderSlidesAsync(item.getId());
+			}
+		}
+	}
 }
+

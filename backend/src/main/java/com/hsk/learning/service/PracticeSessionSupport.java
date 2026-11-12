@@ -19,6 +19,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -31,9 +33,15 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class PracticeSessionSupport {
 
+	// Tách câu ví dụ tiếng Trung và phần dịch trong ngoặc khi người dùng lưu gộp trong exampleSentence
+	private static final Pattern TRAILING_TRANSLATION_PATTERN =
+			Pattern.compile("^(.*?)[\\s]*[（(]([^()（）]{3,})[)）]\\s*$");
+
 	public record VocabMasteryUpdate(Long vocabularyId, boolean remembered, boolean mastered) {}
 
 	public record ResolvedSet(Long vocabSetId, String title) {}
+
+	public record ParsedExample(String chineseSentence, String vietnameseMeaning, String maskedSentence) {}
 
 	private final UserRepository userRepository;
 	private final VocabularyRepository vocabularyRepository;
@@ -210,5 +218,41 @@ public class PracticeSessionSupport {
 			return 0;
 		}
 		return (int) Math.round((correctCount * 100.0) / totalCount);
+	}
+
+	/**
+	 * Chuẩn hóa câu ví dụ, tách nghĩa tiếng Việt nếu lưu gộp trong ngoặc và tạo bản che từ đích.
+	 */
+	public static ParsedExample parseExample(VocabularyEntity vocab) {
+		String rawSentence = vocab.getExampleSentence() != null ? vocab.getExampleSentence().trim() : null;
+		String rawMeaning = vocab.getExampleMeaning() != null ? vocab.getExampleMeaning().trim() : null;
+		if (rawSentence != null && rawSentence.isBlank()) {
+			rawSentence = null;
+		}
+		if (rawMeaning != null && rawMeaning.isBlank()) {
+			rawMeaning = null;
+		}
+
+		String chineseSentence = rawSentence;
+		String vietnameseMeaning = rawMeaning;
+		if (rawSentence != null && rawMeaning == null) {
+			Matcher matcher = TRAILING_TRANSLATION_PATTERN.matcher(rawSentence);
+			if (matcher.matches()) {
+				String zhPart = matcher.group(1).trim();
+				String viPart = matcher.group(2).trim();
+				if (!zhPart.isEmpty()) {
+					chineseSentence = zhPart;
+					vietnameseMeaning = viPart;
+				}
+			}
+		}
+
+		String maskedSentence = null;
+		String hanzi = vocab.getHanzi() != null ? vocab.getHanzi().trim() : "";
+		if (chineseSentence != null && !hanzi.isBlank() && chineseSentence.contains(hanzi)) {
+			maskedSentence = chineseSentence.replace(hanzi, " ____ ").replaceAll("\\s{2,}", " ").trim();
+		}
+
+		return new ParsedExample(chineseSentence, vietnameseMeaning, maskedSentence);
 	}
 }

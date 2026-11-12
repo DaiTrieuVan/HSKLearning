@@ -19,8 +19,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,10 +36,6 @@ public class VocabQuizService {
 			MODE_MIXED,
 			MODE_CONTEXT
 	);
-
-	// Tách câu ví dụ tiếng Trung và phần dịch trong ngoặc khi người dùng lưu gộp trong exampleSentence
-	private static final Pattern TRAILING_TRANSLATION_PATTERN =
-			Pattern.compile("^(.*?)[\\s]*[（(]([^()（）]{3,})[)）]\\s*$");
 
 	private static final int DISTRACTOR_COUNT = 3;
 	private static final int XP_PER_CORRECT_ANSWER = 2;
@@ -213,14 +207,13 @@ public class VocabQuizService {
 			VocabularyEntity target,
 			String plannedMode,
 			List<List<VocabularyEntity>> distractorTiers) {
-		ExampleParts exParts = parseExample(target);
+		PracticeSessionSupport.ParsedExample exParts = PracticeSessionSupport.parseExample(target);
 		String effectiveMode = plannedMode;
 		String maskedSentence = null;
 
 		if (MODE_CONTEXT.equals(plannedMode)) {
-			String hanzi = target.getHanzi() != null ? target.getHanzi().trim() : "";
-			if (exParts.chineseSentence() != null && !hanzi.isBlank() && exParts.chineseSentence().contains(hanzi)) {
-				maskedSentence = exParts.chineseSentence().replace(hanzi, " ____ ").replaceAll("\\s{2,}", " ").trim();
+			if (exParts.maskedSentence() != null) {
+				maskedSentence = exParts.maskedSentence();
 			} else {
 				// Phương án A đã chốt: tự fallback sang Nghĩa -> Từ khi từ chưa có ví dụ chứa chính xác hanzi
 				effectiveMode = MODE_MEANING_TO_HANZI;
@@ -307,30 +300,5 @@ public class VocabQuizService {
 		}
 		return raw.trim().toLowerCase(Locale.ROOT);
 	}
-
-	private ExampleParts parseExample(VocabularyEntity vocab) {
-		String rawSentence = vocab.getExampleSentence() != null ? vocab.getExampleSentence().trim() : null;
-		String rawMeaning = vocab.getExampleMeaning() != null ? vocab.getExampleMeaning().trim() : null;
-		if (rawSentence != null && rawSentence.isBlank()) {
-			rawSentence = null;
-		}
-		if (rawMeaning != null && rawMeaning.isBlank()) {
-			rawMeaning = null;
-		}
-
-		if (rawSentence != null && rawMeaning == null) {
-			Matcher matcher = TRAILING_TRANSLATION_PATTERN.matcher(rawSentence);
-			if (matcher.matches()) {
-				String zhPart = matcher.group(1).trim();
-				String viPart = matcher.group(2).trim();
-				if (!zhPart.isEmpty()) {
-					return new ExampleParts(zhPart, viPart);
-				}
-			}
-		}
-		return new ExampleParts(rawSentence, rawMeaning);
-	}
-
-	private record ExampleParts(String chineseSentence, String vietnameseMeaning) {}
 }
 

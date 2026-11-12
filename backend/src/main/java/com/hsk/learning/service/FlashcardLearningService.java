@@ -30,9 +30,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -286,17 +288,20 @@ public class FlashcardLearningService {
 					.filter(v -> !v.isHidden())
 					.toList();
 		} else {
-			List<VocabSetEntity> userSets = vocabSetRepository.findAllByTeacherIdOrderByCreatedAtDesc(currentUserId);
-			List<Long> targetVocabIds = userSets.stream()
-					.flatMap(s -> vocabSetItemRepository.findVocabularyIdsByVocabSetId(s.getId()).stream())
-					.distinct()
-					.toList();
+			Set<Long> accessibleSetIds = new LinkedHashSet<>();
+			vocabSetRepository.findAllByTeacherIdOrderByCreatedAtDesc(currentUserId)
+					.forEach(s -> accessibleSetIds.add(s.getId()));
+			accessibleSetIds.addAll(
+					classVocabSetRepository.findVocabSetIdsForActiveStudent(currentUserId, ClassMemberStatus.ACTIVE));
 
 			Map<Long, VocabularyEntity> uniqueVocabs = new LinkedHashMap<>();
-			if (!targetVocabIds.isEmpty()) {
-				vocabularyRepository.findAllById(targetVocabIds).stream()
-						.filter(v -> !v.isHidden())
-						.forEach(v -> uniqueVocabs.putIfAbsent(v.getId(), v));
+			if (!accessibleSetIds.isEmpty()) {
+				List<Long> targetVocabIds = vocabSetItemRepository.findDistinctVocabularyIdsByVocabSetIdIn(accessibleSetIds);
+				if (!targetVocabIds.isEmpty()) {
+					vocabularyRepository.findAllById(targetVocabIds).stream()
+							.filter(v -> !v.isHidden())
+							.forEach(v -> uniqueVocabs.putIfAbsent(v.getId(), v));
+				}
 			}
 			List<VocabularyEntity> customVocabs = vocabularyRepository.findAllByOwnerIdAndHiddenFalse(currentUserId);
 			for (VocabularyEntity cv : customVocabs) {

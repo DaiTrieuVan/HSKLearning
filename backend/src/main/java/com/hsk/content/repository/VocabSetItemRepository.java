@@ -2,6 +2,7 @@ package com.hsk.content.repository;
 
 import com.hsk.content.domain.VocabSetItemEntity;
 import com.hsk.content.domain.VocabSetItemId;
+import java.util.Collection;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -25,4 +26,10 @@ public interface VocabSetItemRepository extends JpaRepository<VocabSetItemEntity
 
 	@Query("SELECT vsi.vocabulary.id FROM VocabSetItemEntity vsi WHERE vsi.vocabSet.id = :vocabSetId")
 	List<Long> findVocabularyIdsByVocabSetId(@Param("vocabSetId") Long vocabSetId);
+
+	@Query("SELECT DISTINCT vsi.vocabulary.id FROM VocabSetItemEntity vsi WHERE vsi.vocabSet.id IN :vocabSetIds")
+	List<Long> findDistinctVocabularyIdsByVocabSetIdIn(@Param("vocabSetIds") Collection<Long> vocabSetIds);
+
+	@Query("SELECT vsi.vocabSet.id, vsi.vocabulary.id FROM VocabSetItemEntity vsi WHERE vsi.vocabSet.id IN :vocabSetIds")
+	List<Object[]> findSetAndVocabularyIdsByVocabSetIdIn(@Param("vocabSetIds") Collection<Long> vocabSetIds);
 }

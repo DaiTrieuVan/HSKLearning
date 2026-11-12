@@ -367,6 +367,12 @@ public class ContentController {
 		return contentService.getMyVocabSets(user.getId(), folderId);
 	}
 
+	@GetMapping("/vocab-sets/practice-accessible")
+	public List<VocabSetSummaryDto> getPracticeAccessibleVocabSets(Principal principal) {
+		UserEntity user = requireUser(principal);
+		return contentService.getPracticeAccessibleVocabSets(user.getId());
+	}
+
 	@GetMapping("/vocab-sets/community")
 	public List<VocabSetSummaryDto> getCommunityVocabSets(Principal principal) {
 		UserEntity user = requireUser(principal);

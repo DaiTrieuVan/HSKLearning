@@ -429,33 +429,33 @@ export const LessonStudyPage: React.FC = () => {
   const currentCard = flashcards[flashcardIndex] || (lessonData.vocabularies && lessonData.vocabularies[flashcardIndex])
 
   return (
-    <div className="min-h-screen bg-slate-50 text-gray-800 pb-16">
+    <div className="min-h-screen bg-slate-50 text-gray-800 pb-16 overflow-x-hidden">
       {/* Top sticky header */}
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-emerald-100/80 shadow-sm">
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-8 h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+        <div className="max-w-[1440px] mx-auto px-3.5 sm:px-8 h-16 flex items-center justify-between gap-2.5 sm:gap-4">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
             <button
               onClick={() => navigate('/curriculum')}
-              className="p-2 rounded-xl text-gray-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
+              className="p-2 rounded-xl text-gray-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors shrink-0"
               title="Quay lại lộ trình"
               aria-label="Quay lại lộ trình"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <div>
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 whitespace-nowrap">
                   {lessonData.levelTitle || 'HSK 1'}
                 </span>
-                <span className="text-xs text-gray-400">Bài {lessonData.sortOrder}</span>
+                <span className="text-xs text-gray-400 whitespace-nowrap">Bài {lessonData.sortOrder}</span>
               </div>
-              <h1 className="text-base sm:text-lg font-bold text-gray-900 truncate max-w-xs sm:max-w-md">
+              <h1 className="text-sm sm:text-lg font-bold text-gray-900 truncate max-w-full sm:max-w-md">
                 {lessonData.title}
               </h1>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <div className="hidden sm:flex items-center gap-3 text-xs text-gray-600 bg-slate-100 px-3 py-1.5 rounded-full">
               <span className="flex items-center gap-1 font-medium text-emerald-700">
                 <BookOpen className="w-3.5 h-3.5" />
@@ -509,16 +509,16 @@ export const LessonStudyPage: React.FC = () => {
 
         {/* Tab Navigation */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6 bg-white p-1.5 rounded-2xl border border-gray-200 shadow-sm">
-          <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-1 w-full sm:w-auto">
             <button
               onClick={() => setActiveTab('VOCAB')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+              className={`flex items-center justify-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all flex-1 sm:flex-initial ${
                 activeTab === 'VOCAB'
                   ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
                   : 'text-gray-600 hover:text-emerald-700 hover:bg-emerald-50'
               }`}
             >
-              <BookOpen className="w-4 h-4" />
+              <BookOpen className="w-4 h-4 shrink-0" />
               <span>Từ vựng ({lessonData.vocabularies.length})</span>
             </button>
 
@@ -526,13 +526,13 @@ export const LessonStudyPage: React.FC = () => {
             {hasGrammar ? (
               <button
                 onClick={() => setActiveTab('GRAMMAR')}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                className={`flex items-center justify-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all flex-1 sm:flex-initial ${
                   activeTab === 'GRAMMAR'
                     ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
                     : 'text-gray-600 hover:text-emerald-700 hover:bg-emerald-50'
                 }`}
               >
-                <Sparkles className="w-4 h-4 text-amber-300" />
+                <Sparkles className="w-4 h-4 text-amber-300 shrink-0" />
                 <span>Ngữ pháp ({lessonData.grammarPoints.length})</span>
               </button>
             ) : null}
@@ -542,13 +542,13 @@ export const LessonStudyPage: React.FC = () => {
                 setActiveTab('FLASHCARD')
                 setIsFlipped(false)
               }}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+              className={`flex items-center justify-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all flex-1 sm:flex-initial ${
                 activeTab === 'FLASHCARD'
                   ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
                   : 'text-gray-600 hover:text-emerald-700 hover:bg-emerald-50'
               }`}
             >
-              <Layers className="w-4 h-4" />
+              <Layers className="w-4 h-4 shrink-0" />
               <span>Flashcard ôn tập</span>
             </button>
           </div>
@@ -658,22 +658,22 @@ export const LessonStudyPage: React.FC = () => {
             {lessonData.grammarPoints.map((gp, idx) => (
               <div
                 key={gp.id}
-                className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-200 shadow-sm hover:shadow-md transition-all"
+                className="bg-white rounded-3xl p-4 sm:p-8 border border-gray-200 shadow-sm hover:shadow-md transition-all"
               >
-                <div className="flex items-center gap-3 mb-4">
-                  <span className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center text-sm">
+                <div className="flex items-start sm:items-center gap-3 mb-4">
+                  <span className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center text-sm shrink-0">
                     {idx + 1}
                   </span>
-                  <h3 className="text-lg sm:text-xl font-bold text-gray-900">{gp.title}</h3>
+                  <h3 className="text-lg sm:text-xl font-bold text-gray-900 break-words">{gp.title}</h3>
                 </div>
 
                 {/* Structure / Formula */}
                 {gp.structure && (
-                  <div className="mb-4 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4">
+                  <div className="mb-4 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-3.5 sm:p-4">
                     <div className="text-xs font-bold text-emerald-800 uppercase tracking-wider mb-1">
                       Cấu trúc ngữ pháp
                     </div>
-                    <div className="text-base font-bold text-emerald-950 font-sans">{gp.structure}</div>
+                    <div className="text-sm sm:text-base font-bold text-emerald-950 font-sans break-words">{gp.structure}</div>
                   </div>
                 )}
 
@@ -692,9 +692,9 @@ export const LessonStudyPage: React.FC = () => {
                       {gp.examples.map((ex, exIdx) => (
                         <div
                           key={ex.id || exIdx}
-                          className="bg-slate-50 hover:bg-slate-100/80 transition-colors rounded-2xl p-4 border border-slate-200/60 flex items-start justify-between gap-4"
+                          className="bg-slate-50 hover:bg-slate-100/80 transition-colors rounded-2xl p-3.5 sm:p-4 border border-slate-200/60 flex items-start justify-between gap-3 sm:gap-4"
                         >
-                          <div className="space-y-1">
+                          <div className="space-y-1 min-w-0 flex-1">
                             <div className="text-base sm:text-lg font-bold text-gray-900 font-sans tracking-wide">
                               {ex.hanzi}
                             </div>
@@ -893,11 +893,11 @@ export const LessonStudyPage: React.FC = () => {
                 {/* Flip Card Container */}
                 <div
                   onClick={() => setIsFlipped(!isFlipped)}
-                  className="w-full min-h-[320px] bg-white rounded-3xl border-2 border-emerald-300 shadow-xl p-8 flex flex-col items-center justify-center cursor-pointer text-center select-none hover:shadow-2xl transition-all relative overflow-hidden"
+                  className="w-full min-h-[270px] sm:min-h-[320px] bg-white rounded-3xl border-2 border-emerald-300 shadow-xl p-5 sm:p-8 flex flex-col items-center justify-center cursor-pointer text-center select-none hover:shadow-2xl transition-all relative overflow-hidden"
                 >
                   {/* Nút phát âm (TC-02: Ẩn nếu từ không có audio) */}
                   {currentCard.audioUrl && currentCard.audioUrl.trim() && (
-                    <div className="absolute top-4 right-4">
+                    <div className="absolute top-3 right-3 sm:top-4 sm:right-4">
                       <button
                         type="button"
                         onClick={(e) => {
@@ -1022,13 +1022,13 @@ export const LessonStudyPage: React.FC = () => {
         )}
 
         {/* HTT-04-CN-004: Bottom Completion Action & Inline Celebration Progress */}
-        <div className="mt-12 space-y-4">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-200/90 shadow-sm transition-all overflow-hidden">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-              <div className="flex items-center gap-4">
-                <PandaMascot size={56} />
-                <div>
-                  <div className="flex items-center gap-2">
+        <div className="mt-8 sm:mt-12 space-y-4">
+          <div className="bg-white rounded-3xl p-5 sm:p-8 border border-gray-200/90 shadow-sm transition-all overflow-hidden">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 sm:gap-6">
+              <div className="flex items-start sm:items-center gap-3.5 sm:gap-4 min-w-0">
+                <PandaMascot size={56} className="shrink-0" />
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
                     <h2 className="text-base sm:text-lg font-bold text-gray-900">
                       {progressData?.completed ? 'Bài học đã hoàn thành' : 'Bạn đã nắm vững bài học này chưa?'}
                     </h2>
@@ -1105,14 +1105,14 @@ export const LessonStudyPage: React.FC = () => {
 
             {/* TC-01 & GEMINI.md: Inline Celebration & Level Progress Banner (TUYỆT ĐỐI KHÔNG DÙNG MODAL) */}
             {showCelebration && progressData?.completed && (
-              <div className="mt-6 pt-6 border-t border-emerald-100 bg-gradient-to-r from-emerald-50/80 via-teal-50/60 to-cyan-50/50 -mx-6 -mb-6 sm:-mx-8 sm:-mb-8 p-6 sm:p-8 animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="mt-6 pt-6 border-t border-emerald-100 bg-gradient-to-r from-emerald-50/80 via-teal-50/60 to-cyan-50/50 -mx-5 -mb-5 sm:-mx-8 sm:-mb-8 p-5 sm:p-8 animate-in fade-in slide-in-from-top-2 duration-300">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="flex items-start gap-3.5">
+                  <div className="flex items-start gap-3.5 min-w-0">
                     <div className="p-2.5 rounded-2xl bg-emerald-500 text-white shadow-md shadow-emerald-500/20 shrink-0">
                       <Sparkles className="w-6 h-6" />
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="text-base font-bold text-emerald-950">
                           Chúc mừng bạn đã hoàn thành bài học này!
                         </span>
@@ -1156,7 +1156,7 @@ export const LessonStudyPage: React.FC = () => {
           <div
             role="alert"
             aria-live="assertive"
-            className="fixed bottom-6 right-6 z-50 max-w-sm sm:max-w-md bg-white border border-rose-200/80 border-l-4 border-l-rose-500 rounded-2xl shadow-xl shadow-slate-900/10 p-4 flex items-start gap-3 transition-all animate-in fade-in slide-in-from-bottom-5 duration-300"
+            className="fixed bottom-4 left-4 right-4 sm:left-auto sm:bottom-6 sm:right-6 z-50 sm:max-w-md bg-white border border-rose-200/80 border-l-4 border-l-rose-500 rounded-2xl shadow-xl shadow-slate-900/10 p-4 flex items-start gap-3 transition-all animate-in fade-in slide-in-from-bottom-5 duration-300"
           >
             <div className="p-1.5 rounded-xl bg-rose-50 text-rose-600 shrink-0">
               <AlertCircle className="w-5 h-5" />

@@ -315,14 +315,14 @@ export const MaterialManagementPage: React.FC = () => {
                         <>
                           <Loader2 size={28} className="animate-spin text-emerald-600" />
                           <span className="mt-2 text-xs font-semibold text-slate-600">
-                            Đang chuyển đổi slide...
+                            {isPdf ? 'Đang kiểm tra tài liệu PDF...' : 'Đang chuyển đổi slide...'}
                           </span>
                         </>
                       ) : (
                         <>
                           <AlertCircle size={28} className="text-rose-500" />
                           <span className="mt-2 text-xs font-semibold text-rose-700">
-                            Lỗi chuyển đổi slide
+                            {isPdf ? 'Không thể đọc tài liệu PDF' : 'Lỗi chuyển đổi slide'}
                           </span>
                         </>
                       )}

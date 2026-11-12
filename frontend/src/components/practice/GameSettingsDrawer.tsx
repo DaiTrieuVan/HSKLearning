@@ -1,11 +1,12 @@
-import React, { useEffect } from 'react'
-import { Settings, Volume2, Clock, RotateCcw, X } from 'lucide-react'
+import React from 'react'
+import { Settings, Volume2, Clock, RotateCcw } from 'lucide-react'
 import {
   type PracticeGameSettings,
   resetPracticeSettings,
   savePracticeSettings,
 } from '../../utils/practiceSettings'
 import { playSampleSound } from '../../utils/gameSounds'
+import { SlideOverDrawer } from './SlideOverDrawer'
 
 interface GameSettingsDrawerProps {
   open: boolean
@@ -20,17 +21,6 @@ export const GameSettingsDrawer: React.FC<GameSettingsDrawerProps> = ({
   settings,
   onChange,
 }) => {
-  useEffect(() => {
-    if (!open) return
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', handleKey)
-    return () => window.removeEventListener('keydown', handleKey)
-  }, [open, onClose])
-
-  if (!open) return null
-
   const updateField = <K extends keyof PracticeGameSettings>(key: K, value: PracticeGameSettings[K]) => {
     const next = savePracticeSettings({
       ...settings,
@@ -45,43 +35,39 @@ export const GameSettingsDrawer: React.FC<GameSettingsDrawerProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-slate-900/35 backdrop-blur-[1px] transition-opacity"
-        onClick={onClose}
-        aria-hidden="true"
-      />
+    <SlideOverDrawer
+      open={open}
+      onClose={onClose}
+      ariaLabel="Cài đặt game luyện tập"
+      title="Cài đặt game"
+      subtitle="Tùy chỉnh âm thanh & thời gian làm bài"
+      headerIcon={
+        <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+          <Settings className="w-5 h-5" />
+        </div>
+      }
+      footer={
+        <div className="flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={handleReset}
+            className="px-3 sm:px-4 py-2.5 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-bold text-xs inline-flex items-center gap-1.5 transition-colors"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Đặt lại mặc định</span>
+          </button>
 
-      {/* Right Slide-over Drawer (GEMINI.md Rule 4: Không dùng Modal/Popup) */}
-      <aside
-        role="dialog"
-        aria-label="Cài đặt game luyện tập"
-        className="relative z-10 w-full max-w-md bg-white h-full shadow-2xl border-l border-slate-200 flex flex-col"
-      >
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
-              <Settings className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-base font-extrabold text-slate-900 leading-tight">Cài đặt game</h2>
-              <p className="text-xs text-slate-500">Tùy chỉnh âm thanh & thời gian làm bài</p>
-            </div>
-          </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-            title="Đóng"
+            className="px-5 sm:px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm shadow-sm active:scale-95 transition-all"
           >
-            <X className="w-5 h-5" />
+            Xong
           </button>
         </div>
-
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      }
+    >
+      <div className="space-y-6">
           {/* Group 1: ÂM THANH */}
           <section className="space-y-3">
             <div className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
@@ -261,28 +247,8 @@ export const GameSettingsDrawer: React.FC<GameSettingsDrawerProps> = ({
               </div>
             </div>
           </section>
-        </div>
-
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-slate-200 bg-white flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={handleReset}
-            className="px-4 py-2.5 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-bold text-xs inline-flex items-center gap-1.5 transition-colors"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>Đặt lại mặc định</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm shadow-sm active:scale-95 transition-all"
-          >
-            Xong
-          </button>
-        </div>
-      </aside>
-    </div>
+      </div>
+    </SlideOverDrawer>
   )
 }
+

@@ -44,14 +44,14 @@ export const SlideOverDrawer: React.FC<SlideOverDrawerProps> = ({
       <aside
         role="dialog"
         aria-label={ariaLabel}
-        className="relative z-10 w-full max-w-md bg-white h-full shadow-2xl border-l border-slate-200 flex flex-col"
+        className="relative z-10 w-[92vw] sm:w-full max-w-md bg-white h-full shadow-2xl border-l border-slate-200 flex flex-col"
       >
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
+        <div className="px-4 py-3.5 sm:px-6 sm:py-4 border-b border-slate-200 flex items-center justify-between gap-2 bg-slate-50/70">
           <div className="flex items-center gap-2.5 min-w-0">
             {headerIcon}
             <div className="min-w-0">
-              <h2 className="text-base font-extrabold text-slate-900 truncate">{title}</h2>
-              {subtitle && <div className="text-xs text-slate-500 mt-0.5">{subtitle}</div>}
+              <h2 className="text-sm sm:text-base font-extrabold text-slate-900 truncate">{title}</h2>
+              {subtitle && <div className="text-[11px] sm:text-xs text-slate-500 mt-0.5">{subtitle}</div>}
             </div>
           </div>
           <button
@@ -64,10 +64,10 @@ export const SlideOverDrawer: React.FC<SlideOverDrawerProps> = ({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6">{children}</div>
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">{children}</div>
 
         {footer && (
-          <div className="px-6 py-4 border-t border-slate-200 bg-slate-50/60">
+          <div className="px-4 py-3.5 sm:px-6 sm:py-4 border-t border-slate-200 bg-slate-50/60">
             {footer}
           </div>
         )}
@@ -75,3 +75,4 @@ export const SlideOverDrawer: React.FC<SlideOverDrawerProps> = ({
     </div>
   )
 }
+

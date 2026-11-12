@@ -141,10 +141,15 @@ export const PracticeSummaryView: React.FC<PracticeSummaryViewProps> = ({
         </div>
 
         {/* XP / Coin Pill */}
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 self-start sm:self-center shrink-0">
-          <Coins className="w-5 h-5 text-amber-500" />
+        <div className="w-full sm:w-auto inline-flex items-center justify-between sm:justify-start gap-2 px-4 py-2 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 self-start sm:self-center shrink-0">
+          <div className="flex items-center gap-2">
+            <Coins className="w-5 h-5 text-amber-500" />
+            <span className="text-[11px] font-bold uppercase tracking-wider text-amber-600 sm:hidden">
+              {saved ? 'XP đã nhận' : 'Dự tính XP'}
+            </span>
+          </div>
           <div className="text-right">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-amber-600">
+            <div className="hidden sm:block text-[10px] font-bold uppercase tracking-wider text-amber-600">
               {saved ? 'XP đã nhận' : 'Dự tính XP'}
             </div>
             <div className="text-base font-extrabold leading-tight">+{displayedXp} XP</div>
@@ -153,7 +158,7 @@ export const PracticeSummaryView: React.FC<PracticeSummaryViewProps> = ({
       </div>
 
       {/* 2. Hai Bảng Chi Tiết Song Song: Trả lời đúng (kèm tick Đã thuộc) & Trả lời sai */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Cột Trái: Trả lời đúng */}
         <div className="bg-white border border-emerald-200 rounded-2xl overflow-hidden shadow-sm flex flex-col">
           <div className="px-4 py-3 bg-emerald-50/90 border-b border-emerald-200/80 flex items-center justify-between gap-2">
@@ -188,7 +193,7 @@ export const PracticeSummaryView: React.FC<PracticeSummaryViewProps> = ({
             )}
           </div>
 
-          <div className="flex-1 max-h-[340px] overflow-y-auto divide-y divide-slate-100">
+          <div className="flex-1 max-h-[260px] sm:max-h-[340px] overflow-y-auto divide-y divide-slate-100">
             {correctItems.length === 0 ? (
               <div className="py-10 px-4 text-center text-xs text-slate-400">
                 Chưa có từ nào được ghép đúng hoàn toàn trong lượt này.
@@ -199,11 +204,11 @@ export const PracticeSummaryView: React.FC<PracticeSummaryViewProps> = ({
                 return (
                   <label
                     key={item.vocabularyId}
-                    className={`px-4 py-2.5 flex items-center justify-between gap-3 cursor-pointer hover:bg-emerald-50/40 transition-colors ${
+                    className={`px-3 sm:px-4 py-2.5 flex items-center justify-between gap-2 sm:gap-3 cursor-pointer hover:bg-emerald-50/40 transition-colors ${
                       saved ? 'cursor-default' : ''
                     }`}
                   >
-                    <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                       <input
                         type="checkbox"
                         disabled={saved}
@@ -212,7 +217,7 @@ export const PracticeSummaryView: React.FC<PracticeSummaryViewProps> = ({
                         className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer shrink-0"
                       />
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                           <span
                             className="text-base font-extrabold text-slate-900"
                             style={{ fontFamily: `'Noto Serif SC', 'PingFang SC', serif` }}
@@ -239,7 +244,7 @@ export const PracticeSummaryView: React.FC<PracticeSummaryViewProps> = ({
                       </button>
                     </div>
 
-                    <span className="text-xs font-semibold text-slate-700 text-right truncate max-w-[46%]">
+                    <span className="text-xs font-semibold text-slate-700 text-right line-clamp-2 max-w-[44%] leading-snug">
                       {item.meaning}
                     </span>
                   </label>
@@ -265,7 +270,7 @@ export const PracticeSummaryView: React.FC<PracticeSummaryViewProps> = ({
             </div>
           </div>
 
-          <div className="flex-1 max-h-[340px] overflow-y-auto divide-y divide-slate-100">
+          <div className="flex-1 max-h-[260px] sm:max-h-[340px] overflow-y-auto divide-y divide-slate-100">
             {wrongItems.length === 0 ? (
               <div className="py-10 px-4 text-center text-xs font-semibold text-emerald-600 flex flex-col items-center gap-1.5">
                 <Sparkles className="w-5 h-5" />
@@ -275,11 +280,11 @@ export const PracticeSummaryView: React.FC<PracticeSummaryViewProps> = ({
               wrongItems.map((item) => (
                 <div
                   key={item.vocabularyId}
-                  className="px-4 py-2.5 flex items-center justify-between gap-3 hover:bg-rose-50/35 transition-colors"
+                  className="px-3 sm:px-4 py-2.5 flex items-center justify-between gap-2 sm:gap-3 hover:bg-rose-50/35 transition-colors"
                 >
-                  <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                         <span
                           className="text-base font-extrabold text-rose-700"
                           style={{ fontFamily: `'Noto Serif SC', 'PingFang SC', serif` }}
@@ -306,7 +311,7 @@ export const PracticeSummaryView: React.FC<PracticeSummaryViewProps> = ({
                     </button>
                   </div>
 
-                  <span className="text-xs font-semibold text-slate-700 text-right truncate max-w-[46%]">
+                  <span className="text-xs font-semibold text-slate-700 text-right line-clamp-2 max-w-[44%] leading-snug">
                     {item.meaning}
                   </span>
                 </div>
@@ -389,3 +394,4 @@ export const PracticeSummaryView: React.FC<PracticeSummaryViewProps> = ({
     </div>
   )
 }
+

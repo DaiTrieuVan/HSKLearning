@@ -426,77 +426,52 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
             {isTeacher ? (
               classesList.length === 0 ? (
                 /* TRẠNG THÁI 1: CHƯA CÓ LỚP HỌC (Onboarding 3 bước duy nhất) */
-                <div
-                  className="game-card animate-fade-in"
-                  style={{
-                    maxWidth: '700px',
-                    margin: '24px auto',
-                    padding: '36px 32px',
-                    backgroundColor: '#ffffff',
-                    border: '1.5px solid var(--border-card)',
-                    borderRadius: 'var(--radius-xl)',
-                    textAlign: 'center',
-                    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.04)',
-                  }}
-                >
-                  <div style={{ marginBottom: '16px' }}>
-                    <PandaMascot size={72} />
+                <div className="game-card animate-fade-in max-w-[700px] mx-auto my-2 sm:my-6 p-5 sm:p-8 bg-white border-[1.5px] border-[var(--border-card)] rounded-[var(--radius-xl)] text-center shadow-[0_8px_24px_rgba(0,0,0,0.04)]">
+                  <div className="mb-3 sm:mb-4 flex justify-center">
+                    <PandaMascot size={64} />
                   </div>
 
-                  <h2 style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--text-main)', marginBottom: '8px' }}>
+                  <h2 className="text-lg sm:text-[1.4rem] font-black text-[var(--text-main)] mb-2 leading-snug">
                     Chào mừng cô {user.fullName} đến với Không Gian Giáo Viên!
                   </h2>
-                  <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', maxWidth: '500px', margin: '0 auto 28px', lineHeight: 1.55 }}>
+                  <p className="text-xs sm:text-[0.9rem] text-[var(--text-muted)] max-w-[500px] mx-auto mb-6 leading-relaxed">
                     Hệ thống giúp quản lý học sinh, tự động chấm bài tập và lưu trữ câu hỏi. Hãy bắt đầu theo 3 bước sau:
                   </p>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'left', maxWidth: '540px', margin: '0 auto' }}>
-                    {/* Bước 1: Nút tạo lớp duy nhất */ }
+                  <div className="flex flex-col gap-3.5 text-left max-w-[540px] mx-auto">
+                    {/* Bước 1: Nút tạo lớp duy nhất */}
                     <div
+                      className="flex items-start gap-3 sm:gap-4 p-4 sm:p-5 rounded-[var(--radius-lg)]"
                       style={{
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: '16px',
-                        padding: '18px 20px',
-                        borderRadius: 'var(--radius-lg)',
                         backgroundColor: 'var(--accent-gold-light)',
                         border: '2px solid var(--accent-gold)',
                       }}
                     >
                       <div
-                        style={{
-                          width: '32px',
-                          height: '32px',
-                          borderRadius: '50%',
-                          backgroundColor: 'var(--accent-gold-shadow)',
-                          color: '#ffffff',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontWeight: 900,
-                          fontSize: '0.95rem',
-                          flexShrink: 0,
-                        }}
+                        className="w-8 h-8 rounded-full text-white flex items-center justify-center font-black text-sm shrink-0"
+                        style={{ backgroundColor: 'var(--accent-gold-shadow)' }}
                       >
                         1
                       </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                          <h3 style={{ fontSize: '1.05rem', fontWeight: 800, margin: 0, color: 'var(--accent-gold-shadow)' }}>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+                          <h3 className="text-sm sm:text-base font-extrabold m-0" style={{ color: 'var(--accent-gold-shadow)' }}>
                             Tạo lớp học đầu tiên
                           </h3>
-                          <span style={{ fontSize: '0.72rem', fontWeight: 800, padding: '2px 8px', borderRadius: 'var(--radius-full)', backgroundColor: '#ffffff', color: 'var(--accent-gold-shadow)' }}>
+                          <span
+                            className="text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-white whitespace-nowrap"
+                            style={{ color: 'var(--accent-gold-shadow)' }}
+                          >
                             Bước bắt buộc
                           </span>
                         </div>
-                        <p style={{ fontSize: '0.85rem', color: 'var(--text-main)', margin: '0 0 14px', lineHeight: 1.5 }}>
+                        <p className="text-xs sm:text-[0.85rem] text-[var(--text-main)] m-0 mb-3.5 leading-relaxed">
                           Tạo lớp để nhận mã mời 6 ký tự. Cấp mã này cho học sinh để các em tự nhập và tham gia lớp học của cô.
                         </p>
                         <button
                           type="button"
                           onClick={() => navigate('/classes/create')}
-                          className="btn-gamified btn-gold"
-                          style={{ padding: '8px 20px', fontSize: '0.88rem' }}
+                          className="btn-gamified btn-gold w-full sm:w-auto justify-center px-5 py-2 text-xs sm:text-sm whitespace-nowrap"
                         >
                           <PlusCircle size={16} />
                           <span>Tạo lớp học đầu tiên</span>
@@ -504,87 +479,37 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
                       </div>
                     </div>
 
-                    {/* Bước 2: Locked */ }
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: '16px',
-                        padding: '16px 20px',
-                        borderRadius: 'var(--radius-lg)',
-                        backgroundColor: '#f8fafc',
-                        border: '1px dashed #cbd5e1',
-                        opacity: 0.65,
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: '32px',
-                          height: '32px',
-                          borderRadius: '50%',
-                          backgroundColor: '#94a3b8',
-                          color: '#ffffff',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontWeight: 900,
-                          fontSize: '0.95rem',
-                          flexShrink: 0,
-                        }}
-                      >
+                    {/* Bước 2: Locked */}
+                    <div className="flex items-start gap-3 sm:gap-4 p-3.5 sm:px-5 rounded-[var(--radius-lg)] bg-slate-50 border border-dashed border-slate-300 opacity-65">
+                      <div className="w-8 h-8 rounded-full bg-slate-400 text-white flex items-center justify-center font-black text-sm shrink-0">
                         2
                       </div>
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                          <h3 style={{ fontSize: '0.95rem', fontWeight: 800, margin: 0, color: 'var(--text-muted)' }}>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
+                          <h3 className="text-sm sm:text-[0.95rem] font-extrabold m-0 text-[var(--text-muted)]">
                             Chuẩn bị câu hỏi & Bộ từ vựng
                           </h3>
-                          <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700 }}>(Mở sau khi có lớp)</span>
+                          <span className="text-[11px] text-slate-500 font-bold">(Mở sau khi có lớp)</span>
                         </div>
-                        <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
+                        <p className="text-xs sm:text-[0.82rem] text-[var(--text-muted)] m-0 leading-snug">
                           Soạn ngân hàng câu hỏi trắc nghiệm và kho từ vựng theo chuyên đề để chuẩn bị đề kiểm tra.
                         </p>
                       </div>
                     </div>
 
-                    {/* Bước 3: Locked */ }
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: '16px',
-                        padding: '16px 20px',
-                        borderRadius: 'var(--radius-lg)',
-                        backgroundColor: '#f8fafc',
-                        border: '1px dashed #cbd5e1',
-                        opacity: 0.65,
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: '32px',
-                          height: '32px',
-                          borderRadius: '50%',
-                          backgroundColor: '#94a3b8',
-                          color: '#ffffff',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontWeight: 900,
-                          fontSize: '0.95rem',
-                          flexShrink: 0,
-                        }}
-                      >
+                    {/* Bước 3: Locked */}
+                    <div className="flex items-start gap-3 sm:gap-4 p-3.5 sm:px-5 rounded-[var(--radius-lg)] bg-slate-50 border border-dashed border-slate-300 opacity-65">
+                      <div className="w-8 h-8 rounded-full bg-slate-400 text-white flex items-center justify-center font-black text-sm shrink-0">
                         3
                       </div>
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                          <h3 style={{ fontSize: '0.95rem', fontWeight: 800, margin: 0, color: 'var(--text-muted)' }}>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
+                          <h3 className="text-sm sm:text-[0.95rem] font-extrabold m-0 text-[var(--text-muted)]">
                             Đóng gói đề & Giao bài tập cho học sinh
                           </h3>
-                          <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700 }}>(Mở sau khi có lớp)</span>
+                          <span className="text-[11px] text-slate-500 font-bold">(Mở sau khi có lớp)</span>
                         </div>
-                        <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
+                        <p className="text-xs sm:text-[0.82rem] text-[var(--text-muted)] m-0 leading-snug">
                           Giao bài tập có hạn nộp cho lớp học. Hệ thống sẽ tự động chấm điểm và thống kê tiến độ từng học sinh.
                         </p>
                       </div>
@@ -594,225 +519,108 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
               ) : (
                 /* TRẠNG THÁI 2: ĐÃ CÓ LỚP HỌC (Hiển thị Số liệu, Cần xử lý ngay, Danh sách lớp) */
                 <>
-                  {/* 1. Hàng số liệu tổng quan */ }
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-                    {/* Card 1: Số lớp đang phụ trách */ }
-                    <div
-                      className="game-card"
-                      style={{
-                        padding: '16px 20px',
-                        backgroundColor: '#ffffff',
-                        border: '1.5px solid var(--border-card)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '14px',
-                      }}
-                    >
+                  {/* 1. Hàng số liệu tổng quan */}
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5 sm:mb-6">
+                    {[
+                      {
+                        label: 'Số lớp đang phụ trách',
+                        value: classesList.length,
+                        iconBg: '#dbeafe',
+                        iconColor: '#1d4ed8',
+                        valueColor: '#1d4ed8',
+                        icon: <GraduationCap size={20} />,
+                      },
+                      {
+                        label: 'Tổng số học sinh',
+                        value: totalStudents,
+                        iconBg: '#d1fae5',
+                        iconColor: '#059669',
+                        valueColor: '#059669',
+                        icon: <Users size={20} />,
+                      },
+                      {
+                        label: 'Bài tập đang mở',
+                        value: activeAssignments.length,
+                        iconBg: '#f3e8ff',
+                        iconColor: '#7e22ce',
+                        valueColor: '#7e22ce',
+                        icon: <FileCheck size={20} />,
+                        onClick: () => navigate('/exercises'),
+                        title: 'Bấm để xem danh sách bài tập',
+                      },
+                      {
+                        label: 'Bài tập cần xử lý',
+                        value: dueSoonAssignments.length,
+                        iconBg: dueSoonAssignments.length > 0 ? '#fef3c7' : '#f1f5f9',
+                        iconColor: dueSoonAssignments.length > 0 ? '#d97706' : '#64748b',
+                        valueColor: dueSoonAssignments.length > 0 ? '#d97706' : 'var(--text-main)',
+                        icon: <Clock size={20} />,
+                      },
+                    ].map((stat) => (
                       <div
-                        style={{
-                          width: '44px',
-                          height: '44px',
-                          borderRadius: 'var(--radius-md)',
-                          backgroundColor: '#dbeafe',
-                          color: '#1d4ed8',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0,
-                        }}
+                        key={stat.label}
+                        className={`game-card p-3.5 sm:px-5 sm:py-4 bg-white border-[1.5px] border-[var(--border-card)] flex items-center gap-2.5 sm:gap-3.5 ${stat.onClick ? 'cursor-pointer' : ''}`}
+                        onClick={stat.onClick}
+                        title={stat.title}
                       >
-                        <GraduationCap size={22} />
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '1.45rem', fontWeight: 900, color: '#1d4ed8', lineHeight: 1.1 }}>
-                          {classesList.length}
+                        <div
+                          className="w-9 h-9 sm:w-11 sm:h-11 rounded-[var(--radius-md)] flex items-center justify-center shrink-0"
+                          style={{ backgroundColor: stat.iconBg, color: stat.iconColor }}
+                        >
+                          {stat.icon}
                         </div>
-                        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>
-                          Số lớp đang phụ trách
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Card 2: Tổng số học sinh */ }
-                    <div
-                      className="game-card"
-                      style={{
-                        padding: '16px 20px',
-                        backgroundColor: '#ffffff',
-                        border: '1.5px solid var(--border-card)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '14px',
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: '44px',
-                          height: '44px',
-                          borderRadius: 'var(--radius-md)',
-                          backgroundColor: '#d1fae5',
-                          color: '#059669',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0,
-                        }}
-                      >
-                        <Users size={22} />
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '1.45rem', fontWeight: 900, color: '#059669', lineHeight: 1.1 }}>
-                          {totalStudents}
-                        </div>
-                        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>
-                          Tổng số học sinh
+                        <div className="min-w-0">
+                          <div className="text-lg sm:text-2xl font-black leading-tight" style={{ color: stat.valueColor }}>
+                            {stat.value}
+                          </div>
+                          <div className="text-[11px] sm:text-xs font-bold text-[var(--text-muted)] leading-snug">
+                            {stat.label}
+                          </div>
                         </div>
                       </div>
-                    </div>
-
-                    {/* Card 3: Bài tập đang mở */ }
-                    <div
-                      className="game-card"
-                      style={{
-                        padding: '16px 20px',
-                        backgroundColor: '#ffffff',
-                        border: '1.5px solid var(--border-card)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '14px',
-                        cursor: 'pointer',
-                      }}
-                      onClick={() => navigate('/exercises')}
-                      title="Bấm để xem danh sách bài tập"
-                    >
-                      <div
-                        style={{
-                          width: '44px',
-                          height: '44px',
-                          borderRadius: 'var(--radius-md)',
-                          backgroundColor: '#f3e8ff',
-                          color: '#7e22ce',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0,
-                        }}
-                      >
-                        <FileCheck size={22} />
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '1.45rem', fontWeight: 900, color: '#7e22ce', lineHeight: 1.1 }}>
-                          {activeAssignments.length}
-                        </div>
-                        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>
-                          Bài tập đang mở
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Card 4: Bài tập cần xử lý / sắp hết hạn */ }
-                    <div
-                      className="game-card"
-                      style={{
-                        padding: '16px 20px',
-                        backgroundColor: '#ffffff',
-                        border: '1.5px solid var(--border-card)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '14px',
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: '44px',
-                          height: '44px',
-                          borderRadius: 'var(--radius-md)',
-                          backgroundColor: dueSoonAssignments.length > 0 ? '#fef3c7' : '#f1f5f9',
-                          color: dueSoonAssignments.length > 0 ? '#d97706' : '#64748b',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0,
-                        }}
-                      >
-                        <Clock size={22} />
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '1.45rem', fontWeight: 900, color: dueSoonAssignments.length > 0 ? '#d97706' : 'var(--text-main)', lineHeight: 1.1 }}>
-                          {dueSoonAssignments.length}
-                        </div>
-                        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>
-                          Bài tập cần xử lý
-                        </div>
-                      </div>
-                    </div>
+                    ))}
                   </div>
 
-                  {/* 2. Khối Cần xử lý ngay */ }
-                  <div
-                    className="game-card"
-                    style={{
-                      padding: '20px',
-                      backgroundColor: '#ffffff',
-                      border: '1.5px solid var(--border-card)',
-                      marginBottom: '28px',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <AlertCircle size={20} style={{ color: dueSoonAssignments.length > 0 ? '#d97706' : 'var(--primary)' }} />
-                        <h3 style={{ fontSize: '1.05rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>
+                  {/* 2. Khối Cần xử lý ngay */}
+                  <div className="game-card p-4 sm:p-5 bg-white border-[1.5px] border-[var(--border-card)] mb-5 sm:mb-7">
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle size={18} style={{ color: dueSoonAssignments.length > 0 ? '#d97706' : 'var(--primary)' }} />
+                        <h3 className="text-sm sm:text-base font-extrabold m-0 text-[var(--text-main)]">
                           Cần xử lý ngay
                         </h3>
                       </div>
-                      <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                      <span className="text-xs text-[var(--text-muted)] font-semibold">
                         Trạng thái giảng dạy
                       </span>
                     </div>
 
                     {dueSoonAssignments.length > 0 ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <div className="flex flex-col gap-2.5">
                         {dueSoonAssignments.map((a) => {
                           const hoursLeft = Math.max(1, Math.round((new Date(a.dueTime).getTime() - Date.now()) / (1000 * 3600)))
                           return (
                             <div
                               key={a.id}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                padding: '12px 16px',
-                                backgroundColor: '#fffbeb',
-                                border: '1px solid #fde68a',
-                                borderRadius: 'var(--radius-md)',
-                                gap: '12px',
-                              }}
+                              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:px-4 rounded-[var(--radius-md)]"
+                              style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a' }}
                             >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <Clock size={18} style={{ color: '#d97706', flexShrink: 0 }} />
-                                <div>
-                                  <span style={{ fontWeight: 800, fontSize: '0.88rem', color: '#92400e' }}>
+                              <div className="flex items-start gap-2.5 min-w-0">
+                                <Clock size={18} className="shrink-0 mt-0.5" style={{ color: '#d97706' }} />
+                                <div className="min-w-0">
+                                  <div className="font-extrabold text-[0.84rem] sm:text-[0.88rem] text-[#92400e] leading-snug">
                                     {a.title} ({a.classTitle})
-                                  </span>
-                                  <span style={{ fontSize: '0.8rem', color: '#b45309', marginLeft: '8px' }}>
+                                  </div>
+                                  <div className="text-xs text-[#b45309] mt-0.5 leading-snug">
                                     Hết hạn sau {hoursLeft} giờ nữa
-                                  </span>
+                                  </div>
                                 </div>
                               </div>
                               <button
                                 type="button"
                                 onClick={() => navigate(`/classes/${a.classId}`)}
-                                style={{
-                                  padding: '6px 12px',
-                                  borderRadius: 'var(--radius-sm)',
-                                  border: '1px solid #f59e0b',
-                                  backgroundColor: '#ffffff',
-                                  color: '#b45309',
-                                  fontWeight: 800,
-                                  fontSize: '0.78rem',
-                                  cursor: 'pointer',
-                                  whiteSpace: 'nowrap',
-                                }}
+                                className="self-stretch sm:self-auto shrink-0 px-3 py-2 sm:py-1.5 rounded-[var(--radius-sm)] bg-white font-extrabold text-xs cursor-pointer whitespace-nowrap text-center"
+                                style={{ border: '1px solid #f59e0b', color: '#b45309' }}
                               >
                                 Xem bài nộp
                               </button>
@@ -822,81 +630,52 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
                       </div>
                     ) : classesWithoutAssignments.length > 0 ? (
                       <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '12px 16px',
-                          backgroundColor: '#eff6ff',
-                          border: '1px solid #bfdbfe',
-                          borderRadius: 'var(--radius-md)',
-                        }}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:px-4 rounded-[var(--radius-md)]"
+                        style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe' }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <FileCheck size={18} style={{ color: '#2563eb', flexShrink: 0 }} />
-                          <div>
-                            <span style={{ fontWeight: 800, fontSize: '0.88rem', color: '#1e40af' }}>
+                        <div className="flex items-start gap-2.5 min-w-0">
+                          <FileCheck size={18} className="shrink-0 mt-0.5" style={{ color: '#2563eb' }} />
+                          <div className="min-w-0">
+                            <div className="font-extrabold text-[0.84rem] sm:text-[0.88rem] text-[#1e40af] leading-snug">
                               Lớp &quot;{classesWithoutAssignments[0].title}&quot; chưa có bài tập nào đang mở
-                            </span>
-                            <span style={{ fontSize: '0.8rem', color: '#3b82f6', marginLeft: '8px' }}>
+                            </div>
+                            <div className="text-xs text-[#3b82f6] mt-0.5 leading-snug">
                               Hãy giao bài tập để học sinh có thể ôn luyện ngay.
-                            </span>
+                            </div>
                           </div>
                         </div>
                         <button
                           type="button"
                           onClick={() => navigate('/exercises')}
-                          style={{
-                            padding: '6px 12px',
-                            borderRadius: 'var(--radius-sm)',
-                            border: '1px solid #3b82f6',
-                            backgroundColor: '#ffffff',
-                            color: '#1d4ed8',
-                            fontWeight: 800,
-                            fontSize: '0.78rem',
-                            cursor: 'pointer',
-                            whiteSpace: 'nowrap',
-                          }}
+                          className="self-stretch sm:self-auto shrink-0 px-3 py-2 sm:py-1.5 rounded-[var(--radius-sm)] bg-white font-extrabold text-xs cursor-pointer whitespace-nowrap text-center"
+                          style={{ border: '1px solid #3b82f6', color: '#1d4ed8' }}
                         >
                           Giao bài tập
                         </button>
                       </div>
                     ) : (
                       <div
+                        className="flex items-start sm:items-center gap-2.5 p-3 sm:px-4 rounded-[var(--radius-md)] text-xs sm:text-sm font-bold leading-snug"
                         style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '10px',
-                          padding: '12px 16px',
                           backgroundColor: 'var(--jade-green-light)',
                           border: '1px solid #a7f3d0',
-                          borderRadius: 'var(--radius-md)',
                           color: 'var(--jade-green-shadow)',
-                          fontSize: '0.86rem',
-                          fontWeight: 700,
                         }}
                       >
-                        <CheckCircle2 size={18} />
+                        <CheckCircle2 size={18} className="shrink-0 mt-0.5 sm:mt-0" />
                         <span>Tất cả bài tập và lớp học đều đang hoạt động tốt. Không có việc gấp cần xử lý hôm nay.</span>
                       </div>
                     )}
                   </div>
 
-                  {/* 3. Danh sách lớp học đang phụ trách + 1 NÚT TẠO LỚP DUY NHẤT */ }
-                  <div style={{ marginTop: '20px' }}>
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        marginBottom: '18px',
-                      }}
-                    >
-                      <div>
-                        <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
+                  {/* 3. Danh sách lớp học đang phụ trách + 1 NÚT TẠO LỚP DUY NHẤT */}
+                  <div className="mt-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                      <div className="min-w-0">
+                        <h2 className="text-base sm:text-xl font-extrabold text-[var(--text-main)] m-0 leading-snug">
                           Danh sách Lớp học đang phụ trách
                         </h2>
-                        <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                        <p className="mt-1 mb-0 text-xs sm:text-[0.85rem] text-[var(--text-muted)]">
                           Quản lý học sinh, mã mời 6 ký tự và trạng thái lớp.
                         </p>
                       </div>
@@ -904,36 +683,27 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
                       <button
                         type="button"
                         onClick={() => navigate('/classes/create')}
-                        className="btn-gamified btn-gold"
-                        style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+                        className="btn-gamified btn-gold self-start sm:self-auto shrink-0 whitespace-nowrap px-4 py-2 text-xs sm:text-sm"
                       >
                         <PlusCircle size={16} />
                         <span>Tạo lớp mới</span>
                       </button>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                       {classesList.map((cls) => (
                         <div
                           key={cls.id}
-                          className="game-card"
+                          className="game-card p-4 sm:p-5 bg-white flex flex-col justify-between"
                           style={{
-                            padding: '18px 20px',
-                            backgroundColor: '#ffffff',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            justifyContent: 'space-between',
                             borderLeft: cls.status === 'ARCHIVED' ? '4px solid #94a3b8' : '4px solid var(--primary)',
                           }}
                         >
                           <div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                            <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
                               <span
+                                className="text-[11px] font-extrabold px-2 py-0.5 rounded-full whitespace-nowrap"
                                 style={{
-                                  fontSize: '0.72rem',
-                                  fontWeight: 800,
-                                  padding: '2px 8px',
-                                  borderRadius: 'var(--radius-full)',
                                   backgroundColor: cls.status === 'ARCHIVED' ? '#f1f5f9' : 'var(--primary-light)',
                                   color: cls.status === 'ARCHIVED' ? '#64748b' : 'var(--primary)',
                                 }}
@@ -948,21 +718,11 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
                                   handleCopyCode(cls.joinCode)
                                 }}
                                 title="Bấm để sao chép mã mời lớp học"
+                                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[var(--radius-sm)] font-mono font-extrabold text-xs tracking-wide cursor-pointer whitespace-nowrap transition-all"
                                 style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '6px',
-                                  padding: '3px 8px',
                                   backgroundColor: copiedCode === cls.joinCode ? '#dcfce7' : '#f8fafc',
                                   border: copiedCode === cls.joinCode ? '1.5px solid #16a34a' : '1px solid var(--border-card)',
-                                  borderRadius: 'var(--radius-sm)',
-                                  fontFamily: 'monospace',
-                                  fontWeight: 800,
-                                  fontSize: '0.82rem',
-                                  letterSpacing: '1px',
                                   color: copiedCode === cls.joinCode ? '#15803d' : 'var(--text-main)',
-                                  cursor: 'pointer',
-                                  transition: 'all 0.15s ease',
                                 }}
                               >
                                 {copiedCode === cls.joinCode ? (
@@ -979,43 +739,23 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
                               </button>
                             </div>
 
-                            <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '4px' }}>
+                            <h3 className="text-sm sm:text-base font-extrabold text-[var(--text-main)] mb-1 leading-snug">
                               {cls.title}
                             </h3>
-                            <p
-                              style={{
-                                fontSize: '0.82rem',
-                                color: 'var(--text-muted)',
-                                lineHeight: 1.4,
-                                marginBottom: '12px',
-                                minHeight: '2.4em',
-                              }}
-                            >
+                            <p className="text-xs sm:text-[0.82rem] text-[var(--text-muted)] leading-relaxed mb-3 sm:min-h-[2.4em]">
                               {cls.description || 'Không có mô tả'}
                             </p>
                           </div>
 
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid #f1f5f9' }}>
-                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+                          <div className="flex justify-between items-center gap-2 pt-2.5 border-t border-slate-100">
+                            <span className="text-xs font-bold text-[var(--text-muted)]">
                               {cls.memberCount} học viên
                             </span>
 
                             <button
                               type="button"
                               onClick={() => navigate(`/classes/${cls.id}`)}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                padding: '6px 12px',
-                                borderRadius: 'var(--radius-md)',
-                                border: '1px solid var(--border-card)',
-                                backgroundColor: '#ffffff',
-                                color: 'var(--primary)',
-                                fontSize: '0.82rem',
-                                fontWeight: 800,
-                                cursor: 'pointer',
-                              }}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[var(--radius-md)] border border-[var(--border-card)] bg-white text-[var(--primary)] text-xs font-extrabold cursor-pointer whitespace-nowrap"
                             >
                               <span>Quản lý</span>
                               <ArrowRight size={14} />

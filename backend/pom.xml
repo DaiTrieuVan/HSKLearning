@@ -80,11 +80,18 @@
 			<version>${springdoc.version}</version>
 		</dependency>
 
-		<!-- Apache POI for Excel export (HTT-07-CN-007) -->
+		<!-- Apache POI for Excel export (HTT-07-CN-007) & PPTX slide rendering -->
 		<dependency>
 			<groupId>org.apache.poi</groupId>
 			<artifactId>poi-ooxml</artifactId>
 			<version>5.4.1</version>
+		</dependency>
+
+		<!-- Apache PDFBox for server-side PDF slide rasterization -->
+		<dependency>
+			<groupId>org.apache.pdfbox</groupId>
+			<artifactId>pdfbox</artifactId>
+			<version>3.0.4</version>
 		</dependency>
 
 		<dependency>

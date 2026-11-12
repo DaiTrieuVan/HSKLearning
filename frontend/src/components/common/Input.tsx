@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useId, useState } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -18,21 +18,22 @@ export const Input: React.FC<InputProps> = ({
   ...props
 }) => {
   const [showPassword, setShowPassword] = useState(false)
+  const generatedId = useId()
   const isPassword = type === 'password'
   const inputType = isPassword ? (showPassword ? 'text' : 'password') : type
-  const inputId = id || props.name || Math.random().toString(36).substring(2, 9)
+  const inputId = id || props.name || generatedId
 
   return (
-    <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+    <div style={{ marginBottom: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
       <label
         htmlFor={inputId}
         style={{
           fontWeight: 700,
-          fontSize: '0.9rem',
+          fontSize: '0.82rem',
           color: 'var(--text-main)',
           display: 'flex',
           alignItems: 'center',
-          gap: '6px',
+          gap: '4px',
         }}
       >
         {label}
@@ -50,7 +51,7 @@ export const Input: React.FC<InputProps> = ({
           <span
             style={{
               position: 'absolute',
-              left: '14px',
+              left: '12px',
               color: error ? 'var(--primary)' : 'var(--text-muted)',
               display: 'flex',
               alignItems: 'center',
@@ -66,13 +67,13 @@ export const Input: React.FC<InputProps> = ({
           type={inputType}
           style={{
             width: '100%',
-            padding: '13px 16px',
-            paddingLeft: icon ? '44px' : '16px',
-            paddingRight: isPassword ? '44px' : '16px',
+            padding: '10px 14px',
+            paddingLeft: icon ? '38px' : '14px',
+            paddingRight: isPassword ? '40px' : '14px',
             borderRadius: 'var(--radius-md)',
-            border: error ? '2px solid var(--primary)' : '2px solid #e2e8f0',
+            border: error ? '1.5px solid var(--primary)' : '1.5px solid #e2e8f0',
             backgroundColor: '#ffffff',
-            fontSize: '0.95rem',
+            fontSize: '0.88rem',
             color: 'var(--text-main)',
             outline: 'none',
             transition: 'border-color 0.15s ease, box-shadow 0.15s ease',

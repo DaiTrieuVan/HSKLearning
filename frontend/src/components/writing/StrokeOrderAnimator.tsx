@@ -71,34 +71,13 @@ export const StrokeOrderAnimator: React.FC<StrokeOrderAnimatorProps> = ({
   const speedOptions = [0.5, 1, 1.5, 2]
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '20px',
-        width: '100%',
-        maxWidth: '460px',
-        margin: '0 auto',
-      }}
-    >
+    <div className="flex flex-col items-center gap-4 sm:gap-5 w-full max-w-[460px] mx-auto min-w-0">
       {/* Khung vẽ SVG minh họa thứ tự nét */}
       <div
+        className="relative w-full aspect-square max-w-[280px] sm:max-w-[340px] lg:max-w-[360px] bg-white rounded-2xl overflow-hidden flex items-center justify-center box-border p-2.5 sm:p-3"
         style={{
-          position: 'relative',
-          width: '100%',
-          aspectRatio: '1 / 1',
-          maxWidth: '360px',
-          backgroundColor: '#ffffff',
-          borderRadius: '16px',
           boxShadow: '0 4px 20px rgba(0, 0, 0, 0.06)',
           border: '2.5px solid #e2e8f0',
-          overflow: 'hidden',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxSizing: 'border-box',
-          padding: '12px',
         }}
       >
         <svg
@@ -179,19 +158,12 @@ export const StrokeOrderAnimator: React.FC<StrokeOrderAnimatorProps> = ({
 
       {/* Thanh điều khiển phát hoạt ảnh */}
       <div
+        className="flex flex-wrap items-center justify-center sm:justify-between gap-2.5 bg-slate-50 p-2.5 sm:px-3.5 sm:py-2 rounded-xl w-full box-border"
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          backgroundColor: '#f8fafc',
-          padding: '8px 14px',
-          borderRadius: '12px',
           border: '1px solid #e2e8f0',
-          width: '100%',
-          justifyContent: 'space-between',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div className="flex items-center gap-1.5 flex-wrap justify-center">
           {/* Nút lùi nét */}
           <button
             type="button"
@@ -311,7 +283,7 @@ export const StrokeOrderAnimator: React.FC<StrokeOrderAnimatorProps> = ({
       </div>
 
       {/* Tùy chọn hiển thị lưới và bóng mờ */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', justifyContent: 'center' }}>
+      <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 w-full justify-center">
         {/* Toggle loại ô lưới */}
         <button
           type="button"

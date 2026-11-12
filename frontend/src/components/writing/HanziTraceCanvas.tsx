@@ -343,109 +343,59 @@ export const HanziTraceCanvas: React.FC<HanziTraceCanvasProps> = ({
   }
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '18px',
-        width: '100%',
-        maxWidth: '520px',
-        margin: '0 auto',
-      }}
-    >
+    <div className="flex flex-col items-center gap-4 sm:gap-[18px] w-full max-w-[520px] mx-auto min-w-0">
       {/* Bộ chọn Chế độ hiển thị nét (View Mode Switcher) */}
       <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: '#f1f5f9',
-          padding: '4px',
-          borderRadius: '12px',
-          gap: '4px',
-          width: '100%',
-          maxWidth: '420px',
-        }}
+        className="flex items-center justify-center bg-slate-100 p-1 rounded-xl gap-1 w-full max-w-[420px] box-border"
       >
         <button
           type="button"
           onClick={() => setViewMode('compare')}
+          className="flex-1 flex items-center justify-center gap-1 sm:gap-1.5 px-2 py-1.5 sm:px-2.5 sm:py-[7px] rounded-[9px] border-0 text-xs sm:text-[0.82rem] cursor-pointer transition-all whitespace-nowrap"
           style={{
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '6px',
-            padding: '7px 10px',
-            borderRadius: '9px',
-            border: 'none',
             backgroundColor: viewMode === 'compare' ? '#ffffff' : 'transparent',
             color: viewMode === 'compare' ? '#059669' : '#64748b',
             fontWeight: viewMode === 'compare' ? 700 : 600,
-            fontSize: '0.82rem',
             boxShadow:
               viewMode === 'compare' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
-            cursor: 'pointer',
-            transition: 'all 0.18s ease',
           }}
           title="Xem cả nét mẫu chuẩn và nét bạn vừa viết để đối chiếu độ chính xác"
         >
-          <Layers size={15} />
+          <Layers size={15} className="shrink-0" />
           <span>Đối chiếu</span>
         </button>
 
         <button
           type="button"
           onClick={() => setViewMode('handwriting')}
+          className="flex-1 flex items-center justify-center gap-1 sm:gap-1.5 px-2 py-1.5 sm:px-2.5 sm:py-[7px] rounded-[9px] border-0 text-xs sm:text-[0.82rem] cursor-pointer transition-all whitespace-nowrap"
           style={{
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '6px',
-            padding: '7px 10px',
-            borderRadius: '9px',
-            border: 'none',
             backgroundColor: viewMode === 'handwriting' ? '#ffffff' : 'transparent',
             color: viewMode === 'handwriting' ? '#0f172a' : '#64748b',
             fontWeight: viewMode === 'handwriting' ? 700 : 600,
-            fontSize: '0.82rem',
             boxShadow:
               viewMode === 'handwriting' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
-            cursor: 'pointer',
-            transition: 'all 0.18s ease',
           }}
           title="Chỉ hiển thị chữ thật do bạn tự tay viết"
         >
-          <PenTool size={15} />
+          <PenTool size={15} className="shrink-0" />
           <span>Chữ tôi viết</span>
         </button>
 
         <button
           type="button"
           onClick={() => setViewMode('system')}
+          className="flex-1 flex items-center justify-center gap-1 sm:gap-1.5 px-2 py-1.5 sm:px-2.5 sm:py-[7px] rounded-[9px] border-0 text-xs sm:text-[0.82rem] cursor-pointer transition-all whitespace-nowrap"
           style={{
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '6px',
-            padding: '7px 10px',
-            borderRadius: '9px',
-            border: 'none',
             backgroundColor: viewMode === 'system' ? '#ffffff' : 'transparent',
             color: viewMode === 'system' ? '#0284c7' : '#64748b',
             fontWeight: viewMode === 'system' ? 700 : 600,
-            fontSize: '0.82rem',
             boxShadow:
               viewMode === 'system' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
-            cursor: 'pointer',
-            transition: 'all 0.18s ease',
           }}
           title="Hiển thị nét font chữ chuẩn hệ thống"
         >
-          <BookOpen size={15} />
+          <BookOpen size={15} className="shrink-0" />
           <span>Mẫu chuẩn</span>
         </button>
       </div>
@@ -453,13 +403,8 @@ export const HanziTraceCanvas: React.FC<HanziTraceCanvasProps> = ({
       {/* Vùng card viền ngoài tương tác tập viết */}
       <div
         ref={containerRef}
+        className="relative w-full aspect-square max-w-[320px] sm:max-w-[400px] lg:max-w-[420px] bg-white rounded-2xl overflow-hidden select-none touch-none box-border p-2.5 sm:p-3 transition-colors"
         style={{
-          position: 'relative',
-          width: '100%',
-          aspectRatio: '1 / 1',
-          maxWidth: '420px',
-          backgroundColor: '#ffffff',
-          borderRadius: '16px',
           boxShadow: '0 4px 20px rgba(0, 0, 0, 0.06)',
           border: `2.5px solid ${
             flashColor === 'green'
@@ -468,13 +413,7 @@ export const HanziTraceCanvas: React.FC<HanziTraceCanvasProps> = ({
               ? '#ef4444'
               : '#e2e8f0'
           }`,
-          transition: 'border-color 0.25s ease',
-          overflow: 'hidden',
-          userSelect: 'none',
           WebkitUserSelect: 'none',
-          touchAction: 'none',
-          boxSizing: 'border-box',
-          padding: '12px',
         }}
       >
         {/* Khung nội dung tập viết chung toạ độ 1:1 cho cả SVG và Canvas */}
@@ -789,17 +728,8 @@ export const HanziTraceCanvas: React.FC<HanziTraceCanvasProps> = ({
       )}
 
       {/* Thanh công cụ thao tác */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          width: '100%',
-          flexWrap: 'wrap',
-          gap: '8px',
-        }}
-      >
-        <div style={{ display: 'flex', gap: '8px' }}>
+      <div className="flex flex-wrap items-center justify-center sm:justify-between w-full gap-2">
+        <div className="flex flex-wrap items-center justify-center gap-2">
           {/* Nút Undo nét trước */}
           <button
             type="button"
@@ -848,7 +778,7 @@ export const HanziTraceCanvas: React.FC<HanziTraceCanvasProps> = ({
           </button>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div className="flex flex-wrap items-center justify-center gap-2">
           {/* Bật / tắt gợi ý */}
           <button
             type="button"

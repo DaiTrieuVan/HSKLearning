@@ -57,20 +57,15 @@ export const HanziCharacterPicker: React.FC<HanziCharacterPickerProps> = ({
 
   return (
     <div
+      className="flex flex-col gap-3.5 bg-white p-3.5 sm:px-5 sm:py-4 rounded-[14px]"
       style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '14px',
-        backgroundColor: '#ffffff',
-        padding: '16px 20px',
-        borderRadius: '14px',
         border: '1.5px solid #e2e8f0',
         boxShadow: '0 2px 10px rgba(0, 0, 0, 0.03)',
       }}
     >
       {/* Ô nhập chữ tự do */}
-      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-        <div style={{ position: 'relative', flex: 1 }}>
+      <div className="flex gap-2 items-center min-w-0">
+        <div className="relative flex-1 min-w-0">
           <input
             type="text"
             value={inputText}
@@ -83,14 +78,9 @@ export const HanziCharacterPicker: React.FC<HanziCharacterPickerProps> = ({
             }}
             placeholder="Nhập chữ Hán bất kỳ (ví dụ: 你, 你好, 谢谢)..."
             maxLength={20}
+            className="w-full box-border px-3 py-2.5 sm:px-3.5 rounded-[10px] text-sm sm:text-[0.92rem] outline-none transition-colors"
             style={{
-              width: '100%',
-              padding: '10px 14px',
-              borderRadius: '10px',
               border: '1.5px solid #cbd5e1',
-              fontSize: '0.92rem',
-              outline: 'none',
-              transition: 'border-color 0.2s ease',
             }}
           />
         </div>
@@ -99,22 +89,13 @@ export const HanziCharacterPicker: React.FC<HanziCharacterPickerProps> = ({
           type="button"
           onClick={() => handleCheckSupport(inputText)}
           disabled={loading}
+          className="flex items-center gap-1.5 px-3.5 py-2.5 sm:px-4 rounded-[10px] font-bold text-xs sm:text-[0.88rem] text-white border-0 shrink-0 whitespace-nowrap"
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '10px 16px',
             backgroundColor: '#10b981',
-            color: '#ffffff',
-            border: 'none',
-            borderRadius: '10px',
-            fontWeight: 700,
-            fontSize: '0.88rem',
             cursor: loading ? 'not-allowed' : 'pointer',
-            flexShrink: 0,
           }}
         >
-          <Search size={16} />
+          <Search size={16} className="shrink-0" />
           <span>{loading ? 'Đang kiểm tra...' : 'Chọn chữ'}</span>
         </button>
       </div>

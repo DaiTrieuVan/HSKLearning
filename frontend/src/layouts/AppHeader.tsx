@@ -33,7 +33,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   return (
     <header className="print:hidden h-14 sm:h-16 bg-white border-b border-slate-200 px-3 sm:px-6 flex items-center justify-between gap-2 sticky top-0 z-30">
       {/* Left: Mobile/Tablet hamburger & Greeting */}
-      <div className="flex items-center gap-2 sm:gap-3.5 min-w-0">
+      <div className="flex items-center gap-2 sm:gap-3.5 min-w-0 flex-1">
         {onToggleMobileSidebar && (
           <button
             type="button"
@@ -48,7 +48,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           <span className="hidden sm:inline text-sm text-slate-500 shrink-0">
             Xin chào,
           </span>
-          <span className="text-sm sm:text-base font-extrabold text-slate-900 truncate max-w-[130px] sm:max-w-[220px] md:max-w-none">
+          <span className="text-sm sm:text-base font-extrabold text-slate-900 truncate">
             {user?.fullName || 'Bạn học'}
           </span>
           <span

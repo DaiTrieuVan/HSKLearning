@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -18,20 +18,29 @@ import {
   reviewFlashcard,
   type FlashcardItem,
 } from '../../api/flashcard'
+import { PracticeFilterNoticeBanner } from '../../components/practice/PracticeFilterNoticeBanner'
+import {
+  buildUpdatedFilterSearchParams,
+  fetchPracticeItemsWithFallback,
+  normalizePracticeFilterStatus,
+  type PracticeFilterStatus,
+} from '../../utils/practiceFilter'
 
 export const VocabFlashcardPracticePage: React.FC = () => {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const vocabSetIdParam = searchParams.get('vocabSetId')
-  const filterStatusParam = (searchParams.get('filterStatus') as any) || 'UNMASTERED'
-  const orderParam = (searchParams.get('order') as any) || 'RANDOM'
+  const filterStatusParam = normalizePracticeFilterStatus(searchParams.get('filterStatus'))
+  const orderParam = (searchParams.get('order') as 'RANDOM' | 'DEFAULT') || 'RANDOM'
   const limitParam = searchParams.get('limit')
 
   const [cards, setCards] = useState<FlashcardItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [autoFilterNotice, setAutoFilterNotice] = useState<string | null>(null)
+  const skipNextFilterReloadRef = useRef<PracticeFilterStatus | null>(null)
 
   // Session state
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -45,41 +54,67 @@ export const VocabFlashcardPracticePage: React.FC = () => {
   const [forgottenIds, setForgottenIds] = useState<Set<number>>(new Set())
   const [earnedXp, setEarnedXp] = useState(0)
 
-  // 1. Load Flashcards
-  const loadCards = useCallback(async () => {
-    if (!user) return
-    try {
-      setLoading(true)
-      setError(null)
-      const parsedSetId =
-        vocabSetIdParam && !isNaN(Number(vocabSetIdParam)) ? parseInt(vocabSetIdParam, 10) : undefined
-      const parsedLimit =
-        limitParam && limitParam !== 'all' && !isNaN(Number(limitParam)) ? parseInt(limitParam, 10) : undefined
+  // 1. Load Flashcards (auto-fallback UNMASTERED -> ALL when all cards are already mastered)
+  const loadCards = useCallback(
+    async (overrideFilter?: PracticeFilterStatus) => {
+      if (!user) return
+      const targetFilter = typeof overrideFilter === 'string' ? overrideFilter : filterStatusParam
+      try {
+        setLoading(true)
+        setError(null)
+        const parsedSetId =
+          vocabSetIdParam && !isNaN(Number(vocabSetIdParam)) ? parseInt(vocabSetIdParam, 10) : undefined
+        const parsedLimit =
+          limitParam && limitParam !== 'all' && !isNaN(Number(limitParam)) ? parseInt(limitParam, 10) : undefined
 
-      const data = await getFlashcards(user.token, {
-        vocabSetId: parsedSetId,
-        filterStatus: filterStatusParam,
-        order: orderParam,
-        limit: parsedLimit,
-      })
+        const result = await fetchPracticeItemsWithFallback(
+          targetFilter,
+          (fs) =>
+            getFlashcards(user.token, {
+              vocabSetId: parsedSetId,
+              filterStatus: fs,
+              order: orderParam,
+              limit: parsedLimit,
+            }),
+          (items) => items.length === 0
+        )
 
-      setCards(data)
-      setCurrentIndex(0)
-      setIsFlipped(false)
-      setRememberedIds(new Set())
-      setForgottenIds(new Set())
-      setEarnedXp(0)
-      setSessionCompleted(data.length === 0)
-    } catch (err: any) {
-      setError(err?.message || 'Không thể tải danh sách thẻ từ vựng')
-    } finally {
-      setLoading(false)
-    }
-  }, [user, vocabSetIdParam, filterStatusParam, orderParam, limitParam])
+        if (result.switchedFromUnmasteredToAll) {
+          setAutoFilterNotice('Đã thuộc hết từ chưa học — đang ôn tập với Tất cả từ.')
+        } else {
+          setAutoFilterNotice(null)
+        }
+
+        if (result.resolvedFilter !== filterStatusParam) {
+          skipNextFilterReloadRef.current = result.resolvedFilter
+          setSearchParams(buildUpdatedFilterSearchParams(searchParams, result.resolvedFilter), {
+            replace: true,
+          })
+        }
+
+        setCards(result.data)
+        setCurrentIndex(0)
+        setIsFlipped(false)
+        setRememberedIds(new Set())
+        setForgottenIds(new Set())
+        setEarnedXp(0)
+        setSessionCompleted(false)
+      } catch (err: any) {
+        setError(err?.message || 'Không thể tải danh sách thẻ từ vựng')
+      } finally {
+        setLoading(false)
+      }
+    },
+    [user, vocabSetIdParam, filterStatusParam, orderParam, limitParam, searchParams, setSearchParams]
+  )
 
   useEffect(() => {
-    loadCards()
-  }, [loadCards])
+    if (skipNextFilterReloadRef.current === filterStatusParam) {
+      skipNextFilterReloadRef.current = null
+      return
+    }
+    void loadCards()
+  }, [loadCards, filterStatusParam])
 
   // Current Card
   const currentCard = useMemo(() => {
@@ -251,16 +286,29 @@ export const VocabFlashcardPracticePage: React.FC = () => {
             {error || 'Bộ từ này không có từ vựng nào khớp với bộ lọc bạn đã chọn (ví dụ: tất cả từ đã thuộc).'}
           </p>
           <div className="mt-6 flex flex-col gap-2">
+            {!error && filterStatusParam !== 'ALL' && (
+              <button
+                type="button"
+                onClick={() => void loadCards('ALL')}
+                className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition-colors"
+              >
+                Ôn tập với Tất cả từ
+              </button>
+            )}
             <button
               type="button"
               onClick={() => navigate('/practice')}
-              className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition-colors"
+              className={`w-full py-2.5 rounded-xl font-bold text-sm transition-colors ${
+                !error && filterStatusParam !== 'ALL'
+                  ? 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+              }`}
             >
               Quay lại Trung tâm Luyện tập
             </button>
             <button
               type="button"
-              onClick={loadCards}
+              onClick={() => void loadCards()}
               className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm transition-colors"
             >
               Thử tải lại
@@ -325,7 +373,7 @@ export const VocabFlashcardPracticePage: React.FC = () => {
 
             <button
               type="button"
-              onClick={loadCards}
+              onClick={() => void loadCards()}
               className="w-full py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm transition-colors"
             >
               Luyện lại toàn bộ danh sách
@@ -346,6 +394,13 @@ export const VocabFlashcardPracticePage: React.FC = () => {
 
   return (
     <div className="max-w-3xl mx-auto pb-8 sm:pb-12 space-y-4">
+      {autoFilterNotice && (
+        <PracticeFilterNoticeBanner
+          message={autoFilterNotice}
+          tone="emerald"
+          onDismiss={() => setAutoFilterNotice(null)}
+        />
+      )}
       {/* 1. Top Control Card (Gọn gàng trên Mobile/Tablet/Desktop, không chồng sticky header) */}
       <div className="bg-white border border-slate-200 rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 shadow-sm flex flex-wrap items-center justify-between gap-2.5">
         {/* Back & Exit */}
@@ -398,7 +453,7 @@ export const VocabFlashcardPracticePage: React.FC = () => {
           {/* Reset Session */}
           <button
             type="button"
-            onClick={loadCards}
+            onClick={() => void loadCards()}
             title="Chơi lại từ đầu"
             className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
           >

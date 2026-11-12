@@ -40,6 +40,13 @@ import {
 } from '../../utils/gameSounds'
 import { formatPartOfSpeechLabel, speakChinese } from '../../utils/vocabFormat'
 import { GameSettingsDrawer } from '../../components/practice/GameSettingsDrawer'
+import { PracticeFilterNoticeBanner } from '../../components/practice/PracticeFilterNoticeBanner'
+import {
+    buildUpdatedFilterSearchParams,
+    fetchPracticeItemsWithFallback,
+    normalizePracticeFilterStatus,
+    type PracticeFilterStatus,
+} from '../../utils/practiceFilter'
 
 type AnswerStatus = 'CORRECT' | 'WRONG' | 'TIMEOUT'
 
@@ -75,10 +82,10 @@ function formatModeLabel(mode: string): string {
 export const VocabQuizPracticePage: React.FC = () => {
     const { user } = useAuth()
     const navigate = useNavigate()
-    const [searchParams] = useSearchParams()
+    const [searchParams, setSearchParams] = useSearchParams()
 
     const vocabSetIdParam = searchParams.get('vocabSetId')
-    const filterStatusParam = (searchParams.get('filterStatus') as 'ALL' | 'UNMASTERED' | 'MASTERED') || 'UNMASTERED'
+    const filterStatusParam = normalizePracticeFilterStatus(searchParams.get('filterStatus'))
     const orderParam = (searchParams.get('order') as 'RANDOM' | 'DEFAULT') || 'RANDOM'
     const limitParam = searchParams.get('limit')
     const modeParam = (searchParams.get('mode') as QuizMode) || 'HANZI_TO_MEANING'
@@ -121,6 +128,8 @@ export const VocabQuizPracticePage: React.FC = () => {
     const sessionStartMsRef = useRef<number>(Date.now())
     const submittingRef = useRef<boolean>(false)
     const recordsRef = useRef<AnsweredRecord[]>([])
+    const [autoFilterNotice, setAutoFilterNotice] = useState<string | null>(null)
+    const skipNextFilterReloadRef = useRef<PracticeFilterStatus | null>(null)
 
     const currentQuestion = useMemo(() => {
         if (questions.length === 0 || currentIndex >= questions.length) return null
@@ -152,30 +161,67 @@ export const VocabQuizPracticePage: React.FC = () => {
         []
     )
 
-    const loadQuiz = useCallback(async () => {
-        if (!user) return
-        try {
-            setLoading(true)
-            setError(null)
-            const data = await generateQuizSession(user.token, {
-                vocabSetId: parsedSetId,
-                filterStatus: filterStatusParam,
-                order: orderParam,
-                limit: parsedLimit,
-                mode: modeParam,
-            })
-            resetSessionWithQuestions(data.questions, data.vocabSetTitle)
-        } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : 'Không thể tải bộ câu hỏi trắc nghiệm'
-            setError(msg)
-        } finally {
-            setLoading(false)
-        }
-    }, [user, parsedSetId, filterStatusParam, orderParam, parsedLimit, modeParam, resetSessionWithQuestions])
+    const loadQuiz = useCallback(
+        async (overrideFilter?: PracticeFilterStatus) => {
+            if (!user) return
+            const targetFilter = typeof overrideFilter === 'string' ? overrideFilter : filterStatusParam
+            try {
+                setLoading(true)
+                setError(null)
+                const result = await fetchPracticeItemsWithFallback(
+                    targetFilter,
+                    (fs) =>
+                        generateQuizSession(user.token, {
+                            vocabSetId: parsedSetId,
+                            filterStatus: fs,
+                            order: orderParam,
+                            limit: parsedLimit,
+                            mode: modeParam,
+                        }),
+                    (sessionData) => !sessionData.questions || sessionData.questions.length === 0
+                )
+
+                if (result.switchedFromUnmasteredToAll) {
+                    setAutoFilterNotice('Đã thuộc hết từ chưa học — đang ôn tập với Tất cả từ.')
+                } else {
+                    setAutoFilterNotice(null)
+                }
+
+                if (result.resolvedFilter !== filterStatusParam) {
+                    skipNextFilterReloadRef.current = result.resolvedFilter
+                    setSearchParams(buildUpdatedFilterSearchParams(searchParams, result.resolvedFilter), {
+                        replace: true,
+                    })
+                }
+
+                resetSessionWithQuestions(result.data.questions, result.data.vocabSetTitle)
+            } catch (err: unknown) {
+                const msg = err instanceof Error ? err.message : 'Không thể tải bộ câu hỏi trắc nghiệm'
+                setError(msg)
+            } finally {
+                setLoading(false)
+            }
+        },
+        [
+            user,
+            parsedSetId,
+            filterStatusParam,
+            orderParam,
+            parsedLimit,
+            modeParam,
+            searchParams,
+            setSearchParams,
+            resetSessionWithQuestions,
+        ]
+    )
 
     useEffect(() => {
+        if (skipNextFilterReloadRef.current === filterStatusParam) {
+            skipNextFilterReloadRef.current = null
+            return
+        }
         void loadQuiz()
-    }, [loadQuiz])
+    }, [loadQuiz, filterStatusParam])
 
     // Speak target Hanzi when entering HANZI_TO_MEANING question
     useEffect(() => {
@@ -435,10 +481,23 @@ export const VocabQuizPracticePage: React.FC = () => {
                         {error || 'Bộ từ bạn chọn hiện không có từ nào khớp với bộ lọc (ví dụ: tất cả từ đã thuộc).'}
                     </p>
                     <div className="mt-6 flex flex-col gap-2">
+                        {!error && filterStatusParam !== 'ALL' && (
+                            <button
+                                type="button"
+                                onClick={() => void loadQuiz('ALL')}
+                                className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition-colors"
+                            >
+                                Ôn tập với Tất cả từ
+                            </button>
+                        )}
                         <button
                             type="button"
                             onClick={() => navigate('/practice')}
-                            className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition-colors"
+                            className={`w-full py-2.5 rounded-xl font-bold text-sm transition-colors ${
+                                !error && filterStatusParam !== 'ALL'
+                                    ? 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                                    : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                            }`}
                         >
                             Quay lại Trung tâm Luyện tập
                         </button>
@@ -588,6 +647,13 @@ export const VocabQuizPracticePage: React.FC = () => {
 
     return (
         <div className="max-w-3xl mx-auto pb-8 sm:pb-12 space-y-3 sm:space-y-4">
+            {autoFilterNotice && (
+                <PracticeFilterNoticeBanner
+                    message={autoFilterNotice}
+                    tone="emerald"
+                    onDismiss={() => setAutoFilterNotice(null)}
+                />
+            )}
             {/* 1. Header Tiến độ + Bộ đếm thời gian */}
             <div className="bg-white border border-slate-200 rounded-2xl p-3 sm:p-4 shadow-sm space-y-2.5 sm:space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">

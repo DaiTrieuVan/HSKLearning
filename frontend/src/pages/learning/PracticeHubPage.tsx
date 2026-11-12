@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
     Layers,
@@ -40,6 +40,11 @@ import {
 import { GameSettingsDrawer } from '../../components/practice/GameSettingsDrawer'
 import { QuizModeDrawer } from '../../components/practice/QuizModeDrawer'
 import { MatchModeDrawer } from '../../components/practice/MatchModeDrawer'
+import { PracticeFilterNoticeBanner } from '../../components/practice/PracticeFilterNoticeBanner'
+import {
+    normalizePracticeFilterStatus,
+    type PracticeFilterStatus,
+} from '../../utils/practiceFilter'
 
 export const PracticeHubPage: React.FC = () => {
     const { user } = useAuth()
@@ -49,9 +54,13 @@ export const PracticeHubPage: React.FC = () => {
 
     // Practice configurations
     const [selectedSetId, setSelectedSetId] = useState<string>('all')
-    const [filterStatus, setFilterStatus] = useState<'UNMASTERED' | 'MASTERED' | 'ALL'>('UNMASTERED')
+    const [filterStatus, setFilterStatus] = useState<PracticeFilterStatus>('UNMASTERED')
     const [order, setOrder] = useState<'RANDOM' | 'DEFAULT'>('RANDOM')
     const [limit, setLimit] = useState<string>('20')
+
+    // Track whether the user deliberately selected a filter for the active vocab set
+    const manualFilterRef = useRef(false)
+    const [autoFilterNotice, setAutoFilterNotice] = useState<string | null>(null)
 
     // Stats for the chosen set & filter
     const [stats, setStats] = useState<StudentWordsStats | null>(null)
@@ -101,6 +110,22 @@ export const PracticeHubPage: React.FC = () => {
             isMounted = false
         }
     }, [user, selectedSetId])
+
+    // Tự động chuyển sang 'Tất cả từ' khi bộ từ đã đạt 100% (hết từ chưa thuộc) để tránh khóa hết game
+    useEffect(() => {
+        if (!stats) return
+        if (
+            !manualFilterRef.current &&
+            filterStatus === 'UNMASTERED' &&
+            stats.totalWords > 0 &&
+            stats.unmasteredWords === 0
+        ) {
+            setFilterStatus('ALL')
+            setAutoFilterNotice(
+                `Bạn đã thuộc 100% (${stats.totalWords} từ) — tự động chuyển sang "Tất cả từ" để tiếp tục ôn tập.`
+            )
+        }
+    }, [stats, filterStatus])
 
     // 3. Load practice session history
     useEffect(() => {
@@ -174,8 +199,15 @@ export const PracticeHubPage: React.FC = () => {
                         <div className="text-[11px] font-bold text-slate-400 text-center mb-0.5">Bộ từ vựng</div>
                         <div className="relative flex items-center">
                             <select
+                                id="practice-vocab-set"
+                                name="vocabSetId"
+                                aria-label="Chọn bộ từ vựng"
                                 value={selectedSetId}
-                                onChange={(e) => setSelectedSetId(e.target.value)}
+                                onChange={(e) => {
+                                    manualFilterRef.current = false
+                                    setAutoFilterNotice(null)
+                                    setSelectedSetId(e.target.value)
+                                }}
                                 className="w-full min-h-[34px] appearance-none bg-transparent text-slate-800 font-bold text-xs sm:text-sm text-center pr-5 py-0.5 focus:outline-none cursor-pointer truncate"
                             >
                                 <option value="all">Tất cả bộ từ</option>
@@ -194,8 +226,15 @@ export const PracticeHubPage: React.FC = () => {
                         <div className="text-[11px] font-bold text-slate-400 text-center mb-0.5">Bộ lọc</div>
                         <div className="relative flex items-center">
                             <select
+                                id="practice-filter-status"
+                                name="filterStatus"
+                                aria-label="Chọn bộ lọc trạng thái từ"
                                 value={filterStatus}
-                                onChange={(e) => setFilterStatus(e.target.value as any)}
+                                onChange={(e) => {
+                                    manualFilterRef.current = true
+                                    setAutoFilterNotice(null)
+                                    setFilterStatus(normalizePracticeFilterStatus(e.target.value))
+                                }}
                                 className="w-full min-h-[34px] appearance-none bg-transparent text-slate-800 font-bold text-xs sm:text-sm text-center pr-5 py-0.5 focus:outline-none cursor-pointer"
                             >
                                 <option value="UNMASTERED">Chưa thuộc</option>
@@ -211,8 +250,11 @@ export const PracticeHubPage: React.FC = () => {
                         <div className="text-[11px] font-bold text-slate-400 text-center mb-0.5">Thứ tự</div>
                         <div className="relative flex items-center">
                             <select
+                                id="practice-order"
+                                name="order"
+                                aria-label="Chọn thứ tự từ"
                                 value={order}
-                                onChange={(e) => setOrder(e.target.value as any)}
+                                onChange={(e) => setOrder(e.target.value === 'DEFAULT' ? 'DEFAULT' : 'RANDOM')}
                                 className="w-full min-h-[34px] appearance-none bg-transparent text-slate-800 font-bold text-xs sm:text-sm text-center pr-5 py-0.5 focus:outline-none cursor-pointer"
                             >
                                 <option value="RANDOM">Ngẫu nhiên</option>
@@ -227,6 +269,9 @@ export const PracticeHubPage: React.FC = () => {
                         <div className="text-[11px] font-bold text-slate-400 text-center mb-0.5">Số lượng</div>
                         <div className="relative flex items-center">
                             <select
+                                id="practice-limit"
+                                name="limit"
+                                aria-label="Chọn số lượng từ luyện tập"
                                 value={limit}
                                 onChange={(e) => setLimit(e.target.value)}
                                 className="w-full min-h-[34px] appearance-none bg-transparent text-slate-800 font-bold text-xs sm:text-sm text-center pr-5 py-0.5 focus:outline-none cursor-pointer"
@@ -266,6 +311,31 @@ export const PracticeHubPage: React.FC = () => {
                         </span>
                     </div>
                 </div>
+
+                {autoFilterNotice && (
+                    <PracticeFilterNoticeBanner
+                        message={autoFilterNotice}
+                        tone="emerald"
+                        onDismiss={() => setAutoFilterNotice(null)}
+                    />
+                )}
+
+                {!loadingStats && stats && stats.totalWords > 0 && readyWordCount === 0 && (
+                    <PracticeFilterNoticeBanner
+                        message={
+                            filterStatus === 'UNMASTERED'
+                                ? `Bạn đã thuộc hết ${stats.totalWords} từ trong bộ này.`
+                                : 'Chưa có từ nào trong bộ này được đánh dấu đã thuộc.'
+                        }
+                        tone="amber"
+                        actionLabel="Ôn Tất cả từ"
+                        onAction={() => {
+                            manualFilterRef.current = true
+                            setAutoFilterNotice(null)
+                            setFilterStatus('ALL')
+                        }}
+                    />
+                )}
 
                 {/* 3. Lưới 7 Thẻ Game Responsive: Mobile 2 cột -> Tablet 3/4 cột -> Desktop XL 7 cột */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7 gap-2.5 sm:gap-3">

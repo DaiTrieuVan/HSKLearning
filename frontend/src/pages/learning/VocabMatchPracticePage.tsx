@@ -39,10 +39,17 @@ import {
 } from '../../utils/gameSounds'
 import { speakChinese } from '../../utils/vocabFormat'
 import { GameSettingsDrawer } from '../../components/practice/GameSettingsDrawer'
+import { PracticeFilterNoticeBanner } from '../../components/practice/PracticeFilterNoticeBanner'
 import {
   PracticeSummaryView,
   type PracticeSummaryWordItem,
 } from '../../components/practice/PracticeSummaryView'
+import {
+  buildUpdatedFilterSearchParams,
+  fetchPracticeItemsWithFallback,
+  normalizePracticeFilterStatus,
+  type PracticeFilterStatus,
+} from '../../utils/practiceFilter'
 
 type GamePhase = 'PLAYING' | 'SUMMARY'
 type PickSide = 'LEFT' | 'RIGHT'
@@ -147,11 +154,10 @@ function formatMatchModeLabel(mode: MatchMode): string {
 export const VocabMatchPracticePage: React.FC = () => {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const vocabSetIdParam = searchParams.get('vocabSetId')
-  const filterStatusParam =
-    (searchParams.get('filterStatus') as 'ALL' | 'UNMASTERED' | 'MASTERED') || 'UNMASTERED'
+  const filterStatusParam = normalizePracticeFilterStatus(searchParams.get('filterStatus'))
   const orderParam = (searchParams.get('order') as 'RANDOM' | 'DEFAULT') || 'RANDOM'
   const limitParam = searchParams.get('limit')
   const modeParam: MatchMode =
@@ -189,6 +195,8 @@ export const VocabMatchPracticePage: React.FC = () => {
   const [rounds, setRounds] = useState<MatchRoundDto[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [autoFilterNotice, setAutoFilterNotice] = useState<string | null>(null)
+  const skipNextFilterReloadRef = useRef<PracticeFilterStatus | null>(null)
 
   const [phase, setPhase] = useState<GamePhase>('PLAYING')
   const [roundIndex, setRoundIndex] = useState(0)
@@ -323,43 +331,73 @@ export const VocabMatchPracticePage: React.FC = () => {
     [clearPendingTimers]
   )
 
-  const loadSession = useCallback(async () => {
-    if (!user) return
-    try {
-      setLoading(true)
-      setError(null)
-      const data: MatchSessionResponse = await generateMatchSession(user.token, {
-        vocabSetId: parsedSetId,
-        filterStatus: filterStatusParam,
-        order: orderParam,
-        limit: parsedLimit,
-        mode: modeParam,
-      })
-      startSessionWithRounds(data.rounds, {
-        vocabSetId: data.vocabSetId,
-        vocabSetTitle: data.vocabSetTitle,
-        mode: data.mode,
-        maxHearts: data.maxHearts,
-      })
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Không thể tải dữ liệu trò chơi Nối từ'
-      setError(msg)
-    } finally {
-      setLoading(false)
-    }
-  }, [
-    user,
-    parsedSetId,
-    filterStatusParam,
-    orderParam,
-    parsedLimit,
-    modeParam,
-    startSessionWithRounds,
-  ])
+  const loadSession = useCallback(
+    async (overrideFilter?: PracticeFilterStatus) => {
+      if (!user) return
+      const targetFilter = typeof overrideFilter === 'string' ? overrideFilter : filterStatusParam
+      try {
+        setLoading(true)
+        setError(null)
+        const result = await fetchPracticeItemsWithFallback<MatchSessionResponse>(
+          targetFilter,
+          (fs) =>
+            generateMatchSession(user.token, {
+              vocabSetId: parsedSetId,
+              filterStatus: fs,
+              order: orderParam,
+              limit: parsedLimit,
+              mode: modeParam,
+            }),
+          (sessionData) => !sessionData.rounds || sessionData.rounds.length === 0
+        )
+
+        if (result.switchedFromUnmasteredToAll) {
+          setAutoFilterNotice('Đã thuộc hết từ chưa học — đang ôn tập với Tất cả từ.')
+        } else {
+          setAutoFilterNotice(null)
+        }
+
+        if (result.resolvedFilter !== filterStatusParam) {
+          skipNextFilterReloadRef.current = result.resolvedFilter
+          setSearchParams(buildUpdatedFilterSearchParams(searchParams, result.resolvedFilter), {
+            replace: true,
+          })
+        }
+
+        const data = result.data
+        startSessionWithRounds(data.rounds, {
+          vocabSetId: data.vocabSetId,
+          vocabSetTitle: data.vocabSetTitle,
+          mode: data.mode,
+          maxHearts: data.maxHearts,
+        })
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Không thể tải dữ liệu trò chơi Nối từ'
+        setError(msg)
+      } finally {
+        setLoading(false)
+      }
+    },
+    [
+      user,
+      parsedSetId,
+      filterStatusParam,
+      orderParam,
+      parsedLimit,
+      modeParam,
+      searchParams,
+      setSearchParams,
+      startSessionWithRounds,
+    ]
+  )
 
   useEffect(() => {
+    if (skipNextFilterReloadRef.current === filterStatusParam) {
+      skipNextFilterReloadRef.current = null
+      return
+    }
     void loadSession()
-  }, [loadSession])
+  }, [loadSession, filterStatusParam])
 
   const finalizeGame = useCallback(
     (options: { timedOut: boolean; endReason: string | null }) => {
@@ -741,10 +779,23 @@ export const VocabMatchPracticePage: React.FC = () => {
               'Bộ lọc hiện tại chưa có từ nào đủ dữ liệu (Chữ Hán & Nghĩa / Pinyin) để ghép đôi.'}
           </p>
           <div className="mt-6 flex flex-col gap-2">
+            {!error && filterStatusParam !== 'ALL' && (
+              <button
+                type="button"
+                onClick={() => void loadSession('ALL')}
+                className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition-colors"
+              >
+                Ôn tập với Tất cả từ
+              </button>
+            )}
             <button
               type="button"
               onClick={() => navigate('/practice')}
-              className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition-colors"
+              className={`w-full py-2.5 rounded-xl font-bold text-sm transition-colors ${
+                !error && filterStatusParam !== 'ALL'
+                  ? 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+              }`}
             >
               Quay lại Trung tâm Luyện tập
             </button>
@@ -814,6 +865,13 @@ export const VocabMatchPracticePage: React.FC = () => {
 
   return (
     <div className="max-w-3xl mx-auto pb-8 sm:pb-12 space-y-3 sm:space-y-4">
+      {autoFilterNotice && (
+        <PracticeFilterNoticeBanner
+          message={autoFilterNotice}
+          tone="emerald"
+          onDismiss={() => setAutoFilterNotice(null)}
+        />
+      )}
       {/* 1. Header Tiến độ, Pinyin toggle & Thanh Thời gian */}
       <div className="bg-white border border-slate-200 rounded-2xl p-3 sm:p-4 shadow-sm space-y-2.5 sm:space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">

@@ -395,7 +395,7 @@ export const LessonStudyPage: React.FC = () => {
             Bài học này không tồn tại hoặc đã được chuyển sang trạng thái tạm ẩn theo chính sách hệ thống.
           </p>
           <button
-            onClick={() => navigate('/curriculum')}
+            onClick={() => navigate('/roadmap')}
             className="w-full inline-flex items-center justify-center gap-2 py-3 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold transition-all shadow-md shadow-emerald-600/20 active:scale-[0.98]"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -435,7 +435,7 @@ export const LessonStudyPage: React.FC = () => {
         <div className="max-w-[1440px] mx-auto px-3.5 sm:px-8 h-16 flex items-center justify-between gap-2.5 sm:gap-4">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
             <button
-              onClick={() => navigate('/curriculum')}
+              onClick={() => navigate('/roadmap')}
               className="p-2 rounded-xl text-gray-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors shrink-0"
               title="Quay lại lộ trình"
               aria-label="Quay lại lộ trình"
@@ -1082,7 +1082,7 @@ export const LessonStudyPage: React.FC = () => {
 
                     <button
                       type="button"
-                      onClick={() => navigate('/curriculum')}
+                      onClick={() => navigate('/roadmap')}
                       className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-white hover:bg-gray-50 text-gray-700 font-semibold border border-gray-200 transition-all shadow-sm"
                     >
                       <Layers className="w-4 h-4 text-gray-500" />

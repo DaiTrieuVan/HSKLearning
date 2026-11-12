@@ -74,6 +74,12 @@ app:
     max-pages: ${MATERIALS_MAX_PAGES:150}
     render-dpi: ${MATERIALS_RENDER_DPI:200}
     soffice-path: ${SOFFICE_PATH:}
+  ai-assistant:
+    provider: ${AI_ASSISTANT_PROVIDER:fake}
+    api-key: ${AI_ASSISTANT_API_KEY:${OPENAI_API_KEY:}}
+    base-url: ${AI_ASSISTANT_BASE_URL:https://api.openai.com/v1}
+    model: ${AI_ASSISTANT_MODEL:gpt-4o-mini}
+    timeout-ms: ${AI_ASSISTANT_TIMEOUT_MS:20000}
 
 springdoc:
   api-docs:

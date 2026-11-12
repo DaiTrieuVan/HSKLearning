@@ -44,6 +44,7 @@ import { QuizModeDrawer } from '../../components/practice/QuizModeDrawer'
 import { MatchModeDrawer } from '../../components/practice/MatchModeDrawer'
 import { WritingModeDrawer } from '../../components/practice/WritingModeDrawer'
 import { TypingModeDrawer } from '../../components/practice/TypingModeDrawer'
+import { DictationModeDrawer } from '../../components/practice/DictationModeDrawer'
 import { PracticeFilterNoticeBanner } from '../../components/practice/PracticeFilterNoticeBanner'
 import {
     normalizePracticeFilterStatus,
@@ -79,6 +80,7 @@ export const PracticeHubPage: React.FC = () => {
     const [matchDrawerOpen, setMatchDrawerOpen] = useState(false)
     const [writingDrawerOpen, setWritingDrawerOpen] = useState(false)
     const [typingDrawerOpen, setTypingDrawerOpen] = useState(false)
+    const [dictationDrawerOpen, setDictationDrawerOpen] = useState(false)
     const [historyItems, setHistoryItems] = useState<PracticeSessionHistoryItem[]>([])
     const [loadingHistory, setLoadingHistory] = useState(false)
 
@@ -239,6 +241,15 @@ const handleStartTyping = (mode: TypingMode) => {
     params.append('mode', mode)
     setTypingDrawerOpen(false)
     navigate(`/practice/typing?${params.toString()}`)
+}
+
+// Launch Dictation Practice (WORD / PINYIN)
+const handleStartDictation = (mode: TypingMode) => {
+    if (readyWordCount === 0) return
+    const params = buildFilterQueryParams()
+    params.append('mode', mode)
+    setDictationDrawerOpen(false)
+    navigate(`/practice/dictation?${params.toString()}`)
 }
 
 return (
@@ -519,30 +530,29 @@ return (
                 </div>
             </button>
 
-            {/* 3.6 Nghe viết (Sắp có) */}
-            <div
-                title="Sắp ra mắt trong Milestone 6"
-                className="relative rounded-2xl p-3 sm:p-3.5 bg-blue-50 border border-blue-200/90 text-blue-950 flex flex-col items-center justify-between text-center min-h-[140px] sm:min-h-[158px] xl:min-h-[168px] opacity-80 select-none"
+            {/* 3.6 Nghe viết (Active — SlideOver Drawer) */}
+            <button
+                type="button"
+                onClick={() => setDictationDrawerOpen(true)}
+                disabled={readyWordCount === 0}
+                className="group relative rounded-2xl p-3 sm:p-3.5 bg-gradient-to-b from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/20 hover:-translate-y-1 hover:shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 transition-all flex flex-col items-center justify-between text-center min-h-[140px] sm:min-h-[158px] xl:min-h-[168px]"
             >
-                <span className="absolute top-2 right-2 text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-200/80 text-blue-900">
-                    Sắp có
-                </span>
-                <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center">
-                    <Headphones className="w-5 h-5" />
+                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform">
+                    <Headphones className="w-5 h-5 text-white" />
                 </div>
 
                 <div className="my-2">
                     <div className="text-sm font-extrabold tracking-tight">Nghe viết</div>
-                    <div className="text-[11px] text-blue-800/80 leading-tight mt-1">
+                    <div className="text-[11px] text-cyan-100 leading-tight mt-1">
                         Nghe phát âm và gõ
                     </div>
                 </div>
 
-                <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-200/60 text-blue-900 text-[11px] font-bold">
+                <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-black/20 text-[11px] font-bold">
                     <span>+15</span>
-                    <Coins className="w-3 h-3 text-amber-600" />
+                    <Coins className="w-3 h-3 text-amber-300" />
                 </div>
-            </div>
+            </button>
 
             {/* 3.7 Game đặc biệt (Tự động dàn đều hàng cuối trên mobile & tablet) */}
             <div
@@ -636,7 +646,9 @@ return (
                                                 ? 'text-teal-800 bg-teal-100/90'
                                                 : item.gameType === 'TYPING'
                                                     ? 'text-emerald-800 bg-emerald-100/90'
-                                                    : 'text-amber-700 bg-amber-100/80'
+                                                    : item.gameType === 'DICTATION'
+                                                        ? 'text-cyan-800 bg-cyan-100/90'
+                                                        : 'text-amber-700 bg-amber-100/80'
                                         }`}
                                 >
                                     {item.gameType === 'QUIZ'
@@ -651,7 +663,11 @@ return (
                                                     ? item.gameMode === 'TYPE_PINYIN'
                                                         ? 'Gõ pinyin'
                                                         : 'Gõ từ'
-                                                    : item.gameType}
+                                                    : item.gameType === 'DICTATION'
+                                                        ? item.gameMode === 'DICTATION_PINYIN'
+                                                            ? 'Nghe viết · Pinyin'
+                                                            : 'Nghe viết · Gõ từ'
+                                                        : item.gameType}
                                 </span>
                                 <span className="text-[11px] font-extrabold text-emerald-700">
                                     +{item.xpEarned} XP
@@ -706,6 +722,13 @@ return (
             onClose={() => setTypingDrawerOpen(false)}
             readyWordCount={readyWordCount}
             onSelectMode={handleStartTyping}
+        />
+
+        <DictationModeDrawer
+            open={dictationDrawerOpen}
+            onClose={() => setDictationDrawerOpen(false)}
+            readyWordCount={readyWordCount}
+            onSelectMode={handleStartDictation}
         />
     </div>
 )

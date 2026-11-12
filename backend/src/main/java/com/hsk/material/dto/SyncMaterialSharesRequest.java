@@ -7,7 +7,6 @@ import jakarta.validation.constraints.NotNull;
 
 public record SyncMaterialSharesRequest(
 		@NotNull(message = "Danh sách chia sẻ không được null")
-		@Valid
-		List<MaterialShareItemRequest> shares
+		List<@Valid MaterialShareItemRequest> shares
 ) {
 }

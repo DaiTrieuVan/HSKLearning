@@ -7,106 +7,120 @@ import com.hsk.common.api.ApiException;
 import com.hsk.writing.domain.HanziStrokeDataEntity;
 import com.hsk.writing.dto.HanziStrokeDetailResponse;
 import com.hsk.writing.dto.HanziStrokeSummaryResponse;
-import com.hsk.writing.repository.HanziStrokeDataRepository;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Service xử lý nghiệp vụ luyện viết chữ Hán và tra cứu thứ tự nét (HTT-10-CN-002).
  * Đảm bảo:
  * - Chuẩn hóa Unicode code point, xử lý ký tự đa byte và surrogate pairs.
- * - Truy vấn theo batch chống N+1.
- * - Kiểm tra tính toàn vẹn và an toàn dữ liệu SVG JSON.
+ * - Truy vấn theo batch chống N+1; tách fetch ngoài transaction ngắn để không giữ lock DB.
+ * - Tự động cache dữ liệu nét MakeMeAHanzi vào DB khi gặp chữ chưa được seed.
  */
 @Service
-@Transactional(readOnly = true)
 public class HanziWritingService {
 
 	private static final Logger log = LoggerFactory.getLogger(HanziWritingService.class);
 	private static final int MAX_SUPPORT_TEXT_LENGTH = 20;
+	private static final int MAX_REMOTE_FETCH_THREADS = 6;
+	private static final long BATCH_FETCH_TIMEOUT_SECONDS = 12L;
 
-	private final HanziStrokeDataRepository hanziStrokeDataRepository;
+	private final HanziStrokeCacheWriter cacheWriter;
+	private final HanziStrokeRemoteFetcher remoteFetcher;
 	private final ObjectMapper objectMapper;
 
-	public HanziWritingService(HanziStrokeDataRepository hanziStrokeDataRepository) {
-		this.hanziStrokeDataRepository = hanziStrokeDataRepository;
+	public HanziWritingService(
+			HanziStrokeCacheWriter cacheWriter,
+			HanziStrokeRemoteFetcher remoteFetcher) {
+		this.cacheWriter = cacheWriter;
+		this.remoteFetcher = remoteFetcher;
 		this.objectMapper = new ObjectMapper().findAndRegisterModules();
 	}
 
 	/**
 	 * Lấy dữ liệu chi tiết thứ tự nét và trung tuyến của một chữ Hán (HTT-10-CN-002-TC-01, TC-03).
-	 *
-	 * @param hanzi Ký tự chữ Hán cần tra cứu (đúng 1 Han ideograph).
-	 * @return Dữ liệu nét vẽ chi tiết.
 	 */
 	public HanziStrokeDetailResponse getStrokeData(String hanzi) {
-		if (hanzi == null || hanzi.isBlank()) {
-			throw new ApiException(ApiErrorCode.INVALID_HANZI_CHARACTER, "Ký tự không được để trống");
+		String normalizedHanzi = validateSingleHanCharacter(hanzi);
+
+		Optional<HanziStrokeDataEntity> cached = cacheWriter.findByHanzi(normalizedHanzi);
+		if (cached.isPresent()) {
+			return toDetailResponse(cached.get());
 		}
 
-		int codePointCount = hanzi.codePointCount(0, hanzi.length());
-		if (codePointCount != 1) {
-			throw new ApiException(ApiErrorCode.INVALID_HANZI_CHARACTER, "Chỉ được tra cứu đúng 1 chữ Hán");
+		// Fetch external MakeMeAHanzi JSON outside DB transactions, then persist in short REQUIRES_NEW tx.
+		Optional<HanziStrokeRemoteFetcher.RemoteStrokePayload> fetched = remoteFetcher.fetchStrokeData(normalizedHanzi);
+		if (fetched.isPresent()) {
+			return persistFetchedPayload(normalizedHanzi, fetched.get());
 		}
 
-		int codePoint = hanzi.codePointAt(0);
-		if (Character.UnicodeScript.of(codePoint) != Character.UnicodeScript.HAN) {
-			throw new ApiException(ApiErrorCode.INVALID_HANZI_CHARACTER, "Ký tự không phải là chữ Hán hợp lệ");
+		throw new ApiException(ApiErrorCode.HANZI_STROKE_DATA_NOT_FOUND);
+	}
+
+	/**
+	 * Resolve stroke payloads in batch for a set of unique Chinese characters (used by writing practice & PDF export).
+	 * Characters that still lack stroke data are safely omitted rather than failing the whole session.
+	 */
+	public Map<String, HanziStrokeDetailResponse> resolveStrokesBatch(Collection<String> characters) {
+		if (characters == null || characters.isEmpty()) {
+			return Map.of();
 		}
 
-		String normalizedHanzi = new String(Character.toChars(codePoint));
-		HanziStrokeDataEntity entity = hanziStrokeDataRepository.findByHanzi(normalizedHanzi)
-				.orElseThrow(() -> new ApiException(ApiErrorCode.HANZI_STROKE_DATA_NOT_FOUND));
-
-		List<String> strokes;
-		List<List<List<Integer>>> medians;
-		try {
-			strokes = objectMapper.readValue(entity.getStrokesJson(), new TypeReference<List<String>>() {});
-			medians = objectMapper.readValue(entity.getMediansJson(), new TypeReference<List<List<List<Integer>>>>() {});
-		} catch (Exception e) {
-			log.error("Lỗi khi đọc JSON dữ liệu nét của chữ {}: {}", normalizedHanzi, e.getMessage());
-			throw new ApiException(ApiErrorCode.INTERNAL_ERROR, "Không thể đọc dữ liệu nét vẽ");
+		Set<String> validHanChars = new LinkedHashSet<>();
+		for (String raw : characters) {
+			if (isSingleHanCharacter(raw)) {
+				validHanChars.add(raw);
+			}
+		}
+		if (validHanChars.isEmpty()) {
+			return Map.of();
 		}
 
-		// Kiểm tra tính toàn vẹn: strokeCount == strokes.size == medians.size
-		if (entity.getStrokeCount() == null || entity.getStrokeCount() != strokes.size() || strokes.size() != medians.size()) {
-			log.error("Dữ liệu nét chữ {} không toàn vẹn: count={}, strokes={}, medians={}",
-					normalizedHanzi, entity.getStrokeCount(), strokes.size(), medians.size());
-			throw new ApiException(ApiErrorCode.INTERNAL_ERROR, "Dữ liệu nét vẽ không nhất quán");
-		}
-
-		// Xử lý bảo mật: đảm bảo các chuỗi path không chứa thẻ nhúng hoặc mã độc
-		for (String strokePath : strokes) {
-			if (strokePath.contains("<") || strokePath.contains(">") || strokePath.toLowerCase().contains("script")) {
-				log.warn("Phát hiện dữ liệu bất thường trong SVG path của chữ {}", normalizedHanzi);
-				throw new ApiException(ApiErrorCode.INTERNAL_ERROR, "Dữ liệu SVG không an toàn");
+		List<HanziStrokeDataEntity> dbEntities = cacheWriter.findByHanziIn(validHanChars);
+		Map<String, HanziStrokeDetailResponse> resultMap = new LinkedHashMap<>();
+		for (HanziStrokeDataEntity entity : dbEntities) {
+			try {
+				resultMap.put(entity.getHanzi(), toDetailResponse(entity));
+			} catch (ApiException ex) {
+				log.warn("Bỏ qua dữ liệu nét lỗi của chữ '{}' trong batch practice: {}", entity.getHanzi(), ex.getMessage());
 			}
 		}
 
-		return new HanziStrokeDetailResponse(
-				entity.getHanzi(),
-				entity.getStrokeCount(),
-				strokes,
-				medians,
-				entity.getSource(),
-				entity.getLicense()
-		);
+		if (!remoteFetcher.isEnabled()) {
+			return resultMap;
+		}
+
+		List<String> missingChars = validHanChars.stream()
+				.filter(ch -> !resultMap.containsKey(ch))
+				.toList();
+		if (missingChars.isEmpty()) {
+			return resultMap;
+		}
+
+		List<HanziStrokeRemoteFetcher.RemoteStrokePayload> fetchedPayloads = fetchMissingConcurrently(missingChars);
+		for (HanziStrokeRemoteFetcher.RemoteStrokePayload payload : fetchedPayloads) {
+			HanziStrokeDetailResponse detail = persistFetchedPayload(payload.hanzi(), payload);
+			resultMap.put(payload.hanzi(), detail);
+		}
+		return resultMap;
 	}
 
 	/**
 	 * Kiểm tra trạng thái hỗ trợ luyện viết cho chuỗi ký tự (tối đa 20 code points).
-	 * Truy vấn batch để loại bỏ hoàn toàn vấn đề N+1 query.
-	 *
-	 * @param text Chuỗi ký tự cần kiểm tra.
-	 * @return Danh sách trạng thái theo từng ký tự.
 	 */
 	public List<HanziStrokeSummaryResponse> getSupportStatus(String text) {
 		if (text == null || text.isBlank()) {
@@ -133,8 +147,7 @@ public class HanziWritingService {
 			offset += Character.charCount(codePoint);
 		}
 
-		// Batch query theo IN danh sách chữ Hán
-		Map<String, HanziStrokeDataEntity> entityMap = hanziStrokeDataRepository.findByHanziIn(hanziCandidates)
+		Map<String, HanziStrokeDataEntity> entityMap = cacheWriter.findByHanziIn(hanziCandidates)
 				.stream()
 				.collect(Collectors.toMap(HanziStrokeDataEntity::getHanzi, e -> e, (a, b) -> a));
 
@@ -149,5 +162,109 @@ public class HanziWritingService {
 		}
 
 		return summaries;
+	}
+
+	public static boolean isSingleHanCharacter(String text) {
+		if (text == null || text.isBlank() || text.codePointCount(0, text.length()) != 1) {
+			return false;
+		}
+		return Character.UnicodeScript.of(text.codePointAt(0)) == Character.UnicodeScript.HAN;
+	}
+
+	private static String validateSingleHanCharacter(String hanzi) {
+		if (hanzi == null || hanzi.isBlank()) {
+			throw new ApiException(ApiErrorCode.INVALID_HANZI_CHARACTER, "Ký tự không được để trống");
+		}
+		int codePointCount = hanzi.codePointCount(0, hanzi.length());
+		if (codePointCount != 1) {
+			throw new ApiException(ApiErrorCode.INVALID_HANZI_CHARACTER, "Chỉ được tra cứu đúng 1 chữ Hán");
+		}
+		int codePoint = hanzi.codePointAt(0);
+		if (Character.UnicodeScript.of(codePoint) != Character.UnicodeScript.HAN) {
+			throw new ApiException(ApiErrorCode.INVALID_HANZI_CHARACTER, "Ký tự không phải là chữ Hán hợp lệ");
+		}
+		return new String(Character.toChars(codePoint));
+	}
+
+	private List<HanziStrokeRemoteFetcher.RemoteStrokePayload> fetchMissingConcurrently(List<String> missingChars) {
+		int poolSize = Math.min(MAX_REMOTE_FETCH_THREADS, Math.max(1, missingChars.size()));
+		try (ExecutorService executor = Executors.newFixedThreadPool(poolSize)) {
+			List<CompletableFuture<Optional<HanziStrokeRemoteFetcher.RemoteStrokePayload>>> futures = missingChars.stream()
+					.map(ch -> CompletableFuture.supplyAsync(() -> remoteFetcher.fetchStrokeData(ch), executor))
+					.toList();
+
+			CompletableFuture<Void> allDone = CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
+			try {
+				allDone.get(BATCH_FETCH_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+			} catch (Exception ex) {
+				log.debug("Timed out waiting for some remote Hanzi stroke fetches: {}", ex.getMessage());
+			}
+
+			List<HanziStrokeRemoteFetcher.RemoteStrokePayload> resolved = new ArrayList<>();
+			for (CompletableFuture<Optional<HanziStrokeRemoteFetcher.RemoteStrokePayload>> future : futures) {
+				if (future.isDone() && !future.isCompletedExceptionally()) {
+					future.getNow(Optional.empty()).ifPresent(resolved::add);
+				}
+			}
+			return resolved;
+		}
+	}
+
+	private HanziStrokeDetailResponse persistFetchedPayload(
+			String normalizedHanzi,
+			HanziStrokeRemoteFetcher.RemoteStrokePayload payload) {
+		try {
+			HanziStrokeDataEntity saved = cacheWriter.saveIfAbsent(payload);
+			return toDetailResponse(saved);
+		} catch (RuntimeException ex) {
+			// Concurrent request or transient DB error: prefer existing DB record if inserted concurrently,
+			// otherwise return the verified in-memory payload so the user request still succeeds cleanly.
+			Optional<HanziStrokeDataEntity> concurrent = cacheWriter.findByHanzi(normalizedHanzi);
+			if (concurrent.isPresent()) {
+				return toDetailResponse(concurrent.get());
+			}
+			return new HanziStrokeDetailResponse(
+					payload.hanzi(),
+					payload.strokes().size(),
+					payload.strokes(),
+					payload.medians(),
+					payload.source(),
+					payload.license()
+			);
+		}
+	}
+
+	private HanziStrokeDetailResponse toDetailResponse(HanziStrokeDataEntity entity) {
+		List<String> strokes;
+		List<List<List<Integer>>> medians;
+		try {
+			strokes = objectMapper.readValue(entity.getStrokesJson(), new TypeReference<List<String>>() {});
+			medians = objectMapper.readValue(entity.getMediansJson(), new TypeReference<List<List<List<Integer>>>>() {});
+		} catch (Exception e) {
+			log.error("Lỗi khi đọc JSON dữ liệu nét của chữ {}: {}", entity.getHanzi(), e.getMessage());
+			throw new ApiException(ApiErrorCode.INTERNAL_ERROR, "Không thể đọc dữ liệu nét vẽ");
+		}
+
+		if (entity.getStrokeCount() == null || entity.getStrokeCount() != strokes.size() || strokes.size() != medians.size()) {
+			log.error("Dữ liệu nét chữ {} không toàn vẹn: count={}, strokes={}, medians={}",
+					entity.getHanzi(), entity.getStrokeCount(), strokes.size(), medians.size());
+			throw new ApiException(ApiErrorCode.INTERNAL_ERROR, "Dữ liệu nét vẽ không nhất quán");
+		}
+
+		for (String strokePath : strokes) {
+			if (strokePath.contains("<") || strokePath.contains(">") || strokePath.toLowerCase().contains("script")) {
+				log.warn("Phát hiện dữ liệu bất thường trong SVG path của chữ {}", entity.getHanzi());
+				throw new ApiException(ApiErrorCode.INTERNAL_ERROR, "Dữ liệu SVG không an toàn");
+			}
+		}
+
+		return new HanziStrokeDetailResponse(
+				entity.getHanzi(),
+				entity.getStrokeCount(),
+				strokes,
+				medians,
+				entity.getSource(),
+				entity.getLicense()
+		);
 	}
 }

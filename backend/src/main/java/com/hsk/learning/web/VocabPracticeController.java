@@ -11,9 +11,13 @@ import com.hsk.learning.dto.PracticeSessionHistoryItemDto;
 import com.hsk.learning.dto.QuizSessionResponse;
 import com.hsk.learning.dto.QuizSubmitRequest;
 import com.hsk.learning.dto.QuizSubmitResponse;
+import com.hsk.learning.dto.WritingSessionResponse;
+import com.hsk.learning.dto.WritingSubmitRequest;
+import com.hsk.learning.dto.WritingSubmitResponse;
 import com.hsk.learning.service.PracticeSessionSupport;
 import com.hsk.learning.service.VocabMatchService;
 import com.hsk.learning.service.VocabQuizService;
+import com.hsk.learning.service.VocabWritingService;
 import jakarta.validation.Valid;
 import java.security.Principal;
 import java.util.List;
@@ -31,16 +35,19 @@ public class VocabPracticeController {
 
 	private final VocabQuizService vocabQuizService;
 	private final VocabMatchService vocabMatchService;
+	private final VocabWritingService vocabWritingService;
 	private final PracticeSessionSupport practiceSessionSupport;
 	private final UserRepository userRepository;
 
 	public VocabPracticeController(
 			VocabQuizService vocabQuizService,
 			VocabMatchService vocabMatchService,
+			VocabWritingService vocabWritingService,
 			PracticeSessionSupport practiceSessionSupport,
 			UserRepository userRepository) {
 		this.vocabQuizService = vocabQuizService;
 		this.vocabMatchService = vocabMatchService;
+		this.vocabWritingService = vocabWritingService;
 		this.practiceSessionSupport = practiceSessionSupport;
 		this.userRepository = userRepository;
 	}
@@ -98,6 +105,30 @@ public class VocabPracticeController {
 			Principal principal) {
 		UserEntity user = requireUser(principal);
 		MatchSubmitResponse response = vocabMatchService.submitMatch(user.getId(), request);
+		return ResponseEntity.ok(response);
+	}
+
+	@GetMapping("/writing")
+	public ResponseEntity<WritingSessionResponse> generateWriting(
+			@RequestParam(required = false) Long lessonId,
+			@RequestParam(required = false) Long vocabSetId,
+			@RequestParam(required = false, defaultValue = "ALL") String filterStatus,
+			@RequestParam(required = false, defaultValue = "RANDOM") String order,
+			@RequestParam(required = false) Integer limit,
+			@RequestParam(required = false, defaultValue = "TRACE") String mode,
+			Principal principal) {
+		UserEntity user = requireUser(principal);
+		WritingSessionResponse response = vocabWritingService.generateWritingSession(
+				user.getId(), lessonId, vocabSetId, filterStatus, order, limit, mode);
+		return ResponseEntity.ok(response);
+	}
+
+	@PostMapping("/writing/submit")
+	public ResponseEntity<WritingSubmitResponse> submitWriting(
+			@Valid @RequestBody WritingSubmitRequest request,
+			Principal principal) {
+		UserEntity user = requireUser(principal);
+		WritingSubmitResponse response = vocabWritingService.submitWriting(user.getId(), request);
 		return ResponseEntity.ok(response);
 	}
 

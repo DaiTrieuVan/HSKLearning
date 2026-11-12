@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 import { AppSidebar } from './AppSidebar'
 import { AppHeader } from './AppHeader'
 import { AppRightSidebar } from './AppRightSidebar'
@@ -10,6 +10,7 @@ import { getDailyChallenge, type DailyChallengeData } from '../api/gamification'
 
 export const AppLayout: React.FC = () => {
   const { user } = useAuth()
+  const location = useLocation()
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
     try {
@@ -18,6 +19,21 @@ export const AppLayout: React.FC = () => {
       return false
     }
   })
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
+
+  // Tự động đóng menu drawer trên mobile/tablet khi chuyển trang
+  useEffect(() => {
+    setIsMobileSidebarOpen(false)
+  }, [location.pathname])
+
+  useEffect(() => {
+    if (!isMobileSidebarOpen) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsMobileSidebarOpen(false)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isMobileSidebarOpen])
 
   // Gamification shared states
   const [streak, setStreak] = useState<StreakData | null>(null)
@@ -63,9 +79,20 @@ export const AppLayout: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-page)' }}>
+      {/* Mobile/Tablet Backdrop khi mở menu điều hướng */}
+      {isMobileSidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-[1px] lg:hidden"
+          onClick={() => setIsMobileSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
       {/* 1. Left Sidebar */}
       <AppSidebar
         isCollapsed={isSidebarCollapsed}
+        isMobileOpen={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
         onToggleCollapse={toggleSidebar}
       />
 
@@ -75,13 +102,13 @@ export const AppLayout: React.FC = () => {
         <AppHeader
           streak={streak}
           userLevel={userLevel}
-          onToggleMobileSidebar={toggleSidebar}
+          onToggleMobileSidebar={() => setIsMobileSidebarOpen((prev) => !prev)}
         />
 
         {/* Workspace body (Center + Optional Right Sidebar) */}
         <div style={{ flex: 1, display: 'flex', minWidth: 0 }}>
           {/* Main Outlet for all pages */}
-          <main style={{ flex: 1, minWidth: 0, padding: '24px 32px' }}>
+          <main className="flex-1 min-w-0 px-3 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6">
             <Outlet />
           </main>
 

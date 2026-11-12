@@ -24,19 +24,29 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  X,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { getSrsSummary, type SrsSummary } from '../api/srs'
 
 interface AppSidebarProps {
   isCollapsed: boolean
+  isMobileOpen?: boolean
+  onCloseMobile?: () => void
   onToggleCollapse: () => void
 }
 
-export const AppSidebar: React.FC<AppSidebarProps> = ({ isCollapsed, onToggleCollapse }) => {
+export const AppSidebar: React.FC<AppSidebarProps> = ({
+  isCollapsed: desktopCollapsed,
+  isMobileOpen = false,
+  onCloseMobile,
+  onToggleCollapse,
+}) => {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  // Trên mobile/tablet slide-over drawer luôn hiển thị đầy đủ tên mục điều hướng
+  const isCollapsed = desktopCollapsed && !isMobileOpen
 
   const [srsSummary, setSrsSummary] = useState<SrsSummary | null>(null)
 
@@ -80,65 +90,69 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ isCollapsed, onToggleCol
 
   return (
     <aside
-      style={{
-        width: isCollapsed ? '72px' : '250px',
-        minWidth: isCollapsed ? '72px' : '250px',
-        height: '100vh',
-        position: 'sticky',
-        top: 0,
-        backgroundColor: '#ffffff',
-        borderRight: '1.5px solid var(--border-card)',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between',
-        transition: 'width 0.22s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
-        zIndex: 50,
-        overflowX: 'hidden',
-      }}
+      className={`fixed inset-y-0 left-0 z-50 h-screen bg-white border-r border-slate-200 flex flex-col justify-between overflow-y-auto overflow-x-hidden transition-all duration-200 lg:sticky lg:top-0 lg:shrink-0 ${
+        isMobileOpen ? 'translate-x-0 shadow-2xl w-[260px]' : '-translate-x-full lg:translate-x-0 w-[260px]'
+      } ${desktopCollapsed ? 'lg:w-[72px]' : 'lg:w-[250px]'}`}
     >
       {/* Top Brand / Logo */}
       <div>
         <div
-          onClick={() => navigate('/')}
-          style={{
-            padding: isCollapsed ? '18px 0' : '18px 16px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            justifyContent: isCollapsed ? 'center' : 'flex-start',
-            cursor: 'pointer',
-            borderBottom: '1px solid var(--border-card)',
-          }}
-          title="HSK Master - Trang chủ"
+          className="flex items-center justify-between border-b border-slate-200"
+          style={{ padding: isCollapsed ? '18px 0' : '18px 16px' }}
         >
           <div
+            onClick={() => navigate('/')}
             style={{
-              width: '38px',
-              height: '38px',
-              borderRadius: 'var(--radius-md)',
-              backgroundColor: 'var(--primary)',
-              color: '#ffffff',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 900,
-              fontSize: '1.25rem',
-              flexShrink: 0,
-              boxShadow: '0 3px 8px rgba(16, 185, 129, 0.3)',
+              gap: '12px',
+              justifyContent: isCollapsed ? 'center' : 'flex-start',
+              cursor: 'pointer',
+              flex: 1,
+              minWidth: 0,
             }}
-            className="hanzi"
+            title="HSK Master - Trang chủ"
           >
-            华
-          </div>
-          {!isCollapsed && (
-            <div style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
-              <div style={{ fontWeight: 900, fontSize: '1.15rem', color: 'var(--text-main)', letterSpacing: '-0.3px' }}>
-                HSK Master<span style={{ color: 'var(--primary)' }}>.</span>
-              </div>
-              <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)' }}>
-                {isAdmin ? 'HỆ THỐNG QUẢN TRỊ' : isTeacher ? 'KHÔNG GIAN GIÁO VIÊN' : 'KHÔNG GIAN HỌC SINH'}
-              </div>
+            <div
+              style={{
+                width: '38px',
+                height: '38px',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: 'var(--primary)',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 900,
+                fontSize: '1.25rem',
+                flexShrink: 0,
+                boxShadow: '0 3px 8px rgba(16, 185, 129, 0.3)',
+              }}
+              className="hanzi"
+            >
+              华
             </div>
+            {!isCollapsed && (
+              <div style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                <div style={{ fontWeight: 900, fontSize: '1.15rem', color: 'var(--text-main)', letterSpacing: '-0.3px' }}>
+                  HSK Master<span style={{ color: 'var(--primary)' }}>.</span>
+                </div>
+                <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)' }}>
+                  {isAdmin ? 'HỆ THỐNG QUẢN TRỊ' : isTeacher ? 'KHÔNG GIAN GIÁO VIÊN' : 'KHÔNG GIAN HỌC SINH'}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {onCloseMobile && (
+            <button
+              type="button"
+              onClick={onCloseMobile}
+              className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors shrink-0"
+              aria-label="Đóng thanh menu"
+            >
+              <X size={18} />
+            </button>
           )}
         </div>
 
@@ -519,30 +533,16 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ isCollapsed, onToggleCol
           )}
         </div>
 
-        {/* Action Buttons: Collapse + Logout */}
+        {/* Action Buttons: Collapse (desktop) + Logout */}
         <div style={{ display: 'flex', gap: '6px' }}>
           <button
             type="button"
             onClick={onToggleCollapse}
-            style={{
-              flex: 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              padding: '7px 0',
-              borderRadius: 'var(--radius-sm)',
-              border: '1px solid var(--border-card)',
-              backgroundColor: '#ffffff',
-              color: '#64748b',
-              fontSize: '0.78rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-            }}
-            title={isCollapsed ? 'Mở rộng thanh menu' : 'Thu gọn thanh menu'}
+            className="hidden lg:flex flex-1 items-center justify-center gap-1.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-500 text-xs font-bold cursor-pointer hover:bg-slate-50"
+            title={desktopCollapsed ? 'Mở rộng thanh menu' : 'Thu gọn thanh menu'}
           >
-            {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-            {!isCollapsed && <span>Thu gọn</span>}
+            {desktopCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+            {!desktopCollapsed && <span>Thu gọn</span>}
           </button>
 
           <button
@@ -559,9 +559,11 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ isCollapsed, onToggleCol
               justifyContent: 'center',
               cursor: 'pointer',
             }}
+            className="flex-1 lg:flex-none gap-1.5 text-xs font-bold"
             title="Đăng xuất"
           >
             <LogOut size={16} />
+            <span className="lg:hidden">Đăng xuất</span>
           </button>
         </div>
       </div>

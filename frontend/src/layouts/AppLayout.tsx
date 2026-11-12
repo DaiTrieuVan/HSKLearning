@@ -108,7 +108,7 @@ export const AppLayout: React.FC = () => {
         {/* Workspace body (Center + Optional Right Sidebar) */}
         <div style={{ flex: 1, display: 'flex', minWidth: 0 }}>
           {/* Main Outlet for all pages */}
-          <main className="flex-1 min-w-0 px-3 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6">
+          <main className="flex-1 min-w-0 px-3 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6 print:p-0 print:m-0">
             <Outlet />
           </main>
 

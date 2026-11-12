@@ -90,7 +90,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 
   return (
     <aside
-      className={`fixed inset-y-0 left-0 z-50 h-screen bg-white border-r border-slate-200 flex flex-col justify-between overflow-y-auto overflow-x-hidden transition-all duration-200 lg:sticky lg:top-0 lg:shrink-0 ${
+      className={`print:hidden fixed inset-y-0 left-0 z-50 h-screen bg-white border-r border-slate-200 flex flex-col justify-between overflow-y-auto overflow-x-hidden transition-all duration-200 lg:sticky lg:top-0 lg:shrink-0 ${
         isMobileOpen ? 'translate-x-0 shadow-2xl w-[260px]' : '-translate-x-full lg:translate-x-0 w-[260px]'
       } ${desktopCollapsed ? 'lg:w-[72px]' : 'lg:w-[250px]'}`}
     >

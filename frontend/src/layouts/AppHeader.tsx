@@ -31,7 +31,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const hasMultipleRoles = user ? user.roles.includes('TEACHER') && user.roles.includes('STUDENT') : false
 
   return (
-    <header className="h-14 sm:h-16 bg-white border-b border-slate-200 px-3 sm:px-6 flex items-center justify-between gap-2 sticky top-0 z-30">
+    <header className="print:hidden h-14 sm:h-16 bg-white border-b border-slate-200 px-3 sm:px-6 flex items-center justify-between gap-2 sticky top-0 z-30">
       {/* Left: Mobile/Tablet hamburger & Greeting */}
       <div className="flex items-center gap-2 sm:gap-3.5 min-w-0">
         {onToggleMobileSidebar && (

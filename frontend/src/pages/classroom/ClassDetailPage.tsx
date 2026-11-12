@@ -37,6 +37,7 @@ import {
   ExternalLink,
   TrendingUp,
   Trophy,
+  Presentation,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import {
@@ -76,6 +77,7 @@ import { getClassGradebook, type ClassGradebookResponse } from '../../api/progre
 import { ClassGradebookView } from '../../components/classroom/ClassGradebookView'
 import { getClassLeaderboard, type ClassLeaderboardResponse } from '../../api/leaderboard'
 import { ClassLeaderboardView } from '../../components/classroom/ClassLeaderboardView'
+import { ClassMaterialsTab } from '../../components/material/ClassMaterialsTab'
 
 export const ClassDetailPage: React.FC = () => {
   const { classId } = useParams<{ classId: string }>()
@@ -87,7 +89,7 @@ export const ClassDetailPage: React.FC = () => {
 
   const isTeacher = user?.activeMode === 'TEACHER'
 
-  const [activeTab, setActiveTab] = useState<'MEMBERS' | 'REMOVED' | 'VOCAB_SETS' | 'ASSIGNMENTS' | 'GRADEBOOK' | 'LEADERBOARD'>(
+  const [activeTab, setActiveTab] = useState<'MEMBERS' | 'REMOVED' | 'VOCAB_SETS' | 'MATERIALS' | 'ASSIGNMENTS' | 'GRADEBOOK' | 'LEADERBOARD'>(
     'ASSIGNMENTS'
   )
   const [gradebook, setGradebook] = useState<ClassGradebookResponse | null>(null)
@@ -745,8 +747,11 @@ export const ClassDetailPage: React.FC = () => {
           </div>
         )}
 
-        {/* Navigation Tabs */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '2px solid var(--border-card)', paddingBottom: '8px' }}>
+        {/* Navigation Tabs (cuộn ngang mượt trên mobile) */}
+        <div
+          className="overflow-x-auto"
+          style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '2px solid var(--border-card)', paddingBottom: '8px', whiteSpace: 'nowrap' }}
+        >
           <button
             type="button"
             onClick={() => setActiveTab('ASSIGNMENTS')}
@@ -806,10 +811,33 @@ export const ClassDetailPage: React.FC = () => {
               cursor: 'pointer',
               backgroundColor: activeTab === 'VOCAB_SETS' ? 'var(--primary)' : '#f1f5f9',
               color: activeTab === 'VOCAB_SETS' ? '#ffffff' : 'var(--text-muted)',
+              flexShrink: 0,
             }}
           >
             <BookMarked size={16} />
             <span>Bộ từ vựng giao cho lớp ({classVocabSets.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('MATERIALS')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 16px',
+              borderRadius: 'var(--radius-md)',
+              border: 'none',
+              fontWeight: 800,
+              fontSize: '0.88rem',
+              cursor: 'pointer',
+              backgroundColor: activeTab === 'MATERIALS' ? 'var(--primary)' : '#f1f5f9',
+              color: activeTab === 'MATERIALS' ? '#ffffff' : 'var(--text-muted)',
+              flexShrink: 0,
+            }}
+          >
+            <Presentation size={16} />
+            <span>Giáo trình</span>
           </button>
 
           {isTeacher && (
@@ -2439,6 +2467,16 @@ export const ClassDetailPage: React.FC = () => {
               <ClassGradebookView gradebook={gradebook} classId={parseInt(classId!, 10)} onRefresh={loadGradebook} />
             ) : null}
           </div>
+        )}
+
+        {/* Tab Giáo trình lớp học */}
+        {activeTab === 'MATERIALS' && classroom && token && (
+          <ClassMaterialsTab
+            classId={classroom.id}
+            isTeacher={isTeacher}
+            isArchived={classroom.status === 'ARCHIVED'}
+            token={token}
+          />
         )}
 
         {/* Tab 5: Class Leaderboard (HTT-08-CN-006) */}

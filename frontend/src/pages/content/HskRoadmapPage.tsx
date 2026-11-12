@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  ArrowLeft,
   CheckCircle2,
   Circle,
   Loader2,
@@ -87,83 +86,41 @@ export const HskRoadmapPage: React.FC = () => {
   }
 
   return (
-    <div
-      className="min-h-screen flex flex-col overflow-x-hidden"
-      style={{ backgroundColor: 'var(--bg-page)' }}
-    >
-      {/* Top Header */}
-      <header
-        className="px-3.5 py-3 sm:px-6 sm:py-4 lg:px-7 bg-white flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
-        style={{
-          borderBottom: '2px solid var(--border-card)',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
-        }}
-      >
-        <div className="flex items-center gap-3 sm:gap-3.5 min-w-0">
-          <button
-            type="button"
-            onClick={() => navigate('/')}
-            className="shrink-0 flex items-center justify-center w-[38px] h-[38px] cursor-pointer transition-all"
-            style={{
-              borderRadius: 'var(--radius-md)',
-              border: '1.5px solid var(--border-card)',
-              backgroundColor: '#ffffff',
-              color: 'var(--text-main)',
-            }}
-            title="Quay lại bảng điều khiển"
-          >
-            <ArrowLeft size={18} />
-          </button>
-          <div className="min-w-0">
-            <h1
-              className="text-lg sm:text-[1.3rem] font-extrabold leading-tight"
-              style={{ color: 'var(--text-main)' }}
-            >
-              Lộ trình học tiếng Trung HSK
-            </h1>
-            <p className="text-xs sm:text-[0.8rem] mt-0.5" style={{ color: 'var(--text-muted)' }}>
-              Theo dõi tiến độ từ HSK 1 đến các cấp độ nâng cao
-            </p>
+    <div className="max-w-7xl mx-auto space-y-4 overflow-x-hidden">
+      {/* Compact Overall Progress Bar */}
+      {roadmap && (
+        <div
+          className="game-card px-4 py-3.5 sm:px-6 sm:py-4 bg-white rounded-2xl"
+          style={{ border: '1.5px solid var(--border-card)' }}
+        >
+          <div className="flex items-baseline justify-between gap-2 flex-wrap text-[0.85rem] mb-2">
+            <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>
+              Tổng số bài đã hoàn thành: <strong style={{ color: 'var(--primary)' }}>{roadmap.totalCompletedLessons}</strong> bài
+            </span>
+            <span className="shrink-0" style={{ fontWeight: 800, color: 'var(--primary)' }}>
+              {roadmap.overallProgressPercent}%
+            </span>
           </div>
-        </div>
-      </header>
-
-      {/* Main Container - Tối ưu độ rộng lên 1440px */}
-      <main className="flex-1 w-full max-w-[1440px] mx-auto px-3.5 py-4 sm:px-6 sm:py-6 lg:px-7">
-        {/* Compact Overall Progress Bar */}
-        {roadmap && (
           <div
-            className="game-card px-4 py-3.5 sm:px-6 sm:py-4 bg-white mb-5 sm:mb-6 rounded-2xl"
-            style={{ border: '1.5px solid var(--border-card)' }}
+            style={{
+              height: '10px',
+              backgroundColor: '#e2e8f0',
+              borderRadius: 'var(--radius-full)',
+              overflow: 'hidden',
+            }}
           >
-            <div className="flex items-baseline justify-between gap-2 flex-wrap text-[0.85rem] mb-2">
-              <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>
-                Tổng số bài đã hoàn thành: <strong style={{ color: 'var(--primary)' }}>{roadmap.totalCompletedLessons}</strong> bài
-              </span>
-              <span className="shrink-0" style={{ fontWeight: 800, color: 'var(--primary)' }}>
-                {roadmap.overallProgressPercent}%
-              </span>
-            </div>
             <div
               style={{
-                height: '10px',
-                backgroundColor: '#e2e8f0',
+                height: '100%',
+                width: `${roadmap.overallProgressPercent}%`,
+                backgroundColor: 'var(--primary)',
                 borderRadius: 'var(--radius-full)',
-                overflow: 'hidden',
+                transition: 'width 0.4s ease',
               }}
-            >
-              <div
-                style={{
-                  height: '100%',
-                  width: `${roadmap.overallProgressPercent}%`,
-                  backgroundColor: 'var(--primary)',
-                  borderRadius: 'var(--radius-full)',
-                  transition: 'width 0.4s ease',
-                }}
-              />
-            </div>
+            />
           </div>
-        )}
+        </div>
+      )}
 
         {/* Loading & Error States */}
         {loading && (
@@ -746,7 +703,6 @@ export const HskRoadmapPage: React.FC = () => {
             </div>
           </div>
         )}
-      </main>
     </div>
   )
 }

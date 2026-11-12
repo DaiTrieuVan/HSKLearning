@@ -91,9 +91,9 @@ export const ListeningPracticeListPage: React.FC = () => {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
+    <div className="max-w-7xl mx-auto space-y-4">
       {/* Bộ lọc cấp độ HSK */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center space-x-2">
           <Filter className="h-4 w-4 text-slate-500" />
           <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">

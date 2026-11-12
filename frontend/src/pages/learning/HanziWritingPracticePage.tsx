@@ -70,7 +70,7 @@ export const HanziWritingPracticePage: React.FC = () => {
   }, [token, selectedHanzi])
 
   return (
-    <div className="px-3.5 py-4 pb-10 sm:p-6 sm:pb-12 max-w-[1440px] mx-auto flex flex-col gap-5 sm:gap-6 w-full box-border overflow-x-hidden">
+    <div className="max-w-7xl mx-auto flex flex-col gap-4 w-full box-border overflow-x-hidden">
       {/* Bộ chọn chữ Hán */}
       <HanziCharacterPicker
         token={token}

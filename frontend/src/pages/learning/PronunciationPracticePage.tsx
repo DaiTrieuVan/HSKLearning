@@ -307,7 +307,7 @@ export const PronunciationPracticePage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-[1000px] mx-auto w-full px-3.5 py-4 sm:px-5 sm:py-6 overflow-x-hidden">
+    <div className="max-w-7xl mx-auto w-full space-y-4 overflow-x-hidden">
       {/* Cảnh báo cấp quyền micro inline (TC-02, Không dùng Modal) */}
       {permissionError && (
         <div

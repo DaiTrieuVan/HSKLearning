@@ -19,7 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Generates typing practice sessions (WORD / PINYIN) and records mastery + XP outcomes
+ * Generates typing and dictation practice sessions (WORD / PINYIN) and records mastery + XP outcomes
  * into {@code vocab_learning} and {@code vocab_practice_sessions}.
  */
 @Service
@@ -29,9 +29,37 @@ public class VocabTypingService {
 	public static final String MODE_PINYIN = "PINYIN";
 	private static final Set<String> VALID_MODES = Set.of(MODE_WORD, MODE_PINYIN);
 
-	private static final int XP_PER_CORRECT_WORD = 2;
-	private static final int XP_COMPLETION_BONUS = 10;
 	private static final int COMPLETION_THRESHOLD_PERCENT = 50;
+
+	private record GameRuleConfig(
+			String gameType,
+			String gameModePrefix,
+			String xpSourceType,
+			String xpSourcePrefix,
+			String descriptionLabel,
+			int xpPerCorrectWord,
+			int xpCompletionBonus
+	) {}
+
+	private static final GameRuleConfig TYPING_CONFIG = new GameRuleConfig(
+			"TYPING",
+			"TYPE_",
+			"VOCAB_TYPING",
+			"typing-session:",
+			"Luyện tập Gõ từ",
+			2,
+			10
+	);
+
+	private static final GameRuleConfig DICTATION_CONFIG = new GameRuleConfig(
+			"DICTATION",
+			"DICTATION_",
+			"VOCAB_DICTATION",
+			"dictation-session:",
+			"Luyện tập Nghe viết",
+			3,
+			15
+	);
 
 	private final FlashcardLearningService flashcardLearningService;
 	private final PracticeSessionSupport practiceSessionSupport;
@@ -45,6 +73,29 @@ public class VocabTypingService {
 
 	@Transactional(readOnly = true)
 	public TypingSessionResponse generateTypingSession(
+			Long currentUserId,
+			Long lessonId,
+			Long vocabSetId,
+			String filterStatus,
+			String order,
+			Integer limit,
+			String mode) {
+		return generateWordInputSession(currentUserId, lessonId, vocabSetId, filterStatus, order, limit, mode);
+	}
+
+	@Transactional(readOnly = true)
+	public TypingSessionResponse generateDictationSession(
+			Long currentUserId,
+			Long lessonId,
+			Long vocabSetId,
+			String filterStatus,
+			String order,
+			Integer limit,
+			String mode) {
+		return generateWordInputSession(currentUserId, lessonId, vocabSetId, filterStatus, order, limit, mode);
+	}
+
+	private TypingSessionResponse generateWordInputSession(
 			Long currentUserId,
 			Long lessonId,
 			Long vocabSetId,
@@ -87,6 +138,18 @@ public class VocabTypingService {
 
 	@Transactional
 	public TypingSubmitResponse submitTyping(Long currentUserId, TypingSubmitRequest request) {
+		return submitWordInputSession(currentUserId, request, TYPING_CONFIG);
+	}
+
+	@Transactional
+	public TypingSubmitResponse submitDictation(Long currentUserId, TypingSubmitRequest request) {
+		return submitWordInputSession(currentUserId, request, DICTATION_CONFIG);
+	}
+
+	private TypingSubmitResponse submitWordInputSession(
+			Long currentUserId,
+			TypingSubmitRequest request,
+			GameRuleConfig config) {
 		UserEntity user = practiceSessionSupport.requireUser(currentUserId);
 		String normalizedMode = normalizeMode(request.mode());
 		String idempotencyKey = practiceSessionSupport.normalizeIdempotencyKey(request.idempotencyKey());
@@ -96,7 +159,7 @@ public class VocabTypingService {
 		if (existing.isPresent()) {
 			VocabPracticeSessionEntity prev = existing.get();
 			int prevAccuracy = PracticeSessionSupport.computeAccuracyPercent(prev.getCorrectCount(), prev.getTotalCount());
-			int baseXp = prev.getCorrectCount() * XP_PER_CORRECT_WORD;
+			int baseXp = prev.getCorrectCount() * config.xpPerCorrectWord();
 			int bonusXp = Math.max(0, prev.getXpEarned() - baseXp);
 			return new TypingSubmitResponse(
 					prev.getId(),
@@ -136,25 +199,25 @@ public class VocabTypingService {
 
 		int totalCount = request.results().size();
 		int accuracyPercent = PracticeSessionSupport.computeAccuracyPercent(correctCount, totalCount);
-		int baseXp = correctCount * XP_PER_CORRECT_WORD;
+		int baseXp = correctCount * config.xpPerCorrectWord();
 		int completionBonusXp = (correctCount > 0 && accuracyPercent >= COMPLETION_THRESHOLD_PERCENT)
-				? XP_COMPLETION_BONUS
+				? config.xpCompletionBonus()
 				: 0;
 		int xpEarned = baseXp + completionBonusXp;
 
 		VocabPracticeSessionEntity savedSession = practiceSessionSupport.recordSessionAndAwardXp(
 				user,
 				request.vocabSetId(),
-				"TYPING",
-				"TYPE_" + normalizedMode,
+				config.gameType(),
+				config.gameModePrefix() + normalizedMode,
 				correctCount,
 				totalCount,
 				xpEarned,
 				request.durationSeconds(),
 				idempotencyKey,
-				"VOCAB_TYPING",
-				"typing-session:",
-				"Luyện tập Gõ từ (" + correctCount + "/" + totalCount + " câu đúng)"
+				config.xpSourceType(),
+				config.xpSourcePrefix(),
+				config.descriptionLabel() + " (" + correctCount + "/" + totalCount + " câu đúng)"
 		);
 
 		return new TypingSubmitResponse(

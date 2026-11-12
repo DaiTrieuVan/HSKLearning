@@ -163,6 +163,30 @@ public class VocabPracticeController {
 		return ResponseEntity.ok(response);
 	}
 
+	@GetMapping("/dictation")
+	public ResponseEntity<TypingSessionResponse> generateDictation(
+			@RequestParam(required = false) Long lessonId,
+			@RequestParam(required = false) Long vocabSetId,
+			@RequestParam(required = false, defaultValue = "ALL") String filterStatus,
+			@RequestParam(required = false, defaultValue = "RANDOM") String order,
+			@RequestParam(required = false) Integer limit,
+			@RequestParam(required = false, defaultValue = "WORD") String mode,
+			Principal principal) {
+		UserEntity user = requireUser(principal);
+		TypingSessionResponse response = vocabTypingService.generateDictationSession(
+				user.getId(), lessonId, vocabSetId, filterStatus, order, limit, mode);
+		return ResponseEntity.ok(response);
+	}
+
+	@PostMapping("/dictation/submit")
+	public ResponseEntity<TypingSubmitResponse> submitDictation(
+			@Valid @RequestBody TypingSubmitRequest request,
+			Principal principal) {
+		UserEntity user = requireUser(principal);
+		TypingSubmitResponse response = vocabTypingService.submitDictation(user.getId(), request);
+		return ResponseEntity.ok(response);
+	}
+
 	@GetMapping("/history")
 	public ResponseEntity<List<PracticeSessionHistoryItemDto>> getPracticeHistory(
 			@RequestParam(required = false, defaultValue = "10") int limit,

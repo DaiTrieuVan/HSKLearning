@@ -4,10 +4,15 @@ import com.hsk.account.domain.UserEntity;
 import com.hsk.account.repository.UserRepository;
 import com.hsk.common.api.ApiErrorCode;
 import com.hsk.common.api.ApiException;
+import com.hsk.learning.dto.MatchSessionResponse;
+import com.hsk.learning.dto.MatchSubmitRequest;
+import com.hsk.learning.dto.MatchSubmitResponse;
 import com.hsk.learning.dto.PracticeSessionHistoryItemDto;
 import com.hsk.learning.dto.QuizSessionResponse;
 import com.hsk.learning.dto.QuizSubmitRequest;
 import com.hsk.learning.dto.QuizSubmitResponse;
+import com.hsk.learning.service.PracticeSessionSupport;
+import com.hsk.learning.service.VocabMatchService;
 import com.hsk.learning.service.VocabQuizService;
 import jakarta.validation.Valid;
 import java.security.Principal;
@@ -25,10 +30,18 @@ import org.springframework.web.bind.annotation.RestController;
 public class VocabPracticeController {
 
 	private final VocabQuizService vocabQuizService;
+	private final VocabMatchService vocabMatchService;
+	private final PracticeSessionSupport practiceSessionSupport;
 	private final UserRepository userRepository;
 
-	public VocabPracticeController(VocabQuizService vocabQuizService, UserRepository userRepository) {
+	public VocabPracticeController(
+			VocabQuizService vocabQuizService,
+			VocabMatchService vocabMatchService,
+			PracticeSessionSupport practiceSessionSupport,
+			UserRepository userRepository) {
 		this.vocabQuizService = vocabQuizService;
+		this.vocabMatchService = vocabMatchService;
+		this.practiceSessionSupport = practiceSessionSupport;
 		this.userRepository = userRepository;
 	}
 
@@ -64,11 +77,36 @@ public class VocabPracticeController {
 		return ResponseEntity.ok(response);
 	}
 
+	@GetMapping("/match")
+	public ResponseEntity<MatchSessionResponse> generateMatch(
+			@RequestParam(required = false) Long lessonId,
+			@RequestParam(required = false) Long vocabSetId,
+			@RequestParam(required = false, defaultValue = "ALL") String filterStatus,
+			@RequestParam(required = false, defaultValue = "RANDOM") String order,
+			@RequestParam(required = false) Integer limit,
+			@RequestParam(required = false, defaultValue = "MATCH_MEANING") String mode,
+			Principal principal) {
+		UserEntity user = requireUser(principal);
+		MatchSessionResponse response = vocabMatchService.generateMatchSession(
+				user.getId(), lessonId, vocabSetId, filterStatus, order, limit, mode);
+		return ResponseEntity.ok(response);
+	}
+
+	@PostMapping("/match/submit")
+	public ResponseEntity<MatchSubmitResponse> submitMatch(
+			@Valid @RequestBody MatchSubmitRequest request,
+			Principal principal) {
+		UserEntity user = requireUser(principal);
+		MatchSubmitResponse response = vocabMatchService.submitMatch(user.getId(), request);
+		return ResponseEntity.ok(response);
+	}
+
 	@GetMapping("/history")
 	public ResponseEntity<List<PracticeSessionHistoryItemDto>> getPracticeHistory(
 			@RequestParam(required = false, defaultValue = "10") int limit,
 			Principal principal) {
 		UserEntity user = requireUser(principal);
-		return ResponseEntity.ok(vocabQuizService.getPracticeHistory(user.getId(), limit));
+		return ResponseEntity.ok(practiceSessionSupport.getPracticeHistory(user.getId(), limit));
 	}
 }
+

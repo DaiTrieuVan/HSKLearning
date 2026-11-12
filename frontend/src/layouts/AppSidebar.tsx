@@ -25,6 +25,7 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  Presentation,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { getSrsSummary, type SrsSummary } from '../api/srs'
@@ -193,6 +194,17 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
               >
                 <BookMarked size={20} style={{ flexShrink: 0, color: isActive('/vocab-sets') ? 'var(--primary)' : '#64748b' }} />
                 {!isCollapsed && <span>Bộ từ vựng của lớp</span>}
+              </button>
+
+              {/* 3.1. Quản lý giáo trình (PDF / PowerPoint) */}
+              <button
+                type="button"
+                onClick={() => navigate('/materials')}
+                style={navItemStyle(isActive('/materials'))}
+                title={isCollapsed ? 'Giáo trình' : undefined}
+              >
+                <Presentation size={20} style={{ flexShrink: 0, color: isActive('/materials') ? 'var(--primary)' : '#64748b' }} />
+                {!isCollapsed && <span>Giáo trình</span>}
               </button>
 
               {/* 3. Ngân hàng câu hỏi */}

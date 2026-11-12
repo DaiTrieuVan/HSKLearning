@@ -43,6 +43,8 @@ import { VocabWritingPracticePage } from './pages/learning/VocabWritingPracticeP
 import { VocabWritingPdfPage } from './pages/learning/VocabWritingPdfPage'
 import { VocabTypingPracticePage } from './pages/learning/VocabTypingPracticePage'
 import { VocabDictationPracticePage } from './pages/learning/VocabDictationPracticePage'
+import { MaterialManagementPage } from './pages/material/MaterialManagementPage'
+import { MaterialPresentationPage } from './pages/material/MaterialPresentationPage'
 import { AppLayout } from './layouts/AppLayout'
 
 function AppRoutes() {
@@ -99,7 +101,9 @@ function AppRoutes() {
         <Route path="/profile" element={<UserProfilePage />} />
         <Route path="/teacher-request" element={<TeacherRequestPage />} />
         <Route path="/vocab-search" element={<VocabSearchPage />} />
+        <Route path="/materials" element={<MaterialManagementPage />} />
       </Route>
+      <Route path="/materials/:materialId/present" element={<MaterialPresentationPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

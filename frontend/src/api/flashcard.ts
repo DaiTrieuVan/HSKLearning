@@ -1,4 +1,4 @@
-import { ApiError } from './auth'
+import { throwApiErrorFromResponse } from './auth'
 
 export interface FlashcardItem {
   id: number
@@ -65,7 +65,7 @@ export async function getFlashcards(
   })
 
   if (!response.ok) {
-    throw new ApiError(response.status, 'FETCH_FLASHCARDS_FAILED', 'Không thể tải danh sách thẻ flashcard')
+    await throwApiErrorFromResponse(response, 'FETCH_FLASHCARDS_FAILED', 'Không thể tải danh sách thẻ flashcard')
   }
 
   return response.json()
@@ -86,7 +86,7 @@ export async function reviewFlashcard(
   })
 
   if (!response.ok) {
-    throw new ApiError(response.status, 'REVIEW_FLASHCARD_FAILED', 'Không thể lưu kết quả ôn tập từ vựng')
+    await throwApiErrorFromResponse(response, 'REVIEW_FLASHCARD_FAILED', 'Không thể lưu kết quả ôn tập từ vựng')
   }
 
   return response.json()
@@ -108,7 +108,7 @@ export async function getFlashcardSummary(
   })
 
   if (!response.ok) {
-    throw new ApiError(response.status, 'FETCH_SUMMARY_FAILED', 'Không thể tải tổng kết lượt học flashcard')
+    await throwApiErrorFromResponse(response, 'FETCH_SUMMARY_FAILED', 'Không thể tải tổng kết lượt học flashcard')
   }
 
   return response.json()

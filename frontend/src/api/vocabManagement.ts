@@ -1,4 +1,4 @@
-import { ApiError } from './auth'
+import { ApiError, throwApiErrorFromResponse } from './auth'
 
 const API_BASE = '/api/v1'
 
@@ -152,7 +152,17 @@ export async function getMyVocabSets(token: string, folderId?: number): Promise<
     headers: { Authorization: `Bearer ${token}` },
   })
   if (!response.ok) {
-    throw new ApiError(response.status, 'FETCH_SETS_FAILED', 'Không thể tải danh sách bộ từ')
+    await throwApiErrorFromResponse(response, 'FETCH_SETS_FAILED', 'Không thể tải danh sách bộ từ')
+  }
+  return response.json()
+}
+
+export async function getPracticeAccessibleVocabSets(token: string): Promise<VocabSetSummary[]> {
+  const response = await fetch(`${API_BASE}/content/vocab-sets/practice-accessible`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!response.ok) {
+    await throwApiErrorFromResponse(response, 'FETCH_SETS_FAILED', 'Không thể tải danh sách bộ từ luyện tập')
   }
   return response.json()
 }
@@ -248,7 +258,7 @@ export async function getStudentWords(
     headers: { Authorization: `Bearer ${token}` },
   })
   if (!response.ok) {
-    throw new ApiError(response.status, 'FETCH_WORDS_FAILED', 'Không thể tải danh sách từ vựng')
+    await throwApiErrorFromResponse(response, 'FETCH_WORDS_FAILED', 'Không thể tải danh sách từ vựng')
   }
   return response.json()
 }

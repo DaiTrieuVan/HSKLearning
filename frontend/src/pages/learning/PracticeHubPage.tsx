@@ -22,7 +22,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import {
-    getMyVocabSets,
+    getPracticeAccessibleVocabSets,
     getStudentWords,
     type VocabSetSummary,
     type StudentWordsStats,
@@ -67,6 +67,8 @@ export const PracticeHubPage: React.FC = () => {
     // Stats for the chosen set & filter
     const [stats, setStats] = useState<StudentWordsStats | null>(null)
     const [loadingStats, setLoadingStats] = useState(false)
+    const [loadError, setLoadError] = useState<string | null>(null)
+    const [reloadTick, setReloadTick] = useState(0)
 
     // Game settings, mode drawer & practice history
     const [gameSettings, setGameSettings] = useState<PracticeGameSettings>(() => loadPracticeSettings())
@@ -77,27 +79,34 @@ export const PracticeHubPage: React.FC = () => {
     const [historyItems, setHistoryItems] = useState<PracticeSessionHistoryItem[]>([])
     const [loadingHistory, setLoadingHistory] = useState(false)
 
-    // 1. Load available vocab sets
+    // 1. Load available vocab sets (owned + active enrolled classroom sets)
     useEffect(() => {
         if (!user) return
         let isMounted = true
-        getMyVocabSets(user.token)
+        setLoadError(null)
+        getPracticeAccessibleVocabSets(user.token)
             .then((sets: VocabSetSummary[]) => {
                 if (isMounted) {
                     setVocabSets(sets)
                 }
             })
-            .catch((err: unknown) => console.error('Failed to load vocab sets for practice:', err))
+            .catch((err: unknown) => {
+                console.error('Failed to load vocab sets for practice:', err)
+                if (isMounted) {
+                    setLoadError(err instanceof Error ? err.message : 'Không thể tải danh sách bộ từ vựng')
+                }
+            })
         return () => {
             isMounted = false
         }
-    }, [user])
+    }, [user, reloadTick])
 
     // 2. Load stats for selected set
     useEffect(() => {
         if (!user) return
         let isMounted = true
         setLoadingStats(true)
+        setLoadError(null)
         const setIdNum = selectedSetId === 'all' ? undefined : parseInt(selectedSetId, 10)
         getStudentWords(user.token, { vocabSetId: setIdNum, page: 0, size: 1 })
             .then((res) => {
@@ -105,14 +114,20 @@ export const PracticeHubPage: React.FC = () => {
                     setStats(res.stats)
                 }
             })
-            .catch((err: unknown) => console.error('Failed to load stats:', err))
+            .catch((err: unknown) => {
+                console.error('Failed to load stats:', err)
+                if (isMounted) {
+                    setStats(null)
+                    setLoadError(err instanceof Error ? err.message : 'Không thể tải thống kê từ vựng')
+                }
+            })
             .finally(() => {
                 if (isMounted) setLoadingStats(false)
             })
         return () => {
             isMounted = false
         }
-    }, [user, selectedSetId])
+    }, [user, selectedSetId, reloadTick])
 
     // Tự động chuyển sang 'Tất cả từ' khi bộ từ đã đạt 100% (hết từ chưa thuộc) để tránh khóa hết game
     useEffect(() => {
@@ -335,6 +350,15 @@ export const PracticeHubPage: React.FC = () => {
                         </span>
                     </div>
                 </div>
+
+                {loadError && (
+                    <PracticeFilterNoticeBanner
+                        message={loadError}
+                        tone="amber"
+                        actionLabel="Thử lại"
+                        onAction={() => setReloadTick((prev) => prev + 1)}
+                    />
+                )}
 
                 {autoFilterNotice && (
                     <PracticeFilterNoticeBanner

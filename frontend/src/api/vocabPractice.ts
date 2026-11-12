@@ -1,4 +1,4 @@
-import { ApiError } from './auth'
+import { throwApiErrorFromResponse } from './auth'
 
 export type QuizMode = 'HANZI_TO_MEANING' | 'MEANING_TO_HANZI' | 'MIXED' | 'CONTEXT'
 export type MatchMode = 'MATCH_MEANING' | 'MATCH_PINYIN'
@@ -240,7 +240,7 @@ export async function generateQuizSession(
   })
 
   if (!response.ok) {
-    throw new ApiError(response.status, 'FETCH_QUIZ_FAILED', 'Không thể tạo bộ câu hỏi trắc nghiệm')
+    await throwApiErrorFromResponse(response, 'FETCH_QUIZ_FAILED', 'Không thể tạo bộ câu hỏi trắc nghiệm')
   }
 
   return response.json()
@@ -261,7 +261,7 @@ export async function submitQuizSession(
   })
 
   if (!response.ok) {
-    throw new ApiError(response.status, 'SUBMIT_QUIZ_FAILED', 'Không thể lưu kết quả lượt chơi trắc nghiệm')
+    await throwApiErrorFromResponse(response, 'SUBMIT_QUIZ_FAILED', 'Không thể lưu kết quả lượt chơi trắc nghiệm')
   }
 
   return response.json()
@@ -279,7 +279,7 @@ export async function getPracticeHistory(
   })
 
   if (!response.ok) {
-    throw new ApiError(response.status, 'FETCH_HISTORY_FAILED', 'Không thể tải lịch sử luyện tập')
+    await throwApiErrorFromResponse(response, 'FETCH_HISTORY_FAILED', 'Không thể tải lịch sử luyện tập')
   }
 
   return response.json()
@@ -305,7 +305,7 @@ export async function generateMatchSession(
   })
 
   if (!response.ok) {
-    throw new ApiError(response.status, 'FETCH_MATCH_FAILED', 'Không thể tạo trò chơi Nối từ')
+    await throwApiErrorFromResponse(response, 'FETCH_MATCH_FAILED', 'Không thể tạo trò chơi Nối từ')
   }
 
   return response.json()
@@ -326,7 +326,7 @@ export async function submitMatchSession(
   })
 
   if (!response.ok) {
-    throw new ApiError(response.status, 'SUBMIT_MATCH_FAILED', 'Không thể lưu kết quả lượt chơi Nối từ')
+    await throwApiErrorFromResponse(response, 'SUBMIT_MATCH_FAILED', 'Không thể lưu kết quả lượt chơi Nối từ')
   }
 
   return response.json()
@@ -352,7 +352,7 @@ export async function generateWritingSession(
   })
 
   if (!response.ok) {
-    throw new ApiError(response.status, 'FETCH_WRITING_FAILED', 'Không thể tải danh sách từ luyện viết chữ Hán')
+    await throwApiErrorFromResponse(response, 'FETCH_WRITING_FAILED', 'Không thể tải danh sách từ luyện viết chữ Hán')
   }
 
   return response.json()
@@ -373,7 +373,7 @@ export async function submitWritingSession(
   })
 
   if (!response.ok) {
-    throw new ApiError(response.status, 'SUBMIT_WRITING_FAILED', 'Không thể lưu kết quả luyện viết chữ Hán')
+    await throwApiErrorFromResponse(response, 'SUBMIT_WRITING_FAILED', 'Không thể lưu kết quả luyện viết chữ Hán')
   }
 
   return response.json()

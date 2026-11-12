@@ -71,26 +71,6 @@ export const HanziWritingPracticePage: React.FC = () => {
 
   return (
     <div className="px-3.5 py-4 pb-10 sm:p-6 sm:pb-12 max-w-[1440px] mx-auto flex flex-col gap-5 sm:gap-6 w-full box-border overflow-x-hidden">
-      {/* Tiêu đề trang */}
-      <div className="flex flex-col gap-1.5">
-        <div className="flex items-center gap-2.5">
-          <div
-            className="p-2 rounded-[10px] shrink-0 flex items-center justify-center"
-            style={{
-              backgroundColor: '#ecfdf5',
-            }}
-          >
-            <PenTool size={24} color="#10b981" />
-          </div>
-          <h1 className="text-xl sm:text-[1.65rem] font-extrabold text-slate-900 m-0 leading-tight">
-            Luyện viết chữ Hán
-          </h1>
-        </div>
-        <p className="m-0 text-slate-500 text-xs sm:text-[0.92rem] leading-relaxed">
-          Giao diện song song thông minh: vừa theo dõi hoạt ảnh nét mẫu chuẩn, vừa tập viết trực tiếp và giữ nguyên chữ viết tay để đối chiếu.
-        </p>
-      </div>
-
       {/* Bộ chọn chữ Hán */}
       <HanziCharacterPicker
         token={token}

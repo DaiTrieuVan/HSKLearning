@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   CheckCircle2,
   Circle,
-  Sparkles,
   Loader2,
   AlertCircle,
   FileText,
@@ -131,76 +130,40 @@ export const HskRoadmapPage: React.FC = () => {
 
       {/* Main Container - Tối ưu độ rộng lên 1440px */}
       <main className="flex-1 w-full max-w-[1440px] mx-auto px-3.5 py-4 sm:px-6 sm:py-6 lg:px-7">
-        {/* Banner with Mascot and Overall Progress */}
-        <div
-          className="game-card p-4 sm:px-7 sm:py-5 bg-white mb-5 sm:mb-6 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-4 sm:gap-6 rounded-2xl"
-          style={{
-            border: '1.5px solid var(--border-card)',
-          }}
-        >
-          <div className="flex-1 min-w-0">
+        {/* Compact Overall Progress Bar */}
+        {roadmap && (
+          <div
+            className="game-card px-4 py-3.5 sm:px-6 sm:py-4 bg-white mb-5 sm:mb-6 rounded-2xl"
+            style={{ border: '1.5px solid var(--border-card)' }}
+          >
+            <div className="flex items-baseline justify-between gap-2 flex-wrap text-[0.85rem] mb-2">
+              <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>
+                Tổng số bài đã hoàn thành: <strong style={{ color: 'var(--primary)' }}>{roadmap.totalCompletedLessons}</strong> bài
+              </span>
+              <span className="shrink-0" style={{ fontWeight: 800, color: 'var(--primary)' }}>
+                {roadmap.overallProgressPercent}%
+              </span>
+            </div>
             <div
-              className="inline-flex items-center gap-1.5 px-3 py-1 font-extrabold text-xs mb-2"
               style={{
-                backgroundColor: 'var(--jade-green-light)',
-                color: 'var(--jade-green-shadow)',
+                height: '10px',
+                backgroundColor: '#e2e8f0',
                 borderRadius: 'var(--radius-full)',
+                overflow: 'hidden',
               }}
             >
-              <Sparkles size={14} />
-              <span>Lộ trình cá nhân hóa</span>
+              <div
+                style={{
+                  height: '100%',
+                  width: `${roadmap.overallProgressPercent}%`,
+                  backgroundColor: 'var(--primary)',
+                  borderRadius: 'var(--radius-full)',
+                  transition: 'width 0.4s ease',
+                }}
+              />
             </div>
-
-            <h2
-              className="text-xl sm:text-[1.4rem] font-extrabold leading-snug mb-1"
-              style={{ color: 'var(--text-main)' }}
-            >
-              Chinh phục HSK từng bước vững chắc
-            </h2>
-            <p
-              className="text-sm sm:text-[0.88rem] mb-3.5 leading-relaxed"
-              style={{ color: 'var(--text-muted)' }}
-            >
-              Học theo thứ tự các bài học chuẩn, ôn tập từ vựng kèm ngữ pháp và tích lũy từng mốc hoàn thành.
-            </p>
-
-            {/* Overall Progress Bar */}
-            {roadmap && (
-              <div className="max-w-[540px] w-full">
-                <div className="flex items-baseline justify-between gap-2 flex-wrap text-[0.82rem] mb-1.5">
-                  <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>
-                    Tổng số bài đã hoàn thành: <strong style={{ color: 'var(--primary)' }}>{roadmap.totalCompletedLessons}</strong> bài
-                  </span>
-                  <span className="shrink-0" style={{ fontWeight: 800, color: 'var(--primary)' }}>
-                    {roadmap.overallProgressPercent}%
-                  </span>
-                </div>
-                <div
-                  style={{
-                    height: '10px',
-                    backgroundColor: '#e2e8f0',
-                    borderRadius: 'var(--radius-full)',
-                    overflow: 'hidden',
-                  }}
-                >
-                  <div
-                    style={{
-                      height: '100%',
-                      width: `${roadmap.overallProgressPercent}%`,
-                      backgroundColor: 'var(--primary)',
-                      borderRadius: 'var(--radius-full)',
-                      transition: 'width 0.4s ease',
-                    }}
-                  />
-                </div>
-              </div>
-            )}
           </div>
-
-          <div className="animate-float shrink-0 self-center sm:self-auto">
-            <PandaMascot size={76} />
-          </div>
-        </div>
+        )}
 
         {/* Loading & Error States */}
         {loading && (

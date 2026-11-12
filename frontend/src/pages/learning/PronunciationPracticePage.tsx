@@ -308,29 +308,6 @@ export const PronunciationPracticePage: React.FC = () => {
 
   return (
     <div className="max-w-[1000px] mx-auto w-full px-3.5 py-4 sm:px-5 sm:py-6 overflow-x-hidden">
-      {/* Header */}
-      <div className="mb-5 sm:mb-6">
-        <div className="flex items-start sm:items-center gap-2.5 sm:gap-3">
-          <div
-            className="w-10 h-10 rounded-[10px] shrink-0 flex items-center justify-center"
-            style={{
-              backgroundColor: 'var(--primary-light)',
-              color: 'var(--primary)',
-            }}
-          >
-            <Mic size={24} />
-          </div>
-          <div className="min-w-0">
-            <h1 className="text-xl sm:text-[1.6rem] font-extrabold m-0 leading-tight" style={{ color: 'var(--text-main)' }}>
-              Luyện phát âm & Chấm điểm AI
-            </h1>
-            <p className="m-0 mt-0.5 text-xs sm:text-[0.92rem] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-              Ghi âm giọng đọc để so sánh với chuẩn tiếng Trung và nhận đánh giá chi tiết
-            </p>
-          </div>
-        </div>
-      </div>
-
       {/* Cảnh báo cấp quyền micro inline (TC-02, Không dùng Modal) */}
       {permissionError && (
         <div

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Headphones,
   HelpCircle,
   Award,
   ArrowRight,
@@ -9,7 +8,6 @@ import {
   Volume2,
   AlertCircle,
   RefreshCw,
-  Sparkles,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { getListeningPractices, type ListeningPracticeItem } from '../../api/listening'
@@ -93,39 +91,7 @@ export const ListeningPracticeListPage: React.FC = () => {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      {/* Hero Banner */}
-      <div className="relative mb-8 overflow-hidden rounded-3xl border border-indigo-100 bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 p-8 text-white shadow-xl dark:border-indigo-900/50">
-        <div className="relative z-10 max-w-3xl">
-          <div className="mb-3 inline-flex items-center space-x-2 rounded-full border border-indigo-400/30 bg-indigo-500/20 px-3.5 py-1 text-xs font-semibold text-indigo-200">
-            <Sparkles className="h-3.5 w-3.5 text-indigo-300" />
-            <span>Kỹ năng cốt lõi HSK</span>
-          </div>
-          <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
-            Luyện nghe hiểu tiếng Trung
-          </h1>
-          <p className="mt-3 text-base text-indigo-100/80 sm:text-lg">
-            Rèn luyện kỹ năng nghe ngữ điệu và phát xạ ngôn ngữ qua các đoạn hội thoại thực tế kèm câu hỏi trắc nghiệm kiểm tra mức độ hiểu bài.
-          </p>
-
-          {/* Quick Info Badges */}
-          <div className="mt-6 flex flex-wrap items-center gap-4 text-xs font-medium text-indigo-200">
-            <div className="flex items-center space-x-1.5 rounded-lg bg-white/10 px-3 py-1.5 backdrop-blur-sm">
-              <Headphones className="h-4 w-4 text-indigo-300" />
-              <span>Chỉ hiển thị bài có Audio chuẩn (TC-03)</span>
-            </div>
-            <div className="flex items-center space-x-1.5 rounded-lg bg-white/10 px-3 py-1.5 backdrop-blur-sm">
-              <Award className="h-4 w-4 text-amber-300" />
-              <span>Tích lũy XP sau mỗi bài nộp</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Trang trí background */}
-        <div className="pointer-events-none absolute -bottom-10 -right-10 h-64 w-64 rounded-full bg-indigo-500/10 blur-3xl" />
-        <div className="pointer-events-none absolute -top-10 right-20 h-48 w-48 rounded-full bg-purple-500/10 blur-2xl" />
-      </div>
-
+    <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
       {/* Bộ lọc cấp độ HSK */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center space-x-2">

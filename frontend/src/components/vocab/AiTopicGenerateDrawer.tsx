@@ -83,16 +83,16 @@ export const AiTopicGenerateDrawer: React.FC<AiTopicGenerateDrawerProps> = ({
         onClick={onClose}
       />
 
-      <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
-        <div className="w-screen max-w-2xl bg-white border-l border-slate-200 shadow-2xl flex flex-col justify-between text-slate-800">
+      <div className="fixed inset-y-0 right-0 max-w-full flex pl-0 sm:pl-10">
+        <div className="w-screen max-w-2xl h-full bg-white border-l border-slate-200 shadow-2xl flex flex-col justify-between text-slate-800">
           {/* Header */}
-          <div className="p-6 border-b border-slate-200 flex items-center justify-between bg-white">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-rose-500 text-white flex items-center justify-center shadow-md">
+          <div className="px-4 py-3.5 sm:p-6 border-b border-slate-200 flex items-start sm:items-center justify-between gap-3 bg-white">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 shrink-0 rounded-xl bg-gradient-to-tr from-amber-500 to-rose-500 text-white flex items-center justify-center shadow-md">
                 <Sparkles className="w-5 h-5" />
               </div>
-              <div>
-                <h2 className="text-lg font-bold text-slate-900">Sinh từ vựng thông minh bằng AI</h2>
+              <div className="min-w-0">
+                <h2 className="text-base sm:text-lg font-bold text-slate-900">Sinh từ vựng thông minh bằng AI</h2>
                 <p className="text-xs text-slate-500">
                   Nhập chủ đề bất kỳ, AI sẽ tự động phân tích và tạo danh sách từ vựng chuẩn ngữ pháp
                 </p>
@@ -102,14 +102,14 @@ export const AiTopicGenerateDrawer: React.FC<AiTopicGenerateDrawerProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+              className="shrink-0 p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* Body */}
-          <div className="p-6 space-y-5 overflow-y-auto flex-1">
+          <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto flex-1">
             {error && (
               <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-xs font-medium">
                 {error}
@@ -121,18 +121,18 @@ export const AiTopicGenerateDrawer: React.FC<AiTopicGenerateDrawerProps> = ({
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5">
                   Chủ đề từ vựng bạn muốn học
                 </label>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <input
                     type="text"
                     value={topic}
                     onChange={(e) => setTopic(e.target.value)}
                     placeholder="Ví dụ: Đặt phòng khách sạn, Gọi món lẩu Tứ Xuyên..."
-                    className="flex-1 px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm focus:outline-none focus:bg-white focus:border-emerald-500 transition-colors"
+                    className="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm focus:outline-none focus:bg-white focus:border-emerald-500 transition-colors"
                   />
                   <button
                     type="submit"
                     disabled={isLoading || !topic.trim()}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-sm transition-all disabled:opacity-50 shrink-0"
+                    className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-sm transition-all disabled:opacity-50 shrink-0 whitespace-nowrap min-h-[42px]"
                   >
                     {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                     <span>Sinh từ</span>
@@ -156,14 +156,14 @@ export const AiTopicGenerateDrawer: React.FC<AiTopicGenerateDrawerProps> = ({
               </div>
 
               {/* Count selector */}
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-semibold text-slate-700">Số lượng từ:</span>
                 {[5, 10, 15, 20].map((num) => (
                   <button
                     key={num}
                     type="button"
                     onClick={() => setCount(num)}
-                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                       count === num
                         ? 'bg-emerald-600 text-white shadow-sm'
                         : 'bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200'
@@ -175,10 +175,10 @@ export const AiTopicGenerateDrawer: React.FC<AiTopicGenerateDrawerProps> = ({
               </div>
             </form>
 
-            {/* Generated Results Preview Table */}
+            {/* Generated Results Preview */}
             {generatedItems.length > 0 && (
               <div className="space-y-3 pt-4 border-t border-slate-200">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
@@ -196,8 +196,8 @@ export const AiTopicGenerateDrawer: React.FC<AiTopicGenerateDrawerProps> = ({
                   <span className="text-xs text-slate-500">Xem lại và bỏ chọn từ không cần</span>
                 </div>
 
-                <div className="rounded-xl border border-slate-200 overflow-hidden max-h-72 overflow-y-auto bg-white shadow-sm">
-                  <table className="w-full text-left text-xs">
+                <div className="rounded-xl border border-slate-200 overflow-x-auto max-h-72 overflow-y-auto bg-white shadow-sm">
+                  <table className="w-full min-w-[520px] text-left text-xs">
                     <thead className="bg-slate-50 text-slate-600 font-semibold sticky top-0 border-b border-slate-200">
                       <tr>
                         <th className="py-2.5 px-3 w-8 text-center">#</th>
@@ -240,7 +240,7 @@ export const AiTopicGenerateDrawer: React.FC<AiTopicGenerateDrawerProps> = ({
           </div>
 
           {/* Footer */}
-          <div className="p-6 border-t border-slate-200 flex items-center justify-between bg-slate-50/70">
+          <div className="px-4 py-3.5 sm:px-6 sm:py-4 border-t border-slate-200 flex items-center justify-between gap-3 bg-slate-50/70">
             <button
               type="button"
               onClick={onClose}

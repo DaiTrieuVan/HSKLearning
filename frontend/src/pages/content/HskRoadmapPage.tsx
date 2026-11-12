@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
-  BookOpen,
   CheckCircle2,
   Circle,
   Sparkles,
@@ -127,18 +126,6 @@ export const HskRoadmapPage: React.FC = () => {
               Theo dõi tiến độ từ HSK 1 đến các cấp độ nâng cao
             </p>
           </div>
-        </div>
-
-        <div className="flex items-center gap-3 shrink-0">
-          <button
-            type="button"
-            onClick={() => navigate('/curriculum')}
-            className="btn-gamified btn-primary w-full sm:w-auto justify-center whitespace-nowrap"
-            style={{ padding: '8px 16px', fontSize: '0.85rem' }}
-          >
-            <BookOpen size={16} className="shrink-0" />
-            <span>Kho giáo trình HSK</span>
-          </button>
         </div>
       </header>
 

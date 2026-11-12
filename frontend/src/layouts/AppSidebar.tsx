@@ -303,22 +303,11 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
               <button
                 type="button"
                 onClick={() => navigate('/roadmap')}
-                style={navItemStyle(isActive('/roadmap'))}
+                style={navItemStyle(isActive('/roadmap') || isActive('/lessons'))}
                 title={isCollapsed ? 'Lộ trình HSK' : undefined}
               >
-                <BookMarked size={20} style={{ flexShrink: 0, color: isActive('/roadmap') ? 'var(--primary)' : '#64748b' }} />
+                <BookMarked size={20} style={{ flexShrink: 0, color: (isActive('/roadmap') || isActive('/lessons')) ? 'var(--primary)' : '#64748b' }} />
                 {!isCollapsed && <span>Lộ trình HSK</span>}
-              </button>
-
-              {/* 3. Giáo trình & Bài học */}
-              <button
-                type="button"
-                onClick={() => navigate('/curriculum')}
-                style={navItemStyle(isActive('/curriculum'))}
-                title={isCollapsed ? 'Giáo trình bài học' : undefined}
-              >
-                <BookOpen size={20} style={{ flexShrink: 0, color: isActive('/curriculum') ? 'var(--primary)' : '#64748b' }} />
-                {!isCollapsed && <span>Giáo trình & Bài học</span>}
               </button>
 
               {/* 3.1. Luyện nghe hiểu (HTT-10-CN-001) */}

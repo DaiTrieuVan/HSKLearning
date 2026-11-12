@@ -2,7 +2,6 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { AuthPage } from './pages/auth/AuthPage'
 import { MainWorkspace } from './pages/dashboard/MainWorkspace'
-import { HskCurriculumPage } from './pages/content/HskCurriculumPage'
 import { HskRoadmapPage } from './pages/content/HskRoadmapPage'
 import { LessonStudyPage } from './pages/content/LessonStudyPage'
 import { TeacherVocabSetsPage } from './pages/teacher/TeacherVocabSetsPage'
@@ -68,7 +67,7 @@ function AppRoutes() {
         <Route path="/writing" element={<HanziWritingPracticePage />} />
         <Route path="/pronunciation" element={<PronunciationPracticePage />} />
         <Route path="/ai-assistant" element={<AiLearningAssistantPage />} />
-        <Route path="/curriculum" element={<HskCurriculumPage />} />
+        <Route path="/curriculum" element={<Navigate to="/roadmap" replace />} />
         <Route path="/lessons/:lessonId" element={<LessonStudyPage />} />
         <Route path="/vocab-sets" element={isTeacher ? <TeacherVocabSetsPage /> : <StudentVocabSetsPage />} />
         <Route path="/words" element={<StudentWordsListPage />} />

@@ -389,7 +389,7 @@ export const AppRightSidebar: React.FC<AppRightSidebarProps> = ({
                 ) : (
                   <button
                     type="button"
-                    onClick={() => navigate('/curriculum')}
+                    onClick={() => navigate('/roadmap')}
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',

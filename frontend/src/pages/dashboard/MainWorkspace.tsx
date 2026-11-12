@@ -185,10 +185,10 @@ export const MainWorkspace: React.FC<MainWorkspaceProps> = () => {
 
 
   return (
-    <div style={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div className="max-w-7xl mx-auto w-full flex flex-col">
 
       {/* Main Workspace Body */}
-      <div style={{ width: '100%' }}>
+      <div className="w-full">
         {/* Admin Navigation Tabs (HTT-01-CN-003 & HTT-01-CN-008) */}
         {isAdmin && (
           <div

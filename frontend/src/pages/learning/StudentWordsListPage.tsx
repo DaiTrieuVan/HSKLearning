@@ -161,7 +161,7 @@ export const StudentWordsListPage: React.FC = () => {
   const stats = data?.stats || { totalWords: 0, masteredWords: 0, unmasteredWords: 0, progressPercent: 0 }
 
   return (
-    <div className="min-h-screen bg-slate-50/50 text-slate-800 p-4 sm:p-6 md:p-8 space-y-6">
+    <div className="max-w-7xl mx-auto space-y-4 text-slate-800">
       {/* Top Navigation & Actions */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <button

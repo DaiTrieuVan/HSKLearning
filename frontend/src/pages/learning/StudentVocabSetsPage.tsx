@@ -179,35 +179,83 @@ export const StudentVocabSetsPage: React.FC = () => {
     : mySets.filter((s) => !s.folderId) // root sets
 
   return (
-    <div className="min-h-screen bg-slate-50/50 text-slate-800 p-4 sm:p-6 md:p-8 space-y-6">
-      {/* Top Quick Actions & Folder Breadcrumb (only when inside a folder) */}
-      <div className={`flex flex-col md:flex-row md:items-center gap-4 ${currentFolder ? 'justify-between' : 'justify-end'}`}>
-        {currentFolder && (
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 flex-wrap">
-            <button
-              type="button"
-              onClick={() => setCurrentFolder(null)}
-              className="hover:text-emerald-600 cursor-pointer transition-colors"
-            >
-              Bộ từ vựng
-            </button>
-            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-            <span className="text-emerald-600 font-bold text-sm">{currentFolder.title}</span>
-            <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-semibold">
-              {displayedMySets.length} bộ từ
+    <div className="max-w-7xl mx-auto space-y-4 text-slate-800">
+      {/* Folder Breadcrumb (only when inside a folder) */}
+      {currentFolder && (
+        <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setCurrentFolder(null)}
+            className="hover:text-emerald-600 cursor-pointer transition-colors"
+          >
+            Bộ từ vựng
+          </button>
+          <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+          <span className="text-emerald-600 font-bold text-sm">{currentFolder.title}</span>
+          <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-semibold">
+            {displayedMySets.length} bộ từ
+          </span>
+        </div>
+      )}
+
+      {/* Unified Top Bar: Tabs Switcher (Left) + Action Buttons (Right) */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 border-b border-slate-200 pb-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('my_sets')
+              setCurrentFolder(null)
+            }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'my_sets'
+                ? 'bg-white text-emerald-700 border border-slate-200 shadow-sm'
+                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+            }`}
+          >
+            <Layers className="w-4 h-4 text-emerald-600" />
+            <span>Bộ từ của tôi</span>
+            <span className="px-2 py-0.5 rounded-md bg-slate-100 text-[11px] text-slate-600 font-semibold">
+              {mySets.length}
             </span>
-          </div>
-        )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('community')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'community'
+                ? 'bg-white text-sky-700 border border-slate-200 shadow-sm'
+                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+            }`}
+          >
+            <Globe className="w-4 h-4 text-sky-600" />
+            <span>Cộng đồng</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('classroom')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'classroom'
+                ? 'bg-white text-indigo-700 border border-slate-200 shadow-sm'
+                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+            }`}
+          >
+            <GraduationCap className="w-4 h-4 text-indigo-600" />
+            <span>Lớp học</span>
+          </button>
+        </div>
 
         {/* Action Buttons styled matching Light Theme */}
-        <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             type="button"
             onClick={() => {
               setEditingSet(null)
               setIsSetDrawerOpen(true)
             }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider shadow-sm transition-all hover:shadow hover:-translate-y-0.5"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider shadow-sm transition-all hover:shadow"
           >
             <Plus className="w-4 h-4" />
             <span>Tạo bộ từ mới</span>
@@ -219,7 +267,7 @@ export const StudentVocabSetsPage: React.FC = () => {
               setEditingFolder(null)
               setIsFolderDrawerOpen(true)
             }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs uppercase tracking-wider shadow-sm transition-all hover:shadow hover:-translate-y-0.5"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs uppercase tracking-wider shadow-sm transition-all hover:shadow"
           >
             <FolderPlus className="w-4 h-4" />
             <span>Tạo folder</span>
@@ -228,7 +276,7 @@ export const StudentVocabSetsPage: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate('/roadmap')}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs uppercase tracking-wider shadow-sm transition-all hover:shadow hover:-translate-y-0.5"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs uppercase tracking-wider shadow-sm transition-all hover:shadow"
           >
             <Compass className="w-4 h-4" />
             <span>Lộ trình</span>
@@ -240,60 +288,12 @@ export const StudentVocabSetsPage: React.FC = () => {
               setShareDrawerMode('import')
               setIsShareDrawerOpen(true)
             }}
-            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 hover:text-slate-900 font-semibold text-xs shadow-sm transition-all"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 hover:text-slate-900 font-semibold text-xs shadow-sm transition-all"
           >
             <ArrowDownToLine className="w-4 h-4 text-emerald-600" />
             <span>Nhập mã</span>
           </button>
         </div>
-      </div>
-
-      {/* Tabs Switcher */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab('my_sets')
-            setCurrentFolder(null)
-          }}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-            activeTab === 'my_sets'
-              ? 'bg-white text-emerald-700 border border-slate-200 shadow-sm'
-              : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
-          }`}
-        >
-          <Layers className="w-4 h-4 text-emerald-600" />
-          <span>Bộ từ của tôi</span>
-          <span className="px-2 py-0.5 rounded-md bg-slate-100 text-[11px] text-slate-600 font-semibold">
-            {mySets.length}
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('community')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-            activeTab === 'community'
-              ? 'bg-white text-sky-700 border border-slate-200 shadow-sm'
-              : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
-          }`}
-        >
-          <Globe className="w-4 h-4 text-sky-600" />
-          <span>Cộng đồng</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('classroom')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-            activeTab === 'classroom'
-              ? 'bg-white text-indigo-700 border border-slate-200 shadow-sm'
-              : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
-          }`}
-        >
-          <GraduationCap className="w-4 h-4 text-indigo-600" />
-          <span>Lớp học</span>
-        </button>
       </div>
 
       {/* Content Area */}

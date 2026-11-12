@@ -45,8 +45,8 @@ export const VocapyHeroTrio: React.FC<VocapyHeroTrioProps> = ({
       style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(310px, 1fr))',
-        gap: '18px',
-        marginBottom: '24px',
+        gap: '16px',
+        marginBottom: '20px',
       }}
     >
       {/* HERO STATS: 4 Stats Metrics Matrix (Vocapy style) */}

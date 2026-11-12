@@ -297,7 +297,25 @@ public enum ApiErrorCode {
 	AI_DAILY_LIMIT_REACHED(HttpStatus.TOO_MANY_REQUESTS, "Bạn đã dùng hết 20 lượt hỏi trong ngày. Vui lòng quay lại vào ngày mai"),
 
 	/** HTT-10-CN-004 / TC-04: AI provider error or timeout. */
-	AI_PROVIDER_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "Dịch vụ trợ lý AI tạm thời không khả dụng, vui lòng thử lại sau");
+	AI_PROVIDER_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "Dịch vụ trợ lý AI tạm thời không khả dụng, vui lòng thử lại sau"),
+
+	/** Material not found. */
+	MATERIAL_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy giáo trình"),
+
+	/** Material exceeds maximum allowed file size (50 MB). */
+	MATERIAL_FILE_TOO_LARGE(HttpStatus.BAD_REQUEST, "Kích thước tệp giáo trình vượt quá giới hạn tối đa 50 MB"),
+
+	/** Uploaded material format is not PDF or PPTX. */
+	MATERIAL_INVALID_FORMAT(HttpStatus.BAD_REQUEST, "Định dạng không hợp lệ. Vui lòng tải lên tệp .pdf hoặc .pptx"),
+
+	/** Uploaded material exceeds maximum supported pages/slides (150). */
+	MATERIAL_TOO_MANY_PAGES(HttpStatus.BAD_REQUEST, "Giáo trình vượt quá giới hạn tối đa 150 trang/slide"),
+
+	/** Material is still being converted or failed to render slides. */
+	MATERIAL_NOT_READY(HttpStatus.CONFLICT, "Giáo trình đang được xử lý hoặc gặp lỗi chuyển đổi, chưa thể trình chiếu"),
+
+	/** Teacher restricted download permission for this material. */
+	MATERIAL_DOWNLOAD_NOT_ALLOWED(HttpStatus.FORBIDDEN, "Giáo viên đã tắt quyền tải về đối với giáo trình này");
 
 	private final HttpStatus status;
 

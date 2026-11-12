@@ -179,33 +179,25 @@ export const StudentVocabSetsPage: React.FC = () => {
     : mySets.filter((s) => !s.folderId) // root sets
 
   return (
-    <div className="min-h-screen bg-slate-50/50 text-slate-800 p-6 md:p-8 space-y-6">
-      {/* Top Header & Quick Actions */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-            <span
+    <div className="min-h-screen bg-slate-50/50 text-slate-800 p-4 sm:p-6 md:p-8 space-y-6">
+      {/* Top Quick Actions & Folder Breadcrumb (only when inside a folder) */}
+      <div className={`flex flex-col md:flex-row md:items-center gap-4 ${currentFolder ? 'justify-between' : 'justify-end'}`}>
+        {currentFolder && (
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 flex-wrap">
+            <button
+              type="button"
               onClick={() => setCurrentFolder(null)}
               className="hover:text-emerald-600 cursor-pointer transition-colors"
             >
               Bộ từ vựng
+            </button>
+            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+            <span className="text-emerald-600 font-bold text-sm">{currentFolder.title}</span>
+            <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-semibold">
+              {displayedMySets.length} bộ từ
             </span>
-            {currentFolder && (
-              <>
-                <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-                <span className="text-emerald-600 font-bold">{currentFolder.title}</span>
-              </>
-            )}
           </div>
-          <h1 className="text-2xl md:text-3xl font-black text-slate-900 mt-1 tracking-tight flex items-center gap-3">
-            <span>{currentFolder ? currentFolder.title : 'Quản lý Bộ từ vựng'}</span>
-            {currentFolder && (
-              <span className="text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-semibold">
-                {displayedMySets.length} bộ từ
-              </span>
-            )}
-          </h1>
-        </div>
+        )}
 
         {/* Action Buttons styled matching Light Theme */}
         <div className="flex items-center gap-2.5 flex-wrap">

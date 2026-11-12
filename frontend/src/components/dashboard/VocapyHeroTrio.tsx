@@ -1,23 +1,20 @@
 import React from 'react'
-import { Flame, Sparkles, Award } from 'lucide-react'
-import { PandaMascot } from '../common/PandaMascot'
+import { Flame } from 'lucide-react'
 import type { SrsSummary } from '../../api/srs'
 import type { StreakData } from '../../api/streak'
 import type { UserLevelData } from '../../api/gamificationLevel'
 
 interface VocapyHeroTrioProps {
-  fullName: string
+  fullName?: string
   srsSummary: SrsSummary | null
   streak: StreakData | null
-  userLevel: UserLevelData | null
+  userLevel?: UserLevelData | null
   onNavigate: (path: string) => void
 }
 
 export const VocapyHeroTrio: React.FC<VocapyHeroTrioProps> = ({
-  fullName,
   srsSummary,
   streak,
-  userLevel,
   onNavigate,
 }) => {
   const totalWords = (srsSummary?.learningCount || 0) + (srsSummary?.masteredCount || 0)
@@ -52,92 +49,7 @@ export const VocapyHeroTrio: React.FC<VocapyHeroTrioProps> = ({
         marginBottom: '24px',
       }}
     >
-      {/* 1. HERO LEFT: Mascot & Motivational Art Card */}
-      <div
-        className="game-card"
-        style={{
-          padding: '20px 22px',
-          backgroundColor: '#ffffff',
-          border: '1.5px solid var(--border-card)',
-          borderRadius: '18px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '18px',
-          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.03)',
-          position: 'relative',
-          overflow: 'hidden',
-          background: 'linear-gradient(145deg, #ffffff 0%, #f0fdf4 100%)',
-        }}
-      >
-        <div style={{ flexShrink: 0 }}>
-          <PandaMascot size={78} />
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-            <span
-              style={{
-                fontSize: '0.72rem',
-                fontWeight: 800,
-                padding: '2px 8px',
-                borderRadius: '12px',
-                backgroundColor: 'var(--jade-green-light)',
-                color: 'var(--jade-green-shadow)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-              }}
-            >
-              <Sparkles size={12} />
-              Chăm chỉ mỗi ngày
-            </span>
-            {userLevel && (
-              <span
-                style={{
-                  fontSize: '0.72rem',
-                  fontWeight: 800,
-                  padding: '2px 8px',
-                  borderRadius: '12px',
-                  backgroundColor: '#fef3c7',
-                  color: '#b45309',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                }}
-              >
-                <Award size={12} />
-                Cấp {userLevel.currentLevel}: {userLevel.title}
-              </span>
-            )}
-          </div>
-          <h2
-            style={{
-              fontSize: '1.15rem',
-              fontWeight: 800,
-              color: 'var(--text-main)',
-              margin: '0 0 6px',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}
-          >
-            Xin chào, {fullName || 'Học viên'}!
-          </h2>
-          <p
-            style={{
-              fontSize: '0.8rem',
-              color: 'var(--text-muted)',
-              margin: 0,
-              lineHeight: 1.45,
-            }}
-          >
-            <span style={{ fontWeight: 600, color: 'var(--primary)' }}>千里之行，始于足下</span>
-            <br />
-            Hành trình vạn dặm bắt đầu từ một bước chân.
-          </p>
-        </div>
-      </div>
-
-      {/* 2. HERO CENTER: 4 Stats Metrics Matrix (Vocapy style) */}
+      {/* HERO STATS: 4 Stats Metrics Matrix (Vocapy style) */}
       <div
         className="game-card"
         onClick={() => onNavigate('/words')}

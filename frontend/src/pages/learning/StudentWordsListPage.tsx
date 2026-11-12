@@ -161,26 +161,17 @@ export const StudentWordsListPage: React.FC = () => {
   const stats = data?.stats || { totalWords: 0, masteredWords: 0, unmasteredWords: 0, progressPercent: 0 }
 
   return (
-    <div className="min-h-screen bg-slate-50/50 text-slate-800 p-6 md:p-8 space-y-6">
-      {/* Top Breadcrumb & Title */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-            <button
-              type="button"
-              onClick={() => navigate('/vocab-sets')}
-              className="hover:text-emerald-600 flex items-center gap-1 transition-colors"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Bộ từ vựng</span>
-            </button>
-            <span className="text-slate-300">/</span>
-            <span className="text-emerald-600 font-bold">{currentSetTitle}</span>
-          </div>
-          <h1 className="text-2xl md:text-3xl font-black text-slate-900 mt-1 tracking-tight">
-            Danh Sách Từ Vựng
-          </h1>
-        </div>
+    <div className="min-h-screen bg-slate-50/50 text-slate-800 p-4 sm:p-6 md:p-8 space-y-6">
+      {/* Top Navigation & Actions */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={() => navigate('/vocab-sets')}
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 hover:text-emerald-700 text-xs font-bold shadow-sm transition-colors"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>{selectedSetId ? currentSetTitle : 'Quay lại Bộ từ vựng'}</span>
+        </button>
 
         {/* Action Buttons styled in clean Light Theme */}
         <div className="flex items-center gap-2.5 flex-wrap">

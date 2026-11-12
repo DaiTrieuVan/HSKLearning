@@ -11,12 +11,16 @@ import com.hsk.learning.dto.PracticeSessionHistoryItemDto;
 import com.hsk.learning.dto.QuizSessionResponse;
 import com.hsk.learning.dto.QuizSubmitRequest;
 import com.hsk.learning.dto.QuizSubmitResponse;
+import com.hsk.learning.dto.TypingSessionResponse;
+import com.hsk.learning.dto.TypingSubmitRequest;
+import com.hsk.learning.dto.TypingSubmitResponse;
 import com.hsk.learning.dto.WritingSessionResponse;
 import com.hsk.learning.dto.WritingSubmitRequest;
 import com.hsk.learning.dto.WritingSubmitResponse;
 import com.hsk.learning.service.PracticeSessionSupport;
 import com.hsk.learning.service.VocabMatchService;
 import com.hsk.learning.service.VocabQuizService;
+import com.hsk.learning.service.VocabTypingService;
 import com.hsk.learning.service.VocabWritingService;
 import jakarta.validation.Valid;
 import java.security.Principal;
@@ -36,6 +40,7 @@ public class VocabPracticeController {
 	private final VocabQuizService vocabQuizService;
 	private final VocabMatchService vocabMatchService;
 	private final VocabWritingService vocabWritingService;
+	private final VocabTypingService vocabTypingService;
 	private final PracticeSessionSupport practiceSessionSupport;
 	private final UserRepository userRepository;
 
@@ -43,11 +48,13 @@ public class VocabPracticeController {
 			VocabQuizService vocabQuizService,
 			VocabMatchService vocabMatchService,
 			VocabWritingService vocabWritingService,
+			VocabTypingService vocabTypingService,
 			PracticeSessionSupport practiceSessionSupport,
 			UserRepository userRepository) {
 		this.vocabQuizService = vocabQuizService;
 		this.vocabMatchService = vocabMatchService;
 		this.vocabWritingService = vocabWritingService;
+		this.vocabTypingService = vocabTypingService;
 		this.practiceSessionSupport = practiceSessionSupport;
 		this.userRepository = userRepository;
 	}
@@ -129,6 +136,30 @@ public class VocabPracticeController {
 			Principal principal) {
 		UserEntity user = requireUser(principal);
 		WritingSubmitResponse response = vocabWritingService.submitWriting(user.getId(), request);
+		return ResponseEntity.ok(response);
+	}
+
+	@GetMapping("/typing")
+	public ResponseEntity<TypingSessionResponse> generateTyping(
+			@RequestParam(required = false) Long lessonId,
+			@RequestParam(required = false) Long vocabSetId,
+			@RequestParam(required = false, defaultValue = "ALL") String filterStatus,
+			@RequestParam(required = false, defaultValue = "RANDOM") String order,
+			@RequestParam(required = false) Integer limit,
+			@RequestParam(required = false, defaultValue = "WORD") String mode,
+			Principal principal) {
+		UserEntity user = requireUser(principal);
+		TypingSessionResponse response = vocabTypingService.generateTypingSession(
+				user.getId(), lessonId, vocabSetId, filterStatus, order, limit, mode);
+		return ResponseEntity.ok(response);
+	}
+
+	@PostMapping("/typing/submit")
+	public ResponseEntity<TypingSubmitResponse> submitTyping(
+			@Valid @RequestBody TypingSubmitRequest request,
+			Principal principal) {
+		UserEntity user = requireUser(principal);
+		TypingSubmitResponse response = vocabTypingService.submitTyping(user.getId(), request);
 		return ResponseEntity.ok(response);
 	}
 

@@ -3,6 +3,66 @@ import { throwApiErrorFromResponse } from './auth'
 export type QuizMode = 'HANZI_TO_MEANING' | 'MEANING_TO_HANZI' | 'MIXED' | 'CONTEXT'
 export type MatchMode = 'MATCH_MEANING' | 'MATCH_PINYIN'
 export type WritingMode = 'TRACE' | 'RECALL' | 'PDF'
+export type TypingMode = 'WORD' | 'PINYIN'
+
+export interface TypingWordItemDto {
+  vocabularyId: number
+  hanzi: string
+  pinyin: string
+  pinyinSearch?: string | null
+  meaning: string
+  partOfSpeech?: string | null
+  audioUrl?: string | null
+  exampleSentence?: string | null
+  maskedExampleSentence?: string | null
+  examplePinyin?: string | null
+  exampleMeaning?: string | null
+}
+
+export interface TypingSessionResponse {
+  vocabSetId?: number | null
+  vocabSetTitle: string
+  mode: TypingMode
+  totalQuestions: number
+  items: TypingWordItemDto[]
+}
+
+export interface TypingResultItemRequest {
+  vocabularyId: number
+  correct: boolean
+  hintsUsed: number
+  markMastered: boolean
+}
+
+export interface TypingSubmitRequest {
+  vocabSetId?: number
+  mode: TypingMode
+  durationSeconds: number
+  idempotencyKey?: string
+  results: TypingResultItemRequest[]
+}
+
+export interface TypingSubmitResponse {
+  sessionId: number
+  correctCount: number
+  totalCount: number
+  accuracyPercent: number
+  xpEarned: number
+  baseXp: number
+  completionBonusXp: number
+  totalUserXp: number
+  duplicateSubmission: boolean
+  completedAt: string
+}
+
+export interface GenerateTypingParams {
+  lessonId?: number
+  vocabSetId?: number
+  filterStatus?: 'ALL' | 'UNMASTERED' | 'MASTERED'
+  order?: 'RANDOM' | 'DEFAULT'
+  limit?: number
+  mode: TypingMode
+}
 
 export interface WritingCharStrokeDto {
   hanzi: string
@@ -374,6 +434,53 @@ export async function submitWritingSession(
 
   if (!response.ok) {
     await throwApiErrorFromResponse(response, 'SUBMIT_WRITING_FAILED', 'Không thể lưu kết quả luyện viết chữ Hán')
+  }
+
+  return response.json()
+}
+
+export async function generateTypingSession(
+  token: string,
+  params: GenerateTypingParams
+): Promise<TypingSessionResponse> {
+  const qs = new URLSearchParams()
+  if (params.lessonId) qs.append('lessonId', params.lessonId.toString())
+  if (params.vocabSetId) qs.append('vocabSetId', params.vocabSetId.toString())
+  if (params.filterStatus) qs.append('filterStatus', params.filterStatus)
+  if (params.order) qs.append('order', params.order)
+  if (params.limit) qs.append('limit', params.limit.toString())
+  qs.append('mode', params.mode)
+
+  const response = await fetch(`${API_BASE}/typing?${qs.toString()}`, {
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
+
+  if (!response.ok) {
+    await throwApiErrorFromResponse(response, 'FETCH_TYPING_FAILED', 'Không thể tải danh sách từ luyện gõ')
+  }
+
+  return response.json()
+}
+
+export async function submitTypingSession(
+  token: string,
+  payload: TypingSubmitRequest
+): Promise<TypingSubmitResponse> {
+  const response = await fetch(`${API_BASE}/typing/submit`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  if (!response.ok) {
+    await throwApiErrorFromResponse(response, 'SUBMIT_TYPING_FAILED', 'Không thể lưu kết quả luyện gõ từ')
   }
 
   return response.json()

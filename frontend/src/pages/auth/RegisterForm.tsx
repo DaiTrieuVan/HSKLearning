@@ -224,24 +224,24 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
       )}
 
       <Input
-        label="Họ và tên học sinh"
+        label="Họ và tên"
         placeholder="Ví dụ: Nguyễn Văn An"
         value={formData.fullName}
         onChange={(e) => handleChange('fullName', e.target.value)}
         error={errors.fullName}
-        icon={<User size={18} />}
+        icon={<User size={16} />}
         required
         maxLength={100}
       />
 
       <Input
-        label="Địa chỉ Email"
+        label="Email"
         type="email"
         placeholder="an.student@example.com"
         value={formData.email}
         onChange={(e) => handleChange('email', e.target.value)}
         error={errors.email}
-        icon={<Mail size={18} />}
+        icon={<Mail size={16} />}
         required
         maxLength={190}
       />
@@ -253,15 +253,15 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
         value={formData.password}
         onChange={(e) => handleChange('password', e.target.value)}
         error={errors.password}
-        icon={<Lock size={18} />}
+        icon={<Lock size={16} />}
         required
         maxLength={72}
       />
 
       {/* Realtime password strength bar */}
       {formData.password && (
-        <div style={{ marginTop: '-8px', marginBottom: '14px' }}>
-          <div style={{ display: 'flex', gap: '4px', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
+        <div style={{ marginTop: '-6px', marginBottom: '10px' }}>
+          <div style={{ display: 'flex', gap: '4px', height: '5px', borderRadius: '3px', overflow: 'hidden' }}>
             <div
               style={{
                 flex: 1,
@@ -284,7 +284,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
               }}
             />
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '0.75rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '3px', fontSize: '0.74rem' }}>
             <span style={{ color: strength.color, fontWeight: 700 }}>{strength.label}</span>
             <span style={{ color: 'var(--text-muted)' }}>{formData.password.length}/72 ký tự</span>
           </div>
@@ -298,29 +298,29 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchT
         value={formData.confirmPassword}
         onChange={(e) => handleChange('confirmPassword', e.target.value)}
         error={errors.confirmPassword}
-        icon={<CheckCircle2 size={18} />}
+        icon={<CheckCircle2 size={16} />}
         required
         maxLength={72}
       />
 
-      <div style={{ marginTop: '22px' }}>
+      <div style={{ marginTop: '16px' }}>
         <button
           type="submit"
           className="btn-gamified btn-primary"
-          style={{ width: '100%', fontSize: '1.05rem', padding: '14px' }}
+          style={{ width: '100%', fontSize: '0.92rem', padding: '11px 16px' }}
           disabled={isLoading}
         >
           {isLoading ? (
             'Đang tạo tài khoản...'
           ) : (
             <>
-              <Sparkles size={20} /> Tạo tài khoản học sinh
+              <Sparkles size={17} /> Tạo tài khoản
             </>
           )}
         </button>
       </div>
 
-      <div style={{ textAlign: 'center', marginTop: '18px', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+      <div style={{ textAlign: 'center', marginTop: '14px', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
         Đã có tài khoản?{' '}
         <button
           type="button"

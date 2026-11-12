@@ -142,7 +142,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
           setEmail(e.target.value)
           if (error) setError('')
         }}
-        icon={<Mail size={20} />}
+        icon={<Mail size={16} />}
         required
       />
 
@@ -157,18 +157,20 @@ export const LoginForm: React.FC<LoginFormProps> = ({
           setPassword(e.target.value)
           if (error) setError('')
         }}
-        icon={<Lock size={20} />}
+        icon={<Lock size={16} />}
         required
       />
 
       <div
         style={{
           display: 'flex',
+          flexWrap: 'wrap',
           justifyContent: 'space-between',
           alignItems: 'center',
-          marginTop: '-4px',
-          marginBottom: '20px',
-          fontSize: '0.88rem',
+          gap: '8px',
+          marginTop: '-2px',
+          marginBottom: '16px',
+          fontSize: '0.82rem',
         }}
       >
         <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', userSelect: 'none' }}>
@@ -176,7 +178,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
             type="checkbox"
             checked={rememberMe}
             onChange={(e) => setRememberMe(e.target.checked)}
-            style={{ width: '16px', height: '16px', accentColor: 'var(--primary)', cursor: 'pointer' }}
+            style={{ width: '15px', height: '15px', accentColor: 'var(--primary)', cursor: 'pointer' }}
           />
           <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>Ghi nhớ đăng nhập</span>
         </label>
@@ -203,20 +205,20 @@ export const LoginForm: React.FC<LoginFormProps> = ({
       <button
         type="submit"
         className="btn-gamified btn-primary"
-        style={{ width: '100%', fontSize: '1.05rem', padding: '14px' }}
+        style={{ width: '100%', fontSize: '0.92rem', padding: '11px 16px' }}
         disabled={isLoading}
       >
         {isLoading ? (
           'Đang xác thực...'
         ) : (
           <>
-            <LogIn size={20} /> Đăng nhập
+            <LogIn size={17} /> Đăng nhập
           </>
         )}
       </button>
 
-      <div style={{ textAlign: 'center', marginTop: '18px', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-        Chưa có tài khoản học sinh?{' '}
+      <div style={{ textAlign: 'center', marginTop: '14px', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+        Chưa có tài khoản?{' '}
         <button
           type="button"
           onClick={onSwitchToRegister}

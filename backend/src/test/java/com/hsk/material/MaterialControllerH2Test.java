@@ -255,10 +255,10 @@ class MaterialControllerH2Test {
 				.andReturn();
 
 		long pdfMaterialId = objectMapper.readTree(uploadPdfRes.getResponse().getContentAsString()).path("id").asLong();
-		JsonNode pdfDetail = waitUntilReady(pdfMaterialId, teacherToken);
-		assertEquals("READY", pdfDetail.path("status").asText());
-		assertEquals(2, pdfDetail.path("totalPages").asInt());
-		assertEquals(2, pdfDetail.path("pages").size());
+		// PDF chuyen ngay sang READY khong can doi convert sang slide
+		JsonNode pdfUploadJson = objectMapper.readTree(uploadPdfRes.getResponse().getContentAsString());
+		assertEquals("READY", pdfUploadJson.path("status").asText());
+		assertEquals(2, pdfUploadJson.path("totalPages").asInt());
 
 		// Upload PPTX
 		byte[] pptxBytes = createSamplePptx(2);
@@ -282,7 +282,7 @@ class MaterialControllerH2Test {
 		assertEquals("READY", pptxDetail.path("status").asText());
 		assertEquals(2, pptxDetail.path("totalPages").asInt());
 
-		// Tao 2 lop: Lop A tat tai ve, Lop B bat tai ve
+		// Chia se ca PDF va PPTX vao 2 lop: Lop A tat tai ve, Lop B bat tai ve
 		long classA = createClassAndEnroll("Lop HSK A", studentAToken);
 		long classB = createClassAndEnroll("Lop HSK B", studentBToken);
 
@@ -302,13 +302,28 @@ class MaterialControllerH2Test {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$", hasSize(2)));
 
-		// Student A (lop A, allowDownload = false): xem duoc danh sach, xem duoc anh slide PNG, nhung tai file goc bi chan 403
+		mockMvc.perform(put("/api/v1/materials/" + pptxMaterialId + "/shares")
+						.header("Authorization", "Bearer " + teacherToken)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(syncPayload))
+				.andExpect(status().isOk());
+
+		// Student A (lop A, allowDownload = false): xem duoc danh sach, stream PDF qua /document va slide PNG cua PPTX, nhung tai file goc bi chan 403
 		mockMvc.perform(get("/api/v1/classes/" + classA + "/materials")
 						.header("Authorization", "Bearer " + studentAToken))
 				.andExpect(status().isOk())
+				.andExpect(jsonPath("$", hasSize(2)))
 				.andExpect(jsonPath("$[0].canDownload", is(false)));
 
-		MvcResult slideRes = mockMvc.perform(get("/api/v1/materials/" + pdfMaterialId + "/slides/1/image")
+		MvcResult docStreamRes = mockMvc.perform(get("/api/v1/materials/" + pdfMaterialId + "/document")
+						.header("Authorization", "Bearer " + studentAToken))
+				.andExpect(status().isOk())
+				.andExpect(header().string("Cache-Control", containsString("no-store")))
+				.andExpect(header().string("X-Content-Type-Options", is("nosniff")))
+				.andReturn();
+		assertArrayEquals(pdfBytes, docStreamRes.getResponse().getContentAsByteArray());
+
+		MvcResult slideRes = mockMvc.perform(get("/api/v1/materials/" + pptxMaterialId + "/slides/1/image")
 						.header("Authorization", "Bearer " + studentAToken))
 				.andExpect(status().isOk())
 				.andExpect(header().string("Cache-Control", containsString("no-store")))
@@ -343,11 +358,14 @@ class MaterialControllerH2Test {
 						.header("Authorization", "Bearer " + studentAToken))
 				.andExpect(status().isOk());
 
-		// Nguoi ngoai khong thuoc lop -> bi chan ca xem slide lan tai ve
+		// Nguoi ngoai khong thuoc lop -> bi chan ca xem tai lieu lan tai ve
 		mockMvc.perform(get("/api/v1/materials/" + pdfMaterialId)
 						.header("Authorization", "Bearer " + outsiderToken))
 				.andExpect(status().isForbidden());
-		mockMvc.perform(get("/api/v1/materials/" + pdfMaterialId + "/slides/1/image")
+		mockMvc.perform(get("/api/v1/materials/" + pdfMaterialId + "/document")
+						.header("Authorization", "Bearer " + outsiderToken))
+				.andExpect(status().isForbidden());
+		mockMvc.perform(get("/api/v1/materials/" + pptxMaterialId + "/slides/1/image")
 						.header("Authorization", "Bearer " + outsiderToken))
 				.andExpect(status().isForbidden());
 		mockMvc.perform(get("/api/v1/materials/" + pdfMaterialId + "/download")

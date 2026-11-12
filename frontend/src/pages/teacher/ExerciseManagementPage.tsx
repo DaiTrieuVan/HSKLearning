@@ -485,55 +485,39 @@ export const ExerciseManagementPage: React.FC = () => {
   })
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col">
-      {/* Top Header */}
-      <header className="sticky top-0 z-20 bg-white border-b border-slate-200 px-6 py-4 shadow-sm">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={() => navigate('/')}
-              className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition"
-              title="Quay lại bàn làm việc"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 border border-purple-100 shadow-sm">
-                <FileCheck className="w-5 h-5" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-slate-900 leading-tight">
-                  Quản lý bài tập
-                </h1>
-                <p className="text-xs text-slate-500">
-                  Đóng gói câu hỏi từ ngân hàng thành bài tập hoàn chỉnh (QTN-09, QTN-19)
-                </p>
-              </div>
-            </div>
-          </div>
+    <div className="w-full max-w-7xl mx-auto space-y-4 sm:space-y-5 text-slate-800">
+      {/* Compact Top Action Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <button
+          onClick={() => navigate('/')}
+          className="inline-flex items-center gap-2 self-start px-3.5 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl shadow-xs transition whitespace-nowrap"
+          title="Quay lại bàn làm việc"
+        >
+          <ArrowLeft className="w-4 h-4 shrink-0" />
+          <span>Quay lại Bảng điều khiển</span>
+        </button>
 
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={() => navigate('/questions')}
-              className="flex items-center space-x-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl shadow-xs transition text-sm"
-            >
-              <HelpCircle className="w-4 h-4 text-indigo-600" />
-              <span>Ngân hàng câu hỏi</span>
-            </button>
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+          <button
+            onClick={() => navigate('/questions')}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-medium rounded-xl shadow-xs transition text-xs sm:text-sm whitespace-nowrap"
+          >
+            <HelpCircle className="w-4 h-4 shrink-0 text-indigo-600" />
+            <span>Ngân hàng câu hỏi</span>
+          </button>
 
-            <button
-              onClick={handleOpenCreateDrawer}
-              className="flex items-center space-x-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-xl shadow-sm transition text-sm"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Tạo bài tập mới</span>
-            </button>
-          </div>
+          <button
+            onClick={handleOpenCreateDrawer}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-xl shadow-sm transition text-xs sm:text-sm whitespace-nowrap"
+          >
+            <Plus className="w-4 h-4 shrink-0" />
+            <span>Tạo bài tập mới</span>
+          </button>
         </div>
-      </header>
+      </div>
 
-      {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-6 py-8 flex-1 w-full space-y-6">
+      {/* Main Content */}
+      <div className="space-y-5 sm:space-y-6">
         {/* Banner Alert Messages */}
         {errorMessage && (
           <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl flex items-start space-x-3 text-rose-800">
@@ -558,16 +542,16 @@ export const ExerciseManagementPage: React.FC = () => {
         {/* CREATE & EDIT EXERCISE SLIDE-OVER DRAWER (NO MODAL! HTT-05-CN-008) */}
         {isDrawerOpen && (
           <div className="bg-white rounded-3xl border-2 border-purple-200 shadow-xl overflow-hidden">
-            <div className="bg-gradient-to-r from-purple-700 via-purple-600 to-indigo-600 px-6 py-4 flex items-center justify-between text-white">
-              <div className="flex items-center space-x-3">
-                <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center font-bold text-white text-sm">
+            <div className="bg-gradient-to-r from-purple-700 via-purple-600 to-indigo-600 px-4 py-3.5 sm:px-6 sm:py-4 flex items-start sm:items-center justify-between gap-3 text-white">
+              <div className="flex items-start sm:items-center gap-3 min-w-0">
+                <div className="w-9 h-9 shrink-0 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center font-bold text-white text-sm">
                   {editingExerciseId ? <Pencil className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
                 </div>
-                <div>
-                  <h2 className="text-base font-bold">
+                <div className="min-w-0">
+                  <h2 className="text-sm sm:text-base font-bold">
                     {editingExerciseId ? 'Chỉnh sửa bài tập (HTT-05-CN-008)' : 'Tạo bài tập mới từ câu hỏi'}
                   </h2>
-                  <p className="text-xs text-purple-100">
+                  <p className="text-xs text-purple-100 mt-0.5">
                     {editingExerciseId
                       ? 'Cập nhật tên bài, điểm từng câu, đổi thứ tự và thêm/bớt câu hỏi (QTN-09, QTN-10, QTN-19).'
                       : 'Chọn câu hỏi từ ngân hàng của bạn, gán điểm từng câu và đặt trạng thái giao bài (QTN-09, QTN-19).'}
@@ -577,14 +561,14 @@ export const ExerciseManagementPage: React.FC = () => {
               <button
                 type="button"
                 onClick={handleCloseCreateDrawer}
-                className="p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
+                className="p-1.5 shrink-0 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
                 title="Đóng soạn bài tập"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveExercise} className="p-6 space-y-6">
+            <form onSubmit={handleSaveExercise} className="p-4 sm:p-6 space-y-5 sm:space-y-6">
               {formErrors.length > 0 && (
                 <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl space-y-1">
                   <div className="flex items-center space-x-2 text-rose-800 font-bold text-sm">
@@ -633,7 +617,7 @@ export const ExerciseManagementPage: React.FC = () => {
                     <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
                       Trạng thái bài tập ban đầu
                     </label>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <button
                         type="button"
                         onClick={() => setStatus('DRAFT')}
@@ -835,19 +819,19 @@ export const ExerciseManagementPage: React.FC = () => {
               </div>
 
               {/* Submit Actions */}
-              <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-100">
+              <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-end gap-2.5 sm:gap-3 pt-4 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={handleCloseCreateDrawer}
                   disabled={submitting}
-                  className="px-5 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition"
+                  className="px-5 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition whitespace-nowrap"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex items-center space-x-2 px-6 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold rounded-xl shadow-md transition disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold rounded-xl shadow-md transition disabled:opacity-50 whitespace-nowrap"
                 >
                   {submitting ? (
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -864,14 +848,14 @@ export const ExerciseManagementPage: React.FC = () => {
         {/* COPY EXERCISE SLIDE-OVER DRAWER (NO MODAL! HTT-05-CN-007) */}
         {isCopyDrawerOpen && sourceExerciseToCopy && (
           <div className="bg-white rounded-3xl border-2 border-indigo-200 shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300">
-            <div className="bg-gradient-to-r from-indigo-700 via-indigo-600 to-purple-600 px-6 py-4 flex items-center justify-between text-white">
-              <div className="flex items-center space-x-3">
-                <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center font-bold text-white text-sm">
+            <div className="bg-gradient-to-r from-indigo-700 via-indigo-600 to-purple-600 px-4 py-3.5 sm:px-6 sm:py-4 flex items-start sm:items-center justify-between gap-3 text-white">
+              <div className="flex items-start sm:items-center gap-3 min-w-0">
+                <div className="w-9 h-9 shrink-0 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center font-bold text-white text-sm">
                   <Copy className="w-5 h-5" />
                 </div>
-                <div>
-                  <h2 className="text-base font-bold">Sao chép bài tập (HTT-05-CN-007)</h2>
-                  <p className="text-xs text-indigo-100">
+                <div className="min-w-0">
+                  <h2 className="text-sm sm:text-base font-bold">Sao chép bài tập (HTT-05-CN-007)</h2>
+                  <p className="text-xs text-indigo-100 mt-0.5">
                     Tạo bản sao độc lập ở trạng thái Bản nháp (DRAFT) để tái sử dụng cho lớp khác (QTN-19).
                   </p>
                 </div>
@@ -879,14 +863,14 @@ export const ExerciseManagementPage: React.FC = () => {
               <button
                 type="button"
                 onClick={handleCloseCopyDrawer}
-                className="p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
+                className="p-1.5 shrink-0 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
                 title="Đóng sao chép"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleExecuteCopy} className="p-6 space-y-5">
+            <form onSubmit={handleExecuteCopy} className="p-4 sm:p-6 space-y-4 sm:space-y-5">
               <div className="bg-indigo-50/70 border border-indigo-100 rounded-2xl p-4 text-xs text-indigo-900 space-y-2">
                 <div className="font-bold flex items-center space-x-2">
                   <span>Bài tập gốc:</span>
@@ -922,18 +906,18 @@ export const ExerciseManagementPage: React.FC = () => {
                 />
               </div>
 
-              <div className="flex items-center justify-end space-x-3 pt-2">
+              <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-end gap-2.5 sm:gap-3 pt-2">
                 <button
                   type="button"
                   onClick={handleCloseCopyDrawer}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-100 font-medium text-xs transition"
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-100 font-medium text-xs transition whitespace-nowrap"
                 >
                   Hủy bỏ
                 </button>
                 <button
                   type="submit"
                   disabled={copying}
-                  className="flex items-center space-x-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-sm text-xs transition disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-sm text-xs transition disabled:opacity-50 whitespace-nowrap"
                 >
                   {copying ? (
                     <>
@@ -955,16 +939,16 @@ export const ExerciseManagementPage: React.FC = () => {
         {/* ASSIGN EXERCISE TO CLASS DRAWER (NO MODAL! HTT-06-CN-001) */}
         {isAssignDrawerOpen && exerciseToAssign && (
           <div className="bg-white rounded-3xl border-2 border-emerald-300 shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300">
-            <div className="bg-gradient-to-r from-emerald-700 via-teal-600 to-cyan-600 px-6 py-4 flex items-center justify-between text-white">
-              <div className="flex items-center space-x-3">
-                <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center font-bold text-white text-sm">
+            <div className="bg-gradient-to-r from-emerald-700 via-teal-600 to-cyan-600 px-4 py-3.5 sm:px-6 sm:py-4 flex items-start sm:items-center justify-between gap-3 text-white">
+              <div className="flex items-start sm:items-center gap-3 min-w-0">
+                <div className="w-9 h-9 shrink-0 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center font-bold text-white text-sm">
                   <Send className="w-5 h-5 text-white" />
                 </div>
-                <div>
-                  <h2 className="text-base font-bold">
+                <div className="min-w-0">
+                  <h2 className="text-sm sm:text-base font-bold">
                     Giao bài tập cho lớp học (HTT-06-CN-001)
                   </h2>
-                  <p className="text-xs text-emerald-100">
+                  <p className="text-xs text-emerald-100 mt-0.5">
                     Chụp snapshot câu hỏi, cố định nội dung đề và điểm số cho lớp (QTN-01, QTN-09, QTN-10).
                   </p>
                 </div>
@@ -972,14 +956,14 @@ export const ExerciseManagementPage: React.FC = () => {
               <button
                 type="button"
                 onClick={handleCloseAssignDrawer}
-                className="p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
+                className="p-1.5 shrink-0 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
                 title="Đóng giao bài"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleExecuteAssign} className="p-6 space-y-5">
+            <form onSubmit={handleExecuteAssign} className="p-4 sm:p-6 space-y-4 sm:space-y-5">
               {assignErrors.length > 0 && (
                 <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl space-y-1">
                   <div className="flex items-center space-x-2 text-rose-800 font-bold text-sm">
@@ -1121,18 +1105,18 @@ export const ExerciseManagementPage: React.FC = () => {
               </div>
 
               {/* Footer Buttons */}
-              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-slate-100">
+              <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-end gap-2.5 sm:gap-3 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={handleCloseAssignDrawer}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-100 font-medium text-xs transition"
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-100 font-medium text-xs transition whitespace-nowrap"
                 >
                   Hủy bỏ
                 </button>
                 <button
                   type="submit"
                   disabled={assigning || teachingClasses.length === 0}
-                  className="flex items-center space-x-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-sm text-xs transition disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-sm text-xs transition disabled:opacity-50 whitespace-nowrap"
                 >
                   {assigning ? (
                     <>
@@ -1154,16 +1138,16 @@ export const ExerciseManagementPage: React.FC = () => {
         {/* DETAIL SLIDE-OVER DRAWER (NO MODAL!) */}
         {detailExercise && (
           <div className="bg-white rounded-3xl border-2 border-slate-200 shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300">
-            <div className="bg-slate-900 px-6 py-4 flex items-center justify-between text-white">
-              <div className="flex items-center space-x-3">
-                <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center font-bold text-white text-sm">
+            <div className="bg-slate-900 px-4 py-3.5 sm:px-6 sm:py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3 text-white">
+              <div className="flex items-start sm:items-center gap-3 min-w-0">
+                <div className="w-9 h-9 shrink-0 rounded-xl bg-white/10 flex items-center justify-center font-bold text-white text-sm">
                   <FileText className="w-5 h-5 text-purple-400" />
                 </div>
-                <div>
-                  <h2 className="text-base font-bold flex items-center space-x-2">
-                    <span>{detailExercise.title}</span>
+                <div className="min-w-0">
+                  <h2 className="text-sm sm:text-base font-bold flex flex-wrap items-center gap-2">
+                    <span className="break-words">{detailExercise.title}</span>
                     <span
-                      className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${
+                      className={`text-xs px-2.5 py-0.5 rounded-full font-semibold whitespace-nowrap ${
                         detailExercise.status === 'READY'
                           ? 'bg-emerald-500/20 text-emerald-300'
                           : 'bg-amber-500/20 text-amber-300'
@@ -1172,18 +1156,18 @@ export const ExerciseManagementPage: React.FC = () => {
                       {detailExercise.status === 'READY' ? 'Sẵn sàng giao' : 'Bản nháp'}
                     </span>
                   </h2>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-400 mt-0.5">
                     Mã bài tập: #{detailExercise.id} • Tổng {detailExercise.totalPoints} điểm •{' '}
                     {detailExercise.questionCount} câu hỏi
                   </p>
                 </div>
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {detailExercise.status === 'READY' && (
                   <button
                     type="button"
                     onClick={() => handleOpenAssignDrawer(detailExercise)}
-                    className="flex items-center space-x-1 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 rounded-lg transition shadow-sm"
+                    className="flex items-center space-x-1 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 rounded-lg transition shadow-sm whitespace-nowrap"
                     title="Giao bài tập này cho lớp"
                   >
                     <Send className="w-3.5 h-3.5" />
@@ -1193,7 +1177,7 @@ export const ExerciseManagementPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => handleOpenEditDrawer(detailExercise)}
-                  className="flex items-center space-x-1 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 px-3 py-1.5 rounded-lg transition shadow-sm"
+                  className="flex items-center space-x-1 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 px-3 py-1.5 rounded-lg transition shadow-sm whitespace-nowrap"
                   title="Chỉnh sửa bài tập này"
                 >
                   <Pencil className="w-3.5 h-3.5" />
@@ -1202,7 +1186,7 @@ export const ExerciseManagementPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => handleOpenCopyDrawer(detailExercise)}
-                  className="flex items-center space-x-1 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 rounded-lg transition shadow-sm"
+                  className="flex items-center space-x-1 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 rounded-lg transition shadow-sm whitespace-nowrap"
                   title="Sao chép bài tập này"
                 >
                   <Copy className="w-3.5 h-3.5" />
@@ -1211,14 +1195,14 @@ export const ExerciseManagementPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setDetailExercise(null)}
-                  className="p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
+                  className="p-1.5 ml-auto text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="p-4 sm:p-6 space-y-4">
               {detailExercise.description && (
                 <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700">
                   <span className="font-bold text-slate-900">Mô tả: </span>
@@ -1235,18 +1219,18 @@ export const ExerciseManagementPage: React.FC = () => {
                     {detailExercise.questions.map((q, idx) => (
                       <div
                         key={q.id}
-                        className="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between text-xs"
+                        className="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between gap-2 text-xs"
                       >
-                        <div className="flex items-center space-x-3">
-                          <span className="w-6 h-6 rounded-md bg-purple-100 text-purple-800 font-bold flex items-center justify-center">
+                        <div className="flex items-start sm:items-center gap-2.5 sm:gap-3 min-w-0">
+                          <span className="w-6 h-6 shrink-0 rounded-md bg-purple-100 text-purple-800 font-bold flex items-center justify-center">
                             {idx + 1}
                           </span>
-                          <div>
-                            <div className="font-bold text-slate-900">{q.content}</div>
+                          <div className="min-w-0">
+                            <div className="font-bold text-slate-900 break-words">{q.content}</div>
                             <span className="text-slate-400 text-[11px]">Dạng: {q.type}</span>
                           </div>
                         </div>
-                        <span className="font-extrabold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-lg">
+                        <span className="shrink-0 font-extrabold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-lg whitespace-nowrap">
                           {q.points} điểm
                         </span>
                       </div>
@@ -1261,9 +1245,9 @@ export const ExerciseManagementPage: React.FC = () => {
         )}
 
         {/* Filter and Search Bar */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="relative w-full md:w-96">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+        <div className="bg-white rounded-2xl border border-slate-200 p-3.5 sm:p-4 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
+          <div className="relative w-full lg:w-96">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchTerm}
@@ -1273,12 +1257,12 @@ export const ExerciseManagementPage: React.FC = () => {
             />
           </div>
 
-          <div className="flex items-center space-x-3 w-full md:w-auto justify-between md:justify-end">
-            <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-medium">
+          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 w-full lg:w-auto justify-between lg:justify-end">
+            <div className="flex flex-wrap items-center bg-slate-100 p-1 rounded-xl text-xs font-medium gap-1">
               <button
                 type="button"
                 onClick={() => setStatusFilter('ALL')}
-                className={`px-3 py-1 rounded-lg transition ${
+                className={`px-3 py-1.5 rounded-lg transition whitespace-nowrap ${
                   statusFilter === 'ALL'
                     ? 'bg-white text-slate-900 shadow-sm font-semibold'
                     : 'text-slate-500 hover:text-slate-800'
@@ -1289,7 +1273,7 @@ export const ExerciseManagementPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setStatusFilter('DRAFT')}
-                className={`px-3 py-1 rounded-lg transition ${
+                className={`px-3 py-1.5 rounded-lg transition whitespace-nowrap ${
                   statusFilter === 'DRAFT'
                     ? 'bg-white text-amber-700 shadow-sm font-semibold'
                     : 'text-slate-500 hover:text-slate-800'
@@ -1300,7 +1284,7 @@ export const ExerciseManagementPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setStatusFilter('READY')}
-                className={`px-3 py-1 rounded-lg transition ${
+                className={`px-3 py-1.5 rounded-lg transition whitespace-nowrap ${
                   statusFilter === 'READY'
                     ? 'bg-white text-emerald-700 shadow-sm font-semibold'
                     : 'text-slate-500 hover:text-slate-800'
@@ -1310,8 +1294,8 @@ export const ExerciseManagementPage: React.FC = () => {
               </button>
             </div>
 
-            <span className="flex items-center space-x-1.5 font-medium text-xs text-slate-500">
-              <Layers className="w-4 h-4 text-purple-500" />
+            <span className="inline-flex items-center gap-1.5 font-medium text-xs text-slate-600 bg-slate-100 px-3 py-1.5 rounded-xl whitespace-nowrap">
+              <Layers className="w-4 h-4 text-purple-500 shrink-0" />
               <span>{filteredExercises.length} bài tập</span>
             </span>
           </div>
@@ -1324,7 +1308,7 @@ export const ExerciseManagementPage: React.FC = () => {
             <p className="text-sm font-medium">Đang tải danh sách bài tập...</p>
           </div>
         ) : filteredExercises.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center max-w-lg mx-auto shadow-sm">
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-12 text-center max-w-lg mx-auto shadow-sm">
             <div className="w-16 h-16 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-600 mx-auto mb-4">
               <FileCheck className="w-8 h-8" />
             </div>
@@ -1339,19 +1323,19 @@ export const ExerciseManagementPage: React.FC = () => {
             {!searchTerm && (
               <button
                 onClick={handleOpenCreateDrawer}
-                className="inline-flex items-center space-x-2 px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-xl shadow-sm transition"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-xl shadow-sm transition whitespace-nowrap"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-4 h-4 shrink-0" />
                 <span>Tạo bài tập đầu tiên</span>
               </button>
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
             {filteredExercises.map((ex) => (
               <div
                 key={ex.id}
-                className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition flex flex-col justify-between space-y-4"
+                className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm hover:shadow-md transition flex flex-col justify-between space-y-4"
               >
                 <div className="space-y-3">
                   <div className="flex items-start justify-between">
@@ -1384,22 +1368,22 @@ export const ExerciseManagementPage: React.FC = () => {
                   )}
                 </div>
 
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                  <div className="flex items-center space-x-3 text-xs">
-                    <span className="text-slate-600 font-medium">
+                <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
+                    <span className="text-slate-600 font-medium whitespace-nowrap">
                       {ex.questionCount} câu hỏi
                     </span>
-                    <span className="font-extrabold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md">
+                    <span className="font-extrabold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md whitespace-nowrap">
                       {ex.totalPoints} điểm
                     </span>
                   </div>
 
-                  <div className="flex items-center space-x-2">
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                     {ex.status === 'READY' && (
                       <button
                         type="button"
                         onClick={() => handleOpenAssignDrawer(ex)}
-                        className="flex items-center space-x-1 text-xs font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1.5 rounded-lg transition"
+                        className="flex items-center space-x-1 text-xs font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1.5 rounded-lg transition whitespace-nowrap"
                         title="Giao bài tập cho lớp"
                       >
                         <Send className="w-3.5 h-3.5" />
@@ -1409,7 +1393,7 @@ export const ExerciseManagementPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => handleOpenEditDrawer(ex)}
-                      className="flex items-center space-x-1 text-xs font-bold text-amber-700 hover:text-amber-800 bg-amber-50 hover:bg-amber-100 px-2.5 py-1.5 rounded-lg transition"
+                      className="flex items-center space-x-1 text-xs font-bold text-amber-700 hover:text-amber-800 bg-amber-50 hover:bg-amber-100 px-2.5 py-1.5 rounded-lg transition whitespace-nowrap"
                       title="Chỉnh sửa bài tập"
                     >
                       <Pencil className="w-3.5 h-3.5" />
@@ -1419,7 +1403,7 @@ export const ExerciseManagementPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => handleOpenCopyDrawer(ex)}
-                      className="flex items-center space-x-1 text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1.5 rounded-lg transition"
+                      className="flex items-center space-x-1 text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1.5 rounded-lg transition whitespace-nowrap"
                       title="Sao chép bài tập"
                     >
                       <Copy className="w-3.5 h-3.5" />
@@ -1429,7 +1413,7 @@ export const ExerciseManagementPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => handleOpenDetail(ex.id)}
-                      className="flex items-center space-x-1 text-xs font-bold text-purple-600 hover:text-purple-800 bg-purple-50 hover:bg-purple-100 px-2.5 py-1.5 rounded-lg transition"
+                      className="flex items-center space-x-1 text-xs font-bold text-purple-600 hover:text-purple-800 bg-purple-50 hover:bg-purple-100 px-2.5 py-1.5 rounded-lg transition whitespace-nowrap"
                     >
                       <Eye className="w-3.5 h-3.5" />
                       <span>Chi tiết</span>
@@ -1440,7 +1424,7 @@ export const ExerciseManagementPage: React.FC = () => {
             ))}
           </div>
         )}
-      </main>
+      </div>
     </div>
   )
 }

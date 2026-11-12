@@ -167,16 +167,16 @@ export const PracticeHubPage: React.FC = () => {
 
         return (
             <div className="max-w-7xl mx-auto space-y-4">
-                {/* 1. Thanh 4 ô Cấu hình nhỏ gọn trên cùng (Không có header cồng kềnh) */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {/* 1. Thanh 4 ô Cấu hình nhỏ gọn trên cùng (Responsive 2x2 Mobile/Tablet -> 4x1 Desktop) */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
                     {/* Bộ từ vựng */}
-                    <div className="bg-white border border-slate-200 rounded-2xl px-3.5 py-2 shadow-sm hover:border-slate-300 transition-colors">
+                    <div className="bg-white border border-slate-200 rounded-2xl px-2.5 sm:px-3.5 py-2 shadow-sm hover:border-slate-300 transition-colors min-w-0">
                         <div className="text-[11px] font-bold text-slate-400 text-center mb-0.5">Bộ từ vựng</div>
                         <div className="relative flex items-center">
                             <select
                                 value={selectedSetId}
                                 onChange={(e) => setSelectedSetId(e.target.value)}
-                                className="w-full appearance-none bg-transparent text-slate-800 font-bold text-xs sm:text-sm text-center pr-5 py-0.5 focus:outline-none cursor-pointer truncate"
+                                className="w-full min-h-[34px] appearance-none bg-transparent text-slate-800 font-bold text-xs sm:text-sm text-center pr-5 py-0.5 focus:outline-none cursor-pointer truncate"
                             >
                                 <option value="all">Tất cả bộ từ</option>
                                 {vocabSets.map((set) => (
@@ -190,13 +190,13 @@ export const PracticeHubPage: React.FC = () => {
                     </div>
 
                     {/* Bộ lọc */}
-                    <div className="bg-white border border-slate-200 rounded-2xl px-3.5 py-2 shadow-sm hover:border-slate-300 transition-colors">
+                    <div className="bg-white border border-slate-200 rounded-2xl px-2.5 sm:px-3.5 py-2 shadow-sm hover:border-slate-300 transition-colors min-w-0">
                         <div className="text-[11px] font-bold text-slate-400 text-center mb-0.5">Bộ lọc</div>
                         <div className="relative flex items-center">
                             <select
                                 value={filterStatus}
                                 onChange={(e) => setFilterStatus(e.target.value as any)}
-                                className="w-full appearance-none bg-transparent text-slate-800 font-bold text-xs sm:text-sm text-center pr-5 py-0.5 focus:outline-none cursor-pointer"
+                                className="w-full min-h-[34px] appearance-none bg-transparent text-slate-800 font-bold text-xs sm:text-sm text-center pr-5 py-0.5 focus:outline-none cursor-pointer"
                             >
                                 <option value="UNMASTERED">Chưa thuộc</option>
                                 <option value="ALL">Tất cả từ</option>
@@ -207,13 +207,13 @@ export const PracticeHubPage: React.FC = () => {
                     </div>
 
                     {/* Thứ tự */}
-                    <div className="bg-white border border-slate-200 rounded-2xl px-3.5 py-2 shadow-sm hover:border-slate-300 transition-colors">
+                    <div className="bg-white border border-slate-200 rounded-2xl px-2.5 sm:px-3.5 py-2 shadow-sm hover:border-slate-300 transition-colors min-w-0">
                         <div className="text-[11px] font-bold text-slate-400 text-center mb-0.5">Thứ tự</div>
                         <div className="relative flex items-center">
                             <select
                                 value={order}
                                 onChange={(e) => setOrder(e.target.value as any)}
-                                className="w-full appearance-none bg-transparent text-slate-800 font-bold text-xs sm:text-sm text-center pr-5 py-0.5 focus:outline-none cursor-pointer"
+                                className="w-full min-h-[34px] appearance-none bg-transparent text-slate-800 font-bold text-xs sm:text-sm text-center pr-5 py-0.5 focus:outline-none cursor-pointer"
                             >
                                 <option value="RANDOM">Ngẫu nhiên</option>
                                 <option value="DEFAULT">Mặc định</option>
@@ -223,13 +223,13 @@ export const PracticeHubPage: React.FC = () => {
                     </div>
 
                     {/* Số lượng */}
-                    <div className="bg-white border border-slate-200 rounded-2xl px-3.5 py-2 shadow-sm hover:border-slate-300 transition-colors">
+                    <div className="bg-white border border-slate-200 rounded-2xl px-2.5 sm:px-3.5 py-2 shadow-sm hover:border-slate-300 transition-colors min-w-0">
                         <div className="text-[11px] font-bold text-slate-400 text-center mb-0.5">Số lượng</div>
                         <div className="relative flex items-center">
                             <select
                                 value={limit}
                                 onChange={(e) => setLimit(e.target.value)}
-                                className="w-full appearance-none bg-transparent text-slate-800 font-bold text-xs sm:text-sm text-center pr-5 py-0.5 focus:outline-none cursor-pointer"
+                                className="w-full min-h-[34px] appearance-none bg-transparent text-slate-800 font-bold text-xs sm:text-sm text-center pr-5 py-0.5 focus:outline-none cursor-pointer"
                             >
                                 <option value="10">10 từ</option>
                                 <option value="20">20 từ</option>
@@ -242,39 +242,39 @@ export const PracticeHubPage: React.FC = () => {
                 </div>
 
                 {/* 2. Dòng trạng thái Chọn game + Cài đặt & Số từ sẵn sàng */}
-                <div className="flex items-center justify-between px-0.5">
-                    <div className="flex items-center gap-2 text-sm font-extrabold text-slate-700">
+                <div className="flex flex-wrap items-center justify-between gap-2 px-0.5">
+                    <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-extrabold text-slate-700">
                         <span>Chọn game:</span>
                         <button
                             type="button"
                             onClick={() => setSettingsOpen(true)}
                             title="Cài đặt âm thanh & thời gian"
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 border border-transparent hover:border-emerald-200 transition-colors text-xs font-bold"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-slate-600 hover:text-emerald-700 bg-white sm:bg-transparent hover:bg-emerald-50 border border-slate-200 sm:border-transparent hover:border-emerald-200 transition-colors text-xs font-bold"
                         >
                             <Settings className="w-4 h-4" />
-                            <span className="hidden sm:inline">{gameSettings.timePerQuestion}s</span>
+                            <span>{gameSettings.timePerQuestion}s</span>
                         </button>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-slate-200/70 text-slate-700 text-xs font-extrabold">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                        <span className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-0.5 rounded-lg bg-slate-200/70 text-slate-700 text-[11px] sm:text-xs font-extrabold">
                             <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
                             {stats ? `${stats.progressPercent}%` : '0%'}
                         </span>
-                        <span className="px-2.5 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 text-xs font-extrabold tracking-wide uppercase">
+                        <span className="px-2 sm:px-2.5 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 text-[11px] sm:text-xs font-extrabold tracking-wide uppercase">
                             {loadingStats ? '...' : `${readyWordCount} từ sẵn sàng`}
                         </span>
                     </div>
                 </div>
 
-                {/* 3. Lưới 7 Thẻ Game Nằm Gọn 1 Hàng Ngang */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+                {/* 3. Lưới 7 Thẻ Game Responsive: Mobile 2 cột -> Tablet 3/4 cột -> Desktop XL 7 cột */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7 gap-2.5 sm:gap-3">
                     {/* 3.1 Flashcard (Active & Clickable) */}
                     <button
                         type="button"
                         onClick={handleStartFlashcard}
                         disabled={readyWordCount === 0}
-                        className="group relative rounded-2xl p-3.5 bg-gradient-to-b from-violet-500 to-indigo-600 text-white shadow-md shadow-indigo-500/20 hover:-translate-y-1 hover:shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 transition-all flex flex-col items-center justify-between text-center min-h-[168px]"
+                        className="group relative rounded-2xl p-3 sm:p-3.5 bg-gradient-to-b from-violet-500 to-indigo-600 text-white shadow-md shadow-indigo-500/20 hover:-translate-y-1 hover:shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 transition-all flex flex-col items-center justify-between text-center min-h-[140px] sm:min-h-[158px] xl:min-h-[168px]"
                     >
                         <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform">
                             <Layers className="w-5 h-5 text-white" />
@@ -298,7 +298,7 @@ export const PracticeHubPage: React.FC = () => {
                         type="button"
                         onClick={() => setQuizDrawerOpen(true)}
                         disabled={readyWordCount === 0}
-                        className="group relative rounded-2xl p-3.5 bg-gradient-to-b from-amber-500 to-orange-600 text-white shadow-md shadow-orange-500/20 hover:-translate-y-1 hover:shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 transition-all flex flex-col items-center justify-between text-center min-h-[168px]"
+                        className="group relative rounded-2xl p-3 sm:p-3.5 bg-gradient-to-b from-amber-500 to-orange-600 text-white shadow-md shadow-orange-500/20 hover:-translate-y-1 hover:shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 transition-all flex flex-col items-center justify-between text-center min-h-[140px] sm:min-h-[158px] xl:min-h-[168px]"
                     >
                             <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform">
                                 <CheckSquare className="w-5 h-5 text-white" />
@@ -322,7 +322,7 @@ export const PracticeHubPage: React.FC = () => {
                                 type="button"
                                 onClick={() => setMatchDrawerOpen(true)}
                                 disabled={readyWordCount === 0}
-                                className="group relative rounded-2xl p-3.5 bg-gradient-to-b from-sky-500 to-blue-600 text-white shadow-md shadow-sky-500/20 hover:-translate-y-1 hover:shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 transition-all flex flex-col items-center justify-between text-center min-h-[168px]"
+                                className="group relative rounded-2xl p-3 sm:p-3.5 bg-gradient-to-b from-sky-500 to-blue-600 text-white shadow-md shadow-sky-500/20 hover:-translate-y-1 hover:shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 transition-all flex flex-col items-center justify-between text-center min-h-[140px] sm:min-h-[158px] xl:min-h-[168px]"
                             >
                                 <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform">
                                     <LayoutGrid className="w-5 h-5 text-white" />
@@ -344,7 +344,7 @@ export const PracticeHubPage: React.FC = () => {
                             {/* 3.4 Viết chữ (Sắp có) */}
                             <div
                                 title="Sắp ra mắt trong Milestone 4"
-                                className="relative rounded-2xl p-3.5 bg-teal-50 border border-teal-200/90 text-teal-950 flex flex-col items-center justify-between text-center min-h-[168px] opacity-80 select-none"
+                                className="relative rounded-2xl p-3 sm:p-3.5 bg-teal-50 border border-teal-200/90 text-teal-950 flex flex-col items-center justify-between text-center min-h-[140px] sm:min-h-[158px] xl:min-h-[168px] opacity-80 select-none"
                             >
                                 <span className="absolute top-2 right-2 text-[9px] font-bold px-1.5 py-0.5 rounded bg-teal-200/80 text-teal-900">
                                     Sắp có
@@ -369,7 +369,7 @@ export const PracticeHubPage: React.FC = () => {
                             {/* 3.5 Gõ từ (Sắp có) */}
                             <div
                                 title="Sắp ra mắt trong Milestone 5"
-                                className="relative rounded-2xl p-3.5 bg-emerald-50 border border-emerald-200/90 text-emerald-950 flex flex-col items-center justify-between text-center min-h-[168px] opacity-80 select-none"
+                                className="relative rounded-2xl p-3 sm:p-3.5 bg-emerald-50 border border-emerald-200/90 text-emerald-950 flex flex-col items-center justify-between text-center min-h-[140px] sm:min-h-[158px] xl:min-h-[168px] opacity-80 select-none"
                             >
                                 <span className="absolute top-2 right-2 text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-200/80 text-emerald-900">
                                     Sắp có
@@ -394,7 +394,7 @@ export const PracticeHubPage: React.FC = () => {
                             {/* 3.6 Nghe viết (Sắp có) */}
                             <div
                                 title="Sắp ra mắt trong Milestone 6"
-                                className="relative rounded-2xl p-3.5 bg-blue-50 border border-blue-200/90 text-blue-950 flex flex-col items-center justify-between text-center min-h-[168px] opacity-80 select-none"
+                                className="relative rounded-2xl p-3 sm:p-3.5 bg-blue-50 border border-blue-200/90 text-blue-950 flex flex-col items-center justify-between text-center min-h-[140px] sm:min-h-[158px] xl:min-h-[168px] opacity-80 select-none"
                             >
                                 <span className="absolute top-2 right-2 text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-200/80 text-blue-900">
                                     Sắp có
@@ -416,10 +416,10 @@ export const PracticeHubPage: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* 3.7 Game đặc biệt */}
+                            {/* 3.7 Game đặc biệt (Tự động dàn đều hàng cuối trên mobile & tablet) */}
                             <div
                                 title="Sắp ra mắt"
-                                className="relative rounded-2xl p-3.5 bg-rose-50 border border-rose-200/90 text-rose-950 flex flex-col items-center justify-between text-center min-h-[168px] opacity-80 select-none"
+                                className="col-span-2 sm:col-span-3 md:col-span-2 xl:col-span-1 relative rounded-2xl p-3 sm:p-3.5 bg-rose-50 border border-rose-200/90 text-rose-950 flex flex-col items-center justify-between text-center min-h-[120px] sm:min-h-[136px] md:min-h-[158px] xl:min-h-[168px] opacity-80 select-none"
                             >
                                 <span className="absolute top-2 right-2 text-[9px] font-black px-1.5 py-0.5 rounded-full bg-rose-500 text-white shadow-sm">
                                     HOT
@@ -494,7 +494,7 @@ export const PracticeHubPage: React.FC = () => {
                                             <span>Chưa có lịch sử luyện tập. Hãy chơi thử một game nhé!</span>
                                         </div>
                                     ) : (
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-2.5">
                                             {historyItems.map((item) => (
                                                 <div
                                                     key={item.id}

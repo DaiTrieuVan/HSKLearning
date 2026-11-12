@@ -230,7 +230,7 @@ export const VocabFlashcardPracticePage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50/50 flex flex-col items-center justify-center p-4">
+      <div className="min-h-[70vh] flex flex-col items-center justify-center p-4">
         <div className="w-12 h-12 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin"></div>
         <p className="mt-4 text-sm font-bold text-slate-600">Đang chuẩn bị bộ thẻ Flashcard...</p>
       </div>
@@ -239,8 +239,8 @@ export const VocabFlashcardPracticePage: React.FC = () => {
 
   if (error || cards.length === 0) {
     return (
-      <div className="min-h-screen bg-slate-50/50 flex flex-col items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-3xl border border-slate-200 p-8 text-center shadow-sm">
+      <div className="min-h-[70vh] flex flex-col items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 text-center shadow-sm">
           <div className="w-16 h-16 rounded-2xl bg-slate-100 text-slate-400 mx-auto flex items-center justify-center mb-4">
             <Layers className="w-8 h-8" />
           </div>
@@ -274,8 +274,8 @@ export const VocabFlashcardPracticePage: React.FC = () => {
   // Session Completed Screen
   if (sessionCompleted) {
     return (
-      <div className="min-h-screen bg-slate-50/50 flex flex-col items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-3xl border border-slate-200 p-8 text-center shadow-lg shadow-slate-200/50">
+      <div className="min-h-[75vh] flex flex-col items-center justify-center p-2 sm:p-4">
+        <div className="max-w-md w-full bg-white rounded-3xl border border-slate-200 p-5 sm:p-8 text-center shadow-lg shadow-slate-200/50">
           <div className="w-20 h-20 rounded-3xl bg-emerald-50 text-emerald-600 mx-auto flex items-center justify-center mb-5 shadow-sm">
             <Award className="w-10 h-10" />
           </div>
@@ -345,72 +345,70 @@ export const VocabFlashcardPracticePage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/60 pb-16 flex flex-col">
-      {/* 1. Top Bar (Header & Controls) */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-20">
-        <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
-          {/* Back & Exit */}
+    <div className="max-w-3xl mx-auto pb-8 sm:pb-12 space-y-4">
+      {/* 1. Top Control Card (Gọn gàng trên Mobile/Tablet/Desktop, không chồng sticky header) */}
+      <div className="bg-white border border-slate-200 rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 shadow-sm flex flex-wrap items-center justify-between gap-2.5">
+        {/* Back & Exit */}
+        <button
+          type="button"
+          onClick={() => navigate('/practice')}
+          className="inline-flex items-center gap-1.5 text-slate-600 hover:text-slate-900 font-bold text-xs sm:text-sm px-2.5 py-1.5 rounded-xl hover:bg-slate-100 transition-colors shrink-0"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Thoát</span>
+        </button>
+
+        {/* Progress & Card Count */}
+        <div className="flex-1 min-w-[110px] max-w-xs flex flex-col items-center order-3 basis-full sm:order-none sm:basis-auto">
+          <div className="flex items-center justify-between w-full text-[11px] sm:text-xs font-bold text-slate-500 mb-1">
+            <span>Tiến độ</span>
+            <span className="text-emerald-700">
+              {currentIndex + 1} / {cards.length}
+            </span>
+          </div>
+          <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-emerald-500 transition-all duration-300 rounded-full"
+              style={{ width: `${progressPercent}%` }}
+            ></div>
+          </div>
+        </div>
+
+        {/* Right Toolbar: XP Pill, Flip Direction Toggle & Reset */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+          {/* XP Pill */}
+          <div className="flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 px-2 sm:px-2.5 py-1 rounded-xl text-[11px] sm:text-xs font-extrabold shadow-xs">
+            <Flame className="w-3.5 h-3.5 text-amber-500" />
+            <span>+{earnedXp} XP</span>
+          </div>
+
+          {/* Flip Mode Toggle */}
           <button
             type="button"
-            onClick={() => navigate('/practice')}
-            className="flex items-center gap-2 text-slate-600 hover:text-slate-900 font-bold text-sm px-3 py-1.5 rounded-xl hover:bg-slate-100 transition-colors"
+            onClick={() => {
+              setFlipMode((prev) => (prev === 'HANZI_TO_MEANING' ? 'MEANING_TO_HANZI' : 'HANZI_TO_MEANING'))
+              setIsFlipped(false)
+            }}
+            title="Đổi chiều lật thẻ"
+            className="text-[11px] sm:text-xs font-bold px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors whitespace-nowrap"
           >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Thoát</span>
+            {flipMode === 'HANZI_TO_MEANING' ? 'Từ → Nghĩa' : 'Nghĩa → Từ'}
           </button>
 
-          {/* Progress & Card Count */}
-          <div className="flex-1 max-w-xs flex flex-col items-center">
-            <div className="flex items-center justify-between w-full text-xs font-bold text-slate-500 mb-1">
-              <span>Tiến độ</span>
-              <span className="text-emerald-700">
-                {currentIndex + 1} / {cards.length}
-              </span>
-            </div>
-            <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-emerald-500 transition-all duration-300 rounded-full"
-                style={{ width: `${progressPercent}%` }}
-              ></div>
-            </div>
-          </div>
-
-          {/* Right Toolbar: Flip Direction Toggle & XP Pill */}
-          <div className="flex items-center gap-3">
-            {/* XP Pill */}
-            <div className="hidden sm:flex items-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1 rounded-xl text-xs font-extrabold shadow-sm">
-              <Flame className="w-3.5 h-3.5 text-amber-500" />
-              <span>+{earnedXp} XP</span>
-            </div>
-
-            {/* Flip Mode Toggle */}
-            <button
-              type="button"
-              onClick={() => {
-                setFlipMode((prev) => (prev === 'HANZI_TO_MEANING' ? 'MEANING_TO_HANZI' : 'HANZI_TO_MEANING'))
-                setIsFlipped(false)
-              }}
-              title="Đổi chiều lật thẻ"
-              className="text-xs font-bold px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors flex items-center gap-1.5"
-            >
-              <span>{flipMode === 'HANZI_TO_MEANING' ? 'Từ → Nghĩa' : 'Nghĩa → Từ'}</span>
-            </button>
-
-            {/* Reset Session */}
-            <button
-              type="button"
-              onClick={loadCards}
-              title="Chơi lại từ đầu"
-              className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-            >
-              <RotateCcw className="w-4 h-4" />
-            </button>
-          </div>
+          {/* Reset Session */}
+          <button
+            type="button"
+            onClick={loadCards}
+            title="Chơi lại từ đầu"
+            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+          >
+            <RotateCcw className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
-      {/* 2. Main 3D Flip Card Container */}
-      <div className="flex-1 max-w-2xl w-full mx-auto px-4 flex flex-col justify-center items-center py-6">
+      {/* 2. Main 3D Flip Card Container (CSS Grid overlay giúp card tự giãn vừa nội dung trên mobile/tablet không bao giờ tràn chữ) */}
+      <div className="max-w-2xl w-full mx-auto flex flex-col justify-center items-center pt-1 sm:pt-3">
         {currentCard && (
           <div
             onClick={handleFlipCard}
@@ -422,9 +420,8 @@ export const VocabFlashcardPracticePage: React.FC = () => {
                 transformStyle: 'preserve-3d',
                 transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
                 transition: 'transform 0.45s cubic-bezier(0.4, 0, 0.2, 1)',
-                minHeight: '380px',
               }}
-              className="relative w-full rounded-3xl bg-white border border-slate-200 shadow-md group-hover:shadow-xl transition-shadow flex flex-col"
+              className="relative w-full min-h-[290px] sm:min-h-[360px] md:min-h-[390px] grid grid-cols-1 rounded-3xl bg-white border border-slate-200 shadow-md group-hover:shadow-xl transition-shadow"
             >
               {/* === MẶT TRƯỚC (FRONT FACE) === */}
               <div
@@ -432,13 +429,13 @@ export const VocabFlashcardPracticePage: React.FC = () => {
                   backfaceVisibility: 'hidden',
                   WebkitBackfaceVisibility: 'hidden',
                 }}
-                className={`absolute inset-0 p-8 sm:p-10 flex flex-col justify-between items-center text-center ${
+                className={`col-start-1 row-start-1 p-5 sm:p-8 md:p-10 flex flex-col justify-between items-center text-center ${
                   isFlipped ? 'pointer-events-none' : ''
                 }`}
               >
                 {/* Top Badge: Part of speech */}
-                <div className="w-full flex items-center justify-between">
-                  <span className="text-[11px] font-extrabold uppercase tracking-wider px-3 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                <div className="w-full flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider px-2.5 sm:px-3 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
                     {currentCard.partOfSpeech || 'TỪ VỰNG'}
                   </span>
                   <button
@@ -447,7 +444,7 @@ export const VocabFlashcardPracticePage: React.FC = () => {
                       e.stopPropagation()
                       speakText(currentCard.hanzi)
                     }}
-                    className="w-9 h-9 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-600 flex items-center justify-center transition-colors shadow-sm"
+                    className="w-9 h-9 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-600 flex items-center justify-center transition-colors shadow-sm shrink-0"
                     title="Phát âm (phím S)"
                   >
                     <Volume2 className="w-5 h-5" />
@@ -455,11 +452,11 @@ export const VocabFlashcardPracticePage: React.FC = () => {
                 </div>
 
                 {/* Center Content */}
-                <div className="my-auto py-6">
+                <div className="my-auto py-4 sm:py-6 w-full px-1">
                   {flipMode === 'HANZI_TO_MEANING' ? (
                     <div>
                       <h2
-                        className="text-6xl sm:text-7xl font-extrabold text-slate-900 tracking-wide mb-3"
+                        className="text-4xl sm:text-6xl md:text-7xl font-extrabold text-slate-900 tracking-wide mb-2 break-words"
                         style={{ fontFamily: `'Noto Serif SC', 'PingFang SC', serif` }}
                       >
                         {currentCard.hanzi}
@@ -467,7 +464,7 @@ export const VocabFlashcardPracticePage: React.FC = () => {
                     </div>
                   ) : (
                     <div>
-                      <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-snug mb-3">
+                      <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight leading-snug mb-2 break-words">
                         {currentCard.meaning}
                       </h2>
                     </div>
@@ -475,8 +472,9 @@ export const VocabFlashcardPracticePage: React.FC = () => {
                 </div>
 
                 {/* Bottom Prompt Hint */}
-                <div className="text-xs font-semibold text-slate-400 flex items-center gap-2">
-                  <span>Nhấn Space hoặc chạm để lật xem đáp án</span>
+                <div className="text-[11px] sm:text-xs font-semibold text-slate-400 flex items-center gap-2">
+                  <span className="hidden md:inline">Nhấn Space hoặc chạm vào thẻ để lật xem đáp án</span>
+                  <span className="md:hidden">Chạm vào thẻ để lật xem đáp án</span>
                 </div>
               </div>
 
@@ -487,13 +485,13 @@ export const VocabFlashcardPracticePage: React.FC = () => {
                   WebkitBackfaceVisibility: 'hidden',
                   transform: 'rotateY(180deg)',
                 }}
-                className={`absolute inset-0 p-8 sm:p-10 flex flex-col justify-between items-center text-center bg-white rounded-3xl ${
+                className={`col-start-1 row-start-1 p-5 sm:p-8 md:p-10 flex flex-col justify-between items-center text-center bg-white rounded-3xl ${
                   !isFlipped ? 'pointer-events-none' : ''
                 }`}
               >
                 {/* Top Details */}
-                <div className="w-full flex items-center justify-between">
-                  <span className="text-[11px] font-extrabold uppercase tracking-wider px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <div className="w-full flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider px-2.5 sm:px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                     {currentCard.partOfSpeech || 'TỪ VỰNG'}
                   </span>
                   <button
@@ -502,7 +500,7 @@ export const VocabFlashcardPracticePage: React.FC = () => {
                       e.stopPropagation()
                       speakText(currentCard.hanzi)
                     }}
-                    className="w-9 h-9 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-600 flex items-center justify-center transition-colors shadow-sm"
+                    className="w-9 h-9 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-600 flex items-center justify-center transition-colors shadow-sm shrink-0"
                     title="Phát âm (phím S)"
                   >
                     <Volume2 className="w-5 h-5" />
@@ -510,33 +508,33 @@ export const VocabFlashcardPracticePage: React.FC = () => {
                 </div>
 
                 {/* Center Details */}
-                <div className="my-auto py-4">
+                <div className="my-auto py-3 sm:py-4 w-full px-1">
                   <div
-                    className="text-4xl sm:text-5xl font-extrabold text-slate-900 mb-1"
+                    className="text-3xl sm:text-5xl font-extrabold text-slate-900 mb-1 break-words"
                     style={{ fontFamily: `'Noto Serif SC', 'PingFang SC', serif` }}
                   >
                     {currentCard.hanzi}
                   </div>
-                  <div className="text-lg font-bold text-emerald-600 mb-3 tracking-wide">
+                  <div className="text-base sm:text-lg font-bold text-emerald-600 mb-2 sm:mb-3 tracking-wide">
                     {currentCard.pinyin}
                   </div>
-                  <div className="text-xl sm:text-2xl font-extrabold text-slate-800 leading-snug">
+                  <div className="text-lg sm:text-2xl font-extrabold text-slate-800 leading-snug break-words">
                     {currentCard.meaning}
                   </div>
 
                   {/* Example Sentence */}
                   {currentCard.exampleSentence && (
-                    <div className="mt-5 p-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-left max-w-lg mx-auto">
-                      <div className="text-sm font-semibold text-slate-800">
+                    <div className="mt-4 sm:mt-5 p-3 sm:p-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-left max-w-lg mx-auto">
+                      <div className="text-xs sm:text-sm font-semibold text-slate-800 break-words">
                         {currentCard.exampleSentence}
                       </div>
                       {currentCard.examplePinyin && (
-                        <div className="text-xs text-emerald-600 font-medium mt-0.5">
+                        <div className="text-[11px] sm:text-xs text-emerald-600 font-medium mt-0.5 break-words">
                           {currentCard.examplePinyin}
                         </div>
                       )}
                       {currentCard.exampleMeaning && (
-                        <div className="text-xs text-slate-500 mt-1">
+                        <div className="text-[11px] sm:text-xs text-slate-500 mt-1 break-words">
                           {currentCard.exampleMeaning}
                         </div>
                       )}
@@ -545,7 +543,7 @@ export const VocabFlashcardPracticePage: React.FC = () => {
                 </div>
 
                 {/* Bottom Prompt Hint */}
-                <div className="text-xs font-semibold text-slate-400">
+                <div className="text-[11px] sm:text-xs font-semibold text-slate-400">
                   <span>Chạm vào thẻ để lật lại mặt trước</span>
                 </div>
               </div>
@@ -553,19 +551,19 @@ export const VocabFlashcardPracticePage: React.FC = () => {
           </div>
         )}
 
-        {/* 3. Bottom Action Bar (Vocapy Controls) */}
-        <div className="w-full mt-6 bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between gap-2 sm:gap-4">
+        {/* 3. Bottom Action Bar (Mobile: 2 hàng tối ưu ngón tay cái | Tablet/Desktop: 1 hàng ngang) */}
+        <div className="w-full mt-4 sm:mt-6 bg-white p-2.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm grid grid-cols-6 sm:flex sm:items-center sm:justify-between gap-2 sm:gap-3">
           {/* Nút Trước (ArrowLeft) */}
           <button
             type="button"
             onClick={handlePrev}
             disabled={currentIndex === 0 || submitting}
-            className="flex flex-col items-center justify-center px-3 py-2 rounded-xl text-slate-600 hover:bg-slate-100 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            className="order-3 col-span-2 sm:order-none min-h-[42px] flex sm:flex-col items-center justify-center gap-1 sm:gap-0 px-2.5 sm:px-3 py-2 rounded-xl text-slate-600 hover:bg-slate-100 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
             title="Lùi lại thẻ trước (Phím ←)"
           >
             <ChevronLeft className="w-5 h-5" />
-            <span className="text-[11px] font-bold mt-0.5 hidden sm:inline">Trước</span>
-            <span className="text-[9px] text-slate-400 font-medium hidden sm:inline">Phím ←</span>
+            <span className="text-[11px] font-bold sm:mt-0.5">Trước</span>
+            <span className="text-[9px] text-slate-400 font-medium hidden md:inline">Phím ←</span>
           </button>
 
           {/* Nút Loa phát âm (S) */}
@@ -573,12 +571,12 @@ export const VocabFlashcardPracticePage: React.FC = () => {
             type="button"
             onClick={() => speakText(currentCard?.hanzi)}
             disabled={!currentCard || submitting}
-            className="flex flex-col items-center justify-center px-4 py-2 rounded-xl text-emerald-700 bg-emerald-50 hover:bg-emerald-100 active:scale-95 transition-all shadow-sm"
+            className="order-4 col-span-2 sm:order-none min-h-[42px] flex sm:flex-col items-center justify-center gap-1 sm:gap-0 px-2.5 sm:px-4 py-2 rounded-xl text-emerald-700 bg-emerald-50 hover:bg-emerald-100 active:scale-95 transition-all shadow-xs"
             title="Phát âm (Phím S)"
           >
             <Volume2 className="w-5 h-5 text-emerald-600" />
-            <span className="text-[11px] font-bold mt-0.5 hidden sm:inline">Phát âm</span>
-            <span className="text-[9px] text-emerald-600/70 font-medium hidden sm:inline">Phím S</span>
+            <span className="text-[11px] font-bold sm:mt-0.5">Phát âm</span>
+            <span className="text-[9px] text-emerald-600/70 font-medium hidden md:inline">Phím S</span>
           </button>
 
           {/* Nút Quên (1 / X) */}
@@ -586,14 +584,14 @@ export const VocabFlashcardPracticePage: React.FC = () => {
             type="button"
             onClick={() => handleReview('FORGOTTEN')}
             disabled={submitting}
-            className="flex-1 max-w-[130px] flex flex-col items-center justify-center py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200 hover:border-rose-200 active:scale-95 disabled:opacity-50 transition-all"
+            className="order-1 col-span-3 sm:order-none sm:flex-1 sm:max-w-[140px] min-h-[48px] flex flex-col items-center justify-center py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200 hover:border-rose-200 active:scale-95 disabled:opacity-50 transition-all"
             title="Đánh dấu Quên (Phím 1 hoặc X)"
           >
             <div className="flex items-center gap-1.5 font-extrabold text-sm">
               <X className="w-4 h-4 text-rose-500" />
               <span>Quên</span>
             </div>
-            <span className="text-[10px] text-slate-400 font-medium mt-0.5 hidden sm:inline">
+            <span className="text-[10px] text-slate-400 font-medium mt-0.5 hidden md:inline">
               Phím 1 / X
             </span>
           </button>
@@ -603,14 +601,14 @@ export const VocabFlashcardPracticePage: React.FC = () => {
             type="button"
             onClick={() => handleReview('REMEMBERED')}
             disabled={submitting}
-            className="flex-1 max-w-[130px] flex flex-col items-center justify-center py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white active:scale-95 disabled:opacity-50 shadow-md shadow-emerald-600/20 transition-all"
+            className="order-2 col-span-3 sm:order-none sm:flex-1 sm:max-w-[140px] min-h-[48px] flex flex-col items-center justify-center py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white active:scale-95 disabled:opacity-50 shadow-md shadow-emerald-600/20 transition-all"
             title="Đánh dấu Đã thuộc (Phím 2 hoặc C)"
           >
             <div className="flex items-center gap-1.5 font-extrabold text-sm">
               <Check className="w-4 h-4 text-white" />
               <span>Thuộc</span>
             </div>
-            <span className="text-[10px] text-emerald-100 font-medium mt-0.5 hidden sm:inline">
+            <span className="text-[10px] text-emerald-100 font-medium mt-0.5 hidden md:inline">
               Phím 2 / C
             </span>
           </button>
@@ -620,12 +618,12 @@ export const VocabFlashcardPracticePage: React.FC = () => {
             type="button"
             onClick={handleNext}
             disabled={currentIndex + 1 >= cards.length || submitting}
-            className="flex flex-col items-center justify-center px-3 py-2 rounded-xl text-slate-600 hover:bg-slate-100 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            className="order-5 col-span-2 sm:order-none min-h-[42px] flex sm:flex-col items-center justify-center gap-1 sm:gap-0 px-2.5 sm:px-3 py-2 rounded-xl text-slate-600 hover:bg-slate-100 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
             title="Chuyển thẻ tiếp theo (Phím →)"
           >
-            <ChevronRight className="w-5 h-5" />
-            <span className="text-[11px] font-bold mt-0.5 hidden sm:inline">Tiếp</span>
-            <span className="text-[9px] text-slate-400 font-medium hidden sm:inline">Phím →</span>
+            <span className="text-[11px] font-bold sm:order-2 sm:mt-0.5">Tiếp</span>
+            <ChevronRight className="w-5 h-5 sm:order-1" />
+            <span className="text-[9px] text-slate-400 font-medium hidden md:inline sm:order-3">Phím →</span>
           </button>
         </div>
       </div>

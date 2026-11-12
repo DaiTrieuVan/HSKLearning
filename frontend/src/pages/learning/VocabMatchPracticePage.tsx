@@ -813,30 +813,30 @@ export const VocabMatchPracticePage: React.FC = () => {
   const maxHearts = sessionMeta.maxHearts || 5
 
   return (
-    <div className="max-w-3xl mx-auto pb-12 space-y-4">
+    <div className="max-w-3xl mx-auto pb-8 sm:pb-12 space-y-3 sm:space-y-4">
       {/* 1. Header Tiến độ, Pinyin toggle & Thanh Thời gian */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
+      <div className="bg-white border border-slate-200 rounded-2xl p-3 sm:p-4 shadow-sm space-y-2.5 sm:space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-extrabold text-slate-800">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0">
+            <span className="text-xs sm:text-sm font-extrabold text-slate-800 whitespace-nowrap">
               Đã ghép {roundMatchedIds.size} / {currentRound?.pairsCount ?? 0}
             </span>
             {rounds.length > 1 && (
-              <span className="px-2.5 py-0.5 rounded-full bg-sky-50 border border-sky-200 text-sky-700 text-[11px] font-bold">
-                Lượt {roundIndex + 1} / {rounds.length}
+              <span className="px-2 sm:px-2.5 py-0.5 rounded-full bg-sky-50 border border-sky-200 text-sky-700 text-[10px] sm:text-[11px] font-bold">
+                Lượt {roundIndex + 1}/{rounds.length}
               </span>
             )}
-            <span className="hidden sm:inline-flex px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[11px] font-bold">
+            <span className="hidden md:inline-flex px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[11px] font-bold">
               {sessionMeta.vocabSetTitle} · {formatMatchModeLabel(sessionMeta.mode)}
             </span>
           </div>
 
-          <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap shrink-0">
             {sessionMeta.mode === 'MATCH_MEANING' && (
               <button
                 type="button"
                 onClick={() => setHidePinyin((prev) => !prev)}
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-colors ${
+                className={`inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold transition-colors ${
                   hidePinyin
                     ? 'bg-slate-800 text-white'
                     : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
@@ -844,14 +844,14 @@ export const VocabMatchPracticePage: React.FC = () => {
                 title="Ẩn hoặc hiện phiên âm Pinyin gợi ý"
               >
                 {hidePinyin ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-                <span>{hidePinyin ? 'Hiện pinyin' : 'Ẩn pinyin'}</span>
+                <span>{hidePinyin ? 'Hiện' : 'Ẩn'} pinyin</span>
               </button>
             )}
 
             <button
               type="button"
               onClick={() => setPaused((prev) => !prev)}
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+              className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
               title={paused ? 'Tiếp tục' : 'Tạm dừng'}
             >
               {paused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
@@ -861,7 +861,7 @@ export const VocabMatchPracticePage: React.FC = () => {
             <button
               type="button"
               onClick={() => setSettingsOpen(true)}
-              className="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+              className="p-1.5 sm:p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
               title="Cài đặt game"
             >
               <Settings className="w-4 h-4" />
@@ -870,7 +870,7 @@ export const VocabMatchPracticePage: React.FC = () => {
             <button
               type="button"
               onClick={() => void loadSession()}
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+              className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
               title="Chơi lại từ đầu"
             >
               <RotateCcw className="w-3.5 h-3.5" />
@@ -880,7 +880,7 @@ export const VocabMatchPracticePage: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/practice')}
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+              className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 hover:text-rose-600 hover:bg-rose-50 transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Thoát</span>
@@ -918,17 +918,17 @@ export const VocabMatchPracticePage: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. Bảng Nối Từ (2 cột đối xứng, 5 trái tim & đồng hồ nổi bật) */}
-      <div className="bg-white border border-slate-200 rounded-3xl p-4 sm:p-6 shadow-sm space-y-5">
+      {/* 2. Bảng Nối Từ (2 cột đối xứng trên Mobile/Tablet/Desktop, 5 trái tim & đồng hồ nổi bật) */}
+      <div className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-3 sm:p-5 md:p-6 shadow-sm space-y-4 sm:space-y-5">
         {/* Hearts Bar & Timer Badge */}
-        <div className="flex items-center justify-between gap-3 bg-slate-50/90 border border-slate-200/80 rounded-2xl px-4 py-2.5">
-          <div className="flex items-center gap-1.5" aria-label={`Còn ${remainingHearts} trái tim`}>
+        <div className="flex items-center justify-between gap-2 sm:gap-3 bg-slate-50/90 border border-slate-200/80 rounded-xl sm:rounded-2xl px-3 sm:px-4 py-2 sm:py-2.5">
+          <div className="flex items-center gap-1 sm:gap-1.5" aria-label={`Còn ${remainingHearts} trái tim`}>
             {Array.from({ length: maxHearts }).map((_, idx) => {
               const active = idx < remainingHearts
               return (
                 <Heart
                   key={idx}
-                  className={`w-5 h-5 transition-all duration-200 ${
+                  className={`w-4 h-4 sm:w-5 sm:h-5 transition-all duration-200 ${
                     active
                       ? 'text-rose-500 fill-rose-500 scale-100'
                       : 'text-slate-300 fill-slate-100 scale-90'
@@ -936,13 +936,13 @@ export const VocabMatchPracticePage: React.FC = () => {
                 />
               )
             })}
-            <span className="ml-1.5 text-xs font-bold text-slate-500 hidden sm:inline">
+            <span className="ml-1 sm:ml-1.5 text-[11px] sm:text-xs font-bold text-slate-500 hidden sm:inline">
               {remainingHearts}/{maxHearts} tim
             </span>
           </div>
 
           <div
-            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl border text-xs font-extrabold tabular-nums ${timerBadgeClass}`}
+            className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-xl border text-xs font-extrabold tabular-nums ${timerBadgeClass}`}
           >
             <Clock className="w-3.5 h-3.5" />
             <span>{timeLeft}S</span>
@@ -984,10 +984,10 @@ export const VocabMatchPracticePage: React.FC = () => {
           </div>
         ) : (
           currentRound && (
-            <div className="grid grid-cols-2 gap-3 sm:gap-5">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4 md:gap-5">
               {/* Cột Trái: Tiếng Trung */}
-              <div className="space-y-2.5">
-                <div className="text-center text-xs font-extrabold uppercase tracking-wider text-slate-500 pb-1">
+              <div className="space-y-2 sm:space-y-2.5 min-w-0">
+                <div className="text-center text-[11px] sm:text-xs font-extrabold uppercase tracking-wider text-slate-500 pb-0.5 sm:pb-1">
                   Tiếng Trung
                 </div>
 
@@ -1026,26 +1026,26 @@ export const VocabMatchPracticePage: React.FC = () => {
                           handleLeftCardClick(card.vocabularyId)
                         }
                       }}
-                      className={`w-full min-h-[60px] px-3.5 py-2.5 rounded-2xl border flex items-center justify-between gap-2 transition-all duration-150 select-none ${
+                      className={`w-full min-h-[52px] sm:min-h-[60px] px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl border flex items-center justify-between gap-1.5 sm:gap-2 transition-all duration-150 select-none ${
                         isMatched ? 'cursor-default' : 'cursor-pointer active:scale-[0.985]'
                       } ${cardClass}`}
                     >
                       <div className="min-w-0 text-left">
                         <div
-                          className="text-base sm:text-lg font-extrabold leading-tight truncate"
+                          className="text-sm sm:text-base md:text-lg font-extrabold leading-tight break-words line-clamp-2"
                           style={{ fontFamily: `'Noto Serif SC', 'PingFang SC', serif` }}
                         >
                           {card.primaryText}
                         </div>
                         {sessionMeta.mode === 'MATCH_MEANING' && !hidePinyin && card.secondaryText && (
-                          <div className="text-[11px] font-mono text-slate-500 truncate mt-0.5">
+                          <div className="text-[10px] sm:text-[11px] font-mono text-slate-500 truncate mt-0.5">
                             {card.secondaryText}
                           </div>
                         )}
                       </div>
 
                       {isMatched && (
-                        <div className="flex items-center gap-1 shrink-0">
+                        <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
                           {pairObj && (
                             <button
                               type="button"
@@ -1053,13 +1053,13 @@ export const VocabMatchPracticePage: React.FC = () => {
                                 e.stopPropagation()
                                 speakChinese(pairObj.hanzi, pairObj.audioUrl)
                               }}
-                              className="p-1.5 rounded-lg text-emerald-700 hover:bg-emerald-100 transition-colors"
+                              className="p-1 sm:p-1.5 rounded-lg text-emerald-700 hover:bg-emerald-100 transition-colors"
                               title="Nghe lại phát âm"
                             >
                               <Volume2 className="w-3.5 h-3.5" />
                             </button>
                           )}
-                          <Check className="w-4 h-4 text-emerald-600" />
+                          <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600" />
                         </div>
                       )}
                     </div>
@@ -1068,8 +1068,8 @@ export const VocabMatchPracticePage: React.FC = () => {
               </div>
 
               {/* Cột Phải: Tiếng Việt hoặc Pinyin */}
-              <div className="space-y-2.5">
-                <div className="text-center text-xs font-extrabold uppercase tracking-wider text-slate-500 pb-1">
+              <div className="space-y-2 sm:space-y-2.5 min-w-0">
+                <div className="text-center text-[11px] sm:text-xs font-extrabold uppercase tracking-wider text-slate-500 pb-0.5 sm:pb-1">
                   {sessionMeta.mode === 'MATCH_PINYIN' ? 'Pinyin' : 'Tiếng Việt'}
                 </div>
 
@@ -1101,12 +1101,12 @@ export const VocabMatchPracticePage: React.FC = () => {
                       type="button"
                       disabled={isMatched}
                       onClick={() => handleRightCardClick(card.vocabularyId)}
-                      className={`w-full min-h-[60px] px-3.5 py-2.5 rounded-2xl border flex items-center justify-center text-center transition-all duration-150 select-none ${
+                      className={`w-full min-h-[52px] sm:min-h-[60px] px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl border flex items-center justify-center text-center transition-all duration-150 select-none ${
                         isMatched ? 'cursor-default' : 'cursor-pointer active:scale-[0.985]'
                       } ${cardClass}`}
                     >
                       <span
-                        className={`text-xs sm:text-sm leading-snug line-clamp-2 ${
+                        className={`text-[11px] sm:text-sm leading-tight sm:leading-snug break-words line-clamp-3 ${
                           sessionMeta.mode === 'MATCH_PINYIN'
                             ? 'font-mono font-bold tracking-wide'
                             : 'font-bold'
@@ -1123,7 +1123,7 @@ export const VocabMatchPracticePage: React.FC = () => {
         )}
 
         {/* Footer Bảng */}
-        <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-slate-500">
+        <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 text-xs font-bold text-slate-500">
           <span>
             Đã ghép: <span className="text-slate-800">{roundMatchedIds.size} / {currentRound?.pairsCount ?? 0}</span>
             {rounds.length > 1 && (
@@ -1132,7 +1132,7 @@ export const VocabMatchPracticePage: React.FC = () => {
               </span>
             )}
           </span>
-          <span className="text-[11px] font-medium text-slate-400">
+          <span className="hidden sm:inline text-[11px] font-medium text-slate-400">
             Chọn cặp tương ứng giữa 2 cột · Tự đọc phát âm sau khi ghép đúng
           </span>
         </div>

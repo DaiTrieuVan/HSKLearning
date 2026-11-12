@@ -307,29 +307,24 @@ export const PronunciationPracticePage: React.FC = () => {
   }
 
   return (
-    <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '24px 20px' }}>
+    <div className="max-w-[1000px] mx-auto w-full px-3.5 py-4 sm:px-5 sm:py-6 overflow-x-hidden">
       {/* Header */}
-      <div style={{ marginBottom: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+      <div className="mb-5 sm:mb-6">
+        <div className="flex items-start sm:items-center gap-2.5 sm:gap-3">
           <div
+            className="w-10 h-10 rounded-[10px] shrink-0 flex items-center justify-center"
             style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '10px',
               backgroundColor: 'var(--primary-light)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
               color: 'var(--primary)',
             }}
           >
             <Mic size={24} />
           </div>
-          <div>
-            <h1 style={{ fontSize: '1.6rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-[1.6rem] font-extrabold m-0 leading-tight" style={{ color: 'var(--text-main)' }}>
               Luyện phát âm & Chấm điểm AI
             </h1>
-            <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.92rem' }}>
+            <p className="m-0 mt-0.5 text-xs sm:text-[0.92rem] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
               Ghi âm giọng đọc để so sánh với chuẩn tiếng Trung và nhận đánh giá chi tiết
             </p>
           </div>
@@ -339,19 +334,15 @@ export const PronunciationPracticePage: React.FC = () => {
       {/* Cảnh báo cấp quyền micro inline (TC-02, Không dùng Modal) */}
       {permissionError && (
         <div
+          className="p-3.5 sm:px-5 sm:py-4 mb-5 flex flex-col sm:flex-row items-start gap-3 sm:gap-3.5"
           style={{
             backgroundColor: '#fffbeb',
             border: '1.5px solid #fde68a',
             borderRadius: 'var(--radius-md)',
-            padding: '16px 20px',
-            marginBottom: '20px',
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: '14px',
           }}
         >
           <AlertTriangle size={24} style={{ color: '#d97706', flexShrink: 0, marginTop: '2px' }} />
-          <div style={{ flex: 1 }}>
+          <div className="flex-1 min-w-0 w-full">
             <h3 style={{ margin: '0 0 6px 0', fontSize: '0.96rem', fontWeight: 700, color: '#92400e' }}>
               Yêu cầu quyền truy cập Microphone
             </h3>
@@ -361,18 +352,10 @@ export const PronunciationPracticePage: React.FC = () => {
             <button
               type="button"
               onClick={startRecording}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 text-[0.85rem] font-bold border-0 text-white cursor-pointer"
               style={{
                 backgroundColor: '#d97706',
-                color: '#ffffff',
-                border: 'none',
                 borderRadius: 'var(--radius-sm)',
-                padding: '8px 16px',
-                fontSize: '0.85rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
               }}
             >
               <RotateCcw size={16} /> Thử lại cấp quyền
@@ -384,18 +367,12 @@ export const PronunciationPracticePage: React.FC = () => {
       {/* Cảnh báo kiểm tra dữ liệu hoặc lỗi upstream (TC-03, TC-04) */}
       {validationWarning && (
         <div
+          className="px-3.5 py-3 sm:px-4 mb-4 flex items-center gap-2.5 text-sm font-semibold"
           style={{
             backgroundColor: '#fef2f2',
             border: '1px solid #fecaca',
             borderRadius: 'var(--radius-md)',
-            padding: '12px 16px',
-            marginBottom: '16px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
             color: '#b91c1c',
-            fontSize: '0.88rem',
-            fontWeight: 600,
           }}
         >
           <AlertCircle size={18} style={{ flexShrink: 0 }} />
@@ -405,19 +382,14 @@ export const PronunciationPracticePage: React.FC = () => {
 
       {assessmentError && (
         <div
+          className="p-3.5 sm:px-4.5 mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
           style={{
             backgroundColor: '#fef2f2',
             border: '1.5px solid #f87171',
             borderRadius: 'var(--radius-md)',
-            padding: '14px 18px',
-            marginBottom: '20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '12px',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#991b1b', fontSize: '0.9rem' }}>
+          <div className="flex items-start sm:items-center gap-2.5 text-sm min-w-0" style={{ color: '#991b1b' }}>
             <AlertCircle size={20} style={{ flexShrink: 0 }} />
             <span>{assessmentError}</span>
           </div>
@@ -425,18 +397,10 @@ export const PronunciationPracticePage: React.FC = () => {
             type="button"
             onClick={handleAssess}
             disabled={!audioBlob || isAssessing}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 text-[0.82rem] font-bold text-white border-0 cursor-pointer shrink-0 whitespace-nowrap"
             style={{
               backgroundColor: '#dc2626',
-              color: '#ffffff',
-              border: 'none',
               borderRadius: 'var(--radius-sm)',
-              padding: '6px 14px',
-              fontSize: '0.82rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
             }}
           >
             <RefreshCw size={14} /> Thử lại
@@ -445,14 +409,13 @@ export const PronunciationPracticePage: React.FC = () => {
       )}
 
       {/* Main Grid: Bộ chọn nội dung + Trình ghi âm & Kết quả */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '24px', alignItems: 'start' }}>
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] gap-5 lg:gap-6 items-start">
         {/* CỘT TRÁI: BỘ CHỌN NỘI DUNG CHUẨN */}
         <div
+          className="bg-white p-4 sm:p-5 min-w-0"
           style={{
-            backgroundColor: '#ffffff',
             borderRadius: 'var(--radius-lg)',
             border: '1.5px solid var(--border-card)',
-            padding: '20px',
             boxShadow: 'var(--shadow-sm)',
           }}
         >
@@ -463,16 +426,11 @@ export const PronunciationPracticePage: React.FC = () => {
                 setMode('SUGGESTED')
                 setValidationWarning(null)
               }}
+              className="flex-1 p-2.5 border-0 bg-transparent cursor-pointer text-xs sm:text-[0.9rem] whitespace-nowrap"
               style={{
-                flex: 1,
-                padding: '10px',
-                border: 'none',
                 borderBottom: mode === 'SUGGESTED' ? '2px solid var(--primary)' : '2px solid transparent',
-                backgroundColor: 'transparent',
                 fontWeight: mode === 'SUGGESTED' ? 800 : 600,
                 color: mode === 'SUGGESTED' ? 'var(--primary)' : 'var(--text-muted)',
-                cursor: 'pointer',
-                fontSize: '0.9rem',
               }}
             >
               Từ/Câu gợi ý
@@ -483,16 +441,11 @@ export const PronunciationPracticePage: React.FC = () => {
                 setMode('CUSTOM')
                 setValidationWarning(null)
               }}
+              className="flex-1 p-2.5 border-0 bg-transparent cursor-pointer text-xs sm:text-[0.9rem] whitespace-nowrap"
               style={{
-                flex: 1,
-                padding: '10px',
-                border: 'none',
                 borderBottom: mode === 'CUSTOM' ? '2px solid var(--primary)' : '2px solid transparent',
-                backgroundColor: 'transparent',
                 fontWeight: mode === 'CUSTOM' ? 800 : 600,
                 color: mode === 'CUSTOM' ? 'var(--primary)' : 'var(--text-muted)',
-                cursor: 'pointer',
-                fontSize: '0.9rem',
               }}
             >
               Tùy chỉnh nội dung
@@ -500,7 +453,7 @@ export const PronunciationPracticePage: React.FC = () => {
           </div>
 
           {mode === 'SUGGESTED' ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '420px', overflowY: 'auto' }}>
+            <div className="flex flex-col gap-2.5 max-h-[260px] sm:max-h-[340px] lg:max-h-[420px] overflow-y-auto pr-0.5">
               {DEFAULT_TARGETS.map((item) => {
                 const isSelected = selectedTarget.hanzi === item.hanzi
                 return (
@@ -516,20 +469,15 @@ export const PronunciationPracticePage: React.FC = () => {
                       }
                       setValidationWarning(null)
                     }}
+                    className="p-3 sm:px-3.5 cursor-pointer transition-all flex items-center justify-between gap-3"
                     style={{
-                      padding: '12px 14px',
                       borderRadius: 'var(--radius-md)',
                       border: isSelected ? '1.5px solid var(--primary)' : '1px solid var(--border-card)',
                       backgroundColor: isSelected ? 'var(--primary-light)' : '#f8fafc',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
                     }}
                   >
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                         <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', fontFamily: 'KaiTi, "STKaiti", serif' }}>
                           {item.hanzi}
                         </span>
@@ -542,6 +490,7 @@ export const PronunciationPracticePage: React.FC = () => {
                       </div>
                     </div>
                     <span
+                      className="shrink-0 whitespace-nowrap"
                       style={{
                         fontSize: '0.72rem',
                         fontWeight: 700,
@@ -590,35 +539,30 @@ export const PronunciationPracticePage: React.FC = () => {
         </div>
 
         {/* CỘT PHẢI: KHUNG GHI ÂM & BẢNG KẾT QUẢ CHẤM ĐIỂM */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div className="flex flex-col gap-5 min-w-0">
           {/* Thẻ mục tiêu đang luyện */}
           <div
+            className="bg-white p-4 sm:p-6 text-center"
             style={{
-              backgroundColor: '#ffffff',
               borderRadius: 'var(--radius-lg)',
               border: '1.5px solid var(--border-card)',
-              padding: '24px',
               boxShadow: 'var(--shadow-sm)',
-              textAlign: 'center',
             }}
           >
             <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
               Nội dung chuẩn cần đọc
             </div>
             <div
+              className="text-3xl sm:text-[2.4rem] font-black tracking-wide mb-2 break-words"
               style={{
-                fontSize: '2.4rem',
-                fontWeight: 900,
                 color: 'var(--text-main)',
                 fontFamily: 'KaiTi, "STKaiti", serif',
-                letterSpacing: '0.04em',
-                marginBottom: '8px',
               }}
             >
               {activeReferenceText || 'Chưa nhập nội dung'}
             </div>
             {mode === 'SUGGESTED' && (
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px' }}>
+              <div className="flex flex-wrap justify-center items-center gap-x-3 gap-y-1">
                 <span style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--primary)' }}>
                   {selectedTarget.pinyin}
                 </span>
@@ -747,17 +691,16 @@ export const PronunciationPracticePage: React.FC = () => {
           {/* BẢNG KẾT QUẢ ĐÁNH GIÁ (TC-01) */}
           {result && (
             <div
+              className="bg-white p-4 sm:p-6"
               style={{
-                backgroundColor: '#ffffff',
                 borderRadius: 'var(--radius-lg)',
                 border: '1.5px solid var(--border-card)',
-                padding: '24px',
                 boxShadow: 'var(--shadow-sm)',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Award size={22} style={{ color: getScoreColor(result.overallScore) }} />
+              <div className="flex flex-wrap items-center justify-between gap-2.5 mb-4 sm:mb-[18px]">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Award size={22} className="shrink-0" style={{ color: getScoreColor(result.overallScore) }} />
                   <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-main)' }}>
                     Kết quả đánh giá phát âm
                   </h3>
@@ -766,18 +709,12 @@ export const PronunciationPracticePage: React.FC = () => {
                   <button
                     type="button"
                     onClick={handleNextTarget}
+                    className="whitespace-nowrap inline-flex items-center gap-1.5 px-3 py-1.5 text-[0.82rem] font-bold cursor-pointer"
                     style={{
                       border: '1px solid var(--border-card)',
                       backgroundColor: '#f8fafc',
                       color: 'var(--text-main)',
                       borderRadius: 'var(--radius-sm)',
-                      padding: '6px 12px',
-                      fontSize: '0.82rem',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
                     }}
                   >
                     Câu tiếp theo <ArrowRight size={14} />
@@ -787,14 +724,10 @@ export const PronunciationPracticePage: React.FC = () => {
 
               {/* Điểm tổng thể */}
               <div
+                className="flex flex-col sm:flex-row items-center text-center sm:text-left gap-3.5 sm:gap-5 p-3.5 sm:p-4 mb-5"
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '20px',
-                  padding: '16px',
                   backgroundColor: '#f8fafc',
                   borderRadius: 'var(--radius-md)',
-                  marginBottom: '20px',
                 }}
               >
                 <div
@@ -815,9 +748,9 @@ export const PronunciationPracticePage: React.FC = () => {
                   </span>
                   <span style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 700 }}>ĐIỂM TỔNG</span>
                 </div>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                    <CheckCircle2 size={18} style={{ color: getScoreColor(result.overallScore) }} />
+                <div className="min-w-0">
+                  <div className="flex items-center justify-center sm:justify-start gap-2 mb-1.5">
+                    <CheckCircle2 size={18} className="shrink-0" style={{ color: getScoreColor(result.overallScore) }} />
                     <span style={{ fontSize: '1.02rem', fontWeight: 800, color: 'var(--text-main)' }}>
                       {result.feedback}
                     </span>
@@ -830,22 +763,22 @@ export const PronunciationPracticePage: React.FC = () => {
               </div>
 
               {/* Các chỉ số thành phần */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-                <div style={{ padding: '12px', backgroundColor: '#f8fafc', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 700, marginBottom: '4px' }}>ĐỘ CHÍNH XÁC</div>
-                  <div style={{ fontSize: '1.3rem', fontWeight: 800, color: getScoreColor(result.accuracyScore) }}>
+              <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                <div className="p-2.5 sm:p-3 text-center" style={{ backgroundColor: '#f8fafc', borderRadius: 'var(--radius-sm)' }}>
+                  <div className="text-[0.68rem] sm:text-[0.78rem] text-slate-500 font-bold mb-1">ĐỘ CHÍNH XÁC</div>
+                  <div className="text-lg sm:text-[1.3rem] font-extrabold" style={{ color: getScoreColor(result.accuracyScore) }}>
                     {result.accuracyScore}
                   </div>
                 </div>
-                <div style={{ padding: '12px', backgroundColor: '#f8fafc', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 700, marginBottom: '4px' }}>ĐỘ TRÔI CHẢY</div>
-                  <div style={{ fontSize: '1.3rem', fontWeight: 800, color: getScoreColor(result.fluencyScore) }}>
+                <div className="p-2.5 sm:p-3 text-center" style={{ backgroundColor: '#f8fafc', borderRadius: 'var(--radius-sm)' }}>
+                  <div className="text-[0.68rem] sm:text-[0.78rem] text-slate-500 font-bold mb-1">ĐỘ TRÔI CHẢY</div>
+                  <div className="text-lg sm:text-[1.3rem] font-extrabold" style={{ color: getScoreColor(result.fluencyScore) }}>
                     {result.fluencyScore}
                   </div>
                 </div>
-                <div style={{ padding: '12px', backgroundColor: '#f8fafc', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 700, marginBottom: '4px' }}>ĐỘ HOÀN THIỆN</div>
-                  <div style={{ fontSize: '1.3rem', fontWeight: 800, color: getScoreColor(result.completenessScore) }}>
+                <div className="p-2.5 sm:p-3 text-center" style={{ backgroundColor: '#f8fafc', borderRadius: 'var(--radius-sm)' }}>
+                  <div className="text-[0.68rem] sm:text-[0.78rem] text-slate-500 font-bold mb-1">ĐỘ HOÀN THIỆN</div>
+                  <div className="text-lg sm:text-[1.3rem] font-extrabold" style={{ color: getScoreColor(result.completenessScore) }}>
                     {result.completenessScore}
                   </div>
                 </div>
@@ -857,32 +790,24 @@ export const PronunciationPracticePage: React.FC = () => {
 
       {/* LỊCH SỬ LUYỆN PHÁT ÂM (TC-05 - Tuyệt đối không có audio) */}
       <div
+        className="mt-6 sm:mt-9 bg-white p-4 sm:px-6 sm:py-5"
         style={{
-          marginTop: '36px',
-          backgroundColor: '#ffffff',
           borderRadius: 'var(--radius-lg)',
           border: '1.5px solid var(--border-card)',
-          padding: '20px 24px',
           boxShadow: 'var(--shadow-sm)',
         }}
       >
         <div
           onClick={() => setShowHistory(!showHistory)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            cursor: 'pointer',
-            userSelect: 'none',
-          }}
+          className="flex items-center justify-between gap-2 cursor-pointer select-none"
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <History size={20} style={{ color: 'var(--primary)' }} />
-            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main)' }}>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <History size={20} className="shrink-0" style={{ color: 'var(--primary)' }} />
+            <h3 className="m-0 text-base sm:text-[1.1rem] font-extrabold leading-snug" style={{ color: 'var(--text-main)' }}>
               Lịch sử luyện tập gần đây ({historyList.length})
             </h3>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#64748b', fontSize: '0.85rem' }}>
+          <div className="flex items-center gap-2 text-slate-500 text-sm shrink-0">
             {isLoadingHistory && <RefreshCw size={14} className="animate-spin" />}
             {showHistory ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
           </div>
@@ -895,52 +820,90 @@ export const PronunciationPracticePage: React.FC = () => {
                 Chưa có lượt luyện phát âm nào được ghi nhận. Hãy bắt đầu ghi âm ngay hôm nay!
               </div>
             ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.88rem' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1.5px solid var(--border-card)', color: '#64748b' }}>
-                      <th style={{ padding: '10px 12px', fontWeight: 700 }}>Nội dung chuẩn</th>
-                      <th style={{ padding: '10px 12px', fontWeight: 700, textAlign: 'center' }}>Điểm tổng</th>
-                      <th style={{ padding: '10px 12px', fontWeight: 700, textAlign: 'center' }}>Độ chính xác</th>
-                      <th style={{ padding: '10px 12px', fontWeight: 700 }}>Đánh giá</th>
-                      <th style={{ padding: '10px 12px', fontWeight: 700, textAlign: 'right' }}>Thời điểm</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {historyList.map((item) => (
-                      <tr key={item.attemptId} style={{ borderBottom: '1px solid var(--border-card)' }}>
-                        <td style={{ padding: '12px', fontWeight: 800, fontSize: '1.05rem', fontFamily: 'KaiTi, "STKaiti", serif', color: 'var(--text-main)' }}>
+              <>
+                {/* Mobile Cards View */}
+                <div className="md:hidden space-y-2.5">
+                  {historyList.map((item) => (
+                    <div
+                      key={item.attemptId}
+                      className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl space-y-1.5"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span
+                          className="font-extrabold text-base break-words"
+                          style={{ fontFamily: 'KaiTi, "STKaiti", serif', color: 'var(--text-main)' }}
+                        >
                           {item.referenceText}
-                        </td>
-                        <td style={{ padding: '12px', textAlign: 'center' }}>
-                          <span
-                            style={{
-                              display: 'inline-block',
-                              padding: '2px 10px',
-                              borderRadius: 'var(--radius-full)',
-                              fontSize: '0.82rem',
-                              fontWeight: 800,
-                              backgroundColor: `${getScoreColor(item.overallScore)}18`,
-                              color: getScoreColor(item.overallScore),
-                            }}
-                          >
-                            {item.overallScore}
-                          </span>
-                        </td>
-                        <td style={{ padding: '12px', textAlign: 'center', fontWeight: 600 }}>
-                          {item.accuracyScore}
-                        </td>
-                        <td style={{ padding: '12px', color: 'var(--text-muted)' }}>
-                          {item.feedback || item.feedbackCode}
-                        </td>
-                        <td style={{ padding: '12px', textAlign: 'right', color: '#64748b', fontSize: '0.82rem' }}>
-                          {new Date(item.assessedAt).toLocaleString('vi-VN')}
-                        </td>
+                        </span>
+                        <span
+                          className="shrink-0 px-2.5 py-0.5 rounded-full text-xs font-extrabold"
+                          style={{
+                            backgroundColor: `${getScoreColor(item.overallScore)}18`,
+                            color: getScoreColor(item.overallScore),
+                          }}
+                        >
+                          {item.overallScore} điểm
+                        </span>
+                      </div>
+                      <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {item.feedback || item.feedbackCode}
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200/70">
+                        <span>Độ chính xác: <strong className="text-slate-700">{item.accuracyScore}</strong></span>
+                        <span>{new Date(item.assessedAt).toLocaleString('vi-VN')}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop & Tablet Table View */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.88rem' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1.5px solid var(--border-card)', color: '#64748b' }}>
+                        <th style={{ padding: '10px 12px', fontWeight: 700 }}>Nội dung chuẩn</th>
+                        <th style={{ padding: '10px 12px', fontWeight: 700, textAlign: 'center' }}>Điểm tổng</th>
+                        <th style={{ padding: '10px 12px', fontWeight: 700, textAlign: 'center' }}>Độ chính xác</th>
+                        <th style={{ padding: '10px 12px', fontWeight: 700 }}>Đánh giá</th>
+                        <th style={{ padding: '10px 12px', fontWeight: 700, textAlign: 'right' }}>Thời điểm</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {historyList.map((item) => (
+                        <tr key={item.attemptId} style={{ borderBottom: '1px solid var(--border-card)' }}>
+                          <td style={{ padding: '12px', fontWeight: 800, fontSize: '1.05rem', fontFamily: 'KaiTi, "STKaiti", serif', color: 'var(--text-main)' }}>
+                            {item.referenceText}
+                          </td>
+                          <td style={{ padding: '12px', textAlign: 'center' }}>
+                            <span
+                              style={{
+                                display: 'inline-block',
+                                padding: '2px 10px',
+                                borderRadius: 'var(--radius-full)',
+                                fontSize: '0.82rem',
+                                fontWeight: 800,
+                                backgroundColor: `${getScoreColor(item.overallScore)}18`,
+                                color: getScoreColor(item.overallScore),
+                              }}
+                            >
+                              {item.overallScore}
+                            </span>
+                          </td>
+                          <td style={{ padding: '12px', textAlign: 'center', fontWeight: 600 }}>
+                            {item.accuracyScore}
+                          </td>
+                          <td style={{ padding: '12px', color: 'var(--text-muted)' }}>
+                            {item.feedback || item.feedbackCode}
+                          </td>
+                          <td style={{ padding: '12px', textAlign: 'right', color: '#64748b', fontSize: '0.82rem' }}>
+                            {new Date(item.assessedAt).toLocaleString('vi-VN')}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </div>
         )}

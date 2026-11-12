@@ -32,6 +32,7 @@ import {
     type MatchMode,
     type PracticeSessionHistoryItem,
     type QuizMode,
+    type WritingMode,
 } from '../../api/vocabPractice'
 import {
     loadPracticeSettings,
@@ -40,6 +41,7 @@ import {
 import { GameSettingsDrawer } from '../../components/practice/GameSettingsDrawer'
 import { QuizModeDrawer } from '../../components/practice/QuizModeDrawer'
 import { MatchModeDrawer } from '../../components/practice/MatchModeDrawer'
+import { WritingModeDrawer } from '../../components/practice/WritingModeDrawer'
 import { PracticeFilterNoticeBanner } from '../../components/practice/PracticeFilterNoticeBanner'
 import {
     normalizePracticeFilterStatus,
@@ -71,6 +73,7 @@ export const PracticeHubPage: React.FC = () => {
     const [settingsOpen, setSettingsOpen] = useState(false)
     const [quizDrawerOpen, setQuizDrawerOpen] = useState(false)
     const [matchDrawerOpen, setMatchDrawerOpen] = useState(false)
+    const [writingDrawerOpen, setWritingDrawerOpen] = useState(false)
     const [historyItems, setHistoryItems] = useState<PracticeSessionHistoryItem[]>([])
     const [loadingHistory, setLoadingHistory] = useState(false)
 
@@ -188,6 +191,27 @@ export const PracticeHubPage: React.FC = () => {
             params.append('mode', mode)
             setMatchDrawerOpen(false)
             navigate(`/practice/match?${params.toString()}`)
+        }
+
+        // Launch Writing Practice (TRACE / RECALL) or PDF Worksheet Generator
+        const handleStartWriting = (mode: WritingMode) => {
+            if (mode === 'PDF') {
+                const params = new URLSearchParams()
+                if (selectedSetId !== 'all') {
+                    params.append('vocabSetId', selectedSetId)
+                }
+                params.append('filterStatus', filterStatus)
+                params.append('order', order)
+                setWritingDrawerOpen(false)
+                navigate(`/practice/writing/pdf?${params.toString()}`)
+                return
+            }
+
+            if (readyWordCount === 0) return
+            const params = buildFilterQueryParams()
+            params.append('mode', mode)
+            setWritingDrawerOpen(false)
+            navigate(`/practice/writing?${params.toString()}`)
         }
 
         return (
@@ -411,30 +435,29 @@ export const PracticeHubPage: React.FC = () => {
                                 </div>
                             </button>
 
-                            {/* 3.4 Viết chữ (Sắp có) */}
-                            <div
-                                title="Sắp ra mắt trong Milestone 4"
-                                className="relative rounded-2xl p-3 sm:p-3.5 bg-teal-50 border border-teal-200/90 text-teal-950 flex flex-col items-center justify-between text-center min-h-[140px] sm:min-h-[158px] xl:min-h-[168px] opacity-80 select-none"
+                            {/* 3.4 Viết chữ (Active — SlideOver Drawer) */}
+                            <button
+                                type="button"
+                                onClick={() => setWritingDrawerOpen(true)}
+                                disabled={loadingStats}
+                                className="group relative rounded-2xl p-3 sm:p-3.5 bg-teal-500 hover:bg-teal-600 border border-teal-500 text-white shadow-md shadow-teal-500/20 flex flex-col items-center justify-between text-center transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed min-h-[140px] sm:min-h-[158px] xl:min-h-[168px]"
                             >
-                                <span className="absolute top-2 right-2 text-[9px] font-bold px-1.5 py-0.5 rounded bg-teal-200/80 text-teal-900">
-                                    Sắp có
-                                </span>
-                                <div className="w-10 h-10 rounded-xl bg-teal-100 text-teal-600 flex items-center justify-center">
+                                <div className="w-10 h-10 rounded-xl bg-white/20 text-white flex items-center justify-center group-hover:scale-105 transition-transform">
                                     <PenTool className="w-5 h-5" />
                                 </div>
 
                                 <div className="my-2">
                                     <div className="text-sm font-extrabold tracking-tight">Viết chữ</div>
-                                    <div className="text-[11px] text-teal-800/80 leading-tight mt-1">
-                                        Đồ nét hoặc viết nhớ
+                                    <div className="text-[11px] text-teal-50/90 leading-tight mt-1">
+                                        Đồ nét, viết nhớ &amp; PDF
                                     </div>
                                 </div>
 
-                                <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-teal-200/60 text-teal-900 text-[11px] font-bold">
+                                <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/20 text-white text-[11px] font-bold">
                                     <span>+15</span>
-                                    <Coins className="w-3 h-3 text-amber-600" />
+                                    <Coins className="w-3 h-3 text-amber-300" />
                                 </div>
-                            </div>
+                            </button>
 
                             {/* 3.5 Gõ từ (Sắp có) */}
                             <div
@@ -575,14 +598,20 @@ export const PracticeHubPage: React.FC = () => {
                                                             className={`text-[11px] font-extrabold px-2 py-0.5 rounded-md truncate ${
                                                                 item.gameType === 'MATCH'
                                                                     ? 'text-sky-700 bg-sky-100/90'
-                                                                    : 'text-amber-700 bg-amber-100/80'
+                                                                    : item.gameType === 'WRITING'
+                                                                        ? 'text-teal-800 bg-teal-100/90'
+                                                                        : 'text-amber-700 bg-amber-100/80'
                                                             }`}
                                                         >
                                                             {item.gameType === 'QUIZ'
                                                                 ? 'Trắc nghiệm'
                                                                 : item.gameType === 'MATCH'
                                                                     ? 'Nối từ'
-                                                                    : item.gameType}
+                                                                    : item.gameType === 'WRITING'
+                                                                        ? item.gameMode === 'RECALL'
+                                                                            ? 'Viết nhớ'
+                                                                            : 'Đồ nét'
+                                                                        : item.gameType}
                                                         </span>
                                                         <span className="text-[11px] font-extrabold text-emerald-700">
                                                             +{item.xpEarned} XP
@@ -623,6 +652,13 @@ export const PracticeHubPage: React.FC = () => {
                                     onClose={() => setMatchDrawerOpen(false)}
                                     readyWordCount={readyWordCount}
                                     onSelectMode={handleStartMatch}
+                                />
+
+                                <WritingModeDrawer
+                                    open={writingDrawerOpen}
+                                    onClose={() => setWritingDrawerOpen(false)}
+                                    readyWordCount={readyWordCount}
+                                    onSelectMode={handleStartWriting}
                                 />
                             </div>
                             )

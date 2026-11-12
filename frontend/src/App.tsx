@@ -40,6 +40,8 @@ import { PracticeHubPage } from './pages/learning/PracticeHubPage'
 import { VocabFlashcardPracticePage } from './pages/learning/VocabFlashcardPracticePage'
 import { VocabQuizPracticePage } from './pages/learning/VocabQuizPracticePage'
 import { VocabMatchPracticePage } from './pages/learning/VocabMatchPracticePage'
+import { VocabWritingPracticePage } from './pages/learning/VocabWritingPracticePage'
+import { VocabWritingPdfPage } from './pages/learning/VocabWritingPdfPage'
 import { AppLayout } from './layouts/AppLayout'
 
 function AppRoutes() {
@@ -72,6 +74,8 @@ function AppRoutes() {
         <Route path="/practice/flashcard" element={<VocabFlashcardPracticePage />} />
         <Route path="/practice/quiz" element={<VocabQuizPracticePage />} />
         <Route path="/practice/match" element={<VocabMatchPracticePage />} />
+        <Route path="/practice/writing" element={<VocabWritingPracticePage />} />
+        <Route path="/practice/writing/pdf" element={<VocabWritingPdfPage />} />
         <Route path="/vocab-sets/:vocabSetId/add-words" element={<AddWordsToVocabSetPage />} />
         <Route path="/teacher/private-vocab" element={<PrivateVocabManagementPage />} />
         <Route path="/private-vocab" element={<PrivateVocabManagementPage />} />

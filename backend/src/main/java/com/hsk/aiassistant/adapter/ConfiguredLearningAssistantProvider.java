@@ -2,8 +2,10 @@ package com.hsk.aiassistant.adapter;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hsk.aiassistant.dto.AiVocabAutofillItemDto;
 import com.hsk.aiassistant.port.AssistantAnswerResult;
 import com.hsk.aiassistant.port.LearningAssistantProvider;
+import com.hsk.aiassistant.service.AiTopicVocabCatalog;
 import com.hsk.common.api.ApiErrorCode;
 import com.hsk.common.api.ApiException;
 import java.io.IOException;
@@ -13,9 +15,12 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -72,7 +77,7 @@ public class ConfiguredLearningAssistantProvider implements LearningAssistantPro
     @Override
     public AssistantAnswerResult answer(String systemPrompt, String question) {
         if ("fake".equals(providerMode) || "mock".equals(providerMode)) {
-            return answerFake(question);
+            return answerFake(systemPrompt, question);
         }
 
         return answerOpenAi(systemPrompt, question);
@@ -81,7 +86,7 @@ public class ConfiguredLearningAssistantProvider implements LearningAssistantPro
     /**
      * Giả lập phản hồi trợ lý AI tất định phục vụ kiểm thử và môi trường phát triển (IMP-02).
      */
-    private AssistantAnswerResult answerFake(String question) {
+    private AssistantAnswerResult answerFake(String systemPrompt, String question) {
         if (question == null) {
             throw new ApiException(ApiErrorCode.INVALID_AI_QUESTION);
         }
@@ -90,6 +95,11 @@ public class ConfiguredLearningAssistantProvider implements LearningAssistantPro
         if (question.contains("SIMULATE_ERROR") || question.contains("SIMULATE_TIMEOUT")) {
             log.warn("Mô phỏng lỗi hoặc quá thời gian từ dịch vụ AI bên ngoài");
             throw new ApiException(ApiErrorCode.AI_PROVIDER_UNAVAILABLE, "Dịch vụ trợ lý AI tạm thời không khả dụng, vui lòng thử lại sau");
+        }
+
+        // Kịch bản sinh hoặc autofill từ vựng qua AI dưới dạng JSON mảng
+        if (systemPrompt != null && systemPrompt.contains("DUY NHẤT một mảng JSON")) {
+            return answerFakeVocabJson(question);
         }
 
         // Kiểm tra phạm vi chủ đề (HTT-10-CN-004-TC-05)
@@ -120,6 +130,69 @@ public class ConfiguredLearningAssistantProvider implements LearningAssistantPro
                 + "- 我明天在学校学习汉语。(Wǒ míngtiān zài xuéxiào xuéxí Hànyǔ - Ngày mai tôi học tiếng Trung ở trường).\n\n"
                 + "Nếu bạn cần giải thích chi tiết hơn về một từ vựng hay điểm ngữ pháp cụ thể, hãy cho tôi biết nhé!";
         return new AssistantAnswerResult(true, generalAnswer);
+    }
+
+    /**
+     * Giả lập phản hồi JSON từ vựng khi gọi từ AiVocabAssistantService.
+     */
+    private AssistantAnswerResult answerFakeVocabJson(String question) {
+        // Trường hợp 1: Sinh từ vựng theo chủ đề: "Hãy sinh đúng %d từ vựng tiếng Trung thiết thực về chủ đề: %s"
+        Matcher topicMatcher = Pattern.compile("đúng\\s+(\\d+)\\s+từ vựng tiếng Trung.*chủ đề:?\\s*(.+)", Pattern.CASE_INSENSITIVE).matcher(question);
+        if (topicMatcher.find()) {
+            int count = 10;
+            try {
+                count = Integer.parseInt(topicMatcher.group(1));
+            } catch (Exception ignored) {
+            }
+            String topic = topicMatcher.group(2).trim();
+            List<AiVocabAutofillItemDto> items = AiTopicVocabCatalog.getWordsForTopic(topic, count);
+            try {
+                return new AssistantAnswerResult(true, objectMapper.writeValueAsString(items));
+            } catch (Exception e) {
+                log.warn("Không thể serialize danh sách từ vựng giả lập: {}", e.getMessage());
+            }
+        }
+
+        // Trường hợp 2: Autofill danh sách từ: "Hãy phân tích danh sách từ vựng tiếng Trung sau: %s"
+        Matcher autofillMatcher = Pattern.compile("danh sách từ vựng tiếng Trung sau:?\\s*(.+)", Pattern.CASE_INSENSITIVE).matcher(question);
+        if (autofillMatcher.find()) {
+            String wordsStr = autofillMatcher.group(1).trim();
+            String[] words = wordsStr.split("[,;\\n]+");
+            List<AiVocabAutofillItemDto> items = new ArrayList<>();
+            for (String rawW : words) {
+                String w = rawW.trim();
+                if (w.isBlank()) {
+                    continue;
+                }
+                AiVocabAutofillItemDto catalogItem = AiTopicVocabCatalog.lookupByHanzi(w);
+                if (catalogItem != null) {
+                    items.add(catalogItem);
+                } else {
+                    items.add(new AiVocabAutofillItemDto(
+                            w,
+                            "",
+                            "",
+                            "noun",
+                            "这是关于" + w + "的例句。",
+                            "Zhè shì guānyú " + w + " de lìjù.",
+                            "Đây là câu ví dụ về " + w + "."
+                    ));
+                }
+            }
+            try {
+                return new AssistantAnswerResult(true, objectMapper.writeValueAsString(items));
+            } catch (Exception e) {
+                log.warn("Không thể serialize danh sách từ vựng autofill giả lập: {}", e.getMessage());
+            }
+        }
+
+        // Trường hợp mặc định cho JSON
+        List<AiVocabAutofillItemDto> defaultItems = AiTopicVocabCatalog.getWordsForTopic(question, 10);
+        try {
+            return new AssistantAnswerResult(true, objectMapper.writeValueAsString(defaultItems));
+        } catch (Exception e) {
+            return new AssistantAnswerResult(true, "[]");
+        }
     }
 
     /**

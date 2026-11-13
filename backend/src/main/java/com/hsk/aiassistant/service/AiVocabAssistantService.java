@@ -75,57 +75,74 @@ public class AiVocabAssistantService {
 			}
 		}
 
-		// 2. Với các từ chưa có trong kho từ điển nội bộ, nhờ trợ lý AI phân tích và sinh dữ liệu
+		// 2. Tra cứu thêm trong kho từ vựng chuyên đề chuẩn hoặc nhờ trợ lý AI phân tích
 		if (!missingWords.isEmpty()) {
-			try {
-				String systemPrompt = """
-					Bạn là trợ lý từ điển tiếng Trung thông minh.
-					Nhiệm vụ: Với danh sách các từ/cụm từ tiếng Trung được cung cấp, hãy phân tích và trả về DUY NHẤT một mảng JSON (không bọc trong markdown code fence, không giải thích gì thêm) với các trường:
-					[
-					  {
-					    "hanzi": "chữ Hán",
-					    "pinyin": "phiên âm pinyin có dấu thanh điệu",
-					    "meaning": "nghĩa tiếng Việt súc tích",
-					    "partOfSpeech": "loại từ (noun/verb/adjective/adverb/...)",
-					    "exampleSentence": "câu ví dụ tiếng Trung tự nhiên",
-					    "examplePinyin": "phiên âm pinyin của câu ví dụ",
-					    "exampleMeaning": "dịch nghĩa tiếng Việt của câu ví dụ"
-					  }
-					]
-					""";
-				String userQuestion = "Hãy phân tích danh sách từ vựng tiếng Trung sau: " + String.join(", ", missingWords);
-				AssistantAnswerResult answer = assistantProvider.answer(systemPrompt, userQuestion);
-				if (answer != null && answer.inScope() && answer.answer() != null && !answer.answer().isBlank()) {
-					String rawJson = answer.answer().trim();
-					if (rawJson.startsWith("```json")) {
-						rawJson = rawJson.substring(7);
-					} else if (rawJson.startsWith("```")) {
-						rawJson = rawJson.substring(3);
-					}
-					if (rawJson.endsWith("```")) {
-						rawJson = rawJson.substring(0, rawJson.length() - 3);
-					}
-					rawJson = rawJson.trim();
-
-					List<AiVocabAutofillItemDto> aiItems = objectMapper.readValue(
-							rawJson,
-							new TypeReference<List<AiVocabAutofillItemDto>>() {}
-					);
-					result.addAll(aiItems);
+			List<String> needAiWords = new ArrayList<>();
+			for (String w : missingWords) {
+				AiVocabAutofillItemDto catalogItem = AiTopicVocabCatalog.lookupByHanzi(w);
+				if (catalogItem != null) {
+					result.add(catalogItem);
+				} else {
+					needAiWords.add(w);
 				}
-			} catch (Exception e) {
-				log.warn("Lỗi khi gọi AI tự động điền từ vựng: {}", e.getMessage());
-				// Fallback cơ bản nếu AI không khả dụng
-				for (String w : missingWords) {
-					result.add(new AiVocabAutofillItemDto(
-							w,
-							"",
-							"",
-							"noun",
-							"",
-							"",
-							""
-					));
+			}
+
+			if (!needAiWords.isEmpty()) {
+				try {
+					String systemPrompt = """
+						Bạn là trợ lý từ điển tiếng Trung thông minh.
+						Nhiệm vụ: Với danh sách các từ/cụm từ tiếng Trung được cung cấp, hãy phân tích và trả về DUY NHẤT một mảng JSON (không bọc trong markdown code fence, không giải thích gì thêm) với các trường:
+						[
+						  {
+						    "hanzi": "chữ Hán",
+						    "pinyin": "phiên âm pinyin có dấu thanh điệu",
+						    "meaning": "nghĩa tiếng Việt súc tích",
+						    "partOfSpeech": "loại từ (noun/verb/adjective/adverb/...)",
+						    "exampleSentence": "câu ví dụ tiếng Trung tự nhiên",
+						    "examplePinyin": "phiên âm pinyin của câu ví dụ",
+						    "exampleMeaning": "dịch nghĩa tiếng Việt của câu ví dụ"
+						  }
+						]
+						""";
+					String userQuestion = "Hãy phân tích danh sách từ vựng tiếng Trung sau: " + String.join(", ", needAiWords);
+					AssistantAnswerResult answer = assistantProvider.answer(systemPrompt, userQuestion);
+					if (answer != null && answer.inScope() && answer.answer() != null && !answer.answer().isBlank()) {
+						String rawJson = answer.answer().trim();
+						if (rawJson.startsWith("```json")) {
+							rawJson = rawJson.substring(7);
+						} else if (rawJson.startsWith("```")) {
+							rawJson = rawJson.substring(3);
+						}
+						if (rawJson.endsWith("```")) {
+							rawJson = rawJson.substring(0, rawJson.length() - 3);
+						}
+						rawJson = rawJson.trim();
+
+						List<AiVocabAutofillItemDto> aiItems = objectMapper.readValue(
+								rawJson,
+								new TypeReference<List<AiVocabAutofillItemDto>>() {}
+						);
+						result.addAll(aiItems);
+					}
+				} catch (Exception e) {
+					log.warn("Lỗi khi gọi AI tự động điền từ vựng: {}", e.getMessage());
+					// Fallback cơ bản nếu AI không khả dụng
+					for (String w : needAiWords) {
+						AiVocabAutofillItemDto cat = AiTopicVocabCatalog.lookupByHanzi(w);
+						if (cat != null) {
+							result.add(cat);
+						} else {
+							result.add(new AiVocabAutofillItemDto(
+									w,
+									"",
+									"",
+									"noun",
+									"",
+									"",
+									""
+							));
+						}
+					}
 				}
 			}
 		}
@@ -168,19 +185,36 @@ public class AiVocabAssistantService {
 				}
 				rawJson = rawJson.trim();
 
-				return objectMapper.readValue(
+				List<AiVocabAutofillItemDto> parsed = objectMapper.readValue(
 						rawJson,
 						new TypeReference<List<AiVocabAutofillItemDto>>() {}
 				);
+				if (parsed != null && !parsed.isEmpty()) {
+					if (parsed.size() > safeCount) {
+						return parsed.subList(0, safeCount);
+					}
+					if (parsed.size() < safeCount) {
+						List<AiVocabAutofillItemDto> supplemented = new ArrayList<>(parsed);
+						List<AiVocabAutofillItemDto> catalogWords = AiTopicVocabCatalog.getWordsForTopic(cleanTopic, safeCount);
+						for (AiVocabAutofillItemDto catItem : catalogWords) {
+							boolean exists = supplemented.stream().anyMatch(it -> it.hanzi().equals(catItem.hanzi()));
+							if (!exists) {
+								supplemented.add(catItem);
+							}
+							if (supplemented.size() >= safeCount) {
+								break;
+							}
+						}
+						return supplemented;
+					}
+					return parsed;
+				}
 			}
 		} catch (Exception e) {
 			log.warn("Lỗi khi sinh từ vựng theo chủ đề qua AI: {}", e.getMessage());
 		}
 
-		// Fallback nếu AI không trả về
-		return List.of(
-				new AiVocabAutofillItemDto("苹果", "píngguǒ", "quả táo", "noun", "我想吃苹果。", "Wǒ xiǎng chī píngguǒ.", "Tôi muốn ăn táo."),
-				new AiVocabAutofillItemDto("咖啡", "kāfēi", "cà phê", "noun", "你要喝咖啡吗？", "Nǐ yào hē kāfēi ma?", "Bạn muốn uống cà phê không?")
-		);
+		// Fallback chất lượng cao theo chủ đề từ Catalog thay vì danh sách 2 từ cứng
+		return AiTopicVocabCatalog.getWordsForTopic(cleanTopic, safeCount);
 	}
 }
